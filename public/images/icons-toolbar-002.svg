@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 width="84px" height="63px" viewBox="0 0 84 63" enable-background="new 0 0 84 63" xml:space="preserve">
+<g id="Infowindow">
+</g>
+<g id="Table">
+</g>
+<g id="Toolbar">
+	<g id="Ruler">
+		<rect y="42" fill="none" width="21" height="21"/>
+		<path opacity="0.5" fill="none" stroke="#000000" stroke-miterlimit="10" d="M4.5,50"/>
+		<line fill="none" stroke="#000000" stroke-miterlimit="10" x1="3.5" y1="49" x2="3.5" y2="52"/>
+		<line fill="none" stroke="#000000" stroke-miterlimit="10" x1="5.5" y1="49" x2="5.5" y2="53"/>
+		<line fill="none" stroke="#000000" stroke-miterlimit="10" x1="7.5" y1="49" x2="7.5" y2="52"/>
+		<line fill="none" stroke="#000000" stroke-miterlimit="10" x1="9.5" y1="49" x2="9.5" y2="53"/>
+		<line fill="none" stroke="#000000" stroke-miterlimit="10" x1="11.5" y1="49" x2="11.5" y2="52"/>
+		<line fill="none" stroke="#000000" stroke-miterlimit="10" x1="13.5" y1="49" x2="13.5" y2="53"/>
+		<line fill="none" stroke="#000000" stroke-miterlimit="10" x1="15.5" y1="49" x2="15.5" y2="52"/>
+		<path d="M1,48v7v2h19v-2v-7H1z M2,55v-5h17v5H2z"/>
+		<line fill="none" stroke="#000000" stroke-miterlimit="10" x1="17.5" y1="49" x2="17.5" y2="53"/>
+	</g>
+	<g id="Zoom_out">
+		<rect x="68" y="30" width="11" height="3"/>
+		<rect x="63" y="21" fill="none" width="21" height="21"/>
+	</g>
+	<g id="Zoom_in">
+		<polygon points="58,30 54,30 54,26 51,26 51,30 47,30 47,33 51,33 51,37 54,37 54,33 58,33 		"/>
+		<rect x="42" y="21" fill="none" width="21" height="21"/>
+	</g>
+	<g id="Poly_tool_three">
+		<rect x="21" y="21" fill="none" width="21" height="21"/>
+		<polyline fill="none" stroke="#000000" stroke-width="1.4" stroke-miterlimit="10" points="34,26 27,33 36,37 37.328,30.08 		"/>
+		<circle fill="#FFFFFF" stroke="#000000" stroke-width="0.8" stroke-miterlimit="10" cx="34" cy="26" r="2"/>
+		<circle fill="#FFFFFF" stroke="#000000" stroke-width="0.8" stroke-miterlimit="10" cx="27" cy="33" r="2"/>
+		<circle fill="#FFFFFF" stroke="#000000" stroke-width="0.8" stroke-miterlimit="10" cx="36" cy="37" r="2"/>
+	</g>
+	<g id="Poly_tool_four">
+		<polyline fill="none" stroke="#000000" stroke-width="1.4" stroke-miterlimit="10" points="13,27 5,26 8,37 16,35 18,28.555 		"/>
+		<circle fill="#FFFFFF" stroke="#000000" stroke-width="0.8" stroke-miterlimit="10" cx="5" cy="26" r="2"/>
+		<circle fill="#FFFFFF" stroke="#000000" stroke-width="0.8" stroke-miterlimit="10" cx="13" cy="27" r="2"/>
+		<circle fill="#FFFFFF" stroke="#000000" stroke-width="0.8" stroke-miterlimit="10" cx="8" cy="37" r="2"/>
+		<circle fill="#FFFFFF" stroke="#000000" stroke-width="0.8" stroke-miterlimit="10" cx="16" cy="35" r="2"/>
+		<rect y="21" fill="none" width="21" height="21"/>
+	</g>
+	<g id="Pan_tool">
+		<rect x="63" fill="none" width="21" height="21"/>
+		<path d="M71.609,18H72.5c-0.938-3.828-4.127-2.54-5.578-5.969c0,0,0.833-1.052,1.781,0.062c0.717,0.843,2.145,1.18,2.844,1.094
+			c-0.587-1.392-1.922-5.75-2.016-6.969c-0.041-0.531-0.078-1.062,0.578-1.234c0.638-0.167,1.045,0.4,1.297,1.234
+			c0.406,1.344,1,4.563,1.522,4.7c0.011,0.003,0.021-0.001,0.03-0.004c0.624-0.165-0.147-3.336-0.084-5.68
+			c0.023-0.869,0.204-1.61,1-1.594c0.75,0.016,0.922,0.915,0.922,1.859c0,0.907-0.288,5.5,0.087,5.5c0.007,0,0.013,0,0.019,0
+			c0.71,0,0.758-3.754,0.973-4.875c0.151-0.793,0.441-1.478,1.172-1.422c0.698,0.054,0.954,0.513,0.828,1.578
+			c-0.112,0.946-1.422,4.875-0.971,5.023c0.414,0.136,0.987-1.946,1.486-3.117c0.406-0.953,0.991-0.93,1.297-0.828
+			c0.668,0.223,0.777,0.777,0.469,1.531C78.594,12.703,77.138,15.008,76.9,18h0.908c0.082-2.25,1.035-4.203,3.124-8.96
+			c0.277-0.631,0.125-1.474-0.323-1.946c-0.297-0.312-1.438-0.906-2.188-0.109c0.234-0.531,0.694-3.098-1.547-3.016
+			c-0.401,0.015-1.219,0.281-1.453,1.344c0.078-1.641-0.717-2.307-1.462-2.307c-0.891,0-2.132,0.479-1.679,3.542
+			c-0.344-1.281-1.031-2.625-2.406-2.344c-1.133,0.231-1.188,1.422-1.141,1.938c0.066,0.728,1.172,5.078,1.578,5.984
+			c-0.734,0.062-1.172-1.214-2.484-1.344C66.807,10.68,66,11.838,66,11.838s0.922,2.49,2.916,3.409
+			C70.162,15.822,71.369,17,71.609,18z"/>
+	</g>
+	<g id="Pin_tool">
+		<rect x="42" fill="none" width="21" height="21"/>
+		<path id="pin-fill_2_" d="M52.321,18c-0.074-0.885-0.25-1.696-0.456-2.461c-0.206-0.767-0.434-1.5-0.719-2.19
+			c-0.284-0.683-0.643-1.295-1.031-1.873c-0.395-0.585-0.8-1.149-1.146-1.763c-0.35-0.62-0.668-1.295-0.713-2.197
+			c-0.049-0.961,0.19-1.728,0.551-2.351C49.51,3.956,50.618,3.078,52.423,3h0.091c1.805,0.078,2.914,0.956,3.615,2.166
+			c0.361,0.623,0.6,1.39,0.552,2.351c-0.045,0.902-0.364,1.577-0.713,2.197c-0.347,0.614-0.751,1.177-1.146,1.763
+			c-0.391,0.578-0.749,1.189-1.032,1.873c-0.285,0.69-0.513,1.424-0.72,2.19c-0.205,0.765-0.381,1.576-0.455,2.461H52.321z"/>
+	</g>
+	<g id="Redo_arrow">
+		<rect x="21" fill="none" width="21" height="21"/>
+		<path d="M33,12.553c-4.607-0.068-6.837,1.203-8,4.447c0-4.188,3.168-8.043,8-8.641V5l6,5.5L33,16V12.553z"/>
+	</g>
+	<g id="Undo_arrow">
+		<path d="M9,8.4V5l-5,5.5L9,16v-3.4c4.607,0,6.837,1.156,8,4.4C17,12.812,13.832,8.998,9,8.4z"/>
+		<rect fill="none" width="21" height="21"/>
+	</g>
+</g>
+<g id="Legend_panel">
+</g>
+<g id="App">
+	<rect x="21" y="42" fill="#4387FD" fill-opacity="0" width="21" height="21"/>
+	<path d="M37.5,46h-13c-0.276,0-0.5,0.224-0.5,0.5c0,0.138,0.056,0.263,0.146,0.354L30,53.09v4.41c0,0.276,0.447,0.5,1,0.5
+		s1-0.224,1-0.5v-4.41l5.854-6.236C37.944,46.763,38,46.638,38,46.5C38,46.224,37.776,46,37.5,46z"/>
+	<rect x="47" y="50" width="3" height="7"/>
+	<rect x="51" y="52" width="3" height="5"/>
+	<rect x="55" y="47" width="3" height="10"/>
+	<rect x="42" y="42" fill="#4387FD" fill-opacity="0" width="21" height="21"/>
+	<g>
+		<path d="M77.5,46.75h-8L69,48l5,4l-5,4l1,1.25h7.5C78,57,78,56,77.5,55.75h-6L76,52l-4.5-3.75h6C78,48,78,47,77.5,46.75z"/>
+		<rect x="63" y="42" opacity="0.4" fill="none" width="21" height="21"/>
+	</g>
+</g>
+</svg>
