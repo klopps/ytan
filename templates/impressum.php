@@ -4,8 +4,8 @@
     <title><?= htmlspecialchars($appName) ?> | Impressum</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta charset="utf-8" />
-    <link rel="stylesheet" type="text/css" href="/css/style.css" />
-    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" type="text/css" href="<?= $baseUrl ?>/css/style.css" />
+    <link rel="shortcut icon" href="<?= $baseUrl ?>/favicon.ico">
 </head>
 <body>
     <h1>Impressum</h1>

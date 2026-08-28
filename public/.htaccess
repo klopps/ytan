@@ -1,0 +1,9 @@
+RewriteEngine On
+
+# If the request maps to a real file or directory (css/js/images/...), serve it directly.
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Everything else goes through the front controller.
+RewriteRule ^ index.php [QSA,L]

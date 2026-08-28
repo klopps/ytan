@@ -52,6 +52,18 @@ final class App
         $wsiController = new WsiController(new WsiRenderer($rootDir . '/public/images/wsi'));
 
         $app = AppFactory::create();
+
+        // When the app isn't served from the web root (e.g. Apache/XAMPP
+        // serving this whole project as http://localhost/ytan/public/
+        // instead of a vhost whose document root IS public/), routes like
+        // "/" or "/api/v1/..." need the request's subdirectory prefix
+        // stripped before Slim tries to match them against it.
+        $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
+        $baseUrl = ($scriptDir === '' || $scriptDir === '/') ? '' : $scriptDir;
+        if ($baseUrl !== '') {
+            $app->setBasePath($baseUrl);
+        }
+
         $app->addBodyParsingMiddleware();
         $app->add(new CorsMiddleware($_ENV['ALLOWED_ORIGINS'] ?? '*'));
         $app->add(new AuthMiddleware($authService));
@@ -107,10 +119,11 @@ final class App
 
         $app->get('/api/v1/wsi/{code}', [$wsiController, 'show']);
 
-        $app->get('/', function (Request $req, Response $res) use ($rootDir) {
+        $appName = $_ENV['APP_NAME'] ?? 'YTAN';
+
+        $app->get('/', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl) {
             ob_start();
             $mapsApiKey = $_ENV['MAPS_API_KEY'] ?? '';
-            $appName = $_ENV['APP_NAME'] ?? 'YTAN';
             $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
             require $rootDir . '/templates/app.php';
             $res->getBody()->write(ob_get_clean());
@@ -118,7 +131,7 @@ final class App
             return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
         });
 
-        $app->get('/legal/impressum', function (Request $req, Response $res) use ($rootDir) {
+        $app->get('/legal/impressum', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl) {
             ob_start();
             require $rootDir . '/templates/impressum.php';
             $res->getBody()->write(ob_get_clean());
@@ -126,7 +139,7 @@ final class App
             return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
         });
 
-        $app->get('/legal/datenschutz', function (Request $req, Response $res) use ($rootDir) {
+        $app->get('/legal/datenschutz', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl) {
             ob_start();
             require $rootDir . '/templates/datenschutz.php';
             $res->getBody()->write(ob_get_clean());

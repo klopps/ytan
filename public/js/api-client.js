@@ -10,7 +10,10 @@
  * such a client should mirror.
  */
 const Ytan = (() => {
-    const BASE_URL = '/api/v1';
+    // Injected by templates/app.php from the server's own base path, so this
+    // keeps working whether the app is served at the domain root or from a
+    // subdirectory (e.g. http://localhost/ytan/public/).
+    const BASE_URL = (typeof window.YTAN_API_BASE !== 'undefined') ? window.YTAN_API_BASE : '/api/v1';
     const TOKEN_KEY = 'ytan_token';
 
     function getToken() {
