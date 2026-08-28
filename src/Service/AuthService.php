@@ -27,7 +27,7 @@ final class AuthService
     public function login(string $username, string $password): array
     {
         $user = $this->users->findByUsername($username);
-        if ($user === null) {
+        if ($user === null || $user['password'] === null) {
             throw new UnauthorizedException('Invalid username or password.');
         }
 
