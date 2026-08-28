@@ -87,7 +87,7 @@ function loadSettings() {
     var settingsString = getCookie('settings');
 
     if (settingsString != '') {
-        settings = JSON.parse(settingsString);
+        settings = Object.assign({}, settings, JSON.parse(settingsString));
 
         document.getElementById('detail0').checked = settings['detail0'];
         document.getElementById('detail1').checked = settings['detail1'];

@@ -95,7 +95,7 @@
         <div><input type="checkbox" id="detail14" name="detail14" onclick="toggleMarkerByType(this, 14);" checked><label for="detail14"><span></span>Lights (Lighthouses, Sea Marks)</label></div>
         <div><input type="checkbox" id="detail15" name="detail15" onclick="toggleMarkerByType(this, 15);" checked><label for="detail15"><span></span>Parking</label></div>
         <div><input type="checkbox" id="detailroutes" name="detailroutes" onchange="toggleRoutes(this);" checked><label for="detailroutes"><span></span>Routes</label></div>
-        <div><input type="checkbox" id="detailareas" name="detailareas" onchange="toggleAreas(this);"><label for="detailareas"><span></span>Areas</label></div>
+        <div><input type="checkbox" id="detailareas" name="detailareas" onchange="toggleAreas(this);" checked><label for="detailareas"><span></span>Areas</label></div>
         <div><input type="checkbox" id="detailwsi" name="detailwsi" onchange="toggleWsiMarkers(this);"><label for="detailwsi"><span></span>Windshelter Indicators</label></div>
       </div>
 
@@ -123,7 +123,7 @@
       </div>
 
       <div id="legal">
-        <a href="<?= $baseUrl ?>/legal/impressum" target="_blank">Imprint</a> | <a href="<?= $baseUrl ?>/legal/datenschutz" target="_blank">Privacy Notice</a> | <span onclick="openCookieMenu();">Cookies</span>
+        <span onclick="openLegalMenu('<?= $baseUrl ?>/legal/impressum');">Imprint</span> | <span onclick="openLegalMenu('<?= $baseUrl ?>/legal/datenschutz');">Privacy Notice</span> | <span onclick="openCookieMenu();">Cookies</span>
       </div>
     </div>
 
@@ -138,6 +138,14 @@
         </p>
         <div class="button" onclick="closeCookieMenu();"><i class="material-icons-round">check</i>&nbsp;I agree to the use of cookies</div>
         <div class="button" onclick="revokeConsent();"><i class="material-icons-round">not_interested</i>&nbsp;I would like to delete the cookies</div>
+      </div>
+    </div>
+
+    <!-- LEGAL MENU (Imprint / Privacy Notice) ----------------------------------->
+    <div id="legalmenu" class="cookiemenu">
+      <div class="cm_content">
+        <div id="legalmenu-content"></div>
+        <div class="button" onclick="closeLegalMenu();"><i class="material-icons-round">close</i>&nbsp;Close</div>
       </div>
     </div>
 

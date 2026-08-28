@@ -25,6 +25,36 @@ function closeCookieMenu() {
 
 
 /**
+ * Legal-Menu (Imprint / Privacy Notice)
+ *
+ * Content stays in its own template file (templates/impressum.php,
+ * templates/datenschutz.php); we just fetch the rendered page and show
+ * its body inline instead of navigating to it.
+ */
+
+function openLegalMenu(url) {
+    var container = document.getElementById("legalmenu-content");
+    container.innerHTML = "";
+    document.getElementById("legalmenu").style.width = "100%";
+
+    fetch(url)
+        .then(function (response) { return response.text(); })
+        .then(function (html) {
+            var doc = new DOMParser().parseFromString(html, "text/html");
+            container.innerHTML = doc.body.innerHTML;
+        })
+        .catch(function (err) {
+            container.innerHTML = "<p>Failed to load content.</p>";
+            log('openLegalMenu() failed: ' + err.message, LOG_DEFAULT);
+        });
+}
+
+function closeLegalMenu() {
+    document.getElementById("legalmenu").style.width = "0%";
+}
+
+
+/**
  * Menü
  */
 
