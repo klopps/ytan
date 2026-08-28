@@ -5,11 +5,12 @@
     "license": "MIT",
     "require": {
         "php": ">=8.1",
-        "slim/slim": "^4.12",
-        "slim/psr7": "^1.6",
         "firebase/php-jwt": "^6.10",
-        "vlucas/phpdotenv": "^5.6",
-        "meyfa/php-svg": "^0.13"
+        "meyfa/php-svg": "^0.13",
+        "phpmailer/phpmailer": "^7.1",
+        "slim/psr7": "^1.6",
+        "slim/slim": "^4.12",
+        "vlucas/phpdotenv": "^5.6"
     },
     "require-dev": {
         "phpunit/phpunit": "^10.5"

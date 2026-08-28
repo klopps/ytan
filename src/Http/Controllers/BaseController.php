@@ -39,6 +39,19 @@ abstract class BaseController
     }
 
     /**
+     * @return array{sub:int,username:string,is_admin:bool}
+     */
+    protected function requireAdmin(Request $request): array
+    {
+        $auth = $this->requireAuthUser($request);
+        if (!($auth['is_admin'] ?? false)) {
+            throw new ForbiddenException('Admin access required.');
+        }
+
+        return $auth;
+    }
+
+    /**
      * @return array<string,mixed> decoded JSON body
      */
     protected function jsonBody(Request $request): array

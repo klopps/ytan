@@ -25,6 +25,7 @@
     <script src="./js/area.js"></script>
     <script src="./js/tour.js"></script>
     <script src="./js/user.js"></script>
+    <script src="./js/admin-user.js"></script>
     <script src="./js/sectorlight.js"></script>
 
     <link rel="stylesheet" type="text/css" href="./css/style.css" />
@@ -60,9 +61,9 @@
     <div id="sidemenu-toggle" onclick="toggleMenu()">
       <i class="material-icons-round" id="sidemenu-opener">chevron_right</i>
     </div>
-    <div id="sidemenu" class="sidemenu">
-      <h2><?= htmlspecialchars($appName) ?></h2>
 
+    <div id="sidemenu" class="sidemenu">
+      <div>&nbsp;</div>
       <div class="panelheading">Map</div>
       <form name="maptype">
         <div class="radio-group">
@@ -109,6 +110,7 @@
 
       <div class="button" onclick="fitToPoiBounds();"><i class="material-icons-round">fit_screen</i>&nbsp;Fit POIs</div>
       <div class="button" onclick="shareMap();"><i class="material-icons-round">share</i>&nbsp;Share</div>
+      <div class="button" id="userAdminMenuBtn" style="display:none;" onclick="openUserAdminMenu();"><i class="material-icons-round">admin_panel_settings</i>&nbsp;User</div>
 
       <div id="disclaimer">
         A lot of the information shown here is based on the documents
@@ -131,23 +133,38 @@
     <div id="cookiemenu" class="cookiemenu">
       <div class="cm_content">
         <h2><?= htmlspecialchars($appName) ?></h2>
-        <p>
-          <?= htmlspecialchars($appName) ?> requires the use of cookies to function properly and you have consented to their use.
-          Of course, you can revoke your consent and the cookie will be deleted.
-          However, you will then no longer be able to use <?= htmlspecialchars($appName) ?>.
-        </p>
-        <div class="button" onclick="closeCookieMenu();"><i class="material-icons-round">check</i>&nbsp;I agree to the use of cookies</div>
-        <div class="button" onclick="revokeConsent();"><i class="material-icons-round">not_interested</i>&nbsp;I would like to delete the cookies</div>
+        <div class="cookieConsentBody">
+          <p>
+            <?= htmlspecialchars($appName) ?> requires the use of cookies to function properly and you have consented to their use.
+            Of course, you can revoke your consent and the cookie will be deleted.
+            However, you will then no longer be able to use <?= htmlspecialchars($appName) ?>.
+          </p>
+          <div class="button" onclick="closeCookieMenu();"><i class="material-icons-round">check</i>&nbsp;I agree to the use of cookies</div>
+          <div class="button" onclick="revokeConsent();"><i class="material-icons-round">not_interested</i>&nbsp;I would like to delete the cookies</div>
+        </div>
       </div>
     </div>
 
     <!-- LEGAL MENU (Imprint / Privacy Notice) ----------------------------------->
     <div id="legalmenu" class="cookiemenu">
+      <div id="legalmenu-close-btn" class="panel-close-btn" onclick="closeLegalMenu();"><i class="material-icons-round">close</i></div>
       <div class="cm_content">
         <div id="legalmenu-content"></div>
-        <div class="button" onclick="closeLegalMenu();"><i class="material-icons-round">close</i>&nbsp;Close</div>
       </div>
     </div>
+
+    <!-- USER ADMIN MENU (admin only) ----------------------------------->
+    <div id="useradminmenu" class="cookiemenu">
+      <div id="useradminmenu-close-btn" class="panel-close-btn" onclick="closeUserAdminMenu();"><i class="material-icons-round">close</i></div>
+      <div class="cm_content">
+        <h2>User management</h2>
+        <div id="useradminmenu-form"></div>
+        <div id="useradminmenu-list"></div>
+      </div>
+    </div>
+
+    <!-- Shown, bottom-centered, over whichever full-screen panel above is currently open -->
+    <img id="panelLogo" class="panel-logo" src="images/ytan.svg">
 
     <!-- EDIT ADDITIONAL TOOLBAR -------------------------------------->
     <div id="secondToolbar">
@@ -155,7 +172,10 @@
 
     <!-- EDIT TOOLBAR -------------------------------------->
     <div id="editToolbar">
-      <div id="routeButton" class="pesrBtn pesrBtnRoute rightBorder" title="Create Route" onclick="editRouteBtnClick('routeButton');"></div><div id="poiButton" class="pesrBtn pesrBtnPoi rightBorder disabled" title="Create POI" onclick="editPoiBtnClick('poiButton');"></div><div id="areaButton" class="pesrBtn pesrBtnArea rightBorder" title="Create Area" onclick="editAreaBtnClick('areaButton');"></div><div id="userButton" class="pesrBtn pesrBtnUser" title="Your settings" onclick="showUserWindow();"></div>
+      <div id="routeButton" class="pesrBtn pesrBtnRoute rightBorder" title="Create Route" onclick="editRouteBtnClick('routeButton');"></div>
+      <div id="poiButton" class="pesrBtn pesrBtnPoi rightBorder disabled" title="Create POI" onclick="editPoiBtnClick('poiButton');"></div>
+      <div id="areaButton" class="pesrBtn pesrBtnArea rightBorder" title="Create Area" onclick="editAreaBtnClick('areaButton');"></div>
+      <div id="userButton" class="pesrBtn pesrBtnUser" title="Your settings" onclick="showUserWindow();"></div>
     </div>
 
     <!-- USER LOGIN/LOGOUT WINDOW -------------------------->
@@ -171,11 +191,25 @@
         document.getElementById("gdpr").style.display = "block";
       }
 
-      if (sessionStorage.getItem('user') === null || !Ytan.isLoggedIn()) {
-          var user = initUser();
-      } else {
-          var user = JSON.parse(sessionStorage.getItem('user'));
+      var user = initUser();
+
+      if (Ytan.isLoggedIn()) {
+        Ytan.get('/auth/me').then(answer => {
+          user.id = answer.data.sub;
+          user.username = answer.data.username;
+          user.email = answer.data.email;
+          user.firstname = answer.data.firstname;
+          user.lastname = answer.data.lastname;
+          user.is_admin = !!answer.data.is_admin;
+
+          sessionStorage.setItem('user', JSON.stringify(user));
           document.getElementById('userButton').classList.add('loggedin');
+          updateAdminMenuVisibility();
+        }).catch(() => {
+          // stored token is invalid/expired - fall back to the logged-out state
+          Ytan.setToken(null);
+          sessionStorage.removeItem('user');
+        });
       }
     </script>
 

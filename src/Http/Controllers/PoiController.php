@@ -7,7 +7,6 @@ namespace Ytan\Http\Controllers;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Ytan\Domain\Poi\PoiRepository;
-use Ytan\Exception\ForbiddenException;
 
 final class PoiController extends BaseController
 {
@@ -67,15 +66,5 @@ final class PoiController extends BaseController
         $this->pois->delete($id);
 
         return $this->json($response, ['data' => ['id' => $id]]);
-    }
-
-    private function requireAdmin(Request $request): bool
-    {
-        $auth = $this->requireAuthUser($request);
-        if (!($auth['is_admin'] ?? false)) {
-            throw new ForbiddenException('Admin access required.');
-        }
-
-        return true;
     }
 }

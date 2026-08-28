@@ -12,15 +12,45 @@ function hideToolbar() {
 
 
 /**
+ * Full-screen panels (cookie/legal/user-admin menus) sit visually behind
+ * editToolbar's z-index, so it must be hidden for as long as any one of
+ * them is open; the bottom-centered YTAN logo shown on these panels is the
+ * opposite - hidden until one is open. Tracked with a counter (rather than
+ * a plain boolean) so two panels opened back-to-back can't have the second
+ * one's close prematurely reveal the toolbar / hide the logo while the
+ * first is still open. Uses `visibility` (for editToolbar) rather than
+ * `display` so it doesn't fight the unrelated street-view show/hide logic
+ * in map-core.js, which toggles `display` on the same element.
+ */
+var openPanelCount = 0;
+
+function panelOpened() {
+    openPanelCount++;
+    document.getElementById("editToolbar").style.visibility = "hidden";
+    document.getElementById("panelLogo").style.display = "block";
+}
+
+function panelClosed() {
+    openPanelCount = Math.max(0, openPanelCount - 1);
+    if (openPanelCount === 0) {
+        document.getElementById("editToolbar").style.visibility = "";
+        document.getElementById("panelLogo").style.display = "none";
+    }
+}
+
+
+/**
  * Cookie-Menu
  */
 
 function openCookieMenu() {
     document.getElementById("cookiemenu").style.width = "100%";
+    panelOpened();
 }
 
 function closeCookieMenu() {
     document.getElementById("cookiemenu").style.width = "0%";
+    panelClosed();
 }
 
 
@@ -36,6 +66,8 @@ function openLegalMenu(url) {
     var container = document.getElementById("legalmenu-content");
     container.innerHTML = "";
     document.getElementById("legalmenu").style.width = "100%";
+    document.getElementById("legalmenu-close-btn").style.display = "flex";
+    panelOpened();
 
     fetch(url)
         .then(function (response) { return response.text(); })
@@ -51,6 +83,8 @@ function openLegalMenu(url) {
 
 function closeLegalMenu() {
     document.getElementById("legalmenu").style.width = "0%";
+    document.getElementById("legalmenu-close-btn").style.display = "none";
+    panelClosed();
 }
 
 

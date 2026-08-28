@@ -37,6 +37,14 @@ function showUserWindow() {
                     '<button id="userCancelBtn"class="button" type="button" onClick="closeUserWindow()">Cancel</button>' +
                 '</div>' +
             '</div>' +
+            '<div class="infoWindowElement">' +
+                '<div class="leftCol">' +
+                    '&nbsp;' +
+                '</div>' +
+                '<div class="rightCol">' +
+                    '<span class="forgotPasswordLink" onclick="goToForgotPassword();">Forgot password?</span>' +
+                '</div>' +
+            '</div>' +
             '</form>'
         ;
     } else {
@@ -58,9 +66,11 @@ function showUserWindow() {
                 '</div>' +
             '</div>' +
             '<div class="infoWindowElement">' +
+                '<button id="userChangePasswordBtn" class="button" onClick="showChangePasswordForm();">Change password</button>&nbsp;' +
                 '<button id="userLogoutBtn" class="button" onClick="logoutUser()">Logout</button>&nbsp;' +
                 '<button id="userCloseBtn" class="button" onClick="closeUserWindow()">Close</button>' +
-            '</div>'
+            '</div>' +
+            '<div id="userWindowSub"></div>'
         ;
     }
 
@@ -84,6 +94,83 @@ function closeUserWindow() {
 }
 
 /**
+ * "Forgot password?" leaves the SPA for the standalone /forgot-password
+ * page (a real navigation, not an in-page panel) since it's a
+ * pre-authentication flow that ends in the emailed /set-password link
+ * also being a standalone page - keeping both steps consistent.
+ */
+function goToForgotPassword() {
+    window.location.href = window.YTAN_API_BASE.replace(/\/api\/v1$/, '') + '/forgot-password';
+}
+
+/**
+ * Self-service password change for an already logged-in user - separate
+ * from the "Forgot password?" flow, which requires no active session but
+ * does require access to the account's email inbox.
+ */
+function showChangePasswordForm() {
+    document.getElementById('userWindowSub').innerHTML =
+        '<div class="infoWindowElement">' +
+            '<div class="leftCol"><label for="userChangePasswordCurrent">Current: </label></div>' +
+            '<div class="rightCol"><input id="userChangePasswordCurrent" type="password" autocomplete="current-password"></div>' +
+        '</div>' +
+        '<div class="infoWindowElement">' +
+            '<div class="leftCol"><label for="userChangePasswordNew">New: </label></div>' +
+            '<div class="rightCol"><input id="userChangePasswordNew" type="password" autocomplete="new-password"></div>' +
+        '</div>' +
+        '<div class="infoWindowElement">' +
+            '<div class="leftCol"><label for="userChangePasswordConfirm">Confirm: </label></div>' +
+            '<div class="rightCol"><input id="userChangePasswordConfirm" type="password" autocomplete="new-password"></div>' +
+        '</div>' +
+        '<div id="userChangePasswordMessage"></div>' +
+        '<div class="infoWindowElement">' +
+            '<div class="leftCol">&nbsp;</div>' +
+            '<div class="rightCol">' +
+                '<button id="userChangePasswordSaveBtn" class="button" type="button" onClick="submitChangePassword();">Save</button>&nbsp;' +
+                '<button class="button" type="button" onClick="document.getElementById(\'userWindowSub\').innerHTML=\'\';">Cancel</button>' +
+            '</div>' +
+        '</div>'
+    ;
+}
+
+function submitChangePassword() {
+    var current = document.getElementById('userChangePasswordCurrent').value;
+    var newPassword = document.getElementById('userChangePasswordNew').value;
+    var confirmPassword = document.getElementById('userChangePasswordConfirm').value;
+    var message = document.getElementById('userChangePasswordMessage');
+
+    if (newPassword !== confirmPassword) {
+        message.style.color = '#b3261e';
+        message.textContent = 'The two passwords do not match.';
+        return;
+    }
+
+    document.getElementById('userChangePasswordSaveBtn').disabled = true;
+
+    Ytan.put('/auth/password', { current_password: current, new_password: newPassword }).then(() => {
+        message.style.color = '#1a7f37';
+        message.textContent = 'Password changed successfully.';
+        document.getElementById('userChangePasswordCurrent').value = '';
+        document.getElementById('userChangePasswordNew').value = '';
+        document.getElementById('userChangePasswordConfirm').value = '';
+        document.getElementById('userChangePasswordSaveBtn').disabled = false;
+    }).catch(err => {
+        message.style.color = '#b3261e';
+        message.textContent = err.message;
+        document.getElementById('userChangePasswordSaveBtn').disabled = false;
+    });
+}
+
+/**
+ * Shows/hides the sidemenu's "User management" entry based on the current
+ * user's is_admin flag. Called after login, logout, and the boot-time
+ * /auth/me revalidation.
+ */
+function updateAdminMenuVisibility() {
+    document.getElementById('userAdminMenuBtn').style.display = user.is_admin ? 'inline-block' : 'none';
+}
+
+/**
  * JWTs are stateless - there is no server-side session to invalidate, so
  * logging out just discards the locally stored token and resets the UI to
  * the public (unauthenticated) view.
@@ -97,6 +184,7 @@ function logoutUser() {
     closePoiEditWindow();
     document.getElementById('routeButton').classList.remove('active');
     document.getElementById('userButton').classList.remove('loggedin');
+    updateAdminMenuVisibility();
     hideRoutes();
     routes = [];
     routePaths = [];
@@ -145,6 +233,7 @@ function loginUser() {
         getPoisByUserId(user.id);
         getRoutesByUserId(user.id);
         document.getElementById('userButton').classList.add('loggedin');
+        updateAdminMenuVisibility();
         enablePoiButton();
 
         setSessionTimeout(SESSION_TIMEOUT_SECONDS);

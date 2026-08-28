@@ -22,10 +22,12 @@ use Ytan\Http\Controllers\AuthController;
 use Ytan\Http\Controllers\PoiController;
 use Ytan\Http\Controllers\RouteController;
 use Ytan\Http\Controllers\TourController;
+use Ytan\Http\Controllers\UserController;
 use Ytan\Http\Controllers\WsiController;
 use Ytan\Http\Middleware\AuthMiddleware;
 use Ytan\Http\Middleware\CorsMiddleware;
 use Ytan\Service\AuthService;
+use Ytan\Service\MailService;
 use Ytan\Service\WsiRenderer;
 
 final class App
@@ -38,17 +40,30 @@ final class App
 
         $pdo = Connection::fromEnv();
 
+        $appName = $_ENV['APP_NAME'] ?? 'YTAN';
+        $appUrl = rtrim($_ENV['APP_URL'] ?? '', '/');
+
         $userRepository = new UserRepository($pdo);
         $authService = new AuthService(
             $userRepository,
             $_ENV['JWT_SECRET'] ?? 'insecure-dev-secret',
             (int) ($_ENV['JWT_TTL_SECONDS'] ?? 86400)
         );
+        $mailService = new MailService(
+            $_ENV['MAIL_HOST'] ?? '',
+            (int) ($_ENV['MAIL_PORT'] ?? 587),
+            $_ENV['MAIL_USERNAME'] ?? '',
+            $_ENV['MAIL_PASSWORD'] ?? '',
+            $_ENV['MAIL_FROM'] ?? '',
+            $_ENV['MAIL_ENCRYPTION'] ?? 'tls',
+            $appName
+        );
         $poiController = new PoiController(new PoiRepository($pdo));
         $routeController = new RouteController(new RouteRepository($pdo));
         $tourController = new TourController(new TourRepository($pdo));
         $areaController = new AreaController(new AreaRepository($pdo));
-        $authController = new AuthController($authService);
+        $authController = new AuthController($authService, $userRepository, $mailService, $appUrl);
+        $userController = new UserController($userRepository, $mailService, $authService, $appUrl);
         $wsiController = new WsiController(new WsiRenderer($rootDir . '/public/images/wsi'));
 
         $app = AppFactory::create();
@@ -94,6 +109,9 @@ final class App
 
         $app->post('/api/v1/auth/login', [$authController, 'login']);
         $app->get('/api/v1/auth/me', [$authController, 'me']);
+        $app->post('/api/v1/auth/forgot-password', [$authController, 'forgotPassword']);
+        $app->post('/api/v1/auth/set-password', [$authController, 'setPassword']);
+        $app->put('/api/v1/auth/password', [$authController, 'changePassword']);
 
         $app->get('/api/v1/pois', [$poiController, 'index']);
         $app->get('/api/v1/pois/bounds', [$poiController, 'bounds']);
@@ -117,9 +135,15 @@ final class App
         $app->put('/api/v1/areas/{id}', [$areaController, 'update']);
         $app->delete('/api/v1/areas/{id}', [$areaController, 'delete']);
 
-        $app->get('/api/v1/wsi/{code}', [$wsiController, 'show']);
+        $app->get('/api/v1/users', [$userController, 'index']);
+        $app->get('/api/v1/users/{id}', [$userController, 'show']);
+        $app->post('/api/v1/users', [$userController, 'create']);
+        $app->put('/api/v1/users/{id}', [$userController, 'update']);
+        $app->delete('/api/v1/users/{id}', [$userController, 'delete']);
+        $app->put('/api/v1/users/{id}/password', [$userController, 'setPassword']);
+        $app->post('/api/v1/users/{id}/send-reset', [$userController, 'sendResetEmail']);
 
-        $appName = $_ENV['APP_NAME'] ?? 'YTAN';
+        $app->get('/api/v1/wsi/{code}', [$wsiController, 'show']);
 
         $app->get('/', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl) {
             ob_start();
@@ -142,6 +166,22 @@ final class App
         $app->get('/legal/datenschutz', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl) {
             ob_start();
             require $rootDir . '/templates/datenschutz.php';
+            $res->getBody()->write(ob_get_clean());
+
+            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
+        });
+
+        $app->get('/set-password', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl) {
+            ob_start();
+            require $rootDir . '/templates/set-password.php';
+            $res->getBody()->write(ob_get_clean());
+
+            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
+        });
+
+        $app->get('/forgot-password', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl) {
+            ob_start();
+            require $rootDir . '/templates/forgot-password.php';
             $res->getBody()->write(ob_get_clean());
 
             return $res->withHeader('Content-Type', 'text/html; charset=utf-8');

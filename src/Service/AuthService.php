@@ -42,10 +42,66 @@ final class AuthService
 
         unset($user['password']);
 
+        return $this->issueToken($user);
+    }
+
+    /**
+     * Validates a set-password token (from either the first-login invite
+     * email or a forgot-password email - both share one token table), sets
+     * the new password, consumes the token, and logs the user straight in.
+     */
+    public function setNewPassword(string $rawToken, string $newPassword): array
+    {
+        $tokenRow = $this->users->findValidToken($rawToken);
+        if ($tokenRow === null) {
+            throw new ValidationException('This link is invalid or has expired.');
+        }
+
+        $this->validatePasswordFormat($newPassword);
+
+        $user = $this->users->findById((int) $tokenRow['user_id']);
+        $this->users->updatePassword((int) $user['id'], password_hash($newPassword, PASSWORD_DEFAULT));
+        $this->users->consumeToken($rawToken);
+
+        unset($user['password']);
+
+        return $this->issueToken($user);
+    }
+
+    /**
+     * Self-service password change for a logged-in user - requires proof of
+     * the current password, unlike adminSetPassword() below.
+     */
+    public function changePassword(int $userId, string $currentPassword, string $newPassword): void
+    {
+        $user = $this->users->findById($userId);
+        if ($user === null || $user['password'] === null || !password_verify($currentPassword, $user['password'])) {
+            throw new UnauthorizedException('Current password is incorrect.');
+        }
+
+        $this->validatePasswordFormat($newPassword);
+        $this->users->updatePassword($userId, password_hash($newPassword, PASSWORD_DEFAULT));
+    }
+
+    /**
+     * Admin override - sets a user's password directly, without requiring
+     * (or even knowing) their current one.
+     */
+    public function adminSetPassword(int $userId, string $newPassword): void
+    {
+        $this->validatePasswordFormat($newPassword);
+        $this->users->updatePassword($userId, password_hash($newPassword, PASSWORD_DEFAULT));
+    }
+
+    private function issueToken(array $user): array
+    {
         $expiresAt = time() + $this->ttlSeconds;
         $token = JWT::encode([
             'sub' => (int) $user['id'],
             'username' => $user['username'],
+            'email' => $user['email'],
+            'firstname' => $user['firstname'],
+            'lastname' => $user['lastname'],
             'is_admin' => (bool) $user['is_admin'],
             'iat' => time(),
             'exp' => $expiresAt,

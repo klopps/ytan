@@ -262,19 +262,231 @@ img.wsi {
   z-index: 10;
   top: 0;
   left: 0;
-  background: #B9D0B9;
+  background: #f3f4f8;
   overflow-x: hidden;
-  transition: 0.5s;
-  color: #666;
+  overflow-y: auto;
+  transition: 0.35s ease;
+  color: #4a4a55;
 }
 
 .cm_content {
-  padding: 20px 50px 20px 50px;
-  text-align: center;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 70px 40px 50px 40px;
+  text-align: left;
+  box-sizing: border-box;
 }
 
 .cm_content h2 {
+  font-size: 22px;
+  font-weight: 600;
+  color: #2c2c3d;
+  letter-spacing: 0.2px;
+  margin: 0 0 24px 0;
+}
+
+/* Only the cookie-consent panel's heading should be centered - it sits
+   above a short, centered block of text and two buttons. The legal-menu
+   (Impressum/Datenschutz) and user-admin panels show normal left-aligned
+   document/form content, so their headings stay left-aligned like the rest
+   of the content. */
+#cookiemenu .cm_content h2 {
   text-align: center;
+}
+
+.cm_content h3 {
+  color: #2c2c3d;
+}
+
+.cm_content p {
+  line-height: 1.5;
+}
+
+.cookieConsentBody {
+  max-width: 480px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.panel-close-btn {
+  display: none;
+  position: fixed;
+  top: 16px;
+  right: 20px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: #fff;
+  color: #777;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+  transition: background-color 0.15s, color 0.15s;
+  z-index: 101;
+}
+
+.panel-close-btn:hover {
+  background-color: #60609F;
+  color: #fff;
+}
+
+.panel-logo {
+  display: none;
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  z-index: 11;
+  pointer-events: none;
+}
+
+.forgotPasswordLink {
+  font-size: 11px;
+  color: #60609F;
+  cursor: pointer;
+}
+
+.forgotPasswordLink:hover {
+  text-decoration: underline;
+}
+
+.admin-panel-header {
+  display: flex;
+  justify-content: flex-end;
+  max-width: 900px;
+  margin: 0 auto 16px auto;
+}
+
+.admin-user-form {
+  max-width: 420px;
+  margin: 0 auto 24px auto;
+  text-align: left;
+  background-color: #fff;
+  border-radius: 12px;
+  padding: 20px 24px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+
+.admin-user-form h3 {
+  margin-top: 0;
+}
+
+.admin-user-form label {
+  font-size: 13px;
+}
+
+.admin-user-form .adminFormRow {
+  display: flex;
+  align-items: center;
+  margin: 6px 0;
+  width: 100%;
+}
+
+.admin-user-form .adminFormLabel {
+  flex: 0 0 110px;
+  width: 110px;
+}
+
+.admin-user-form .adminFormField {
+  flex: 1;
+  overflow: hidden;
+}
+
+.admin-user-form .hint {
+  font-size: 11px;
+  color: #888;
+  margin: -8px 0 12px 0;
+}
+
+.admin-user-form input[type="text"],
+.admin-user-form input[type="email"],
+.admin-user-form input[type="password"] {
+  width: calc(100% - 16px);
+  border: 1px solid #d8d8e2;
+  border-radius: 6px;
+  padding: 6px 7px;
+  font-size: 13px;
+}
+
+.admin-user-table-wrap {
+  max-width: 900px;
+  margin: 0 auto;
+  background-color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  overflow: hidden;
+}
+
+.admin-user-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: #444;
+  font-size: 13px;
+}
+
+.admin-user-table th,
+.admin-user-table td {
+  border: none;
+  border-bottom: 1px solid #eeeef2;
+  padding: 10px 14px;
+  text-align: left;
+}
+
+.admin-user-table th {
+  background-color: #fafafc;
+  color: #8a8a95;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.admin-user-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.admin-user-table tbody tr:hover {
+  background-color: #f7f7fb;
+}
+
+.admin-user-table .actions {
+  white-space: nowrap;
+  text-align: right;
+}
+
+.admin-user-table .icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #999;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.admin-user-table .icon-btn .material-icons-round {
+  font-size: 17px;
+}
+
+.admin-user-table .icon-btn:hover {
+  background-color: #60609F;
+  color: #fff;
+}
+
+.admin-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #60609F;
+  background-color: #ecebf7;
+  border-radius: 4px;
+  padding: 2px 6px;
 }
 
 
@@ -1126,4 +1338,7 @@ input[type="color"] {
 
 .selectize-input {
   padding: 2px 2px !important;
+}
+#legalmenu-content {
+  text-align: left;
 }

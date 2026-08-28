@@ -217,5 +217,6 @@
     <p class="gdpr-generator"><em>Die Datenschutzerklärung wurde mithilfe der activeMind AG erstellt, den Experten für <a
                 href="https://www.activemind.de/datenschutz/datenschutzbeauftragter/" target="_blank"
                 rel="noopener">externe Datenschutzbeauftragte</a> (Version #2020-09-30).</em></p>
+
 </body>
 </html>
