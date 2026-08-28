@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta charset="utf-8"/>
 
+    <script>window.YTAN_API_BASE = "<?= htmlspecialchars($baseUrl, ENT_QUOTES) ?>/api/v1";</script>
+
     <script src="./lib/jquery/jquery-3.7.1.min.js"></script>
     <script src="./lib/selectize/selectize.min.js"></script>
     <script src="./lib/measuretool-googlemap-v3/gmaps-measuretool.umd.js"></script>
@@ -27,12 +29,12 @@
 
     <link rel="stylesheet" type="text/css" href="./css/style.css" />
     <link rel="stylesheet" type="text/css" href="./css/fonts.css" />
-    <link rel="stylesheet" type="text/css" href="/lib/selectize/selectize.default.min.css" />
+    <link rel="stylesheet" type="text/css" href="./lib/selectize/selectize.default.min.css" />
 
-    <link rel="shortcut icon" href="/favicon.ico">
-    <link rel="icon" type="image/png" href="/favicon-16x16.png" sizes="16x16">
-    <link rel="icon" type="image/png" href="/favicon-32x32.png" sizes="32x32">
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="shortcut icon" href="<?= $baseUrl ?>/favicon.ico">
+    <link rel="icon" type="image/png" href="<?= $baseUrl ?>/favicon-16x16.png" sizes="16x16">
+    <link rel="icon" type="image/png" href="<?= $baseUrl ?>/favicon-32x32.png" sizes="32x32">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= $baseUrl ?>/apple-touch-icon.png">
   </head>
   <body>
     <div id="iconlogo"></div>
@@ -42,10 +44,10 @@
     <div id="gdpr">
       <div id="policy-disclaimer">
         <p><?= htmlspecialchars($appName) ?> uses Google Maps. In addition, <?= htmlspecialchars($appName) ?> sets a cookie to store data for convenience purposes
-        and to remember that you have agreed to these rules. Our <a href="/legal/datenschutz" target="_blank">privacy policy</a> applies.</p>
+        and to remember that you have agreed to these rules. Our <a href="<?= $baseUrl ?>/legal/datenschutz" target="_blank">privacy policy</a> applies.</p>
 
         <p>
-        <input id="agreement" type="checkbox" name="agreement" onclick="toggleDisabled('startBtn')"><label for="agreement"><span></span>I have read and accept the above notice and the <a href="/legal/datenschutz" target="_blank">privacy policy</a>.</label>
+        <input id="agreement" type="checkbox" name="agreement" onclick="toggleDisabled('startBtn')"><label for="agreement"><span></span>I have read and accept the above notice and the <a href="<?= $baseUrl ?>/legal/datenschutz" target="_blank">privacy policy</a>.</label>
         </p>
         <p>
           <button id="startBtn" class="startbtn" onclick="loadGoogleMaps('<?= htmlspecialchars($mapsApiKey) ?>')" disabled>START</button>
@@ -121,7 +123,7 @@
       </div>
 
       <div id="legal">
-        <a href="/legal/impressum" target="_blank">Imprint</a> | <a href="/legal/datenschutz" target="_blank">Privacy Notice</a> | <span onclick="openCookieMenu();">Cookies</span>
+        <a href="<?= $baseUrl ?>/legal/impressum" target="_blank">Imprint</a> | <a href="<?= $baseUrl ?>/legal/datenschutz" target="_blank">Privacy Notice</a> | <span onclick="openCookieMenu();">Cookies</span>
       </div>
     </div>
 
