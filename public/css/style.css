@@ -1,0 +1,1129 @@
+/* v0.0.6 */
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: 'Roboto', sans-serif;
+  line-height: 1;
+}
+
+hr {
+  border: 0;
+  height: 0.5px;
+  background-color: #444;
+}
+
+#shield {
+  position: fixed; /* Sit on top of the page content */
+  display: none; /* Hidden by default */
+  width: 100%; /* Full width (cover the whole page) */
+  height: 100%; /* Full height (cover the whole page) */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0,0,0,0.2); /* Black background with opacity */
+  z-index: 99; /* Specify a stack order in case you're using a different order for other elements */
+}
+
+
+/* Always set the map height explicitly to define the size of the div
+       * element that contains the map. */
+#map {
+  height: 100%;
+  display: none;
+}
+
+#gdpr {
+  height: calc(100% - 40px);
+  text-align: center;
+  background-color: #AFCFAF;
+  margin: 0;
+  padding: 20px;
+  display: none;
+  z-index: 10;
+}
+
+#policy-disclaimer {
+  width: 95%;
+  max-width: 600px;
+  background-color: #eee;
+  border: 1px solid #999;
+  border-radius: 20px;
+  margin: auto;
+  position: relative;
+  padding: 5px;
+}
+
+.button {
+  border: 1px solid #999;
+  border-radius: 5px;
+  background-color: #efefef;
+  color: #666;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+  display: inline-block;
+  padding: 4px 10px 4px 10px;
+  cursor: pointer;
+}
+
+.button:hover:enabled {
+  color: white;
+  background-color: #60609F;
+}
+
+.button:disabled {
+  color: #bfbfbf;
+  border: 1px solid #bfbfbf;
+}
+
+.startbtn {
+  border: 1px solid #999;
+  border-radius: 5px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 600;
+  display: inline-block;
+  padding: 4px 10px 4px 10px;
+  cursor: pointer;
+}
+
+.startbtn:enabled {
+  background-color: #60609F;
+  color: white;
+  cursor: pointer;
+}
+
+.startbtn:disabled {
+  color: #999;
+  background-color: #CCC;
+  cursor: not-allowed;
+}
+
+
+#exitStreetViewButton {
+  display: none;
+}
+
+#sidemenu-opener {
+  display: inline-block;
+  transition: 1s;
+  font-size: 30px;
+  margin-left: -4px;
+  margin-top: 4px;
+}
+
+
+#sidemenu-toggle {
+  position: absolute;
+  top: 10px;
+  left: -2px;
+  z-index: 10;
+  border-radius: 0 40px 40px 0px;
+  background-color: rgba(255,255,255, 1);
+  padding: 5px 5px 5px 0px;
+  line-height: 1;
+  transition: 0.5s;
+  cursor:pointer;
+  color: #666;
+  display: none;
+  height: 40px;
+  width:22px;
+  border: none;
+  font-size: 30px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+
+img.wsi {
+  float: right;
+  padding-left: 10px;
+  width: 100px;
+  height: auto;
+}
+
+
+/**
+* Anpassung für das MeasureTool
+*/
+
+/* Linien rot statt schwarz */
+.base-line {
+  fill: none;
+  stroke: red !important;
+  stroke-width: 2.5px;
+}
+
+.base-line .inverted {
+  stroke: white;
+}
+
+.cover-circle {
+  fill: white;
+  stroke: red !important;
+  stroke-width: 2.5px;
+}
+
+.middle {
+  vertical-align: middle;
+}
+
+.roundedBorder {
+  border: 1px solid #999;
+  border-radius: 5px;
+}
+
+
+/**
+* Side Menu
+*/
+#sidemenu {
+  height: 100%;
+  margin-left: -195px; /* mind the padding */
+  width: 180px;
+  position: fixed;
+  z-index: 6;
+  top: 0;
+  left: 0;
+  background: white;
+  overflow-x: hidden;
+  transition: 0.5s;
+  padding: 4px 5px 5px 10px;
+  color: #666;
+
+  -webkit-box-shadow: 0 2px 6px rgba(0,0,0,0.3),0 4px 15px -5px rgba(0,0,0,0.0)!important;
+  -webkit-box-shadow: 0 2px 6px rgba(0,0,0,0.3),0 4px 15px -5px rgba(0,0,0,0.0)!important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3),0 4px 15px -5px rgba(0,0,0,0.0)!important;
+}
+
+.sidemenu h2 {
+  padding: 0px 8px 4px 0px;
+  text-decoration: none;
+  font-size: 16px;
+  color: #666;
+  display: block;
+}
+
+
+.sidemenu a {
+  padding: 8px 8px 8px 0px;
+  text-decoration: none;
+  font-size: 10px;
+  color: #60609F;
+  display: block;
+  transition: 0.3s;
+}
+
+
+.sidemenu a:hover {
+  color: #444;
+}
+.sidemenu h3 {
+  color: #666;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sidemenu input[type=button] {
+  color: #666;
+  display: inline-block;
+  cursor: pointer;
+  padding: 5px 5px;
+  width: 100px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+  border: solid 1px #999;
+  display: inline-block;
+  border-radius: 5px;
+}
+
+
+.sidemenu .closebtn {
+  position: absolute;
+  top: 0;
+  right: 15px;
+  font-size: 36px;
+  margin-left: 50px;
+}
+
+.sidemenu input {
+  margin: 4px 4px 4px 0px;
+}
+
+
+#cookiemenu {
+  height: 100%;
+  width: 0;
+  position: fixed;
+  z-index: 10;
+  top: 0;
+  left: 0;
+  background: #B9D0B9;
+  overflow-x: hidden;
+  transition: 0.5s;
+  color: #666;
+}
+
+.cm_content {
+  padding: 20px 50px 20px 50px;
+  text-align: center;
+}
+
+.cm_content h2 {
+  text-align: center;
+}
+
+
+
+.panelheading {
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 0.5em;  
+}
+
+
+#detailpanel {
+  transition: 0.2s;
+  overflow: hidden;
+  max-height: 0;
+  margin: 0 0 10px 0;
+  font-size: 11px;
+}
+
+#tourselector {
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0 0 30px 0;
+}
+
+#tourselector .button {
+  margin-top: 10px;
+}
+
+#disclaimer {
+  border: 1px solid #999;
+  border-radius: 5px;
+  background: #efefef;
+  left: 10px;
+  right: 10px;
+  margin: 20px 0 0 0;
+  font-size: 10px;
+  padding: 4px;
+}
+
+#disclaimer a {
+  padding: 0;
+  text-decoration: none;
+  font-size: 10px;
+  color: #222;
+  display: inline;
+}
+
+#disclaimer a:hover {
+  text-decoration: underline;
+}
+
+#iconlogo {
+  position: absolute;
+  bottom: 4px;
+  left: 80px;
+  width: 100px;
+  height: 25px;
+  background-image: url("../images/pesr_iconlogo.svg");
+  background-size: contain;
+  background-repeat: no-repeat;
+  z-index: 1;
+}
+
+.logo {
+  position: absolute;
+  bottom: 40px;
+  left: 0px;
+  right: 15px;
+  z-index: -10;
+}
+
+.logo img {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.logo_large {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 50px;
+  max-width: 500px;
+}
+
+#gotomylocation {
+  position: absolute;
+  bottom: 270px;
+  right: 10px;
+  width: 40px;
+  height: 40px;
+  z-index: 1;
+  border-radius: 20px;
+  text-align: center;
+  font-size: 30px;
+  color: #404040;
+  background-color: #FFFFFF;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#gotomylocation i {
+  display: block;
+  margin-top: 2px;
+  margin-right: auto;
+  cursor: pointer;
+  text-shadow: 0 0 4px #ffffff;
+}
+
+#legal {
+  font-size: 12px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 4px 0 0 0;
+  text-align: center;
+}
+
+#legal a, #legal span {
+  font-size: 10px;
+  display: inline;
+  padding: 0;
+  color: #60609F;
+  cursor: pointer;
+}
+
+#legal a:hover, #legal span:hover {
+  text-decoration: underline;
+}
+
+
+
+/**
+* Radio Group
+*/
+
+.radio-group input[type=radio] {
+  position: absolute;
+  visibility: hidden;
+  display: none;
+}
+
+.radio-group label {
+  color: #666;
+  display: inline-block;
+  cursor: pointer;
+  padding: 5px 5px;
+  width: 40px;
+  text-align: center;
+  font-family: 'Roboto Condensed';
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.radio-group label.small {
+  width: 30px;
+}
+
+.radio-group input[type=radio]:checked + label {
+  color: #fff;
+  background: #60609F;
+  font-weight: 600;
+}
+
+.radio-group label + input[type=radio] + label {
+  border-left: solid 1px #999;
+}
+.radio-group {
+  border: solid 1px #999;
+  display: inline-block;
+  margin: 8px 8px -8px 0px;
+  border-radius: 5px;
+  overflow: hidden;
+  margin: 0 0 10px 0;
+}
+
+
+/*
+.gdpr-generator {
+  font-size:10px;
+  color: #999;
+}
+
+.gdpr-generator a:link {
+  color: 666;
+}*/
+
+/* Für kleinere Displays etwas ändern */
+@media screen and (max-height: 450px) {
+  .sidemenu {padding-top: 15px;}
+  .sidemenu a {font-size: 18px;}
+}
+
+
+/**
+* Tooltips
+*/
+
+/* Tooltip container */
+.tooltip {
+  position: relative;
+  display: inline-block;
+}
+
+/* Tooltip text */
+.tooltip .tooltiptext {
+  visibility: hidden;
+  min-width: 200px;
+  background-color: #808080;
+  color: #fff;
+  text-align: center;
+  padding: 5px 0;
+  border-radius: 5px;
+ 
+  /* Position the tooltip text - see examples below! */
+  position: absolute;
+  z-index: 1;
+}
+
+/* Show the tooltip text when you mouse over the tooltip container */
+.tooltip:hover .tooltiptext {
+  visibility: visible;
+}
+
+/**
+ * Action Icons
+ */
+.actionicon {
+   color: #BFBFBF;
+}
+
+.actionicon.active {
+  color: #808080;
+  cursor: pointer;
+}
+
+.actionicon.active:hover {
+  color: #60609F;
+}
+
+
+/**
+ * Checkboxen
+ */
+
+input[type="checkbox"] {
+  display:none;
+}
+
+input[type="checkbox"] + label {
+  font-size: 100%;
+}
+
+input[type="checkbox"] + label::before {
+  display:inline-block;
+  width:1.2em;
+  height:1em;
+  margin:0px 0px 0.2em 0;
+  vertical-align:middle;
+  cursor:pointer;
+  content: "\e835";
+  font-family: 'Material Icons Round';
+  font-size: 120%;
+}
+
+
+input[type="checkbox"]:checked + label::before {
+  content: "\e834";
+}
+
+
+input[type="checkbox"].course + label::before {
+  content: "\e9a8";
+}
+
+input[type="checkbox"].course:checked + label::before {
+  content: "\e87a";
+}
+
+input[type="checkbox"].slider + label::before {
+  content: "\e9f5";
+}
+
+input[type="checkbox"].slider:checked + label::before {
+  content: "\e9f6";
+}
+
+input[type="checkbox"].star + label::before {
+  content: "\e83a";
+}
+
+input[type="checkbox"].star:checked + label::before {
+  content: "\e838";
+}
+
+
+/**
+ * Select
+ */
+
+/* class applies to select element itself, not a wrapper element */
+.select-css {
+	display: inline-block;
+	font-size: 13px;
+	font-family: 'Roboto', sans-serif;
+	font-weight: normal;
+	color: #444;
+	line-height: 1;
+	/*padding: .6em 1.4em .5em .8em;*/
+  padding: 4px 4px 4px 6px;
+	width: 200px;
+	max-width: 200px; /* useful when width is set to anything other than 100% */
+	box-sizing: border-box;
+	margin: 0;
+	border: 1px solid #aaa;
+	box-shadow: 0 1px 0 1px rgba(0,0,0,.04);
+	border-radius: 3px;
+	-moz-appearance: none;
+	-webkit-appearance: none;
+	appearance: none;
+	background-color: #fff;
+  cursor: pointer;
+	/* note: bg image below uses 2 urls. The first is an svg data uri for the arrow icon, and the second is the gradient. 
+		for the icon, if you want to change the color, be sure to use `%23` instead of `#`, since it's a url. You can also swap in a different svg icon or an external image reference
+		
+	*/
+	/*background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23666666%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E'),
+	  linear-gradient(to bottom, #ffffff 0%,#ffffff 100%);*/
+
+  background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20height%3D%2224px%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224px%22%20fill%3D%22%23808080%22%3E%3Cpath%20d%3D%22M24%2024H0V0h24v24z%22%20fill%3D%22none%22%20opacity%3D%22.87%22%2F%3E%3Cpath%20d%3D%22M15.88%209.29L12%2013.17%208.12%209.29c-.39-.39-1.02-.39-1.41%200-.39.39-.39%201.02%200%201.41l4.59%204.59c.39.39%201.02.39%201.41%200l4.59-4.59c.39-.39.39-1.02%200-1.41-.39-.38-1.03-.39-1.42%200z%22%2F%3E%3C%2Fsvg%3E'),
+	  linear-gradient(to bottom, #f8f8f8 0%,#f8f8f8 100%);
+	  
+	background-repeat: no-repeat, repeat;
+	/* arrow icon position (1em from the right, 50% vertical) , then gradient position*/
+	background-position: right 0.7em top 50%, 0 0;
+  background-position: right 4px top 50%, 0 0;
+	/* icon size, then gradient */
+	background-size: 24px auto, 100%;
+}
+/* Hide arrow icon in IE browsers */
+.select-css::-ms-expand {
+	display: none;
+}
+/* Hover style */
+.select-css:hover {
+	border-color: #888;
+}
+/* Focus style */
+.select-css:focus {
+	/*border-color: #aaa;
+	box-shadow: 0 0 1px 3px rgba(59, 153, 252, .7);
+	box-shadow: 0 0 0 3px -moz-mac-focusring;
+	color: #222; */
+	outline: none;
+}
+
+/* Set options to normal weight */
+.select-css option {
+	font-weight: 400;
+  width: 180px;
+}
+
+/* Support for rtl text, explicit support for Arabic and Hebrew */
+*[dir="rtl"] .select-css, :root:lang(ar) .select-css, :root:lang(iw) .select-css {
+	background-position: left .7em top 50%, 0 0;
+	padding: .6em .8em .5em 1.4em;
+}
+
+/* Disabled styles */
+.select-css:disabled, .select-css[aria-disabled=true] {
+	color: graytext;
+	background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22graytext%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E'),
+	  linear-gradient(to bottom, #ffffff 0%,#e5e5e5 100%);
+}
+
+.select-css:disabled:hover, .select-css[aria-disabled=true] {
+	border-color: #aaa;
+}
+
+div.infoWindowCoordinates {
+  margin: -10px 0px 12px 0px;
+  width:100%;
+  color: #808080;
+  font-size: 10px;
+}
+
+div.poiEditWindowCoordinates {
+  width:100%;
+  color: #808080;
+  font-size: 10px;
+}
+
+
+
+div.infoWindowElement {
+  margin: 6px 0px 6px 0px;
+  width:100%;
+  min-width: 100px;
+}
+
+div.infoWindowElement .rightCol {
+  width:auto;
+  overflow:hidden;
+}
+
+div.infoWindowElement .leftCol {
+  width:74px;
+  float:left;
+}
+
+.infoWindowBottom {
+  width: 100%;
+  margin: 10px 0 0 0;
+}
+
+.infoWindowBottom a {
+  text-decoration: none;
+}
+
+.InfoWindowLighthouseContainer {
+  display: flex;
+  background-color: black;
+  width: 100%;
+  height: 80px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+}
+
+.InfoWindowLighthouseCharacteristic {
+  width: 60px;
+  height: 60px;
+  min-width: 40px;
+  min-height: 40px;
+  display: block;
+  mask-image: radial-gradient(circle at center, black 0%, black 6%, rgba(0,0,0, 0.2) 60%, transparent 70%);
+  /*border-radius: 50%;*/
+}
+
+p.LighthouseCharacteristic {
+  font-size: 200%;
+}
+
+.lefthalf {
+  width: 50%;
+  float: left;
+}
+
+.righthalf {
+  margin-left: 50%
+}
+
+
+
+#editPoiName {
+  width: calc(100% - 6px);
+  border: 1px solid #808080;
+  border-radius: 2px;
+}
+
+#editPoiType {
+  border: 1px solid #808080;
+  border-radius: 2px;
+}
+
+
+#editPoiDescription,
+#editPoiLighthouseSectorCharacteristic {
+  width: calc(100% - 6px);
+  border: 1px solid #808080;
+  border-radius: 2px;
+  resize: none;
+}
+
+#editPoiURL {
+  width: calc(100% - 6px);
+  border: 1px solid #808080;
+  border-radius: 2px;
+}
+
+#editPoiWSI {
+  width: calc(100% - 6px);
+  border: 1px solid #808080;
+  border-radius: 2px;
+}
+
+#editPoiWSIContainer {
+  display: block;
+}
+
+#editPoiLighthouseCharacteristic {
+  width: calc(100% - 6px);
+  border: 1px solid #808080;
+  border-radius: 2px;
+}
+
+#editPoiLighthouseContainer {
+  display: block;
+}
+
+.inputError {
+  background: linear-gradient(90deg, rgba(255,255,255,1) 0%, rgba(255,255,255,1) 95%, rgba(255,0,0,1) 95%, rgba(255,0,0,1) 100%);
+}
+
+
+#editRouteName, #editAreaName, #editAreaZindex {
+  width: calc(100% - 6px);
+  border: 1px solid #808080;
+  border-radius: 2px;
+}
+
+#editRouteDescription, #editAreaDescription {
+  width: calc(100% - 6px);
+  border: 1px solid #808080;
+  border-radius: 2px;
+  resize: none;
+}
+
+
+.contextMenuItem {
+  padding: 2px 4px 2px 4px;
+
+}
+
+.contextMenuItem:hover {
+  color: white;
+  background-color: #60609F;  
+}
+
+
+
+/**
+* Buttons
+*/
+
+.pesrBtn {
+  display: inline-block;
+  position: relative;
+  width: 30px;
+  height: 30px;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+  background: url(../images/pesr_icons30.svg);
+  opacity: 0.6;
+}
+
+.pesrSmallBtn {
+  display: inline-block;
+  position: relative;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  padding: 0;
+  background: url(../images/pesr_icons30.svg);
+  background-size: 50%;
+}
+
+.pesrBtn.active {
+  background-color: #FF6060;
+  opacity: 1;
+}
+
+.pesrBtn.disabled {
+  opacity: 0.3;
+}
+
+
+.pesrBtnRoute {
+  background-position: 0px 0px; 
+}
+
+.pesrBtnPoi {
+  background-position: -30px 0px; 
+}
+
+.pesrBtnArea {
+  background-position: -300px -30px; 
+}
+
+.pesrBtnExpand {
+  background-position: -60px 0px; 
+}
+
+.pesrBtnUser {
+  background-position: -90px 0px; 
+}
+
+.pesrBtnOff {
+  background-position: -0px -30px; 
+}
+
+.pesrBtnOn {
+  background-position: -30px -30px; 
+}
+
+.pesrSmallBtnOn {
+  background-position: -30px -30px; 
+}
+
+.pesrSmallBtnOff {
+  background-position: 0px -30px; 
+}
+
+
+
+.pesrBtnUser.loggedin {
+  background-color: #60FF60;
+  opacity: 1;
+}
+
+.rightBorder {
+  border-right: 1px solid #808080;
+}
+
+
+
+
+/**
+* Color Picker <input type="color">
+*/
+
+input[type="color"] {
+	opacity: 0;
+	display: block;
+	width: 28px;
+	height: 14px;
+	border: none;
+}
+
+#editRouteColorWrapper, #editAreaColorWrapper {
+	float: left;
+}
+
+/**
+* Opacity Slider
+*/
+
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100px;
+  height: 10px;
+  background: #d3d3d3;
+  outline: none;
+  opacity: 0.7;
+  -webkit-transition: .2s;
+  transition: opacity .2s;
+}
+
+.slider:hover {
+  opacity: 1;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: #000000;
+  cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: #000000;
+  cursor: pointer;
+}
+
+
+/**
+* Edit Toolbar
+*/
+#editToolbar {
+  display: none; /* to show user "inline-block" */
+  position: absolute;
+  line-height: 0px;
+  top: 0;
+  right: 10px;
+  margin: 10px 0px 0px 0px;
+  padding: 0;
+  background-color: #fff;
+  border: none;
+  background-clip: padding-box;
+  -webkit-background-clip: padding;
+  z-index: 100;
+  -webkit-box-shadow: 0 2px 6px rgba(0,0,0,0.3),0 4px 15px -5px rgba(0,0,0,0.0)!important;
+  -webkit-box-shadow: 0 2px 6px rgba(0,0,0,0.3),0 4px 15px -5px rgba(0,0,0,0.0)!important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3),0 4px 15px -5px rgba(0,0,0,0.0)!important;
+
+  -webkit-user-select: none; /* Safari */
+  -ms-user-select: none; /* IE 10 and IE 11 */
+  user-select: none; /* Standard syntax */
+}
+
+
+
+#secondToolbar {
+  display: none; /* none; /* to show use "inline-block" */
+  position: absolute;
+  /*line-height: 0px;*/
+  top: 0;
+  right: 140px;
+  margin: 10px 0px 0px 0px;
+  padding: 0;
+  background-color: #fff;
+  border: none;
+  background-clip: padding-box;
+  -webkit-background-clip: padding;
+  z-index: 100;
+  -webkit-box-shadow: 0 2px 6px rgba(0,0,0,0.3),0 4px 15px -5px rgba(0,0,0,0.0)!important;
+  -webkit-box-shadow: 0 2px 6px rgba(0,0,0,0.3),0 4px 15px -5px rgba(0,0,0,0.0)!important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3),0 4px 15px -5px rgba(0,0,0,0.0)!important;
+
+  -webkit-user-select: none; /* Safari */
+  -ms-user-select: none; /* IE 10 and IE 11 */
+  user-select: none; /* Standard syntax */
+}
+
+.endBtn {
+  /*background-color: #60609F;
+  color: white;*/
+  font-weight: bold;
+  border-radius: 3px;
+  border-width: 1px;
+  cursor: pointer;
+}
+
+#secondToolbar .pesrBtn {
+  margin: 0 0 -10px 0;
+  cursor: default;
+}
+
+
+.secondToolbarContent {
+
+  display: inline-block;
+  position: relative;
+  width: 150px;
+  height: 30px;
+  max-height: 30px;
+  margin-top: 0px;
+  padding: 0;
+  background: white;
+  opacity: 1.0;
+  line-height: 30px;
+  font-size: 12px;
+  text-align: center;
+}
+
+
+
+::-webkit-input-placeholder { /* WebKit browsers */
+  color:    #A0A0A0 !important;
+}
+:-moz-placeholder { /* Mozilla Firefox 4 to 18 */
+  color:    #A0A0A0 !important;
+ opacity:  0;
+}
+::-moz-placeholder { /* Mozilla Firefox 19+ */
+  color:    #A0A0A0 !important;
+ opacity:  0;
+}
+:-ms-input-placeholder { /* Internet Explorer 10+ */
+  color:    #A0A0A0 !important;
+}
+
+
+#userWindow {
+  width: 300px;
+  z-index: 10;
+  min-height: 70px;
+  background-color: #fff;
+  display: none;
+  padding: 4px 8px 4px 8px;
+
+  font-size: 13px;
+
+  position: absolute;
+  top: 50px;
+  right: 10px;
+  
+  -webkit-box-shadow: 0 2px 6px rgba(0,0,0,0.3),0 4px 15px -5px rgba(0,0,0,0.0)!important;
+  -webkit-box-shadow: 0 2px 6px rgba(0,0,0,0.3),0 4px 15px -5px rgba(0,0,0,0.0)!important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3),0 4px 15px -5px rgba(0,0,0,0.0)!important;
+
+}
+
+#userWindow .rightCol {
+  width:auto;
+  overflow:hidden;
+}
+
+#userWindow .leftCol {
+  width:140px;
+  float:left;
+}
+
+#userLoginUsername {
+  width: calc(100% - 6px);
+  border: 1px solid #808080;
+  border-radius: 2px;
+}
+
+#userLoginPassword {
+  width: calc(100% - 6px);
+  border: 1px solid #808080;
+  border-radius: 2px;
+}
+
+.poiEdit, .routeEdit, .areaEdit {
+  text-align: right;
+  color: #808080;
+}
+
+.poiEdit i, .routeEdit i, areaEdit i {
+  cursor: pointer;
+}
+
+.routeLabel {
+  font-size: 12px;
+  font-weight: bold;
+  color: black;
+  /* transform: rotate(-30deg);*/
+  stroke: black;
+  /*text-shadow: -2.4px -2.4px rgba(255, 255, 255, 0.4), -2.4px 2.4px rgba(255, 255, 255, 0.4), 2.4px 2.4px rgba(255, 255, 255, 0.4), 2.4px -2.4px rgba(255, 255, 255, 0.4), -2.4px 0 rgba(255, 255, 255, 0.4), 0 2.4px rgba(255, 255, 255, 0.4), 2.4px 0 rgba(255, 255, 255, 0.4), 0 -2.4px rgba(255, 255, 255, 0.4);*/
+  text-shadow: -1px -1px rgba(255, 255, 255, 1), -1px 1px rgba(255, 255, 255, 1), 1px 1px rgba(255, 255, 255, 1), 1px -1px rgba(255, 255, 255, 1);
+  pointer-events: none; 
+}
+
+.lighthouseLabel {
+  font-size: 14px;
+  font-weight: bold;
+  color: black;
+  transform: translateX(-50%) translateY(17px);
+  stroke: black;
+  /*text-shadow: -2.4px -2.4px rgba(255, 255, 255, 0.4), -2.4px 2.4px rgba(255, 255, 255, 0.4), 2.4px 2.4px rgba(255, 255, 255, 0.4), 2.4px -2.4px rgba(255, 255, 255, 0.4), -2.4px 0 rgba(255, 255, 255, 0.4), 0 2.4px rgba(255, 255, 255, 0.4), 2.4px 0 rgba(255, 255, 255, 0.4), 0 -2.4px rgba(255, 255, 255, 0.4);*/
+  text-shadow: -1px -1px rgba(255, 255, 255, 1), -1px 1px rgba(255, 255, 255, 1), 1px 1px rgba(255, 255, 255, 1), 1px -1px rgba(255, 255, 255, 1);
+  pointer-events: none; 
+}
+
+
+.selectize-dropdown .selected {
+  background-color: #60609F !important;
+  color: #fff;
+}
+
+.selectize-input {
+  padding: 2px 2px !important;
+}

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="35.689644mm"
+   height="35.687mm"
+   viewBox="0 0 35.689644 35.687"
+   version="1.1"
+   id="svg8"
+   inkscape:version="0.92.3 (2405546, 2018-03-11)"
+   sodipodi:docname="location.svg">
+  <defs
+     id="defs2" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="7.9195959"
+     inkscape:cx="62.288457"
+     inkscape:cy="95.547413"
+     inkscape:document-units="mm"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     inkscape:window-width="3440"
+     inkscape:window-height="1377"
+     inkscape:window-x="1912"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1" />
+  <metadata
+     id="metadata5">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Ebene 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-66.065894,-35.739833)">
+    <g
+       id="g817"
+       transform="matrix(0.26458333,0,0,0.26458333,67.653394,37.327333)"
+       style="fill:#0157ff;fill-opacity:1;stroke:#ffffff;stroke-width:12;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:0.50196078;paint-order:stroke markers fill">
+      <path
+         id="path815"
+         d="m 68.23,13.49 c 10.44,1.49 19.79,6.36 26.91,13.48 7.29,7.29 12.23,16.93 13.58,27.68 h 14.17 V 68.23 H 108.5 c -1.62,10.13 -6.42,19.2 -13.36,26.13 -7.11,7.11 -16.47,11.99 -26.91,13.48 v 15.04 H 54.65 V 107.84 C 44.21,106.35 34.86,101.48 27.75,94.36 20.81,87.42 16.01,78.36 14.39,68.23 H 0 V 54.65 H 14.16 C 15.51,43.9 20.45,34.26 27.74,26.97 34.85,19.86 44.2,14.98 54.64,13.49 V 0 h 13.58 v 13.49 z m -6.79,21.92 c 13.95,0 25.25,11.31 25.25,25.25 0,13.95 -11.31,25.25 -25.25,25.25 -13.95,0 -25.25,-11.31 -25.25,-25.25 0,-13.94 11.3,-25.25 25.25,-25.25 z M 89,33.11 C 81.95,26.06 72.2,21.69 61.44,21.69 c -10.76,0 -20.51,4.36 -27.56,11.42 -7.05,7.05 -11.42,16.8 -11.42,27.56 0,10.76 4.36,20.51 11.42,27.56 7.05,7.05 16.8,11.42 27.56,11.42 10.76,0 20.51,-4.36 27.56,-11.42 7.05,-7.05 11.42,-16.8 11.42,-27.56 C 100.41,49.9 96.05,40.16 89,33.11 Z"
+         inkscape:connector-curvature="0"
+         style="fill:#0157ff;fill-opacity:1;stroke:#ffffff;stroke-width:12;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:0.50196078;paint-order:stroke markers fill" />
+    </g>
+  </g>
+</svg>

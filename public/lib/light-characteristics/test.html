@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Light Characteristics</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            html, body {
+                height: 100%;
+                width: 100%;
+            }
+            body {
+                background: black;
+                
+            }
+            main {
+                display: flex;
+                width: 100%;
+                height: 100%;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .light {
+                width: 20px;
+                height: 20px;
+                min-width: 20px;
+                min-height: 20px;
+                mask-image: radial-gradient(circle at center, black 0%, black 6%, rgba(0,0,0, 0.2) 50%, transparent 70%);
+                display: block;
+            }
+
+        </style>
+        <script src="./lightcharacteristic.js"></script>
+    </head>
+    <body>
+
+        <main>
+            <span id="light1" class="light"></span>&nbsp;
+            <span id="light2" class="light"></span>&nbsp;
+            <span id="light3" class="light"></span>&nbsp;
+            <span id="light4" class="light"></span>
+        </main>
+        <aside></aside>
+        <script>
+            lc = new LightCharacteristic();
+            lc.animateElement('Iso WRG 4s 10m 16M', 'light1'); 
+            lc.animateElement('Al WRG 4.5s 10.2m 16.0M', 'light3'); 
+        </script>
+
+    </body>
+</html>
