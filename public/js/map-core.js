@@ -59,6 +59,7 @@ let myPositionMarker;
 let pois = [];
 let portagePaths = [];
 let markers = [];
+let poiClusterMarkers = [];
 let wsiMarkers = [];
 let routes = [];
 let routePaths = [];
@@ -253,6 +254,7 @@ function initMap() {
         log('zoom changed: ' + map.getZoom(), LOG_DEBUG);
         saveSettings();
         renewVisibleRouteLabels();
+        updatePoiClustering();
     });
 
     map.setClickableIcons(true);
@@ -397,6 +399,7 @@ function toggleMarkerByType(element, poitype_id) {
     }
 
     saveSettings();
+    updatePoiClustering();
 }
 
 function editMapType(element) {

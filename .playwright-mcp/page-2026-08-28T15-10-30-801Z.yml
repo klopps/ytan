@@ -1,0 +1,86 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]: my_location
+  - generic [ref=e6]:
+    - paragraph [ref=e7]:
+      - text: YTAN uses Google Maps. In addition, YTAN sets a cookie to store data for convenience purposes and to remember that you have agreed to these rules. Our
+      - link "privacy policy" [ref=e8] [cursor=pointer]:
+        - /url: /ytan/public/legal/datenschutz
+      - text: applies.
+    - paragraph [ref=e9]:
+      - generic [ref=e10]:
+        - text:  I have read and accept the above notice and the
+        - link "privacy policy" [ref=e11] [cursor=pointer]:
+          - /url: /ytan/public/legal/datenschutz
+        - text: .
+    - paragraph [ref=e12]:
+      - button "START" [disabled] [ref=e13]
+  - generic [ref=e15]:
+    - generic [ref=e17] [cursor=pointer]: Map
+    - generic [ref=e19]:
+      - generic [ref=e20] [cursor=pointer]: HYBRID
+      - generic [ref=e21] [cursor=pointer]: TERRAIN
+      - generic [ref=e22] [cursor=pointer]: SAT
+    - generic [ref=e23] [cursor=pointer]: Units
+    - generic [ref=e25]:
+      - generic [ref=e26] [cursor=pointer]: METRIC
+      - generic [ref=e27] [cursor=pointer]: NAUTICAL
+    - generic [ref=e29] [cursor=pointer]:
+      - text: Show POIs ...
+      - generic [ref=e30]: expand_more
+    - generic:
+      - generic [ref=e32]:  POI
+      - generic [ref=e33]:  Camps
+      - generic [ref=e34]:  Shelter
+      - generic [ref=e35]:  Campsite (commercial)
+      - generic [ref=e36]:  Landing Sites
+      - generic [ref=e37]:  Drinking Water
+      - generic [ref=e38]:  Toilets
+      - generic [ref=e40]:  Historic Sites
+      - generic [ref=e42]:  Danger Zones
+      - generic [ref=e44]:  Natural Sights
+      - generic [ref=e46]:  Shopping
+      - generic [ref=e48]:  Portages
+      - generic [ref=e50]:  Medical care
+      - generic [ref=e52]:  Clubs / Institutions
+      - generic [ref=e54]:  Lights (Lighthouses, Sea Marks)
+      - generic [ref=e56]:  Parking
+      - generic [ref=e58]:  Routes
+      - generic [ref=e60]:  Areas
+      - generic [ref=e62]:  Windshelter Indicators
+    - generic [ref=e64]:
+      - text: Tours
+      - combobox [ref=e65]:
+        - option "No tour defined" [selected]
+      - generic [ref=e66] [cursor=pointer]:
+        - generic [ref=e67]: fit_screen
+        - text: Show Tour
+    - generic [ref=e68] [cursor=pointer]:
+      - generic [ref=e69]: fit_screen
+      - text: Fit POIs
+    - generic [ref=e70] [cursor=pointer]:
+      - generic [ref=e71]: share
+      - text: Share
+    - generic [ref=e72]:
+      - text: A lot of the information shown here is based on the documents "
+      - link "Sea kayaking and camping in Bohuslän Part A to C" [ref=e73] [cursor=pointer]:
+        - /url: https://tjornkajak.se/paddla-kajak-och-talta-i-bohuslan-haftena
+      - text: "\" by"
+      - link "Jens Marklund" [ref=e74] [cursor=pointer]:
+        - /url: https://tjornkajak.se/jens-marklund/
+      - text: . These highly recommended documents can be downloaded from the website of
+      - link "Tjörns Kajakklubb" [ref=e75] [cursor=pointer]:
+        - /url: https://tjornkajak.se/
+      - text: . Many thanks to Jens and his friends for this great work.
+    - generic [ref=e78]: Imprint | Privacy Notice | Cookies
+  - generic [ref=e79]:
+    - heading "YTAN" [level=2]
+    - generic:
+      - paragraph: YTAN requires the use of cookies to function properly and you have consented to their use. Of course, you can revoke your consent and the cookie will be deleted. However, you will then no longer be able to use YTAN.
+      - generic [ref=e80] [cursor=pointer]:
+        - generic [ref=e81]: check
+        - text: I agree to the use of cookies
+      - generic [ref=e82] [cursor=pointer]:
+        - generic [ref=e83]: not_interested
+        - text: I would like to delete the cookies
+  - generic [ref=e85]:
+    - heading "User management" [level=2]

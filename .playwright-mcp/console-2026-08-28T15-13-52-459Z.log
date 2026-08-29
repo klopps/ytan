@@ -1,0 +1,26 @@
+[     260ms] [WARNING] Google Maps JavaScript API has been loaded directly without loading=async. This can result in suboptimal performance. For best-practice loading patterns please see https://goo.gle/js-api-loading @ https://maps.googleapis.com/maps/api/js?key=AIzaSyB3ACRf2bByi8G72Spdzm_TnSnGXCcr_iQ&callback=initMap&libraries=geometry&v=weekly:346
+[     266ms] [LOG] getPublicTours() called @ http://localhost/ytan/public/js/settings.js:159
+[     271ms] [LOG] ./lib/markerWithLabel/markerwithlabel.min.js injected @ http://localhost/ytan/public/js/map-core.js:157
+[     271ms] [LOG] ./lib/map-label-rotated/rotated-label.js injected @ http://localhost/ytan/public/js/map-core.js:157
+[     272ms] [LOG] ./lib/sectorlight-overlay/sectorlight-overlay.js injected @ http://localhost/ytan/public/js/map-core.js:157
+[     274ms] [WARNING] As of February 21st, 2024, google.maps.Marker is deprecated. Please use google.maps.marker.AdvancedMarkerElement instead. At this time, google.maps.Marker is not scheduled to be discontinued, but google.maps.marker.AdvancedMarkerElement is recommended over google.maps.Marker. While google.maps.Marker will continue to receive bug fixes for any major regressions, existing bugs in google.maps.Marker will not be addressed. At least 12 months notice will be given before support is discontinued. Please see https://developers.google.com/maps/deprecations for additional details and https://developers.google.com/maps/documentation/javascript/advanced-markers/migration for the migration guide. @ https://maps.googleapis.com/maps/api/js?key=AIzaSyB3ACRf2bByi8G72Spdzm_TnSnGXCcr_iQ&callback=initMap&libraries=geometry&v=weekly:447
+[     433ms] [LOG] getPublicPois() @ http://localhost/ytan/public/js/settings.js:159
+[     433ms] [TABLE] {data: Array(1499)} @ http://localhost/ytan/public/js/settings.js:161
+[     582ms] [LOG] getPublicRoutes() @ http://localhost/ytan/public/js/settings.js:159
+[     582ms] [TABLE] {data: Array(101)} @ http://localhost/ytan/public/js/settings.js:161
+[     639ms] [LOG] getPublicAreas() @ http://localhost/ytan/public/js/settings.js:159
+[     639ms] [TABLE] {data: Array(231)} @ http://localhost/ytan/public/js/settings.js:161
+[     663ms] [LOG] getPublicTours() answer received @ http://localhost/ytan/public/js/settings.js:159
+[     664ms] [TABLE] {data: Array(2)} @ http://localhost/ytan/public/js/settings.js:161
+[    6449ms] [LOG] center changed: (58.3, 11.3) @ http://localhost/ytan/public/js/settings.js:159
+[    6450ms] [LOG] zoom changed: 11 @ http://localhost/ytan/public/js/settings.js:159
+[   53185ms] TypeError: Cannot read properties of undefined (reading 'setMap')
+    at http://localhost/ytan/public/lib/markerWithLabel/markerwithlabel.min.js:1:4738
+[   73460ms] [LOG] center changed: (58.3, 11.3) @ http://localhost/ytan/public/js/settings.js:159
+[   73461ms] [LOG] zoom changed: 11 @ http://localhost/ytan/public/js/settings.js:159
+[   89011ms] [LOG] center changed: (55, 15) @ http://localhost/ytan/public/js/settings.js:159
+[   89012ms] [LOG] zoom changed: 3 @ http://localhost/ytan/public/js/settings.js:159
+[  102255ms] [LOG] center changed: (58.3, 11.3) @ http://localhost/ytan/public/js/settings.js:159
+[  102256ms] [LOG] zoom changed: 11 @ http://localhost/ytan/public/js/settings.js:159
+[  136949ms] [LOG] center changed: (58.231497991144174, 11.564504499999995) @ http://localhost/ytan/public/js/settings.js:159
+[  136950ms] [LOG] zoom changed: 14 @ http://localhost/ytan/public/js/settings.js:159

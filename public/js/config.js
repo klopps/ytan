@@ -10,6 +10,21 @@ const LOG_DEBUG = 3;
 const ZINDEX_ROUTE = 10;
 const ZINDEX_POI = 20;
 
+// Below this zoom level, individual POI markers are replaced by clustered
+// count indicators (grouped by screen proximity); at this zoom level and
+// above, individual POI markers are shown as usual.
+const POI_CLUSTER_ZOOM_THRESHOLD = 11;
+
+// Two POIs are never merged into the same cluster indicator if they are
+// further apart than this (in meters), even if they happen to be close on
+// screen at very low zoom levels. Without this cap, zooming out far enough
+// to see e.g. both Scandinavia and the Mediterranean at once could combine
+// touring regions from opposite ends of the map into one misleading
+// indicator, whose "fit bounds on click" would then jump somewhere
+// unexpected instead of staying within the region the indicator visually
+// appears to represent.
+const POI_CLUSTER_MAX_MERGE_DISTANCE_METERS = 150_000;
+
 
  // additionl scripts to be injected after Google Maps is loaded
  const injectScripts = [

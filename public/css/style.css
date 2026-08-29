@@ -1319,6 +1319,22 @@ input[type="color"] {
   pointer-events: none; 
 }
 
+.poiClusterLabel {
+  cursor: pointer;
+}
+
+.poiClusterBubble {
+  border-radius: 50%;
+  background-color: #60609F;
+  color: #fff;
+  text-align: center;
+  font-weight: 700;
+  font-size: 13px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  border: 2px solid #fff;
+  box-sizing: border-box;
+}
+
 .lighthouseLabel {
   font-size: 14px;
   font-weight: bold;
