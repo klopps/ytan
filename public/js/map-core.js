@@ -155,7 +155,7 @@ function injectAdditionalScripts() {
         var script = document.createElement("script");
         script.setAttribute('src', scriptPath);
         document.head.appendChild(script);
-        console.log(scriptPath + ' injected');
+        log(scriptPath + ' injected', LOG_DEBUG);
     }
 }
 
@@ -435,13 +435,13 @@ function zoomToMaxAndPan(event) {
  */
 function editMode(mode) {
     if (mode === true) {
-        log('editMode ON', LOG_DEFAULT);
+        log('editMode ON', LOG_INFO);
         map.setOptions({
             streetViewControl: false,
             clickableIcons: false
         });
     } else {
-        log('editMode OFF', LOG_DEFAULT);
+        log('editMode OFF', LOG_INFO);
         map.setOptions({
             streetViewControl: true,
             clickableIcons: true
@@ -464,8 +464,8 @@ function shareMap() {
             text: 'Check out this map on YTAN',
             url: mapUrl,
         })
-            .then(() => log('shareMap() - successfull', LOG_DEFAULT))
-            .catch((error) => log('shareMap() - error', LOG_DEFAULT, error));
+            .then(() => log('shareMap() - successfull', LOG_INFO))
+            .catch((error) => log('shareMap() - error', LOG_ERROR, error));
     } else {
         alert(mapUrl); // Fallback
     }

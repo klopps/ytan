@@ -20,7 +20,7 @@ function editAreaBtnClick(elementId) {
 }
 
 function showAreaEditWindow(i, latLng) {
-    log('showAreaEditWindow(' + i + ')', LOG_DEFAULT, this);
+    log('showAreaEditWindow(' + i + ')', LOG_INFO, this);
 
     hideSecondToolbar();
 
@@ -243,26 +243,26 @@ function saveArea(i) {
         zindex: parseInt(document.getElementById('editAreaZindex').value)
     }
 
-    log('saveArea(' + i + ')', LOG_DEFAULT, areaData);
+    log('saveArea(' + i + ')', LOG_INFO, areaData);
 
     var request = (id === null)
         ? Ytan.post('/areas', areaData)
         : Ytan.put('/areas/' + id, areaData);
 
     request.then(answer => {
-        log('saveArea() success', LOG_DEFAULT, answer);
+        log('saveArea() success', LOG_INFO, answer);
 
         measureTool.end();
         areaData.points = JSON.parse(areaData.points);
         var index = i;
 
         if (index == null) {
-            log('INSERT into array areas[]', LOG_DEFAULT);
+            log('INSERT into array areas[]', LOG_INFO);
             areaData.id = answer.data.id;
             index = areas.push(areaData) - 1;
-            log('new index: ' + index, LOG_DEFAULT);
+            log('new index: ' + index, LOG_INFO);
         } else {
-            log('UPDATE array areas[' + i +']', LOG_DEFAULT);
+            log('UPDATE array areas[' + i +']', LOG_INFO);
             areas[index] = areaData;
         }
 
@@ -275,7 +275,7 @@ function saveArea(i) {
             showAreas();
         }
     }).catch(err => {
-        log('saveArea() failed: ' + err.message, LOG_DEFAULT);
+        log('saveArea() failed', LOG_ERROR, err);
         alert('Saving the area failed: ' + err.message);
     });
 
@@ -295,7 +295,7 @@ function saveArea(i) {
  */
 function removeArea(i) {
     if (typeof areas[i] === null || typeof areas[i] === 'undefined') {
-        log('removeArea(' + i + '): index not found.', LOG_DEFAULT);
+        log('removeArea(' + i + '): index not found.', LOG_INFO);
         return false;
     }
 
@@ -305,10 +305,10 @@ function removeArea(i) {
 
     var id = areas[i].id;
 
-    log('removeArea(' + i + ')', LOG_DEFAULT, id);
+    log('removeArea(' + i + ')', LOG_INFO, id);
 
     Ytan.del('/areas/' + id).then(() => {
-        log('removeArea() success', LOG_DEFAULT);
+        log('removeArea() success', LOG_INFO);
         measureTool.index = null;
         measureTool.end();
         hideArea(i);
@@ -316,7 +316,7 @@ function removeArea(i) {
         document.getElementById('areaButton').classList.remove('active');
         areaEditWindow.close();
     }).catch(err => {
-        log('removeArea() failed: ' + err.message, LOG_DEFAULT);
+        log('removeArea() failed', LOG_ERROR, err);
         alert('Removing the area failed: ' + err.message);
     });
 }
@@ -329,7 +329,7 @@ function removeArea(i) {
 function getAreasByUserId(userId) {
     Ytan.get('/areas?scope=mine_public').then(answer => {
         areas = answer.data;
-        log('getAreasByUserId(' + userId + ')', LOG_DEFAULT, answer);
+        log('getAreasByUserId(' + userId + ')', LOG_INFO, answer);
         for (let i = 0; i < areas.length; i++) {
             areas[i].points = JSON.parse(areas[i].points);
             areas[i].opacity = parseFloat(areas[i].opacity);
@@ -339,7 +339,7 @@ function getAreasByUserId(userId) {
         if (settings.detailareas) {
             showAreas();
         }
-    }).catch(err => log('getAreasByUserId() failed: ' + err.message, LOG_DEFAULT));
+    }).catch(err => log('getAreasByUserId() failed', LOG_ERROR, err));
 }
 
 /**
@@ -347,7 +347,7 @@ function getAreasByUserId(userId) {
  */
 function getPublicAreas() {
     Ytan.get('/areas?scope=public').then(answer => {
-        log('getPublicAreas()', LOG_DEFAULT, answer);
+        log('getPublicAreas()', LOG_INFO, answer);
         areas = answer.data;
         for (let i = 0; i < areas.length; i++) {
             areas[i].points = JSON.parse(areas[i].points);
@@ -358,7 +358,7 @@ function getPublicAreas() {
         if (settings.detailareas) {
             showAreas();
         }
-    }).catch(err => log('getPublicAreas() failed: ' + err.message, LOG_DEFAULT));
+    }).catch(err => log('getPublicAreas() failed', LOG_ERROR, err));
 }
 
 function showAreas() {

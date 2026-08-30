@@ -77,7 +77,7 @@ function openLegalMenu(url) {
         })
         .catch(function (err) {
             container.innerHTML = "<p>Failed to load content.</p>";
-            log('openLegalMenu() failed: ' + err.message, LOG_DEFAULT);
+            log('openLegalMenu() failed', LOG_ERROR, err);
         });
 }
 
@@ -178,7 +178,7 @@ function showSecondToolbar(elementId) {
     var secondToolbar = document.getElementById('secondToolbar');
     var content;
 
-    log('showSecondToolbar(' + elementId + ')', LOG_DEFAULT);
+    log('showSecondToolbar(' + elementId + ')', LOG_INFO);
 
     if (!['areaButton', 'poiButton', 'routeButton'].includes(elementId)) {
        return;

@@ -10,22 +10,22 @@
 function getToursByUserId(userId) {
     Ytan.get('/tours?scope=mine_public').then(answer => {
         tours = answer.data;
-        log('getToursByUserId(' + userId + ')', LOG_DEFAULT, answer);
+        log('getToursByUserId(' + userId + ')', LOG_INFO, answer);
         updateTourSelector();
-    }).catch(err => log('getToursByUserId() failed: ' + err.message, LOG_DEFAULT));
+    }).catch(err => log('getToursByUserId() failed', LOG_ERROR, err));
 }
 
 /**
  * Hole alle öffentlichen Touren, speichere sie in tours[] und aktualisiere die Auswahlliste im Sidemenu
  */
 function getPublicTours() {
-    log('getPublicTours() called', LOG_DEFAULT);
+    log('getPublicTours() called', LOG_INFO);
 
     Ytan.get('/tours?scope=public').then(answer => {
-        log('getPublicTours() answer received', LOG_DEFAULT, answer);
+        log('getPublicTours() answer received', LOG_INFO, answer);
         tours = answer.data;
         updateTourSelector();
-    }).catch(err => log('getPublicTours() failed: ' + err.message, LOG_DEFAULT));
+    }).catch(err => log('getPublicTours() failed', LOG_ERROR, err));
 }
 
 function updateTourSelector() {

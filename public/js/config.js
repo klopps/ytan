@@ -2,9 +2,9 @@
  * YTAN Configuration
  */
 
-const LOG_OFF = 0;
-const LOG_DEFAULT = 1
-const LOG_VERBOSE = 2;
+const LOG_ERROR = 0;
+const LOG_WARN = 1;
+const LOG_INFO = 2;
 const LOG_DEBUG = 3;
 
 const ZINDEX_ROUTE = 10;

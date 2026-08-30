@@ -81,7 +81,7 @@ function getPois() {
     Ytan.get('/pois?scope=all').then(answer => {
         pois = answer.data;
         setAllPois(pois);
-    }).catch(err => log('getPois() failed: ' + err.message, LOG_DEFAULT));
+    }).catch(err => log('getPois() failed', LOG_ERROR, err));
 }
 
 /**
@@ -89,10 +89,10 @@ function getPois() {
  */
 function getPublicPois() {
     Ytan.get('/pois?scope=public').then(answer => {
-        log("getPublicPois()", LOG_DEFAULT, answer);
+        log("getPublicPois()", LOG_INFO, answer);
         pois = answer.data;
         setAllPois(pois);
-    }).catch(err => log('getPublicPois() failed: ' + err.message, LOG_DEFAULT));
+    }).catch(err => log('getPublicPois() failed', LOG_ERROR, err));
 }
 
 /**
@@ -100,10 +100,10 @@ function getPublicPois() {
  */
 function getPoisByUserId(userId) {
     Ytan.get('/pois?scope=mine_public').then(answer => {
-        log("getPoisByUserId()", LOG_DEFAULT, answer);
+        log("getPoisByUserId()", LOG_INFO, answer);
         pois = answer.data;
         setAllPois(pois);
-    }).catch(err => log('getPoisByUserId() failed: ' + err.message, LOG_DEFAULT));
+    }).catch(err => log('getPoisByUserId() failed', LOG_ERROR, err));
 }
 
 /**
@@ -117,7 +117,7 @@ function fitToPoiBounds() {
             new google.maps.LatLng(arrBounds['max_lat'], arrBounds['max_lng']) // Nordost
         );
         map.fitBounds(bounds);
-    }).catch(err => log('fitToPoiBounds() failed: ' + err.message, LOG_DEFAULT));
+    }).catch(err => log('fitToPoiBounds() failed', LOG_ERROR, err));
 }
 
 /**
@@ -131,7 +131,7 @@ function centerMapToBounds() {
             new google.maps.LatLng(arrBounds['max_lat'], arrBounds['max_lng'])
         );
         map.setCenter(bounds.getCenter());
-    }).catch(err => log('centerMapToBounds() failed: ' + err.message, LOG_DEFAULT));
+    }).catch(err => log('centerMapToBounds() failed', LOG_ERROR, err));
 }
 
 /**
@@ -665,12 +665,12 @@ function editPoiBtnClick(elementId) {
     var element = document.getElementById(elementId);
 
     if (element.classList.contains('disabled')) {
-        console.log('editPoiBtnClick is disabled');
+        log('editPoiBtnClick is disabled', LOG_DEBUG);
         return;
     }
 
     if (user.id === null) {
-        console.log('editPoiBtnClick: user not logged on');
+        log('editPoiBtnClick: user not logged on', LOG_DEBUG);
         disablePoiButton();
         return;
     }
@@ -874,7 +874,7 @@ function editPoi(i) {
     var poi = pois[i];
     var id = poi['id'];
 
-    log('editPoi() called for: ' + i, LOG_DEFAULT, pois[i]);
+    log('editPoi() called for: ' + i, LOG_INFO, pois[i]);
 
     disablePoiButton();
     closePoiEditWindow();
@@ -950,7 +950,7 @@ function validatePoiEditForm() {
         }
     }
 
-    log('validation error: ' + errors, LOG_DEFAULT);
+    log('validation error: ' + errors, LOG_INFO);
 
     if (errors & 1) {
         document.getElementById('editPoiName').classList.add('inputError');
@@ -1022,29 +1022,29 @@ function savePoi(i) {
         poiData.sector_characteristic = escapeHTML(document.getElementById('editPoiLighthouseSectorCharacteristic').value);
     }
 
-    log("savePoi()", LOG_DEFAULT, poiData);
+    log("savePoi()", LOG_INFO, poiData);
 
     var request = (id === null)
         ? Ytan.post('/pois', poiData)
         : Ytan.put('/pois/' + id, poiData);
 
     request.then(answer => {
-        log('savePoi() success', LOG_DEFAULT, answer);
+        log('savePoi() success', LOG_INFO, answer);
 
         var index;
         if (i === null) {
             poiData.id = answer.data.id;
             index = pois.push(poiData) - 1;
-            log('new index: ' + index, LOG_DEFAULT);
+            log('new index: ' + index, LOG_INFO);
         } else {
             index = i;
             pois[index] = poiData;
-            log('UPDATE array pois[' + i + ']', LOG_DEFAULT);
+            log('UPDATE array pois[' + i + ']', LOG_INFO);
         }
 
         setPoi(index);
     }).catch(err => {
-        log('savePoi() failed: ' + err.message, LOG_DEFAULT);
+        log('savePoi() failed', LOG_ERROR, err);
         alert('Saving the POI failed: ' + err.message);
     });
 
@@ -1071,7 +1071,7 @@ function removePoi(i) {
     var id = pois[i].id;
 
     Ytan.del('/pois/' + id).then(() => {
-        log('removePoi(' + i + ') success', LOG_DEFAULT);
+        log('removePoi(' + i + ') success', LOG_INFO);
 
         removeMarkerById(pois[i].id);
         if ((pois[i].poitype_id === 1) || (pois[i].poitype_id === 11)) {
@@ -1079,7 +1079,7 @@ function removePoi(i) {
         }
         delete pois[i];
     }).catch(err => {
-        log('removePoi() failed: ' + err.message, LOG_DEFAULT);
+        log('removePoi() failed', LOG_ERROR, err);
         alert('Removing the POI failed: ' + err.message);
     });
 

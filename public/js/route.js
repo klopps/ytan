@@ -24,7 +24,7 @@ function editRouteBtnClick(elementId) {
 function showRouteEditWindow(i, latLng) {
     hideRouteLabels(i);
 
-    log('showRouteEditWindow(' + i + ')', LOG_DEFAULT);
+    log('showRouteEditWindow(' + i + ')', LOG_INFO);
 
     hideSecondToolbar();
 
@@ -221,27 +221,27 @@ function saveRoute(i) {
         color: document.getElementById('editRouteColor').value
     }
 
-    log('saveRoute(' + i + ')', LOG_DEFAULT, routeData);
+    log('saveRoute(' + i + ')', LOG_INFO, routeData);
 
     var request = (id === null)
         ? Ytan.post('/routes', routeData)
         : Ytan.put('/routes/' + id, routeData);
 
     request.then(answer => {
-        log('saveRoute() success', LOG_DEFAULT, answer);
+        log('saveRoute() success', LOG_INFO, answer);
 
         measureTool.end();
         routeData.points = JSON.parse(routeData.points);
         var index = i;
 
         if (index == null) {
-            log('INSERT into array routes[]', LOG_DEFAULT);
+            log('INSERT into array routes[]', LOG_INFO);
             routeData.id = answer.data.id;
             index = routes.push(routeData) - 1;
-            log('new index: ' + index, LOG_DEFAULT);
+            log('new index: ' + index, LOG_INFO);
         } else {
             routes[index] = routeData;
-            log('UPDATE array routes[' + i +']', LOG_DEFAULT, routes[index]);
+            log('UPDATE array routes[' + i +']', LOG_INFO, routes[index]);
         }
 
         createRoute(index);
@@ -255,7 +255,7 @@ function saveRoute(i) {
 
         setSessionTimeout(SESSION_TIMEOUT_SECONDS);
     }).catch(err => {
-        log('saveRoute() failed: ' + err.message, LOG_DEFAULT);
+        log('saveRoute() failed', LOG_ERROR, err);
         alert('Saving the route failed: ' + err.message);
     });
 
@@ -274,7 +274,7 @@ function saveRoute(i) {
  */
 function removeRoute(i) {
     if (typeof routes[i] === null || typeof routes[i] === 'undefined') {
-        log('removeRoute(' + i + '): index not found.', LOG_DEFAULT);
+        log('removeRoute(' + i + '): index not found.', LOG_INFO);
         return false;
     }
 
@@ -286,10 +286,10 @@ function removeRoute(i) {
 
     hideRouteLabels(i);
 
-    log('removeRoute(' + i + ')', LOG_DEFAULT, id);
+    log('removeRoute(' + i + ')', LOG_INFO, id);
 
     Ytan.del('/routes/' + id).then(() => {
-        log('removeRoute() success', LOG_DEFAULT);
+        log('removeRoute() success', LOG_INFO);
         measureTool.index = null;
         measureTool.end();
         hideRoute(i);
@@ -297,7 +297,7 @@ function removeRoute(i) {
         document.getElementById('routeButton').classList.remove('active');
         routeEditWindow.close();
     }).catch(err => {
-        log('removeRoute() failed: ' + err.message, LOG_DEFAULT);
+        log('removeRoute() failed', LOG_ERROR, err);
         alert('Removing the route failed: ' + err.message);
     }).finally(() => {
         setSessionTimeout(SESSION_TIMEOUT_SECONDS);
@@ -312,7 +312,7 @@ function removeRoute(i) {
 function getRoutesByUserId(userId) {
     Ytan.get('/routes?scope=mine_public').then(answer => {
         routes = answer.data;
-        log('getRoutesByUserId(' + userId + ')', LOG_DEFAULT, answer);
+        log('getRoutesByUserId(' + userId + ')', LOG_INFO, answer);
         for (let i = 0; i < routes.length; i++) {
             routes[i].points = JSON.parse(routes[i].points);
             routes[i].labels = [];
@@ -321,7 +321,7 @@ function getRoutesByUserId(userId) {
         if (settings.detailroutes) {
             showRoutes();
         }
-    }).catch(err => log('getRoutesByUserId() failed: ' + err.message, LOG_DEFAULT));
+    }).catch(err => log('getRoutesByUserId() failed', LOG_ERROR, err));
 }
 
 /**
@@ -329,7 +329,7 @@ function getRoutesByUserId(userId) {
  */
 function getPublicRoutes() {
     Ytan.get('/routes?scope=public').then(answer => {
-        log('getPublicRoutes()', LOG_DEFAULT, answer);
+        log('getPublicRoutes()', LOG_INFO, answer);
         routes = answer.data;
         for (let i = 0; i < routes.length; i++) {
             routes[i].points = JSON.parse(routes[i].points);
@@ -339,7 +339,7 @@ function getPublicRoutes() {
         if (settings.detailroutes) {
             showRoutes();
         }
-    }).catch(err => log('getPublicRoutes() failed: ' + err.message, LOG_DEFAULT));
+    }).catch(err => log('getPublicRoutes() failed', LOG_ERROR, err));
 }
 
 /**
@@ -350,7 +350,7 @@ function getPublicRoutes() {
 function getRoutesByTourId(tourId) {
     Ytan.get('/routes?tour_id=' + encodeURIComponent(tourId)).then(answer => {
         routes = answer.data;
-        log('getRoutesByTourId(' + tourId + ')', LOG_DEFAULT, answer);
+        log('getRoutesByTourId(' + tourId + ')', LOG_INFO, answer);
         for (let i = 0; i < routes.length; i++) {
             routes[i].points = JSON.parse(routes[i].points);
             routes[i].labels = [];
@@ -360,7 +360,7 @@ function getRoutesByTourId(tourId) {
             showRoutes();
             fitToRouteBounds();
         }
-    }).catch(err => log('getRoutesByTourId() failed: ' + err.message, LOG_DEFAULT));
+    }).catch(err => log('getRoutesByTourId() failed', LOG_ERROR, err));
 }
 
 function showRoutes() {
@@ -722,7 +722,7 @@ function editRoute(i, lat, lng) {
         closeRouteInfoWindow(i);
     }
     hideRoute(i);
-    log('editRoute(' + i + ')', LOG_DEFAULT, routes[i]);
+    log('editRoute(' + i + ')', LOG_INFO, routes[i]);
 
     measureTool.index = i;
     measureTool.start(routes[i].points);
@@ -755,7 +755,7 @@ function fitToRouteBounds() {
         }
     }
 
-    log('SW:' + minLat + ', ' + minLng + '    NE:' + maxLat + ', ' + maxLng);
+    log('SW:' + minLat + ', ' + minLng + '    NE:' + maxLat + ', ' + maxLng, LOG_DEBUG);
 
     var bounds = new google.maps.LatLngBounds(
         new google.maps.LatLng(minLat, minLng),

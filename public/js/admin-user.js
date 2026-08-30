@@ -28,10 +28,10 @@ function closeUserAdminMenu() {
 
 function loadUserList() {
     Ytan.get('/users').then(answer => {
-        log('loadUserList()', LOG_DEFAULT, answer);
+        log('loadUserList()', LOG_INFO, answer);
         renderUserTable(answer.data);
     }).catch(err => {
-        log('loadUserList() failed: ' + err.message, LOG_DEFAULT);
+        log('loadUserList() failed', LOG_ERROR, err);
         alert('Loading users failed: ' + err.message);
     });
 }

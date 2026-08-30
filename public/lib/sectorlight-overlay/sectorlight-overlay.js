@@ -40,6 +40,32 @@
  *      }
  *
  */
+function createDashedLine(path, strokeColor, strokeWeight, dashLength, gapLength) {
+
+    const lineSymbol = {
+        path: "M 0,-1 0,1",
+        strokeOpacity: 1,
+        strokeWeight: strokeWeight,
+        strokeColor: strokeColor,
+        scale: dashLength,
+    };
+
+    const line = new google.maps.Polyline({
+        path: path,
+        geodesic: true,
+        strokeOpacity: 0,
+        icons: [
+            {
+              icon: lineSymbol,
+              offset: "0",
+              repeat: gapLength + "px",
+            },
+          ]
+    });
+
+    return line;
+}
+
 class SectorLightOverlay extends google.maps.OverlayView {
 
     SECTORLIGHT_LABEL_FONTSIZE = 14;     // font size of label in px (number)
@@ -305,8 +331,8 @@ class SectorLightOverlay extends google.maps.OverlayView {
         var rightEdgeEndLng = center.lng + (radius * Math.sin(endAngle * Math.PI / 180)) / (111111 * Math.cos(center.lat * Math.PI / 180));
         var reightEdgeEnd = new google.maps.LatLng(rightEdgeEndLat, rightEdgeEndLng);
 
-        var leftEdge = createDashedLine( [ center,  leftEdgeEnd], SECTORLIGHT_EDGE_COLOR, 1, 2, 10);
-        var rightEdge = createDashedLine( [center, reightEdgeEnd ], SECTORLIGHT_EDGE_COLOR, 1, 2, 10);
+        var leftEdge = createDashedLine( [ center,  leftEdgeEnd], this.SECTORLIGHT_EDGE_COLOR, 1, 2, 10);
+        var rightEdge = createDashedLine( [center, reightEdgeEnd ], this.SECTORLIGHT_EDGE_COLOR, 1, 2, 10);
 
 
         polyline.setMap(map);
@@ -329,14 +355,14 @@ class SectorLightOverlay extends google.maps.OverlayView {
 
             var labelAngle = (endAngle + startAngle) / 2;
             var labelOffsetX = Math.sin(labelAngle * (Math.PI / 180)) * labelOffset;
-            var labelOffsetY = (Math.cos(labelAngle * (Math.PI / 180)) * labelOffset * -1) - ((SECTORLIGHT_LABEL_FONTSIZE * 1.1) / 2);
+            var labelOffsetY = (Math.cos(labelAngle * (Math.PI / 180)) * labelOffset * -1) - ((this.SECTORLIGHT_LABEL_FONTSIZE * 1.1) / 2);
 
             console.log('labelPos: ' + labelPos.lat + ', ' + labelPos.lng);
             console.log('labelAngle: ' + labelAngle);
             
             var label = new  RotatedLabel(labelPos, labelText, labelAngle, map, {
                 color: labelColor,
-                fontSize: SECTORLIGHT_LABEL_FONTSIZE + "px",
+                fontSize: this.SECTORLIGHT_LABEL_FONTSIZE + "px",
                 fontWeight: "bold",
                 stroke: "black",
                 textShadow: "-1px -1px rgba(255, 255, 255, 1), -1px 1px rgba(255, 255, 255, 1), 1px 1px rgba(255, 255, 255, 1), 1px -1px rgba(255, 255, 255, 1)",

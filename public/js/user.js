@@ -212,7 +212,7 @@ function loginUser() {
     }
 
     Ytan.post('/auth/login', loginData).then(answer => {
-        log("loginUser()", LOG_DEFAULT, answer);
+        log("loginUser()", LOG_INFO, answer);
 
         document.getElementById('userLoginUsername').disabled = false;
         document.getElementById('userLoginPassword').disabled = false;

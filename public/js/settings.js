@@ -148,19 +148,35 @@ function handleSessionTimeout() {
 }
 
 
+const LOG_CONSOLE_METHOD = {
+    [LOG_ERROR]: 'error',
+    [LOG_WARN]: 'warn',
+    [LOG_INFO]: 'info',
+    [LOG_DEBUG]: 'debug',
+};
+
 /**
- * Schreibt Logdaten in die Console, abhängig vom gesetzten Debug-Level
+ * Schreibt Logdaten in die Console, abhängig vom gesetzten Debug-Level.
+ * Die Console-Methode richtet sich nach dem Schweregrad (LOG_ERROR/WARN/INFO/DEBUG),
+ * damit Fehler in den DevTools rot erscheinen, filterbar sind und - falls obj ein
+ * Error-Objekt ist - mit vollem Stacktrace statt nur mit obj.message geloggt werden.
  *
  * @param {string} msg Log-Nachricht
- * @param {int} level Log-Level
- * @param {object} obj ein Object (optional)
+ * @param {int} level Log-Level (LOG_ERROR/LOG_WARN/LOG_INFO/LOG_DEBUG)
+ * @param {object} obj ein Object oder Error (optional)
  */
 function log(msg, level, obj) {
-    if (level <= logLevel) {
-        console.log(msg);
-        if ((obj !== null) && (typeof obj !== "undefined")) {
-            console.table(obj);
-        }
+    if (level > logLevel) {
+        return;
+    }
+    var method = LOG_CONSOLE_METHOD[level] || 'log';
+    if (obj instanceof Error) {
+        console[method](msg, obj);
+        return;
+    }
+    console[method](msg);
+    if ((obj !== null) && (typeof obj !== "undefined")) {
+        console.table(obj);
     }
 }
 
@@ -188,9 +204,9 @@ function copyTextToClipboard(text) {
     try {
       var successful = document.execCommand('copy');
       var msg = successful ? 'successful' : 'unsuccessful';
-      console.log('Copying text command was ' + msg);
+      log('Copying text command was ' + msg, LOG_DEBUG);
     } catch (err) {
-      console.log('Oops, unable to copy');
+      log('Oops, unable to copy', LOG_ERROR, err);
     }
 
     document.body.removeChild(textArea);

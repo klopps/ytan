@@ -26,7 +26,6 @@
     <script src="./js/tour.js"></script>
     <script src="./js/user.js"></script>
     <script src="./js/admin-user.js"></script>
-    <script src="./js/sectorlight.js"></script>
 
     <link rel="stylesheet" type="text/css" href="./css/style.css" />
     <link rel="stylesheet" type="text/css" href="./css/fonts.css" />
