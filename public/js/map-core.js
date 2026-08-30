@@ -90,6 +90,7 @@ var settings = { // muss wegen JSON.stringify() ein Objekt sein
     detail13: true, // Clubs / Institutions
     detail14: true, // Lights (Lighthouses, Sea Marks)
     detail15: true, // Parking
+    detail16: true, // Fishing
     detailroutes: true, // Routes
     detailareas: true,  // Areas
     detailwsi: false,  // Wind Shelter Indicators

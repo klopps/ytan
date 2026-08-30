@@ -52,18 +52,18 @@ function renderUserTable(users) {
         '</div>';
 
     html += '<div class="admin-user-table-wrap"><table class="admin-user-table"><thead><tr>' +
-        '<th>Username</th><th>Email</th><th>Name</th><th></th><th class="actions"></th>' +
+        '<th>Username</th><th>Email</th><th>Name</th><th></th><th class="actions">Actions</th>' +
         '</tr></thead><tbody>';
 
     for (let i = 0; i < users.length; i++) {
         var u = users[i];
         var name = [u.firstname, u.lastname].filter(Boolean).map(escapeHTML).join(' ');
         html += '<tr>' +
-            '<td>' + escapeHTML(u.username) + '</td>' +
-            '<td>' + escapeHTML(u.email || '') + '</td>' +
-            '<td>' + name + '</td>' +
-            '<td>' + (u.is_admin ? '<span class="admin-badge">Admin</span>' : '') + '</td>' +
-            '<td class="actions">' +
+            '<td data-label="Username">' + escapeHTML(u.username) + '</td>' +
+            '<td data-label="Email">' + escapeHTML(u.email || '') + '</td>' +
+            '<td data-label="Name">' + name + '</td>' +
+            '<td data-label="Role">' + (u.is_admin ? '<span class="admin-badge">Admin</span>' : '') + '</td>' +
+            '<td class="actions" data-label="Actions">' +
                 iconButton('edit', 'Edit', 'editUserRow(' + u.id + ');') +
                 iconButton('vpn_key', 'Set password', 'showSetPasswordForm(' + u.id + ', ' + JSON.stringify(u.username) + ');') +
                 iconButton('forward_to_inbox', 'Send password reset email', 'sendResetEmailRow(' + u.id + ');') +

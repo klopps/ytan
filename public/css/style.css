@@ -416,7 +416,7 @@ img.wsi {
   background-color: #fff;
   border-radius: 12px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  overflow: hidden;
+  overflow-x: auto;
 }
 
 .admin-user-table {
@@ -489,6 +489,79 @@ img.wsi {
   padding: 2px 6px;
 }
 
+/* Below this width, a 5-column table with 4 action buttons per row never
+   fits - .cm_content's fixed side padding plus the table's natural column
+   widths would clip the actions column with no way to reach it (the
+   .cookiemenu/.admin-user-table-wrap ancestors don't wrap or scroll it
+   into view). Each row becomes a stacked card instead, with data-label
+   (set in admin-user.js's renderUserTable()) supplying the per-field
+   caption that the now-hidden table header used to provide. */
+@media screen and (max-width: 640px) {
+  .cm_content {
+    padding: 70px 16px 30px 16px;
+  }
+
+  .admin-user-table thead {
+    display: none;
+  }
+
+  .admin-user-table,
+  .admin-user-table tbody,
+  .admin-user-table tr,
+  .admin-user-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .admin-user-table tr {
+    padding: 10px 14px;
+  }
+
+  .admin-user-table tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  .admin-user-table td {
+    border-bottom: none;
+    padding: 4px 0;
+  }
+
+  .admin-user-table td[data-label]:empty {
+    display: none;
+  }
+
+  .admin-user-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    color: #8a8a95;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 2px;
+  }
+
+  .admin-user-table .actions {
+    text-align: left;
+    padding-top: 8px;
+  }
+
+  .admin-user-table .actions::before {
+    display: none;
+  }
+
+  /* Bump touch targets to the ~40px recommended minimum (28px on a
+     precise mouse pointer is fine, but too small to reliably tap). */
+  .admin-user-table .icon-btn {
+    width: 40px;
+    height: 40px;
+    margin-right: 4px;
+  }
+
+  .admin-user-table .icon-btn .material-icons-round {
+    font-size: 20px;
+  }
+}
 
 
 .panelheading {

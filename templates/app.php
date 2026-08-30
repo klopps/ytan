@@ -94,6 +94,7 @@
         <div><input type="checkbox" id="detail13" name="detail13" onclick="toggleMarkerByType(this, 13);" checked><label for="detail13"><span></span>Clubs / Institutions</label></div>
         <div><input type="checkbox" id="detail14" name="detail14" onclick="toggleMarkerByType(this, 14);" checked><label for="detail14"><span></span>Lights (Lighthouses, Sea Marks)</label></div>
         <div><input type="checkbox" id="detail15" name="detail15" onclick="toggleMarkerByType(this, 15);" checked><label for="detail15"><span></span>Parking</label></div>
+        <div><input type="checkbox" id="detail16" name="detail16" onclick="toggleMarkerByType(this, 16);" checked><label for="detail16"><span></span>Fishing</label></div>
         <div><input type="checkbox" id="detailroutes" name="detailroutes" onchange="toggleRoutes(this);" checked><label for="detailroutes"><span></span>Routes</label></div>
         <div><input type="checkbox" id="detailareas" name="detailareas" onchange="toggleAreas(this);" checked><label for="detailareas"><span></span>Areas</label></div>
         <div><input type="checkbox" id="detailwsi" name="detailwsi" onchange="toggleWsiMarkers(this);"><label for="detailwsi"><span></span>Windshelter Indicators</label></div>

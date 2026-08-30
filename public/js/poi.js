@@ -707,7 +707,7 @@ function initPoiEditWindow(i) {
     var styleLighthouse = ' style="display:none"';
 
     var selected = [];
-    for (let x=0; x<=15; x++) {
+    for (let x=0; x<=16; x++) {
         selected[x] = '';
     }
 
@@ -766,6 +766,7 @@ function initPoiEditWindow(i) {
                     '<option value="13"'  + selected[13]  + '>Club / Institution</option>' +
                     '<option value="14"'  + selected[14]  + '>Light (Lighthouse, Sea Mark)</option>' +
                     '<option value="15"'  + selected[15]  + '>Parking</option>' +
+                    '<option value="16"'  + selected[16]  + '>Fishing</option>' +
                 '</select>' +
             '</div>' +
         '</div>' +
