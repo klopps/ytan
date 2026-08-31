@@ -305,12 +305,34 @@ function removeRoute(i) {
 }
 
 /**
+ * Entfernt alle vorhandenen Routen-Polylinien von der Karte und löscht ihre
+ * Click-Handler, bevor routes[]/routePaths[] neu befüllt werden. Ohne das
+ * würden alte Polylinien (z.B. aus getPublicRoutes() vor dem Login) samt
+ * ihrer auf den alten Array-Index geschlossenen Click-Handler auf der Karte
+ * hängen bleiben - ein Klick darauf würde dann per Index in das neue,
+ * inzwischen andere routes[]-Array greifen und die falsche Route auswählen.
+ */
+function deleteRoutes() {
+    for (let i = 0; i < routePaths.length; i++) {
+        if (typeof routePaths[i] !== "undefined") {
+            google.maps.event.clearInstanceListeners(routePaths[i].routePathLine);
+            google.maps.event.clearInstanceListeners(routePaths[i].routePathBackground);
+            routePaths[i].routePathLine.setMap(null);
+            routePaths[i].routePathBackground.setMap(null);
+        }
+    }
+    routes = [];
+    routePaths = [];
+}
+
+/**
  * Hole alle Routen eines Users und speichere sie in routes[] und zeige sie an
  *
  * @param {number} userId
  */
 function getRoutesByUserId(userId) {
     Ytan.get('/routes?scope=mine_public').then(answer => {
+        deleteRoutes();
         routes = answer.data;
         log('getRoutesByUserId(' + userId + ')', LOG_INFO, answer);
         for (let i = 0; i < routes.length; i++) {
@@ -330,6 +352,7 @@ function getRoutesByUserId(userId) {
 function getPublicRoutes() {
     Ytan.get('/routes?scope=public').then(answer => {
         log('getPublicRoutes()', LOG_INFO, answer);
+        deleteRoutes();
         routes = answer.data;
         for (let i = 0; i < routes.length; i++) {
             routes[i].points = JSON.parse(routes[i].points);
@@ -349,6 +372,7 @@ function getPublicRoutes() {
  */
 function getRoutesByTourId(tourId) {
     Ytan.get('/routes?tour_id=' + encodeURIComponent(tourId)).then(answer => {
+        deleteRoutes();
         routes = answer.data;
         log('getRoutesByTourId(' + tourId + ')', LOG_INFO, answer);
         for (let i = 0; i < routes.length; i++) {

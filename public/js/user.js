@@ -185,9 +185,7 @@ function logoutUser() {
     document.getElementById('routeButton').classList.remove('active');
     document.getElementById('userButton').classList.remove('loggedin');
     updateAdminMenuVisibility();
-    hideRoutes();
-    routes = [];
-    routePaths = [];
+    deleteRoutes();
     areas = [];
     areaPolygons = [];
     getPublicPois();

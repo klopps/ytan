@@ -1,0 +1,84 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]: my_location
+  - text: 
+  - generic [ref=e6]:
+    - region "Karte" [ref=e7]
+    - iframe [ref=e204]:
+      
+  - generic [ref=e205] [cursor=pointer]: chevron_right
+  - generic [ref=e207]:
+    - generic [ref=e209] [cursor=pointer]: Map
+    - generic [ref=e211]:
+      - generic [ref=e212] [cursor=pointer]: HYBRID
+      - generic [ref=e213] [cursor=pointer]: TERRAIN
+      - generic [ref=e214] [cursor=pointer]: SAT
+    - generic [ref=e215] [cursor=pointer]: Units
+    - generic [ref=e217]:
+      - generic [ref=e218] [cursor=pointer]: METRIC
+      - generic [ref=e219] [cursor=pointer]: NAUTICAL
+    - generic [ref=e221] [cursor=pointer]:
+      - text: Show POIs ...
+      - generic [ref=e222]: expand_more
+    - generic:
+      - generic [ref=e224]:  POI
+      - generic [ref=e225]:  Camps
+      - generic [ref=e226]:  Shelter
+      - generic [ref=e227]:  Campsite (commercial)
+      - generic [ref=e228]:  Landing Sites
+      - generic [ref=e229]:  Drinking Water
+      - generic [ref=e230]:  Toilets
+      - generic [ref=e232]:  Historic Sites
+      - generic [ref=e234]:  Danger Zones
+      - generic [ref=e236]:  Natural Sights
+      - generic [ref=e238]:  Shopping
+      - generic [ref=e240]:  Portages
+      - generic [ref=e242]:  Medical care
+      - generic [ref=e244]:  Clubs / Institutions
+      - generic [ref=e246]:  Lights (Lighthouses, Sea Marks)
+      - generic [ref=e248]:  Parking
+      - generic [ref=e250]:  Fishing
+      - generic [ref=e252]:  Routes
+      - generic [ref=e254]:  Areas
+      - generic [ref=e256]:  Windshelter Indicators
+    - generic [ref=e258]:
+      - text: Tours
+      - textbox "Select a tour..." [ref=e261] [cursor=pointer]
+      - generic [ref=e262] [cursor=pointer]:
+        - generic [ref=e263]: fit_screen
+        - text: Show Tour
+    - generic [ref=e264] [cursor=pointer]:
+      - generic [ref=e265]: fit_screen
+      - text: Fit POIs
+    - generic [ref=e266] [cursor=pointer]:
+      - generic [ref=e267]: share
+      - text: Share
+    - generic [ref=e268]:
+      - text: A lot of the information shown here is based on the documents "
+      - link "Sea kayaking and camping in Bohuslän Part A to C" [ref=e269] [cursor=pointer]:
+        - /url: https://tjornkajak.se/paddla-kajak-och-talta-i-bohuslan-haftena
+      - text: "\" by"
+      - link "Jens Marklund" [ref=e270] [cursor=pointer]:
+        - /url: https://tjornkajak.se/jens-marklund/
+      - text: . These highly recommended documents can be downloaded from the website of
+      - link "Tjörns Kajakklubb" [ref=e271] [cursor=pointer]:
+        - /url: https://tjornkajak.se/
+      - text: . Many thanks to Jens and his friends for this great work.
+    - generic [ref=e274]: Imprint | Privacy Notice | Cookies
+  - generic [ref=e275]:
+    - heading "YTAN" [level=2]
+    - generic:
+      - paragraph: YTAN requires the use of cookies to function properly and you have consented to their use. Of course, you can revoke your consent and the cookie will be deleted. However, you will then no longer be able to use YTAN.
+      - generic [ref=e276] [cursor=pointer]:
+        - generic [ref=e277]: check
+        - text: I agree to the use of cookies
+      - generic [ref=e278] [cursor=pointer]:
+        - generic [ref=e279]: not_interested
+        - text: I would like to delete the cookies
+  - generic [ref=e283]:
+    - heading "User management" [level=2]
+  - generic [ref=e285]:
+    - generic "Create Route" [ref=e286] [cursor=pointer]
+    - generic "Create POI" [ref=e287] [cursor=pointer]
+    - generic "Create Area" [ref=e288] [cursor=pointer]
+    - generic "Your settings" [ref=e289] [cursor=pointer]
+  - generic: Select a tour...
