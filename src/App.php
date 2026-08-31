@@ -196,4 +196,19 @@ final class App
 
         return $response->withHeader('Content-Type', 'application/json');
     }
+
+    /**
+     * Cache-busting suffix for a static asset, appended as a `?v=` query
+     * string by templates (e.g. `<?= App::assetVersion($rootDir, '/css/style.css') ?>`).
+     * public/css/js/lib files have no Cache-Control header, so browsers fall
+     * back to heuristic caching that can keep serving a stale copy for a
+     * long time after a deploy; changing the URL on every file edit forces
+     * a fresh fetch regardless of that.
+     */
+    public static function assetVersion(string $rootDir, string $relativePath): string
+    {
+        $file = $rootDir . '/public' . $relativePath;
+
+        return (string) (is_file($file) ? filemtime($file) : time());
+    }
 }

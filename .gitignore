@@ -5,3 +5,4 @@
 Thumbs.db
 /public/images/wsi/*.svg
 !/public/images/wsi/.gitkeep
+*.af~lock~

@@ -14,27 +14,24 @@ function hideToolbar() {
 /**
  * Full-screen panels (cookie/legal/user-admin menus) sit visually behind
  * editToolbar's z-index, so it must be hidden for as long as any one of
- * them is open; the bottom-centered YTAN logo shown on these panels is the
- * opposite - hidden until one is open. Tracked with a counter (rather than
- * a plain boolean) so two panels opened back-to-back can't have the second
- * one's close prematurely reveal the toolbar / hide the logo while the
- * first is still open. Uses `visibility` (for editToolbar) rather than
- * `display` so it doesn't fight the unrelated street-view show/hide logic
- * in map-core.js, which toggles `display` on the same element.
+ * them is open. Tracked with a counter (rather than a plain boolean) so two
+ * panels opened back-to-back can't have the second one's close prematurely
+ * reveal the toolbar while the first is still open. Uses `visibility`
+ * rather than `display` so it doesn't fight the unrelated street-view
+ * show/hide logic in map-core.js, which toggles `display` on the same
+ * element.
  */
 var openPanelCount = 0;
 
 function panelOpened() {
     openPanelCount++;
     document.getElementById("editToolbar").style.visibility = "hidden";
-    document.getElementById("panelLogo").style.display = "block";
 }
 
 function panelClosed() {
     openPanelCount = Math.max(0, openPanelCount - 1);
     if (openPanelCount === 0) {
         document.getElementById("editToolbar").style.visibility = "";
-        document.getElementById("panelLogo").style.display = "none";
     }
 }
 

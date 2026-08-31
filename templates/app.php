@@ -7,29 +7,29 @@
 
     <script>window.YTAN_API_BASE = "<?= htmlspecialchars($baseUrl, ENT_QUOTES) ?>/api/v1";</script>
 
-    <script src="./lib/jquery/jquery-3.7.1.min.js"></script>
-    <script src="./lib/selectize/selectize.min.js"></script>
-    <script src="./lib/measuretool-googlemap-v3/gmaps-measuretool.umd.js"></script>
-    <script src="./lib/marked/marked.min.js"></script>
-    <script src="./lib/markerWithLabel/markerwithlabel.min.js"></script>
-    <script src="./lib/light-characteristics/lightcharacteristic.js"></script>
+    <script src="./lib/jquery/jquery-3.7.1.min.js?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/jquery/jquery-3.7.1.min.js') ?>"></script>
+    <script src="./lib/selectize/selectize.min.js?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/selectize/selectize.min.js') ?>"></script>
+    <script src="./lib/measuretool-googlemap-v3/gmaps-measuretool.umd.js?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/measuretool-googlemap-v3/gmaps-measuretool.umd.js') ?>"></script>
+    <script src="./lib/marked/marked.min.js?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/marked/marked.min.js') ?>"></script>
+    <script src="./lib/markerWithLabel/markerwithlabel.min.js?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/markerWithLabel/markerwithlabel.min.js') ?>"></script>
+    <script src="./lib/light-characteristics/lightcharacteristic.js?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/light-characteristics/lightcharacteristic.js') ?>"></script>
 
-    <script src="./js/config.js"></script>
-    <script src="./js/helper.js"></script>
-    <script src="./js/api-client.js"></script>
-    <script src="./js/settings.js"></script>
-    <script src="./js/ui.js"></script>
-    <script src="./js/map-core.js"></script>
-    <script src="./js/poi.js"></script>
-    <script src="./js/route.js"></script>
-    <script src="./js/area.js"></script>
-    <script src="./js/tour.js"></script>
-    <script src="./js/user.js"></script>
-    <script src="./js/admin-user.js"></script>
+    <script src="./js/config.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/config.js') ?>"></script>
+    <script src="./js/helper.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/helper.js') ?>"></script>
+    <script src="./js/api-client.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/api-client.js') ?>"></script>
+    <script src="./js/settings.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/settings.js') ?>"></script>
+    <script src="./js/ui.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/ui.js') ?>"></script>
+    <script src="./js/map-core.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/map-core.js') ?>"></script>
+    <script src="./js/poi.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/poi.js') ?>"></script>
+    <script src="./js/route.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/route.js') ?>"></script>
+    <script src="./js/area.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/area.js') ?>"></script>
+    <script src="./js/tour.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/tour.js') ?>"></script>
+    <script src="./js/user.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/user.js') ?>"></script>
+    <script src="./js/admin-user.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/admin-user.js') ?>"></script>
 
-    <link rel="stylesheet" type="text/css" href="./css/style.css" />
-    <link rel="stylesheet" type="text/css" href="./css/fonts.css" />
-    <link rel="stylesheet" type="text/css" href="./lib/selectize/selectize.default.min.css" />
+    <link rel="stylesheet" type="text/css" href="./css/style.css?v=<?= \Ytan\App::assetVersion($rootDir, '/css/style.css') ?>" />
+    <link rel="stylesheet" type="text/css" href="./css/fonts.css?v=<?= \Ytan\App::assetVersion($rootDir, '/css/fonts.css') ?>" />
+    <link rel="stylesheet" type="text/css" href="./lib/selectize/selectize.default.min.css?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/selectize/selectize.default.min.css') ?>" />
 
     <link rel="shortcut icon" href="<?= $baseUrl ?>/favicon.ico">
     <link rel="icon" type="image/png" href="<?= $baseUrl ?>/favicon-16x16.png" sizes="16x16">
@@ -142,6 +142,7 @@
           <div class="button" onclick="closeCookieMenu();"><i class="material-icons-round">check</i>&nbsp;I agree to the use of cookies</div>
           <div class="button" onclick="revokeConsent();"><i class="material-icons-round">not_interested</i>&nbsp;I would like to delete the cookies</div>
         </div>
+        <img class="panel-logo" src="images/ytan.svg">
       </div>
     </div>
 
@@ -150,6 +151,7 @@
       <div id="legalmenu-close-btn" class="panel-close-btn" onclick="closeLegalMenu();"><i class="material-icons-round">close</i></div>
       <div class="cm_content">
         <div id="legalmenu-content"></div>
+        <img class="panel-logo" src="images/ytan.svg">
       </div>
     </div>
 
@@ -160,11 +162,9 @@
         <h2>User management</h2>
         <div id="useradminmenu-form"></div>
         <div id="useradminmenu-list"></div>
+        <img class="panel-logo" src="images/ytan.svg">
       </div>
     </div>
-
-    <!-- Shown, bottom-centered, over whichever full-screen panel above is currently open -->
-    <img id="panelLogo" class="panel-logo" src="images/ytan.svg">
 
     <!-- EDIT ADDITIONAL TOOLBAR -------------------------------------->
     <div id="secondToolbar">

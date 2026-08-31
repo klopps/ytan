@@ -4,7 +4,7 @@
     <title><?= htmlspecialchars($appName) ?> | Forgot password</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta charset="utf-8" />
-    <link rel="stylesheet" type="text/css" href="<?= $baseUrl ?>/css/style.css" />
+    <link rel="stylesheet" type="text/css" href="<?= $baseUrl ?>/css/style.css?v=<?= \Ytan\App::assetVersion($rootDir, '/css/style.css') ?>" />
     <link rel="shortcut icon" href="<?= $baseUrl ?>/favicon.ico">
     <style>
         body { background-color: #f3f4f8; }
