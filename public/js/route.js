@@ -252,8 +252,6 @@ function saveRoute(i) {
             saveSettings();
             showRoutes();
         }
-
-        setSessionTimeout(SESSION_TIMEOUT_SECONDS);
     }).catch(err => {
         log('saveRoute() failed', LOG_ERROR, err);
         alert('Saving the route failed: ' + err.message);
@@ -299,8 +297,6 @@ function removeRoute(i) {
     }).catch(err => {
         log('removeRoute() failed', LOG_ERROR, err);
         alert('Removing the route failed: ' + err.message);
-    }).finally(() => {
-        setSessionTimeout(SESSION_TIMEOUT_SECONDS);
     });
 }
 

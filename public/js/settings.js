@@ -120,36 +120,6 @@ function loadSettings() {
     }
 }
 
-/**
- * Starts (or restarts) the client-side inactivity timer that logs the user
- * out once the JWT is expected to have expired. Unlike the legacy PHP
- * session model, there is no server-managed session cookie to read the
- * timeout from any more - the timeout is always driven by the JWT's own
- * lifetime (JWT_TTL_SECONDS on the server, mirrored here as SESSION_TIMEOUT_SECONDS).
- */
-function setSessionTimeout(timeoutInSeconds) {
-    var effectiveTimeout = (typeof timeoutInSeconds === 'number' && timeoutInSeconds > 0)
-        ? timeoutInSeconds
-        : SESSION_TIMEOUT_SECONDS;
-
-    if (window.sessionTimeoutHandle) {
-        clearTimeout(window.sessionTimeoutHandle);
-    }
-
-    window.sessionTimeoutHandle = window.setTimeout(
-        handleSessionTimeout,
-        (effectiveTimeout - 5) * 1000
-    );
-}
-
-function handleSessionTimeout() {
-    if (Ytan.isLoggedIn()) {
-        logoutUser();
-        alert('You are logged out.');
-    }
-}
-
-
 const LOG_CONSOLE_METHOD = {
     [LOG_ERROR]: 'error',
     [LOG_WARN]: 'warn',

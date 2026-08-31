@@ -7,9 +7,6 @@
 const ICONSET = 'mapicons'; // [google, mapicons]
 const METRIC = 'metric';
 const NAUTICAL = 'nautical';
-const SESSION_TIMEOUT_SECONDS = 43200; // 12 Stunden
-
-var sessionTimeoutHandle = null;
 
 class RouteTool extends MeasureTool {
     setIndex(index) {

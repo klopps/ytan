@@ -233,8 +233,6 @@ function loginUser() {
         document.getElementById('userButton').classList.add('loggedin');
         updateAdminMenuVisibility();
         enablePoiButton();
-
-        setSessionTimeout(SESSION_TIMEOUT_SECONDS);
     }).catch(err => {
         document.getElementById('userLoginUsername').disabled = false;
         document.getElementById('userLoginPassword').disabled = false;

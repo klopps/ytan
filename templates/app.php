@@ -223,6 +223,10 @@
           scope: "<?= htmlspecialchars($baseUrl, ENT_QUOTES) ?>/"
         }).catch(err => log('Service worker registration failed', LOG_WARN, err));
       }
+
+      if (navigator.storage && navigator.storage.persist) {
+        navigator.storage.persist().catch(err => log('navigator.storage.persist() failed', LOG_WARN, err));
+      }
     </script>
 
     <div id="shield"></div>
