@@ -32,7 +32,7 @@ function loadUserList() {
         renderUserTable(answer.data);
     }).catch(err => {
         log('loadUserList() failed', LOG_ERROR, err);
-        alert('Loading users failed: ' + err.message);
+        showToast('Loading users failed: ' + err.message, 'error');
     });
 }
 
@@ -126,7 +126,7 @@ function editUserRow(id) {
     Ytan.get('/users/' + id).then(answer => {
         document.getElementById('useradminmenu-form').innerHTML = userFormHtml(answer.data);
     }).catch(err => {
-        alert('Loading user failed: ' + err.message);
+        showToast('Loading user failed: ' + err.message, 'error');
     });
 }
 
@@ -152,7 +152,7 @@ function saveNewUser() {
         loadUserList();
     }).catch(err => {
         document.getElementById('userFormSaveBtn').disabled = false;
-        alert('Save failed: ' + err.message);
+        showToast('Save failed: ' + err.message, 'error');
     });
 }
 
@@ -164,19 +164,19 @@ function saveEditedUser(id) {
         loadUserList();
     }).catch(err => {
         document.getElementById('userFormSaveBtn').disabled = false;
-        alert('Save failed: ' + err.message);
+        showToast('Save failed: ' + err.message, 'error');
     });
 }
 
-function deleteUserRow(id) {
-    if (confirm('Do you really want to delete this user?') == false) {
+async function deleteUserRow(id) {
+    if (!(await showConfirmDialog('Do you really want to delete this user?', { type: 'danger', confirmLabel: 'Delete' }))) {
         return;
     }
 
     Ytan.del('/users/' + id).then(() => {
         loadUserList();
     }).catch(err => {
-        alert('Delete failed: ' + err.message);
+        showToast('Delete failed: ' + err.message, 'error');
     });
 }
 
@@ -220,14 +220,14 @@ function submitSetPassword(id) {
     });
 }
 
-function sendResetEmailRow(id) {
-    if (confirm('Send a password reset email to this user?') == false) {
+async function sendResetEmailRow(id) {
+    if (!(await showConfirmDialog('Send a password reset email to this user?', { type: 'default', confirmLabel: 'Send' }))) {
         return;
     }
 
     Ytan.post('/users/' + id + '/send-reset').then(() => {
-        alert('Password reset email sent.');
+        showToast('Password reset email sent.', 'success');
     }).catch(err => {
-        alert('Sending the reset email failed: ' + err.message);
+        showToast('Sending the reset email failed: ' + err.message, 'error');
     });
 }

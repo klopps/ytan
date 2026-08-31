@@ -238,6 +238,6 @@ function loginUser() {
         document.getElementById('userLoginPassword').disabled = false;
         document.getElementById('userLoginBtn').disabled = false;
         document.getElementById('userCancelBtn').disabled = false;
-        alert('Login failed: ' + err.message);
+        showToast('Login failed: ' + err.message, 'error');
     });
 }

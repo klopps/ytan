@@ -254,7 +254,7 @@ function saveRoute(i) {
         }
     }).catch(err => {
         log('saveRoute() failed', LOG_ERROR, err);
-        alert('Saving the route failed: ' + err.message);
+        showToast('Saving the route failed: ' + err.message, 'error');
     });
 
     measureTool.index = null;
@@ -270,13 +270,13 @@ function saveRoute(i) {
  *
  * @param {int} i Index der Route im Array routes[]
  */
-function removeRoute(i) {
+async function removeRoute(i) {
     if (typeof routes[i] === null || typeof routes[i] === 'undefined') {
         log('removeRoute(' + i + '): index not found.', LOG_INFO);
         return false;
     }
 
-    if (confirm('Do you really want to delete this Route?') == false) {
+    if (!(await showConfirmDialog('Do you really want to delete this Route?', { type: 'danger', confirmLabel: 'Delete' }))) {
         return false;
     }
 
@@ -296,7 +296,7 @@ function removeRoute(i) {
         routeEditWindow.close();
     }).catch(err => {
         log('removeRoute() failed', LOG_ERROR, err);
-        alert('Removing the route failed: ' + err.message);
+        showToast('Removing the route failed: ' + err.message, 'error');
     });
 }
 

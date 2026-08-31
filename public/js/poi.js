@@ -1046,7 +1046,7 @@ function savePoi(i) {
         setPoi(index);
     }).catch(err => {
         log('savePoi() failed', LOG_ERROR, err);
-        alert('Saving the POI failed: ' + err.message);
+        showToast('Saving the POI failed: ' + err.message, 'error');
     });
 
     closePoiEditWindow();
@@ -1064,8 +1064,8 @@ function savePoi(i) {
  * @param {integer} i Index des POI im Array pois[]
  * @returns
  */
-function removePoi(i) {
-    if (confirm('Do you really want to delete this POI?') == false) {
+async function removePoi(i) {
+    if (!(await showConfirmDialog('Do you really want to delete this POI?', { type: 'danger', confirmLabel: 'Delete' }))) {
         return false;
     }
 
@@ -1081,7 +1081,7 @@ function removePoi(i) {
         delete pois[i];
     }).catch(err => {
         log('removePoi() failed', LOG_ERROR, err);
-        alert('Removing the POI failed: ' + err.message);
+        showToast('Removing the POI failed: ' + err.message, 'error');
     });
 
     closePoiEditWindow();

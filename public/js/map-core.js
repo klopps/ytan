@@ -465,7 +465,8 @@ function shareMap() {
             .then(() => log('shareMap() - successfull', LOG_INFO))
             .catch((error) => log('shareMap() - error', LOG_ERROR, error));
     } else {
-        alert(mapUrl); // Fallback
+        copyTextToClipboard(mapUrl);
+        showToast('Link copied to clipboard', 'success');
     }
 }
 

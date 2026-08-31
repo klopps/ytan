@@ -276,7 +276,7 @@ function saveArea(i) {
         }
     }).catch(err => {
         log('saveArea() failed', LOG_ERROR, err);
-        alert('Saving the area failed: ' + err.message);
+        showToast('Saving the area failed: ' + err.message, 'error');
     });
 
     measureTool.index = null;
@@ -293,13 +293,13 @@ function saveArea(i) {
  *
  * @param {int} i Index der Area im Array areas[]
  */
-function removeArea(i) {
+async function removeArea(i) {
     if (typeof areas[i] === null || typeof areas[i] === 'undefined') {
         log('removeArea(' + i + '): index not found.', LOG_INFO);
         return false;
     }
 
-    if (confirm('Do you really want to delete this Area?') == false) {
+    if (!(await showConfirmDialog('Do you really want to delete this Area?', { type: 'danger', confirmLabel: 'Delete' }))) {
         return false;
     }
 
@@ -317,7 +317,7 @@ function removeArea(i) {
         areaEditWindow.close();
     }).catch(err => {
         log('removeArea() failed', LOG_ERROR, err);
-        alert('Removing the area failed: ' + err.message);
+        showToast('Removing the area failed: ' + err.message, 'error');
     });
 }
 
