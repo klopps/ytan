@@ -35,6 +35,12 @@
     <link rel="icon" type="image/png" href="<?= $baseUrl ?>/favicon-16x16.png" sizes="16x16">
     <link rel="icon" type="image/png" href="<?= $baseUrl ?>/favicon-32x32.png" sizes="32x32">
     <link rel="apple-touch-icon" sizes="180x180" href="<?= $baseUrl ?>/apple-touch-icon.png">
+    <link rel="manifest" href="<?= $baseUrl ?>/site.webmanifest">
+    <meta name="theme-color" content="#60609F">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="<?= htmlspecialchars($appName) ?>">
   </head>
   <body>
     <div id="iconlogo"></div>
@@ -210,6 +216,12 @@
           Ytan.setToken(null);
           sessionStorage.removeItem('user');
         });
+      }
+
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register("<?= htmlspecialchars($baseUrl, ENT_QUOTES) ?>/sw.js", {
+          scope: "<?= htmlspecialchars($baseUrl, ENT_QUOTES) ?>/"
+        }).catch(err => log('Service worker registration failed', LOG_WARN, err));
       }
     </script>
 

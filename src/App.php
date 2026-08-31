@@ -155,6 +155,14 @@ final class App
             return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
         });
 
+        $app->get('/sw.js', function (Request $req, Response $res) use ($rootDir, $baseUrl) {
+            ob_start();
+            require $rootDir . '/templates/sw.php';
+            $res->getBody()->write(ob_get_clean());
+
+            return $res->withHeader('Content-Type', 'application/javascript; charset=utf-8');
+        });
+
         $app->get('/legal/impressum', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl) {
             ob_start();
             require $rootDir . '/templates/impressum.php';
