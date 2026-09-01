@@ -193,6 +193,13 @@ function cancelEditArea(i) {
     measureTool.index = null;
     measureTool.end();
     document.getElementById('areaButton').classList.remove('active');
+    // Not just via closeAreaEditWindow() - that only re-enables the other
+    // buttons if the naming/save window was actually open, but cancelling
+    // with too few points (or while logged out) never gets that far.
+    enableAreaButton();
+    enablePoiButton();
+    enableRouteButton();
+    editMode(false);
     if ((i !== null) && (typeof i !== 'undefined')) {
         showArea(i);
     }

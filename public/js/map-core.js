@@ -7,6 +7,8 @@
 const ICONSET = 'mapicons'; // [google, mapicons]
 const METRIC = 'metric';
 const NAUTICAL = 'nautical';
+const THEME_LIGHT = 'light';
+const THEME_DARK = 'dark';
 
 class RouteTool extends MeasureTool {
     setIndex(index) {
@@ -94,7 +96,8 @@ var settings = { // muss wegen JSON.stringify() ein Objekt sein
     maptype: "hybrid",
     center: null,
     zoom: null,
-    unit: METRIC
+    unit: METRIC,
+    theme: THEME_LIGHT
 };
 
 let language = window.navigator.userLanguage || window.navigator.language;
@@ -121,7 +124,7 @@ function loadGoogleMaps(APIKey) {
     document.getElementById("gdpr").style.display = "none";
     document.getElementById("map").style.display = "block";
     showToolbar();
-    document.getElementById("sidemenu-toggle").style.display = "block";
+    document.getElementById("sidemenu-toggle").style.display = "flex";
 
     setCookie("gdpr_accepted", "yes", 365);
 }
@@ -400,6 +403,31 @@ function toggleMarkerByType(element, poitype_id) {
     updatePoiClustering();
 }
 
+/**
+ * "Select all"/"Select none" quick actions above the POI-type list
+ * (nav-menu.js "pois" screen) - only the 17 POI type toggles, not the
+ * Routes/Areas/Windshelter Indicators toggles below them.
+ */
+function selectAllPois() {
+    for (let i = 0; i <= 16; i++) {
+        var element = document.getElementById('detail' + i);
+        if (element && !element.checked) {
+            element.checked = true;
+            toggleMarkerByType(element, i);
+        }
+    }
+}
+
+function selectNonePois() {
+    for (let i = 0; i <= 16; i++) {
+        var element = document.getElementById('detail' + i);
+        if (element && element.checked) {
+            element.checked = false;
+            toggleMarkerByType(element, i);
+        }
+    }
+}
+
 function editMapType(element) {
     if (['hybrid','terrain','satellite'].includes(element.value)) {
         map.setMapTypeId(element.value);
@@ -407,11 +435,45 @@ function editMapType(element) {
     saveSettings();
 }
 
+const UNIT_EXAMPLE_DISTANCE_METERS = 12400;
+
 function editUnit(element) {
     if ([METRIC, NAUTICAL].includes(element.value)) {
         settings.unit = element.value;
     }
     renewVisibleRouteLabels();
+    updateUnitExample();
+    saveSettings();
+}
+
+/**
+ * Keeps the live example distance in the "Map Settings" screen (nav-menu.js)
+ * in sync with the current unit - called on toggle and once at boot.
+ */
+function updateUnitExample() {
+    var el = document.getElementById('unitExampleValue');
+    if (el) {
+        el.textContent = formatDistance(UNIT_EXAMPLE_DISTANCE_METERS, settings.unit);
+    }
+}
+
+/**
+ * Switches the app's own Light/Dark appearance (Preferences submenu) -
+ * independent of the operating system's color scheme, since the app has no
+ * "follow system" mode. Applied via a data-theme attribute on <html> so
+ * every CSS custom property in style.css re-resolves through the matching
+ * :root[data-theme="dark"] block.
+ */
+function setTheme(theme) {
+    if (![THEME_LIGHT, THEME_DARK].includes(theme)) {
+        return;
+    }
+    settings.theme = theme;
+    if (theme === THEME_DARK) {
+        document.documentElement.dataset.theme = THEME_DARK;
+    } else {
+        delete document.documentElement.dataset.theme;
+    }
     saveSettings();
 }
 

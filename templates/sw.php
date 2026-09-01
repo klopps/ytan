@@ -23,6 +23,7 @@ $shellFiles = [
     '/js/ui.js',
     '/js/toast.js',
     '/js/confirm-dialog.js',
+    '/js/nav-menu.js',
     '/js/map-core.js',
     '/js/poi.js',
     '/js/route.js',

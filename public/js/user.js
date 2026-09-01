@@ -2,79 +2,46 @@
  * Login/logout UI and the auth token lifecycle (JWT via Ytan.setToken()).
  */
 
-function showUserWindow() {
-    if (document.getElementById('userWindow')) {
-        if (document.getElementById('userWindow').style.display == 'block') {
-            return;
-        }
+function userInitials() {
+    if (user.firstname && user.lastname) {
+        return (user.firstname[0] + user.lastname[0]).toUpperCase();
     }
+    if (user.username) {
+        return user.username.slice(0, 2).toUpperCase();
+    }
+    return '?';
+}
 
+function showUserWindow() {
     if (user.id === null) {
         document.getElementById('userWindow').innerHTML =
-            '<form>' +
-            '<div class="infoWindowElement">' +
-                '<div class="leftCol">' +
-                    '<label for="userLoginUsername">Username (or email): </label>' +
-                '</div>' +
-                '<div class="rightCol">' +
-                    '<input id="userLoginUsername" type="text" placeholder="username" autocomplete="username" title="Enter your username or email used on registration." onkeypress="focusOnEnter(event, \'userLoginPassword\');">' +
-                '</div>' +
+            '<div class="nav-field">' +
+                '<label for="userLoginUsername">Username or email</label>' +
+                '<input id="userLoginUsername" type="text" placeholder="username" autocomplete="username" title="Enter your username or email used on registration." onkeypress="focusOnEnter(event, \'userLoginPassword\');">' +
             '</div>' +
-            '<div class="infoWindowElement">' +
-                '<div class="leftCol">' +
-                    '<label for="userLoginPassword">Password: </label>' +
-                '</div>' +
-                '<div class="rightCol">' +
-                    '<input id="userLoginPassword" type="password" placeholder="Enter your password." autocomplete="current-password" onkeypress="clickOnEnter(event, \'userLoginBtn\');">' +
-                '</div>' +
+            '<div class="nav-field">' +
+                '<label for="userLoginPassword">Password</label>' +
+                '<input id="userLoginPassword" type="password" placeholder="Enter your password." autocomplete="current-password" onkeypress="clickOnEnter(event, \'userLoginBtn\');">' +
             '</div>' +
-            '<div class="infoWindowElement">' +
-                '<div class="leftCol">' +
-                    '&nbsp;' +
-                '</div>' +
-                '<div class="rightCol">' +
-                    '<button id="userLoginBtn" class="button" type="button" onClick="loginUser()">Login</button>&nbsp;' +
-                    '<button id="userCancelBtn"class="button" type="button" onClick="closeUserWindow()">Cancel</button>' +
-                '</div>' +
-            '</div>' +
-            '<div class="infoWindowElement">' +
-                '<div class="leftCol">' +
-                    '&nbsp;' +
-                '</div>' +
-                '<div class="rightCol">' +
-                    '<span class="forgotPasswordLink" onclick="goToForgotPassword();">Forgot password?</span>' +
-                '</div>' +
-            '</div>' +
-            '</form>'
+            '<button id="userLoginBtn" class="nav-btn-primary" type="button" onClick="loginUser()"><i class="material-icons-round">login</i>&nbsp;Log in</button>' +
+            '<span class="nav-link-small" onclick="goToForgotPassword();">Forgot password?</span>'
         ;
     } else {
         document.getElementById('userWindow').innerHTML =
-            '<div class="infoWindowElement">' +
-                '<div class="leftCol">' +
-                    'Username:' +
-                '</div>' +
-                '<div class="rightCol">' +
-                    user.username +
-                '</div>' +
-            '</div>' +
-            '<div class="infoWindowElement">' +
-                '<div class="leftCol">' +
-                    'Email:' +
-                '</div>' +
-                '<div class="rightCol">' +
-                    user.email +
+            '<div class="nav-account-head">' +
+                '<div class="nav-avatar">' + userInitials() + '</div>' +
+                '<div>' +
+                    '<div class="nav-account-name">' + (user.firstname && user.lastname ? user.firstname + ' ' + user.lastname : user.username) + '</div>' +
+                    '<div class="nav-account-email">' + user.email + '</div>' +
                 '</div>' +
             '</div>' +
-            '<div class="infoWindowElement">' +
-                '<button id="userChangePasswordBtn" class="button" onClick="showChangePasswordForm();">Change password</button>&nbsp;' +
-                '<button id="userLogoutBtn" class="button" onClick="logoutUser()">Logout</button>&nbsp;' +
-                '<button id="userCloseBtn" class="button" onClick="closeUserWindow()">Close</button>' +
-            '</div>' +
+            '<button id="userChangePasswordBtn" class="nav-btn-secondary" type="button" onClick="showChangePasswordForm();"><i class="material-icons-round">lock</i>&nbsp;Change password</button>' +
+            '<button id="userLogoutBtn" class="nav-btn-secondary nav-btn-danger" type="button" onClick="logoutUser()"><i class="material-icons-round">logout</i>&nbsp;Log out</button>' +
             '<div id="userWindowSub"></div>'
         ;
     }
 
-    document.getElementById('userWindow').style.display = 'block';
+    navMenuGoTo('preferences');
 }
 
 function clickOnEnter(event, elementId) {
@@ -90,7 +57,7 @@ function focusOnEnter(event, elementId) {
 }
 
 function closeUserWindow() {
-    document.getElementById('userWindow').style.display = 'none';
+    navMenuBack();
 }
 
 /**
@@ -110,26 +77,13 @@ function goToForgotPassword() {
  */
 function showChangePasswordForm() {
     document.getElementById('userWindowSub').innerHTML =
-        '<div class="infoWindowElement">' +
-            '<div class="leftCol"><label for="userChangePasswordCurrent">Current: </label></div>' +
-            '<div class="rightCol"><input id="userChangePasswordCurrent" type="password" autocomplete="current-password"></div>' +
-        '</div>' +
-        '<div class="infoWindowElement">' +
-            '<div class="leftCol"><label for="userChangePasswordNew">New: </label></div>' +
-            '<div class="rightCol"><input id="userChangePasswordNew" type="password" autocomplete="new-password"></div>' +
-        '</div>' +
-        '<div class="infoWindowElement">' +
-            '<div class="leftCol"><label for="userChangePasswordConfirm">Confirm: </label></div>' +
-            '<div class="rightCol"><input id="userChangePasswordConfirm" type="password" autocomplete="new-password"></div>' +
-        '</div>' +
-        '<div id="userChangePasswordMessage"></div>' +
-        '<div class="infoWindowElement">' +
-            '<div class="leftCol">&nbsp;</div>' +
-            '<div class="rightCol">' +
-                '<button id="userChangePasswordSaveBtn" class="button" type="button" onClick="submitChangePassword();">Save</button>&nbsp;' +
-                '<button class="button" type="button" onClick="document.getElementById(\'userWindowSub\').innerHTML=\'\';">Cancel</button>' +
-            '</div>' +
-        '</div>'
+        '<div class="nav-divider"></div>' +
+        '<div class="nav-field"><label for="userChangePasswordCurrent">Current password</label><input id="userChangePasswordCurrent" type="password" autocomplete="current-password"></div>' +
+        '<div class="nav-field"><label for="userChangePasswordNew">New password</label><input id="userChangePasswordNew" type="password" autocomplete="new-password"></div>' +
+        '<div class="nav-field"><label for="userChangePasswordConfirm">Confirm new password</label><input id="userChangePasswordConfirm" type="password" autocomplete="new-password"></div>' +
+        '<div class="nav-form-message" id="userChangePasswordMessage"></div>' +
+        '<button id="userChangePasswordSaveBtn" class="nav-btn-primary" type="button" onClick="submitChangePassword();"><i class="material-icons-round">check</i>&nbsp;Save password</button>' +
+        '<span class="nav-link-small" onclick="document.getElementById(\'userWindowSub\').innerHTML=\'\';">Cancel</span>'
     ;
 }
 
@@ -140,7 +94,7 @@ function submitChangePassword() {
     var message = document.getElementById('userChangePasswordMessage');
 
     if (newPassword !== confirmPassword) {
-        message.style.color = '#b3261e';
+        message.style.color = 'var(--color-danger)';
         message.textContent = 'The two passwords do not match.';
         return;
     }
@@ -148,26 +102,35 @@ function submitChangePassword() {
     document.getElementById('userChangePasswordSaveBtn').disabled = true;
 
     Ytan.put('/auth/password', { current_password: current, new_password: newPassword }).then(() => {
-        message.style.color = '#1a7f37';
+        message.style.color = 'var(--color-success)';
         message.textContent = 'Password changed successfully.';
         document.getElementById('userChangePasswordCurrent').value = '';
         document.getElementById('userChangePasswordNew').value = '';
         document.getElementById('userChangePasswordConfirm').value = '';
         document.getElementById('userChangePasswordSaveBtn').disabled = false;
     }).catch(err => {
-        message.style.color = '#b3261e';
+        message.style.color = 'var(--color-danger)';
         message.textContent = err.message;
         document.getElementById('userChangePasswordSaveBtn').disabled = false;
     });
 }
 
 /**
- * Shows/hides the sidemenu's "User management" entry based on the current
+ * Shows/hides the sidemenu's "Site Settings" entry based on the current
  * user's is_admin flag. Called after login, logout, and the boot-time
  * /auth/me revalidation.
  */
 function updateAdminMenuVisibility() {
-    document.getElementById('userAdminMenuBtn').style.display = user.is_admin ? 'inline-block' : 'none';
+    document.getElementById('userAdminMenuBtn').style.display = user.is_admin ? '' : 'none';
+}
+
+/**
+ * Reflects the current sign-in state as the "Preferences" root menu row's
+ * subtitle (e.g. "Signed in as cst" / "Not signed in"). Called from the
+ * same places as updateAdminMenuVisibility().
+ */
+function updatePreferencesRowLabel() {
+    document.getElementById('preferencesRowSub').textContent = user.id !== null ? ('Signed in as ' + user.username) : 'Not signed in';
 }
 
 /**
@@ -183,7 +146,7 @@ function logoutUser() {
     cancelEditRoute();
     closePoiEditWindow();
     document.getElementById('routeButton').classList.remove('active');
-    document.getElementById('userButton').classList.remove('loggedin');
+    updatePreferencesRowLabel();
     updateAdminMenuVisibility();
     deleteRoutes();
     areas = [];
@@ -192,17 +155,13 @@ function logoutUser() {
     getPublicRoutes();
     getPublicAreas();
     disablePoiButton();
-
-    closeUserWindow();
     infoWindow.close();
-    closePoiEditWindow();
 }
 
 function loginUser() {
     document.getElementById('userLoginUsername').disabled = true;
     document.getElementById('userLoginPassword').disabled = true;
     document.getElementById('userLoginBtn').disabled = true;
-    document.getElementById('userCancelBtn').disabled = true;
 
     var loginData = {
         username: document.getElementById('userLoginUsername').value,
@@ -215,7 +174,6 @@ function loginUser() {
         document.getElementById('userLoginUsername').disabled = false;
         document.getElementById('userLoginPassword').disabled = false;
         document.getElementById('userLoginBtn').disabled = false;
-        document.getElementById('userCancelBtn').disabled = false;
 
         Ytan.setToken(answer.token);
 
@@ -230,14 +188,13 @@ function loginUser() {
         closeUserWindow();
         getPoisByUserId(user.id);
         getRoutesByUserId(user.id);
-        document.getElementById('userButton').classList.add('loggedin');
+        updatePreferencesRowLabel();
         updateAdminMenuVisibility();
         enablePoiButton();
     }).catch(err => {
         document.getElementById('userLoginUsername').disabled = false;
         document.getElementById('userLoginPassword').disabled = false;
         document.getElementById('userLoginBtn').disabled = false;
-        document.getElementById('userCancelBtn').disabled = false;
         showToast('Login failed: ' + err.message, 'error');
     });
 }

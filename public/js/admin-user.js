@@ -2,8 +2,11 @@
  * Admin-only user management panel (list / create / edit / delete users,
  * plus per-user password actions).
  *
- * Reuses the .cookiemenu slide-in panel pattern already used for the
- * cookie- and legal-menus (see ui.js: openCookieMenu/openLegalMenu).
+ * A full-screen slide-in panel (the .cookiemenu pattern also used by the
+ * cookie/legal menus, see ui.js: openCookieMenu/openLegalMenu) rather than
+ * a nested nav-menu.js drawer screen - the account table needs more width
+ * than the ~320px drawer can offer. Triggered from the "Site Settings"
+ * drawer screen (nav-menu.js), which is closed first for a clean transition.
  * New users get no password field in the create form - they always set
  * their own password through the emailed invite link (see
  * UserController::create() on the backend, which sends that email on
@@ -13,6 +16,7 @@
  */
 
 function openUserAdminMenu() {
+    closeMenu();
     document.getElementById("useradminmenu").style.width = "100%";
     document.getElementById("useradminmenu-close-btn").style.display = "flex";
     panelOpened();

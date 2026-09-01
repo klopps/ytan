@@ -75,6 +75,8 @@ function saveSettings() {
         settings['unit'] = NAUTICAL;
     }
 
+    settings['theme'] = [THEME_LIGHT, THEME_DARK].includes(settings['theme']) ? settings['theme'] : THEME_LIGHT;
+
     settings['zoom'] = map.getZoom();
     settings['center'] = map.getCenter();
 
@@ -117,6 +119,36 @@ function loadSettings() {
 
         document.getElementById('unit1').checked = settings['unit1'];
         document.getElementById('unit2').checked = settings['unit2'];
+        updateUnitExample();
+
+        if (settings['theme'] === THEME_DARK) {
+            document.documentElement.dataset.theme = THEME_DARK;
+        } else {
+            delete document.documentElement.dataset.theme;
+        }
+    }
+}
+
+/**
+ * Applies a previously saved Light/Dark preference as early as possible on
+ * boot (before Google Maps/initMap() have even started loading), so a
+ * returning dark-mode user doesn't see a flash of the light theme while the
+ * map script loads. loadSettings() (called later, from initMap()) re-applies
+ * the same attribute once the full settings object is authoritative - this
+ * is just a fast, defensive early read of the same cookie.
+ */
+function applyStoredTheme() {
+    var settingsString = getCookie('settings');
+    if (settingsString == '') {
+        return;
+    }
+    try {
+        var stored = JSON.parse(settingsString);
+        if (stored.theme === THEME_DARK) {
+            document.documentElement.dataset.theme = THEME_DARK;
+        }
+    } catch (err) {
+        log('applyStoredTheme() failed', LOG_WARN, err);
     }
 }
 
