@@ -35,6 +35,15 @@
   --font-body: 'Plus Jakarta Sans', sans-serif;
 }
 
+a {
+  color: var(--color-accent);
+}
+
+a:hover,
+a:focus-visible {
+  text-decoration-thickness: 2px;
+}
+
 :root[data-theme="dark"] {
   --color-bg-page: #17151f;
   --color-bg-subtle: #322f45;
