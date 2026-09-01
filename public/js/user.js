@@ -27,6 +27,10 @@ function showUserWindow() {
             '<span class="nav-link-small" onclick="goToForgotPassword();">Forgot password?</span>'
         ;
     } else {
+        var pendingEmailNotice = user.pending_email
+            ? '<div class="nav-form-message" style="color: var(--color-warning);">Email change pending confirmation for ' + user.pending_email + '. <span class="nav-link-small" onclick="cancelPendingEmailChange();">Cancel</span></div>'
+            : '';
+
         document.getElementById('userWindow').innerHTML =
             '<div class="nav-account-head">' +
                 '<div class="nav-avatar">' + userInitials() + '</div>' +
@@ -35,6 +39,8 @@ function showUserWindow() {
                     '<div class="nav-account-email">' + user.email + '</div>' +
                 '</div>' +
             '</div>' +
+            pendingEmailNotice +
+            '<button id="userEditProfileBtn" class="nav-btn-secondary" type="button" onClick="showEditProfileForm();"><i class="material-icons-round">edit</i>&nbsp;Edit profile</button>' +
             '<button id="userChangePasswordBtn" class="nav-btn-secondary" type="button" onClick="showChangePasswordForm();"><i class="material-icons-round">lock</i>&nbsp;Change password</button>' +
             '<button id="userLogoutBtn" class="nav-btn-secondary nav-btn-danger" type="button" onClick="logoutUser()"><i class="material-icons-round">logout</i>&nbsp;Log out</button>' +
             '<div id="userWindowSub"></div>'
@@ -112,6 +118,81 @@ function submitChangePassword() {
         message.style.color = 'var(--color-danger)';
         message.textContent = err.message;
         document.getElementById('userChangePasswordSaveBtn').disabled = false;
+    });
+}
+
+/**
+ * Self-service edit of firstname/lastname/email - requires the current
+ * password, same as showChangePasswordForm(), since email doubles as the
+ * account's recovery address. firstname/lastname take effect immediately;
+ * a changed email only takes effect once the confirmation link mailed to
+ * the new address is clicked (see AuthService::updateProfile()).
+ */
+function showEditProfileForm() {
+    document.getElementById('userWindowSub').innerHTML =
+        '<div class="nav-divider"></div>' +
+        '<div class="nav-field"><label for="userEditProfileFirstname">First name</label><input id="userEditProfileFirstname" type="text" value="' + user.firstname + '"></div>' +
+        '<div class="nav-field"><label for="userEditProfileLastname">Last name</label><input id="userEditProfileLastname" type="text" value="' + user.lastname + '"></div>' +
+        '<div class="nav-field"><label for="userEditProfileEmail">Email</label><input id="userEditProfileEmail" type="email" value="' + user.email + '"></div>' +
+        '<div class="nav-field"><label for="userEditProfileCurrentPassword">Current password</label><input id="userEditProfileCurrentPassword" type="password" autocomplete="current-password"></div>' +
+        '<div class="nav-form-message" id="userEditProfileMessage"></div>' +
+        '<button id="userEditProfileSaveBtn" class="nav-btn-primary" type="button" onClick="submitEditProfile();"><i class="material-icons-round">check</i>&nbsp;Save profile</button>' +
+        '<span class="nav-link-small" onclick="document.getElementById(\'userWindowSub\').innerHTML=\'\';">Cancel</span>'
+    ;
+}
+
+function submitEditProfile() {
+    var firstname = document.getElementById('userEditProfileFirstname').value.trim();
+    var lastname = document.getElementById('userEditProfileLastname').value.trim();
+    var email = document.getElementById('userEditProfileEmail').value.trim();
+    var currentPassword = document.getElementById('userEditProfileCurrentPassword').value;
+    var message = document.getElementById('userEditProfileMessage');
+
+    document.getElementById('userEditProfileSaveBtn').disabled = true;
+
+    Ytan.put('/auth/profile', {
+        firstname: firstname,
+        lastname: lastname,
+        email: email,
+        current_password: currentPassword
+    }).then(answer => {
+        Ytan.setToken(answer.token);
+
+        user.firstname = answer.user.firstname;
+        user.lastname = answer.user.lastname;
+        user.email = answer.user.email;
+        user.pending_email = answer.email_change_pending ? answer.pending_email : null;
+
+        sessionStorage.setItem('user', JSON.stringify(user));
+        updatePreferencesRowLabel();
+
+        showToast(
+            answer.email_change_pending
+                ? 'Confirmation email sent to ' + answer.pending_email + '.'
+                : 'Profile updated.',
+            'success'
+        );
+
+        showUserWindow();
+    }).catch(err => {
+        message.style.color = 'var(--color-danger)';
+        message.textContent = err.message;
+        document.getElementById('userEditProfileSaveBtn').disabled = false;
+    });
+}
+
+/**
+ * Cancels a pending email-change request from the persistent notice shown
+ * in showUserWindow() - does not touch the current (unconfirmed) address.
+ */
+function cancelPendingEmailChange() {
+    Ytan.del('/auth/email-change').then(() => {
+        user.pending_email = null;
+        sessionStorage.setItem('user', JSON.stringify(user));
+        showToast('Pending email change canceled.', 'info');
+        showUserWindow();
+    }).catch(err => {
+        showToast(err.message, 'error');
     });
 }
 

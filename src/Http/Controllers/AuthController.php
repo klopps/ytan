@@ -36,7 +36,13 @@ final class AuthController extends BaseController
 
     public function me(Request $request, Response $response): Response
     {
-        return $this->json($response, ['data' => $this->requireAuthUser($request)]);
+        $auth = $this->requireAuthUser($request);
+
+        $pending = $this->users->findActivePendingEmailChange((int) $auth['sub']);
+        $auth['pending_email'] = $pending['payload'] ?? null;
+        $auth['pending_email_expires_at'] = $pending['expires_at'] ?? null;
+
+        return $this->json($response, ['data' => $auth]);
     }
 
     /**
@@ -102,5 +108,61 @@ final class AuthController extends BaseController
         $this->authService->changePassword((int) $auth['sub'], $currentPassword, $newPassword);
 
         return $this->json($response, ['message' => 'Password changed.']);
+    }
+
+    /**
+     * Self-service update of the logged-in user's own firstname/lastname/
+     * email - requires the current password (email is also the account's
+     * recovery address, so changing it deserves the same proof-of-password
+     * as changePassword()). firstname/lastname apply immediately; a changed
+     * email only takes effect once confirmEmailChange() redeems the mailed
+     * link - see AuthService::updateProfile().
+     */
+    public function updateProfile(Request $request, Response $response): Response
+    {
+        $auth = $this->requireAuthUser($request);
+        $body = $this->jsonBody($request);
+        $firstname = trim((string) ($body['firstname'] ?? ''));
+        $lastname = trim((string) ($body['lastname'] ?? ''));
+        $email = trim((string) ($body['email'] ?? ''));
+        $currentPassword = (string) ($body['current_password'] ?? '');
+
+        if ($firstname === '' || $lastname === '' || $email === '' || $currentPassword === '') {
+            throw new ValidationException('firstname, lastname, email and current_password are required.');
+        }
+
+        return $this->json(
+            $response,
+            $this->authService->updateProfile((int) $auth['sub'], $firstname, $lastname, $email, $currentPassword)
+        );
+    }
+
+    /**
+     * Cancels a pending email-change request without touching the current
+     * (unconfirmed) address.
+     */
+    public function cancelEmailChange(Request $request, Response $response): Response
+    {
+        $auth = $this->requireAuthUser($request);
+        $this->authService->cancelEmailChange((int) $auth['sub']);
+
+        return $this->json($response, ['message' => 'Pending email change canceled.']);
+    }
+
+    /**
+     * Redeems the token from an emailed "confirm your new email" link.
+     * Public/unauthenticated - the token itself is the proof, same as
+     * setPassword() above.
+     */
+    public function confirmEmailChange(Request $request, Response $response): Response
+    {
+        $body = $this->jsonBody($request);
+        $token = (string) ($body['token'] ?? '');
+
+        if ($token === '') {
+            throw new ValidationException('token is required.');
+        }
+
+        return $this->json($response, $this->authService->confirmEmailChange($token));
     }
 }

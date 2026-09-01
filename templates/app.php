@@ -289,6 +289,8 @@
           user.firstname = answer.data.firstname;
           user.lastname = answer.data.lastname;
           user.is_admin = !!answer.data.is_admin;
+          user.pending_email = answer.data.pending_email;
+          user.pending_email_expires_at = answer.data.pending_email_expires_at;
 
           sessionStorage.setItem('user', JSON.stringify(user));
           updatePreferencesRowLabel();

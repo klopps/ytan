@@ -118,7 +118,8 @@ function loadGoogleMaps(APIKey) {
         key: APIKey,
         callback: 'initMap',
         libraries: 'geometry',
-        v: 'weekly'
+        v: 'weekly',
+        loading: 'async'
     });
 
     document.getElementById("gdpr").style.display = "none";
@@ -142,6 +143,7 @@ const injectGoogleMapsApiScript = (options = {}) => {
 
     const script = document.createElement('script');
     script.setAttribute('src', url);
+    script.async = true;
     document.head.appendChild(script);
 
     googleMapsScriptIsInjected = true;
@@ -544,6 +546,8 @@ function initUser() {
         email: '',
         firstname: '',
         lastname: '',
-        is_admin: false
+        is_admin: false,
+        pending_email: null,
+        pending_email_expires_at: null
     }
 }

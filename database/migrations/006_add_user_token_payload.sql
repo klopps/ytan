@@ -1,0 +1,1 @@
+ALTER TABLE user_token ADD COLUMN payload VARCHAR(255) NULL AFTER purpose;

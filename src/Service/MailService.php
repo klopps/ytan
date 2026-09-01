@@ -44,6 +44,18 @@ final class MailService
         );
     }
 
+    public function sendEmailChangeConfirmation(string $toNewEmail, string $link): void
+    {
+        $this->send(
+            $toNewEmail,
+            $this->appName . ' - Confirm your new email address',
+            "You requested to change the email address on your " . $this->appName . " account to this one.\n" .
+            "Use the link below to confirm the change:\n\n" .
+            "$link\n\n" .
+            "This link is valid for 1 hour. If you did not request this, you can ignore this email."
+        );
+    }
+
     private function send(string $toEmail, string $subject, string $bodyText): void
     {
         $mail = new PHPMailer(true);
