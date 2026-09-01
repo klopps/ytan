@@ -61,19 +61,21 @@ function renderUserTable(users) {
 
     for (let i = 0; i < users.length; i++) {
         var u = users[i];
-        var name = [u.firstname, u.lastname].filter(Boolean).map(escapeHTML).join(' ');
-        html += '<tr>' +
-            '<td data-label="Username">' + escapeHTML(u.username) + '</td>' +
-            '<td data-label="Email">' + escapeHTML(u.email || '') + '</td>' +
-            '<td data-label="Name">' + name + '</td>' +
-            '<td data-label="Role">' + (u.is_admin ? '<span class="admin-badge">Admin</span>' : '') + '</td>' +
-            '<td class="actions" data-label="Actions">' +
-                iconButton('edit', 'Edit', 'editUserRow(' + u.id + ');') +
-                iconButton('vpn_key', 'Set password', 'showSetPasswordForm(' + u.id + ', ' + JSON.stringify(u.username) + ');') +
-                iconButton('forward_to_inbox', 'Send password reset email', 'sendResetEmailRow(' + u.id + ');') +
-                iconButton('delete', 'Delete', 'deleteUserRow(' + u.id + ');') +
-            '</td>' +
-            '</tr>';
+        if (u.username !== "system")  { // hide user "system"
+            var name = [u.firstname, u.lastname].filter(Boolean).map(escapeHTML).join(' ');
+            html += '<tr>' +
+                '<td data-label="Username">' + escapeHTML(u.username) + '</td>' +
+                '<td data-label="Email">' + escapeHTML(u.email || '') + '</td>' +
+                '<td data-label="Name">' + name + '</td>' +
+                '<td data-label="Role">' + (u.is_admin ? '<span class="admin-badge">Admin</span>' : '') + '</td>' +
+                '<td class="actions" data-label="Actions">' +
+                    iconButton('edit', 'Edit', 'editUserRow(' + u.id + ');') +
+                    iconButton('vpn_key', 'Set password', 'showSetPasswordForm(' + u.id + ', ' + JSON.stringify(u.username) + ');') +
+                    iconButton('forward_to_inbox', 'Send password reset email', 'sendResetEmailRow(' + u.id + ');') +
+                    iconButton('delete', 'Delete', 'deleteUserRow(' + u.id + ');') +
+                '</td>' +
+                '</tr>';
+        }
     }
 
     html += '</tbody></table></div>';
