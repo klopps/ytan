@@ -46,7 +46,6 @@
     <meta name="apple-mobile-web-app-title" content="<?= htmlspecialchars($appName) ?>">
   </head>
   <body>
-    <div id="iconlogo"></div>
     <div id="gotomylocation" onclick="panToGeolocation();">
       <i class="material-icons-round">my_location</i>
     </div>
