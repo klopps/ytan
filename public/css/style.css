@@ -65,7 +65,7 @@ body {
   margin: 0;
   padding: 0;
   font-family: var(--font-body);
-  line-height: 1;
+  line-height: 1.2em;
   background-color: var(--color-bg-page);
   color: var(--color-text);
 }
@@ -235,6 +235,45 @@ img.wsi {
 
 
 /**
+* Google Maps InfoWindow chrome (the Route/POI/Area edit dialogs, .infoWindowElement
+* above). Google renders the bubble itself - background, tail, close button -
+* via its own stylesheet injected at runtime (.gm-style-iw-c etc.), entirely
+* outside our --color-* cascade, so it stays hardcoded white regardless of
+* theme. The content inside already inherits our tokens correctly (it's our
+* own markup); only this chrome needs a theme-aware override, and only for
+* dark mode - light mode's white bubble is the intended look. !important is
+* needed since Google's rules are injected after ours and would otherwise
+* win the cascade at equal specificity.
+*/
+:root[data-theme="dark"] .gm-style-iw-c {
+  background-color: var(--color-bg-panel) !important;
+}
+
+:root[data-theme="dark"] .gm-style-iw-tc::after {
+  background-color: var(--color-bg-panel) !important;
+}
+
+:root[data-theme="dark"] .gm-ui-hover-effect span {
+  background-color: var(--color-text) !important;
+}
+
+/* .gm-style-iw-d is forced to overflow:scroll (not auto) by Google's own
+   inline style, so its scrollbar track always renders even with nothing to
+   scroll - style it too or a light-grey sliver remains inside the dark bubble. */
+:root[data-theme="dark"] .gm-style-iw-d {
+  scrollbar-color: var(--color-border) var(--color-bg-panel);
+}
+
+:root[data-theme="dark"] .gm-style-iw-d::-webkit-scrollbar-track {
+  background: var(--color-bg-panel);
+}
+
+:root[data-theme="dark"] .gm-style-iw-d::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+}
+
+
+/**
 * Side Menu
 */
 #sidemenu {
@@ -275,6 +314,7 @@ img.wsi {
   padding: 70px 40px 50px 40px;
   text-align: left;
   box-sizing: border-box;
+  line-height: 1.3;
 }
 
 .cm_content h2 {
@@ -283,7 +323,7 @@ img.wsi {
   font-weight: 600;
   color: var(--color-text);
   letter-spacing: 0.2px;
-  margin: 0 0 24px 0;
+  margin: 1.5em 0 0.5em 0;
 }
 
 /* Only the cookie-consent panel's heading should be centered - it sits
@@ -301,7 +341,7 @@ img.wsi {
 }
 
 .cm_content p {
-  line-height: 1.5;
+  
 }
 
 .cookieConsentBody {
@@ -338,10 +378,25 @@ img.wsi {
    screen the entire time a panel is open, which covers whatever content
    happens to scroll underneath it, not just content past the very end.
    As a flow element it only ever appears once, after everything else. */
+/* .panel-logo and .logo_large (below) render the YTAN mark via mask-image
+   rather than <img src="images/ytan.svg">, so background-color can tint it
+   with our theme tokens instead of it staying the SVG's own hardcoded black
+   (invisible on a dark panel). A div has no intrinsic size like an <img>
+   would, so aspect-ratio (matching the SVG's own viewBox) is required here. */
 .panel-logo {
   display: block;
   width: 120px;
+  aspect-ratio: 1873 / 1349;
   margin: 50px auto 0 auto;
+  background-color: var(--color-text);
+  mask-image: url("../images/ytan.svg");
+  -webkit-mask-image: url("../images/ytan.svg");
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-position: center;
+  mask-size: contain;
+  -webkit-mask-size: contain;
 }
 
 .forgotPasswordLink {
@@ -702,10 +757,21 @@ img.wsi {
 
 .logo_large {
   display: block;
+  width: 100%;
+  aspect-ratio: 1873 / 1349;
   margin-left: auto;
   margin-right: auto;
   margin-top: 50px;
   max-width: 500px;
+  background-color: var(--color-text);
+  mask-image: url("../images/ytan.svg");
+  -webkit-mask-image: url("../images/ytan.svg");
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-position: center;
+  mask-size: contain;
+  -webkit-mask-size: contain;
 }
 
 #gotomylocation {
@@ -1076,7 +1142,7 @@ p.LighthouseCharacteristic {
 }
 
 .inputError {
-  background: linear-gradient(90deg, rgba(255,255,255,1) 0%, rgba(255,255,255,1) 95%, rgba(255,0,0,1) 95%, rgba(255,0,0,1) 100%);
+  background: linear-gradient(90deg, var(--color-bg-panel) 0%, var(--color-bg-panel) 95%, rgba(255,0,0,1) 95%, rgba(255,0,0,1) 100%);
 }
 
 

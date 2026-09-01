@@ -62,7 +62,7 @@
           <button id="startBtn" class="startbtn" onclick="loadGoogleMaps('<?= htmlspecialchars($mapsApiKey) ?>')" disabled>START</button>
         </p>
       </div>
-      <img class="logo_large" src="images/ytan.svg">
+      <div class="logo_large"></div>
     </div>
 
     <div id="map"></div>
@@ -102,10 +102,12 @@
 
           <ul class="nav-menu-list nav-menu-footer">
             <li><button type="button" class="nav-menu-row" onclick="openLegalMenu('<?= $baseUrl ?>/about');"><i class="material-icons-round nav-menu-row-icon">info</i><span class="nav-menu-row-labels">About</span></button></li>
-            <li><button type="button" class="nav-menu-row" onclick="openLegalMenu('<?= $baseUrl ?>/legal/impressum');"><i class="material-icons-round nav-menu-row-icon">description</i><span class="nav-menu-row-labels">Imprint</span></button></li>
-            <li><button type="button" class="nav-menu-row" onclick="openLegalMenu('<?= $baseUrl ?>/legal/datenschutz');"><i class="material-icons-round nav-menu-row-icon">privacy_tip</i><span class="nav-menu-row-labels">Privacy Note</span></button></li>
+            <li><button type="button" class="nav-menu-row" onclick="openLegalMenu('<?= $baseUrl ?>/legal/imprint');"><i class="material-icons-round nav-menu-row-icon">description</i><span class="nav-menu-row-labels">Imprint</span></button></li>
+            <li><button type="button" class="nav-menu-row" onclick="openLegalMenu('<?= $baseUrl ?>/legal/privacy');"><i class="material-icons-round nav-menu-row-icon">privacy_tip</i><span class="nav-menu-row-labels">Privacy Note</span></button></li>
             <li><button type="button" class="nav-menu-row" onclick="openCookieMenu();"><i class="material-icons-round nav-menu-row-icon">verified_user</i><span class="nav-menu-row-labels">Cookies</span></button></li>
           </ul>
+
+          <div class="panel-logo"></div>
         </div>
       </div>
 
@@ -232,7 +234,7 @@
           <div class="button" onclick="closeCookieMenu();"><i class="material-icons-round">check</i>&nbsp;I agree to the use of cookies</div>
           <div class="button" onclick="revokeConsent();"><i class="material-icons-round">not_interested</i>&nbsp;I would like to delete the cookies</div>
         </div>
-        <img class="panel-logo" src="images/ytan.svg">
+        <div class="panel-logo"></div>
       </div>
     </div>
 
@@ -241,7 +243,7 @@
       <div id="legalmenu-close-btn" class="panel-close-btn" onclick="closeLegalMenu();"><i class="material-icons-round">close</i></div>
       <div class="cm_content">
         <div id="legalmenu-content"></div>
-        <img class="panel-logo" src="images/ytan.svg">
+        <div class="panel-logo"></div>
       </div>
     </div>
 
@@ -252,7 +254,7 @@
         <h2>Users</h2>
         <div id="useradminmenu-form"></div>
         <div id="useradminmenu-list"></div>
-        <img class="panel-logo" src="images/ytan.svg">
+        <div class="panel-logo"></div>
       </div>
     </div>
 

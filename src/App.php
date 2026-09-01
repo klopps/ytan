@@ -171,17 +171,17 @@ final class App
             return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
         });
 
-        $app->get('/legal/impressum', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl) {
+        $app->get('/legal/imprint', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl) {
             ob_start();
-            require $rootDir . '/templates/impressum.php';
+            require $rootDir . '/templates/imprint.php';
             $res->getBody()->write(ob_get_clean());
 
             return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
         });
 
-        $app->get('/legal/datenschutz', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl) {
+        $app->get('/legal/privacy', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl) {
             ob_start();
-            require $rootDir . '/templates/datenschutz.php';
+            require $rootDir . '/templates/privacy.php';
             $res->getBody()->write(ob_get_clean());
 
             return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
