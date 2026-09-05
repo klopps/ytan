@@ -6,6 +6,7 @@
     <meta charset="utf-8"/>
 
     <script>window.YTAN_API_BASE = "<?= htmlspecialchars($baseUrl, ENT_QUOTES) ?>/api/v1";</script>
+    <script>window.YTAN_GOOGLE_SEARCH_REQUIRES_LOGIN = <?= $googleSearchRequiresLogin ? 'true' : 'false' ?>;</script>
 
     <script src="./lib/jquery/jquery-3.7.1.min.js?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/jquery/jquery-3.7.1.min.js') ?>"></script>
     <script src="./lib/selectize/selectize.min.js?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/selectize/selectize.min.js') ?>"></script>
@@ -67,6 +68,22 @@
     <div id="map"></div>
     <div id="sidemenu-toggle" onclick="toggleMenu()">
       <i class="material-icons-round" id="sidemenu-opener">menu</i>
+    </div>
+
+    <div id="mapSearchWrapper" class="map-search-wrapper">
+      <div id="mapSearchContainer" class="map-search-container">
+        <button id="mapSearchToggle" type="button" onclick="toggleMapSearch()" aria-label="Suche">
+          <i class="material-icons-round">search</i>
+        </button>
+        <input type="text" id="mapSearchInput" class="map-search-input" placeholder="Ort suchen…" autocomplete="off">
+      </div>
+      <div id="mapSearchDropdown" class="map-search-dropdown" hidden>
+        <div id="mapSearchModeToggle" class="map-search-mode-toggle" hidden>
+          <button type="button" class="map-search-mode-btn" data-mode="google" onclick="setSearchMode('google')">Google</button>
+          <button type="button" class="map-search-mode-btn" data-mode="own" onclick="setSearchMode('own')">Eigene POIs</button>
+        </div>
+        <ul id="mapSearchResultsList" class="map-search-results-list"></ul>
+      </div>
     </div>
 
     <div id="sidemenu">
@@ -196,6 +213,11 @@
           <ul class="nav-menu-list">
             <li><button type="button" class="nav-menu-row" onclick="openUserAdminMenu();"><i class="material-icons-round nav-menu-row-icon">admin_panel_settings</i><span class="nav-menu-row-labels">Users<span class="nav-menu-row-sub">Manage accounts &amp; permissions</span></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
           </ul>
+          <label class="nav-toggle-row">
+            <span class="nav-toggle-text">Google search requires login</span>
+            <input type="checkbox" id="settingGoogleSearchRequiresLogin" class="nav-switch-input" onclick="toggleGoogleSearchRequiresLogin(this)" <?= $googleSearchRequiresLogin ? 'checked' : '' ?>>
+            <span class="nav-switch-track"><span class="nav-switch-thumb"></span></span>
+          </label>
         </div>
       </div>
 
@@ -295,6 +317,7 @@
           sessionStorage.setItem('user', JSON.stringify(user));
           updatePreferencesRowLabel();
           updateAdminMenuVisibility();
+          updateGoogleSearchAllowed();
         }).catch(() => {
           // stored token is invalid/expired - fall back to the logged-out state
           Ytan.setToken(null);

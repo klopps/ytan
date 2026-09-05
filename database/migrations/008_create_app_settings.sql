@@ -1,0 +1,4 @@
+CREATE TABLE app_settings (
+    id TINYINT UNSIGNED NOT NULL PRIMARY KEY,
+    google_search_requires_login TINYINT(1) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

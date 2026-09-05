@@ -229,6 +229,8 @@ function logoutUser() {
     document.getElementById('routeButton').classList.remove('active');
     updatePreferencesRowLabel();
     updateAdminMenuVisibility();
+    updateGoogleSearchAllowed();
+    resetSearchState();
     deleteRoutes();
     areas = [];
     areaPolygons = [];
@@ -271,6 +273,7 @@ function loginUser() {
         getRoutesByUserId(user.id);
         updatePreferencesRowLabel();
         updateAdminMenuVisibility();
+        updateGoogleSearchAllowed();
         enablePoiButton();
     }).catch(err => {
         document.getElementById('userLoginUsername').disabled = false;

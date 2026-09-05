@@ -14,6 +14,7 @@ use Ytan\Database\Connection;
 use Ytan\Domain\Area\AreaRepository;
 use Ytan\Domain\Poi\PoiRepository;
 use Ytan\Domain\Route\RouteRepository;
+use Ytan\Domain\Settings\SettingsRepository;
 use Ytan\Domain\Tour\TourRepository;
 use Ytan\Domain\User\UserRepository;
 use Ytan\Exception\ApiException;
@@ -21,6 +22,7 @@ use Ytan\Http\Controllers\AreaController;
 use Ytan\Http\Controllers\AuthController;
 use Ytan\Http\Controllers\PoiController;
 use Ytan\Http\Controllers\RouteController;
+use Ytan\Http\Controllers\SettingsController;
 use Ytan\Http\Controllers\TourController;
 use Ytan\Http\Controllers\UserController;
 use Ytan\Http\Controllers\WsiController;
@@ -67,6 +69,8 @@ final class App
         $authController = new AuthController($authService, $userRepository, $mailService, $appUrl);
         $userController = new UserController($userRepository, $mailService, $authService, $appUrl);
         $wsiController = new WsiController(new WsiRenderer($rootDir . '/public/images/wsi'));
+        $settingsRepository = new SettingsRepository($pdo);
+        $settingsController = new SettingsController($settingsRepository);
 
         $app = AppFactory::create();
 
@@ -150,10 +154,13 @@ final class App
 
         $app->get('/api/v1/wsi/{code}', [$wsiController, 'show']);
 
-        $app->get('/', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl) {
+        $app->put('/api/v1/settings/google-search-requires-login', [$settingsController, 'updateGoogleSearchRequiresLogin']);
+
+        $app->get('/', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $settingsRepository) {
             ob_start();
             $mapsApiKey = $_ENV['MAPS_API_KEY'] ?? '';
             $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
+            $googleSearchRequiresLogin = $settingsRepository->googleSearchRequiresLogin();
             require $rootDir . '/templates/app.php';
             $res->getBody()->write(ob_get_clean());
 

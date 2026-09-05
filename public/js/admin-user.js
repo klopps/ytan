@@ -237,3 +237,23 @@ async function sendResetEmailRow(id) {
         showToast('Sending the reset email failed: ' + err.message, 'error');
     });
 }
+
+/**
+ * "Google search requires login" toggle (Site Settings drawer screen).
+ * Persists the site-wide flag via PUT /api/v1/settings/... (admin-only,
+ * enforced server-side too) and updates this session's own
+ * googleSearchAllowed (map-core.js) immediately, so the admin sees the
+ * effect without reloading.
+ */
+function toggleGoogleSearchRequiresLogin(checkbox) {
+    const enabled = checkbox.checked;
+
+    Ytan.put('/settings/google-search-requires-login', { enabled: enabled }).then(() => {
+        window.YTAN_GOOGLE_SEARCH_REQUIRES_LOGIN = enabled;
+        googleSearchAllowed = !enabled || user.id !== null;
+        showToast('Saved.', 'success');
+    }).catch(err => {
+        checkbox.checked = !enabled;
+        showToast('Save failed: ' + err.message, 'error');
+    });
+}

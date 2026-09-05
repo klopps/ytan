@@ -188,8 +188,8 @@ hr {
   top: 16px;
   left: 16px;
   z-index: 10;
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   border-radius: 13px;
   background-color: var(--color-bg-panel);
   box-shadow: var(--shadow-soft);
@@ -201,6 +201,158 @@ hr {
   border: none;
   user-select: none;
   -webkit-user-select: none;
+}
+
+
+.map-search-wrapper {
+  position: fixed;
+  top: 16px;
+  left: 68px;
+  z-index: 10;
+}
+
+.map-search-container {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  border-radius: 13px;
+  background-color: var(--color-bg-panel);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+  transition: width 0.2s ease;
+}
+
+#mapSearchToggle {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--color-text);
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.map-search-input {
+  width: 0;
+  min-width: 0;
+  opacity: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 0;
+  transition: width 0.2s ease, opacity 0.15s ease, padding 0.2s ease;
+}
+
+.map-search-input::placeholder {
+  color: var(--color-text-faint);
+}
+
+.map-search-container.expanded .map-search-input {
+  width: 200px;
+  opacity: 1;
+  padding-right: 14px;
+}
+
+/* A single self-rendered panel for both Google predictions (from the
+   data-only AutocompleteService, not the SearchBox widget) and own-POI
+   matches — deliberately not Google's native pac-container, which
+   positions itself from the <input>'s own rect and can't make room for a
+   mode-toggle row above its suggestions. */
+.map-search-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 260px;
+  max-width: 320px;
+  border-radius: 13px;
+  background-color: var(--color-bg-panel);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.map-search-mode-toggle {
+  display: flex;
+  background: var(--color-bg-subtle);
+  border-radius: 10px;
+  padding: 3px;
+  margin: 8px;
+  gap: 2px;
+}
+
+/* Its own display:flex above outranks the UA stylesheet's [hidden] rule at
+   equal specificity (author styles beat user-agent styles), so toggling
+   the hidden property alone wouldn't actually hide it - this rule's higher
+   specificity (class + attribute) restores that. */
+.map-search-mode-toggle[hidden] {
+  display: none;
+}
+
+.map-search-mode-btn {
+  flex: 1;
+  text-align: center;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 6px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--color-text-secondary);
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.map-search-mode-btn.active {
+  background: var(--color-bg-panel);
+  color: var(--color-accent);
+  box-shadow: var(--shadow-soft);
+}
+
+.map-search-results-list {
+  margin: 0;
+  padding: 6px 0;
+  list-style: none;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.map-search-results-list li {
+  padding: 8px 14px;
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.map-search-results-list li:hover {
+  background: var(--color-accent-soft);
+}
+
+/* Below this width there's no room for the dropdown's desktop width to
+   the right of the pill without running off the edge of the screen. */
+@media screen and (max-width: 640px) {
+  .map-search-dropdown {
+    position: fixed;
+    top: 64px;
+    left: 16px;
+    right: 16px;
+    min-width: 0;
+    max-width: none;
+  }
 }
 
 
@@ -279,6 +431,48 @@ img.wsi {
 
 :root[data-theme="dark"] .gm-style-iw-d::-webkit-scrollbar-thumb {
   background-color: var(--color-border);
+}
+
+/**
+ * The "remove search marker" InfoWindow shows nothing but a small red X -
+ * Google's own bubble chrome (white background, shadow, tail, its own
+ * close button) around that would just be an ugly, mostly-empty box, so
+ * it's stripped entirely. Scoped via :has() to .gm-style-iw-t containing
+ * .search-remove-badge, so this doesn't affect the POI/Route/Area
+ * InfoWindows, which share the same Google-injected classes.
+ */
+.gm-style-iw-t:has(.search-remove-badge) .gm-style-iw-c {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.gm-style-iw-t:has(.search-remove-badge) .gm-style-iw-d {
+  overflow: hidden !important;
+  padding: 0 !important;
+}
+
+.gm-style-iw-t:has(.search-remove-badge) .gm-style-iw-tc {
+  display: none !important;
+}
+
+.gm-style-iw-t:has(.search-remove-badge) .gm-ui-hover-effect {
+  display: none !important;
+}
+
+.search-remove-badge {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.search-remove-badge .material-icons-round {
+  font-size: 24px;
+  color: var(--color-danger);
+  text-shadow: 0 0 2px #fff, 0 0 2px #fff, 0 0 2px #fff;
 }
 
 
@@ -1322,10 +1516,10 @@ input[type="color"] {
   display: none; /* to show user "inline-block" */
   position: absolute;
   line-height: 0px;
-  top: 0;
+  top: 16px; /* aligned with #sidemenu-toggle / .map-search-wrapper's top:16px */
   right: 10px;
-  margin: 10px 0px 0px 0px;
-  padding: 6px;
+  margin: 0;
+  padding: 2px 6px; /* 2px top/bottom + 36px icon-buttons + 2px = 40px, matching the other top-bar controls */
   background-color: var(--color-bg-panel);
   border: none;
   border-radius: 15px;
@@ -1334,10 +1528,31 @@ input[type="color"] {
   z-index: 100;
   -webkit-box-shadow: var(--shadow-soft)!important;
   box-shadow: var(--shadow-soft)!important;
+  /* visibility isn't itself animatable - transitioning it with 0s duration
+     and 0s delay just means "switch to visible the instant this rule
+     applies", i.e. immediately when .hidden-for-search is removed, so the
+     slide-back-in is visible from the first frame. */
+  transition: transform 0.2s ease, visibility 0s linear 0s; /* matches .map-search-container's own 0.2s expand/collapse */
 
   -webkit-user-select: none; /* Safari */
   -ms-user-select: none; /* IE 10 and IE 11 */
   user-select: none; /* Standard syntax */
+}
+
+/* Below this width the expanded search pill's dropdown zone overlaps
+   #editToolbar's fixed top-right position - slide it off-screen for as
+   long as the search box is expanded (toggleMapSearch(), ui.js). Uses
+   transform/visibility rather than panelOpened()/panelClosed()'s inline
+   style.visibility, so the two hide-reasons compose correctly instead of
+   one clobbering the other (see toggleMapSearch()'s comment). */
+@media screen and (max-width: 640px) {
+  #editToolbar.hidden-for-search {
+    transform: translateX(150%);
+    visibility: hidden;
+    /* Delay the visibility switch until the slide-out transform finishes,
+       instead of hiding instantly and skipping the animation. */
+    transition: transform 0.2s ease, visibility 0s linear 0.2s;
+  }
 }
 
 .toolbar-icon-btn {
@@ -1385,10 +1600,10 @@ input[type="color"] {
 #secondToolbar {
   display: none; /* toggled to "flex" by showSecondToolbar()/hideSecondToolbar() in ui.js */
   position: absolute;
-  top: 0;
+  top: 16px; /* mirrors #editToolbar's top:16px */
   /* right is set dynamically in showSecondToolbar() - depends on #editToolbar's rendered width */
-  margin: 10px 0px 0px 0px;
-  padding: 6px;
+  margin: 0;
+  padding: 2px 6px; /* mirrors #editToolbar's 40px-tall box */
   align-items: center;
   gap: 8px;
   background-color: var(--color-bg-panel);

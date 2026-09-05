@@ -26,12 +26,49 @@ var openPanelCount = 0;
 function panelOpened() {
     openPanelCount++;
     document.getElementById("editToolbar").style.visibility = "hidden";
+    document.getElementById("mapSearchWrapper").style.visibility = "hidden";
 }
 
 function panelClosed() {
     openPanelCount = Math.max(0, openPanelCount - 1);
     if (openPanelCount === 0) {
         document.getElementById("editToolbar").style.visibility = "";
+        document.getElementById("mapSearchWrapper").style.visibility = "";
+    }
+}
+
+
+/**
+ * Map search box (magnifying-glass toggle -> input backed by
+ * AutocompleteService/own-POI search, see map-core.js). Collapsing clears
+ * the typed text and the results dropdown, but leaves a dropped search
+ * marker in place, since the marker represents the last found result
+ * independent of whether the box is expanded.
+ */
+function toggleMapSearch() {
+    var container = document.getElementById("mapSearchContainer");
+    var input = document.getElementById("mapSearchInput");
+    var expanding = !container.classList.contains("expanded");
+
+    container.classList.toggle("expanded", expanding);
+
+    // Below 640px the expanded search pill's dropdown zone overlaps
+    // #editToolbar's fixed top-right position - slide it off-screen for
+    // as long as the search box is open. Uses a CSS class (transform +
+    // visibility) rather than panelOpened()/panelClosed()'s inline
+    // style.visibility, so the two hide-reasons compose correctly instead
+    // of one clobbering the other: panelClosed() only ever *clears* its
+    // own inline override, which then falls back to this class if it's
+    // still applied.
+    if (window.matchMedia("(max-width: 640px)").matches) {
+        document.getElementById("editToolbar").classList.toggle("hidden-for-search", expanding);
+    }
+
+    if (expanding) {
+        input.focus();
+    } else {
+        input.value = "";
+        resetSearchState();
     }
 }
 

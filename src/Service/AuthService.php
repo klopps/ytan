@@ -24,11 +24,12 @@ final class AuthService
     /**
      * Validates credentials and returns [token, expiresAt, user] on success.
      * Mirrors the legacy behaviour of migrating a still-plaintext stored
-     * password to a bcrypt hash on first successful login.
+     * password to a bcrypt hash on first successful login. The identifier
+     * may be either the username or the account's email address.
      */
     public function login(string $username, string $password): array
     {
-        $user = $this->users->findByUsername($username);
+        $user = $this->users->findByUsername($username) ?? $this->users->findByEmail($username);
         if ($user === null || $user['password'] === null) {
             throw new UnauthorizedException('Invalid username or password.');
         }
