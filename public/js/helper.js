@@ -21,6 +21,33 @@ function escapeHTML(unsafe) {
  }
 
 
+const DIACRITIC_FOLD_MAP = {
+    'æ': 'ae', 'œ': 'oe', 'ø': 'o', 'ß': 'ss',
+    'ł': 'l', 'đ': 'd', 'ð': 'd', 'þ': 'th', 'ı': 'i'
+};
+// Unicode combining-marks block (accents left over after NFD decomposition)
+const COMBINING_MARKS_RE = new RegExp('[\\u0300-\\u036f]', 'g');
+
+/**
+ * Case- und diakritik-unabhängige Normalisierung für Textvergleiche (Suche).
+ * NFD zerlegt akzentuierte Buchstaben in Basisbuchstabe + Kombinationszeichen
+ * (z.B. Umlaute, franz./skandinavische/osteuropäische Akzente), das
+ * anschließende Replace entfernt Letzteres. Die Handvoll eigenständiger
+ * Sonderbuchstaben ohne NFD-Zerlegung (æ, ø, ß, ł, đ, ð, þ, ı) wird vorher
+ * über DIACRITIC_FOLD_MAP abgebildet.
+ *
+ * @param {string} str Eingabetext
+ * @returns {string} kleingeschriebener, diakritik-freier Vergleichstext
+ */
+function foldSearchText(str) {
+    return str
+        .toLowerCase()
+        .replace(/[æœøłđðþıß]/g, (ch) => DIACRITIC_FOLD_MAP[ch])
+        .normalize('NFD')
+        .replace(COMBINING_MARKS_RE, '');
+}
+
+
  function rad(x) {
     return x * Math.PI / 180;
   };

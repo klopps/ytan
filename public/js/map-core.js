@@ -359,7 +359,7 @@ function handleSearchInput() {
     const query = document.getElementById('mapSearchInput').value.trim();
 
     ownPoiMatches = query.length >= 2
-        ? pois.filter(poi => poi.name && poi.name.toLowerCase().includes(query.toLowerCase())).slice(0, 8)
+        ? pois.filter(poi => poi.name && foldSearchText(poi.name).includes(foldSearchText(query))).slice(0, 8)
         : [];
 
     clearTimeout(searchDebounceTimer);
