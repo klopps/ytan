@@ -436,7 +436,7 @@ function renderSearchDropdown() {
     const ownBtn = tabBar.querySelector('[data-mode="own"]');
     googleBtn.classList.toggle('active', searchMode === 'google');
     ownBtn.classList.toggle('active', searchMode === 'own');
-    ownBtn.textContent = 'Eigene POIs (' + ownPoiMatches.length + ')';
+    ownBtn.textContent = 'POIs (' + ownPoiMatches.length + ')';
 
     list.innerHTML = '';
 

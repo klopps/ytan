@@ -80,7 +80,7 @@
       <div id="mapSearchDropdown" class="map-search-dropdown" hidden>
         <div id="mapSearchModeToggle" class="map-search-mode-toggle" hidden>
           <button type="button" class="map-search-mode-btn" data-mode="google" onclick="setSearchMode('google')">Google</button>
-          <button type="button" class="map-search-mode-btn" data-mode="own" onclick="setSearchMode('own')">Eigene POIs</button>
+          <button type="button" class="map-search-mode-btn" data-mode="own" onclick="setSearchMode('own')">POIs</button>
         </div>
         <ul id="mapSearchResultsList" class="map-search-results-list"></ul>
       </div>
