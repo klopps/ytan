@@ -443,7 +443,17 @@ function renderSearchDropdown() {
     if (searchMode === 'own') {
         ownPoiMatches.forEach(poi => {
             const item = document.createElement('li');
-            item.textContent = poi.name;
+
+            const icon = document.createElement('img');
+            icon.className = 'map-search-result-icon';
+            icon.src = 'markers/poi_' + poi.poitype_id + '_mapicons_square16.png';
+            icon.alt = '';
+            item.appendChild(icon);
+
+            const label = document.createElement('span');
+            label.textContent = poi.name;
+            item.appendChild(label);
+
             item.addEventListener('mousedown', (event) => {
                 event.preventDefault();
                 selectSearchPoi(poi.id);
@@ -453,7 +463,11 @@ function renderSearchDropdown() {
     } else {
         googlePredictions.forEach(prediction => {
             const item = document.createElement('li');
-            item.textContent = prediction.description;
+
+            const label = document.createElement('span');
+            label.textContent = prediction.description;
+            item.appendChild(label);
+
             item.addEventListener('mousedown', (event) => {
                 event.preventDefault();
                 selectGooglePrediction(prediction.place_id, prediction.description);

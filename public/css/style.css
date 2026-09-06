@@ -328,18 +328,31 @@ hr {
 }
 
 .map-search-results-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 8px 14px;
   color: var(--color-text);
   font-family: var(--font-body);
   font-size: 14px;
   cursor: pointer;
-  white-space: nowrap;
+}
+
+.map-search-results-list li span {
   overflow: hidden;
+  white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .map-search-results-list li:hover {
   background: var(--color-accent-soft);
+}
+
+.map-search-result-icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
 }
 
 /* Below this width there's no room for the dropdown's desktop width to
