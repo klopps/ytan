@@ -750,6 +750,20 @@ img.wsi {
   gap: 10px;
 }
 
+.confirm-dialog-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 20px;
+  padding: 10px 12px;
+  font-size: 16px;
+  text-align: center;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 10px;
+  background-color: var(--color-bg-page);
+  color: var(--color-text);
+}
+
 .admin-panel-header {
   display: flex;
   justify-content: flex-end;
@@ -886,6 +900,136 @@ img.wsi {
   background-color: var(--color-accent-soft);
   border-radius: 4px;
   padding: 2px 6px;
+  margin: 0 4px 4px 0;
+}
+
+.admin-badge-tour {
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-subtle);
+}
+
+.admin-filter-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 900px;
+  margin: 0 auto 8px auto;
+  padding: 9px 14px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 10px;
+  background-color: var(--color-bg-panel);
+  color: var(--color-text-secondary);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-filter-toggle .material-icons-round {
+  font-size: 17px;
+}
+
+.admin-filter-chevron {
+  margin-left: auto;
+}
+
+.admin-filter-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  max-width: 900px;
+  margin: 0 auto 14px auto;
+  padding: 10px 14px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 10px;
+  background-color: var(--color-bg-subtle);
+}
+
+.admin-filter-check-row {
+  display: flex;
+  align-items: center;
+}
+
+.admin-filter-check-row label {
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  max-width: 900px;
+  margin: 10px auto 0 auto;
+  padding: 4px 2px;
+}
+
+.admin-pagination-size {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+}
+
+.admin-pagination-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+}
+
+.admin-pagination-page {
+  min-width: 90px;
+  text-align: center;
+}
+
+.admin-pagination-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.admin-pagination-nav-btn:hover {
+  background-color: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+.admin-pagination-nav-btn.disabled {
+  color: var(--color-text-faint);
+  cursor: default;
+  pointer-events: none;
+}
+
+@media screen and (max-width: 640px) {
+  .admin-pagination-nav-btn {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+/* tour-admin.js's list view: one shared "rows per page" row above the My
+   Tours/Public Tours sections (reuses .admin-pagination-size's layout), and
+   a compact nav-only pagination bar per section below each one's table -
+   each section paginates independently since "My Tours" and "Public Tours"
+   are unrelated result sets with their own counts. */
+.tour-page-size-row {
+  margin-bottom: 14px;
+}
+
+.admin-pagination.admin-pagination-section-only {
+  justify-content: center;
+  max-width: none;
+  margin: 6px 0 18px 0;
 }
 
 /* Below this width, a 5-column table with 4 action buttons per row never
@@ -960,6 +1104,438 @@ img.wsi {
 
   .admin-user-table .icon-btn .material-icons-round {
     font-size: 20px;
+  }
+}
+
+
+/**
+* Tours (tour-admin.js: browse/manage panel + route manager, route.js:
+* the "add to tour" popup shortcut). Reuses admin-user-table/admin-badge/
+* .button/.hint rather than introducing a parallel set of primitives.
+*/
+.hint {
+  font-size: 11px;
+  color: var(--color-text-faint);
+}
+
+/* Generic search bar (search icon + text input) - originally built for the
+   Tours panel, reused as-is by the admin user panel's search too rather
+   than duplicating an identical block under a second class name. */
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* --color-bg-panel, not -subtle, matching .tour-length-filter input's
+     background - the panel itself sits on --color-bg-page, which is nearly
+     indistinguishable from --color-bg-subtle, so that combination barely
+     showed the field's outline against the panel. */
+  background-color: var(--color-bg-panel);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 10px;
+  padding: 9px 12px;
+  margin: 10px 0;
+  color: var(--color-text-faint);
+}
+
+.search-bar .material-icons-round {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.search-bar input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--color-text);
+}
+
+.search-bar input::placeholder {
+  color: var(--color-text-faint);
+}
+
+.tour-length-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.tour-length-filter input {
+  width: 70px;
+  box-sizing: border-box;
+  font-family: var(--font-body);
+  font-size: 13px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border-subtle);
+  background-color: var(--color-bg-panel);
+  color: var(--color-text);
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background-color: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.chip-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 6px 0;
+}
+
+.chip-input {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  padding: 6px 8px;
+  background-color: var(--color-bg-panel);
+}
+
+.tag-chip-removable {
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.tag-chip-removable .material-icons-round {
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.chip-input input {
+  flex: 1;
+  min-width: 80px;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--color-text);
+  padding: 3px 0;
+}
+
+.tour-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.tour-photo-tile {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  overflow: hidden;
+  background-color: var(--color-bg-subtle);
+}
+
+.tour-photo-tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.tour-photo-remove {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.tour-photo-remove .material-icons-round {
+  font-size: 12px;
+}
+
+.tour-photo-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px dashed var(--color-border-subtle);
+  color: var(--color-text-faint);
+  cursor: pointer;
+}
+
+.tour-photo-gallery {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin: 10px 0;
+}
+
+.tour-photo-gallery-img {
+  width: 96px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 10px;
+  flex-shrink: 0;
+  background-color: var(--color-bg-subtle);
+}
+
+.tour-list-row {
+  cursor: pointer;
+}
+
+.tour-list-meta {
+  color: var(--color-text-faint);
+  font-size: 11.5px;
+}
+
+.tour-detail-back {
+  margin-bottom: 8px;
+}
+
+.tour-detail-name {
+  font-family: var(--font-display);
+  margin: 0 0 4px 0;
+}
+
+.tour-detail-meta {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.tour-detail-desc {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  margin-bottom: 10px;
+}
+
+.tour-route-list {
+  margin: 0 0 16px 0;
+  padding-left: 20px;
+  font-size: 13px;
+}
+
+.tour-route-list li {
+  padding: 4px 0;
+}
+
+.tour-detail-actions .nav-btn-primary {
+  width: 100%;
+  margin: 10px 0;
+}
+
+.tour-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tour-route-manager-list {
+  margin-bottom: 6px;
+}
+
+.tour-route-manager-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.tour-route-manager-row-selected {
+  background-color: var(--color-accent-soft);
+  border-radius: 8px;
+  border-bottom: none;
+  margin-bottom: 4px;
+  padding: 8px 8px;
+}
+
+.tour-route-manager-order {
+  display: flex;
+  flex-direction: column;
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+.tour-route-manager-order .material-icons-round {
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.tour-route-manager-order-disabled {
+  opacity: 0.3;
+  cursor: not-allowed !important;
+}
+
+.tour-route-manager-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.tour-route-manager-remove,
+.tour-route-manager-add {
+  cursor: pointer;
+  color: var(--color-text-faint);
+  flex-shrink: 0;
+}
+
+.tour-route-manager-add {
+  color: var(--color-accent);
+}
+
+.addToTourMenu {
+  margin-top: 6px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* .search-bar/.tour-length-filter (tour-admin.js's list view) assume a
+   page-level container that already supplies side spacing - .addToTourMenu
+   has none of its own (its list items provide their own padding instead),
+   and an InfoWindow's width is much tighter than the Tours panel, so both
+   controls get their own compact margins/sizing here rather than reusing
+   the panel's exact spacing. */
+.addToTourMenu .search-bar {
+  margin: 8px;
+  padding: 6px 10px;
+}
+
+/* An InfoWindow is too narrow to fit "LENGTH (KM)" and both inputs on one
+   row the way the Tours panel does - wrap the label onto its own line
+   instead of shrinking the inputs until their placeholders truncate. */
+.addToTourMenu .tour-length-filter {
+  margin: 0 8px 8px 8px;
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
+.addToTourMenu .tour-length-filter .nav-field-label {
+  width: 100%;
+}
+
+.addToTourMenuItem {
+  padding: 8px 10px;
+  font-size: 12.5px;
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.addToTourMenuItem:hover {
+  background-color: var(--color-accent-soft);
+}
+
+.addToTourMenuEmpty {
+  color: var(--color-text-faint);
+  cursor: default;
+}
+
+.addToTourMenuEmpty:hover {
+  background-color: transparent;
+}
+
+.addToTourMenuNew {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+/**
+* Tour Mode badge (shown on the main map while a tour is active) - a pill
+* left-aligned under #sidemenu-toggle/.map-search-wrapper (top:16px,
+* left:16/68px) so it never overlaps them, and stays clear of #editToolbar
+* on the opposite corner (right:10px) so editToolbar's route/POI/area
+* buttons stay fully reachable while Tour Mode is on.
+*/
+.tour-mode-badge {
+  position: absolute;
+  top: 64px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background-color: var(--color-bg-panel);
+  box-shadow: var(--shadow-panel);
+  border-radius: 15px; /* matches #editToolbar/#secondToolbar's chrome radius, not a full pill */
+  padding: 8px 10px 8px 12px;
+  z-index: 5;
+}
+
+.tour-mode-badge-icon {
+  color: var(--color-accent);
+  font-size: 19px;
+}
+
+.tour-mode-badge-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.tour-mode-badge-name {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text);
+  white-space: nowrap;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tour-mode-badge-sub {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--color-text-faint);
+}
+
+.tour-mode-badge-close {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.tour-mode-badge-close .material-icons-round {
+  font-size: 13px;
+}
+
+/* Below this width the route-manager's reorder/remove/add icons (15-21px,
+   fine for a precise mouse pointer) are too small to reliably tap - bump
+   them to the same ~40px touch-target minimum admin-user-table's .icon-btn
+   already uses on mobile (style.css, "Tours" section above). */
+@media screen and (max-width: 640px) {
+  .tour-route-manager-add,
+  .tour-route-manager-remove {
+    font-size: 22px;
+    padding: 11px;
+    line-height: 1;
+  }
+
+  .tour-route-manager-order .material-icons-round {
+    font-size: 20px;
+    padding: 9px 11px;
   }
 }
 
@@ -1191,6 +1767,14 @@ input[type="checkbox"].star:checked + label::before {
    override with a hardcoded fill instead of reusing a --token. */
 :root[data-theme="dark"] .select-css {
   background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20height%3D%2224px%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224px%22%20fill%3D%22%23b8b6c9%22%3E%3Cpath%20d%3D%22M24%2024H0V0h24v24z%22%20fill%3D%22none%22%20opacity%3D%22.87%22%2F%3E%3Cpath%20d%3D%22M15.88%209.29L12%2013.17%208.12%209.29c-.39-.39-1.02-.39-1.41%200-.39.39-.39%201.02%200%201.41l4.59%204.59c.39.39%201.02.39%201.41%200l4.59-4.59c.39-.39.39-1.02%200-1.41-.39-.38-1.03-.39-1.42%200z%22%2F%3E%3C%2Fsvg%3E');
+}
+
+/* Compact modifier for the admin pagination bar's "rows per page" dropdown -
+   .select-css's default 200px width is meant for longer option labels. */
+.select-css-compact {
+  width: 68px;
+  max-width: 68px;
+  padding: 4px 22px 4px 6px;
 }
 
 /* Hide arrow icon in IE browsers */
@@ -2104,6 +2688,7 @@ input[type="color"] {
   justify-content: center;
   gap: 8px;
   width: calc(100% - 32px);
+  box-sizing: border-box;
   margin: 8px 16px;
   background: var(--color-accent);
   color: var(--color-on-accent);

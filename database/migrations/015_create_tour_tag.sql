@@ -1,0 +1,8 @@
+CREATE TABLE tour_tag (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    tour_id BIGINT UNSIGNED NOT NULL,
+    tag VARCHAR(50) NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY UK_tour_tag (tour_id, tag),
+    CONSTRAINT FK_tour_tag_tour FOREIGN KEY (tour_id) REFERENCES tour (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

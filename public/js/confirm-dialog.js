@@ -80,3 +80,85 @@ function showConfirmDialog(message, options) {
         cancelBtn.focus();
     });
 }
+
+/**
+ * Same overlay/dialog shell as showConfirmDialog() above, plus a numeric
+ * input - used for the "solve a simple captcha before deleting a
+ * tour-linked route" flow (route.js: deleteRoute()). Resolves the entered
+ * number, or null if cancelled.
+ */
+function showCaptchaDialog(question) {
+    return new Promise(function (resolve) {
+        var overlay = document.createElement('div');
+        overlay.className = 'confirm-dialog-overlay';
+
+        var dialog = document.createElement('div');
+        dialog.className = 'confirm-dialog confirm-dialog-default';
+
+        var icon = document.createElement('i');
+        icon.className = 'material-icons-round confirm-dialog-icon';
+        icon.textContent = 'quiz';
+
+        var text = document.createElement('div');
+        text.className = 'confirm-dialog-message';
+        text.textContent = 'This route is part of one or more tours. To confirm deletion, please solve: ' + question;
+
+        var input = document.createElement('input');
+        input.type = 'number';
+        input.className = 'confirm-dialog-input';
+        input.inputMode = 'numeric';
+
+        var actions = document.createElement('div');
+        actions.className = 'confirm-dialog-actions';
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'button';
+        cancelBtn.textContent = 'Cancel';
+
+        var confirmBtn = document.createElement('button');
+        confirmBtn.type = 'button';
+        confirmBtn.className = 'startbtn';
+        confirmBtn.textContent = 'Delete';
+
+        function close(result) {
+            document.removeEventListener('keydown', onKeydown);
+            overlay.remove();
+            resolve(result);
+        }
+
+        function submit() {
+            if (input.value === '') {
+                input.focus();
+                return;
+            }
+            close(parseInt(input.value, 10));
+        }
+
+        function onKeydown(event) {
+            if (event.key === 'Escape') {
+                close(null);
+            } else if (event.key === 'Enter') {
+                submit();
+            }
+        }
+
+        cancelBtn.addEventListener('click', function () {
+            close(null);
+        });
+        confirmBtn.addEventListener('click', submit);
+
+        actions.appendChild(cancelBtn);
+        actions.appendChild(confirmBtn);
+
+        dialog.appendChild(icon);
+        dialog.appendChild(text);
+        dialog.appendChild(input);
+        dialog.appendChild(actions);
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+
+        document.addEventListener('keydown', onKeydown);
+        input.focus();
+    });
+}

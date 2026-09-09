@@ -1,9 +1,14 @@
 /**
- * Tour selector (a tour groups several routes together).
+ * Keeps the global tours[] array (the current user's own + public tours)
+ * in sync, and activates/exits Tour Mode on the map. The drawer's old
+ * in-place tour-picker dropdown that used to live here is gone - the
+ * "Tours" drawer row now opens the full Tours panel directly
+ * (tour-admin.js), whose detail view's "Activate Tour Mode" button calls
+ * activateTourMode() below.
  */
 
 /**
- * Hole alle Touren eines Users, speichere sie in tours[] und aktualisiere die Auswahlliste im Sidemenu
+ * Hole alle Touren eines Users und speichere sie in tours[]
  *
  * @param {number} userId
  */
@@ -11,12 +16,11 @@ function getToursByUserId(userId) {
     Ytan.get('/tours?scope=mine_public').then(answer => {
         tours = answer.data;
         log('getToursByUserId(' + userId + ')', LOG_INFO, answer);
-        updateTourSelector();
     }).catch(err => log('getToursByUserId() failed', LOG_ERROR, err));
 }
 
 /**
- * Hole alle öffentlichen Touren, speichere sie in tours[] und aktualisiere die Auswahlliste im Sidemenu
+ * Hole alle öffentlichen Touren und speichere sie in tours[]
  */
 function getPublicTours() {
     log('getPublicTours() called', LOG_INFO);
@@ -24,44 +28,34 @@ function getPublicTours() {
     Ytan.get('/tours?scope=public').then(answer => {
         log('getPublicTours() answer received', LOG_INFO, answer);
         tours = answer.data;
-        updateTourSelector();
     }).catch(err => log('getPublicTours() failed', LOG_ERROR, err));
 }
 
-function updateTourSelector() {
-    var options = [];
-    options[0] = {value: -1, text: '-ALL TOURS-'};
-
-    for (let i = 0; i < tours.length; i++) {
-        options[i+1] = {value: tours[i].id, text: tours[i].name};
-    }
-
-    $('#select-tour').selectize({
-        maxItems: 1,
-        labelField: 'text',
-        sortField: {
-            field: 'text',
-            direction: 'asc'
-        },
-        options: options,
-        create: false,
-        allowEmptyOption: true
-    });
+/**
+ * Enters Tour Mode: filters the map down to just this tour's routes and
+ * shows the persistent "Tour Mode" badge (see #tourModeBadge in app.php)
+ * so it stays obvious which tour is active - and, unlike a full-screen
+ * panel, leaves #editToolbar untouched/usable, since Tour Mode is just a
+ * route filter on the normal map, not an overlay.
+ *
+ * @param {number} id
+ * @param {string} name
+ */
+function activateTourMode(id, name) {
+    getRoutesByTourId(id);
+    document.getElementById('tourModeBadgeName').textContent = name;
+    document.getElementById('tourModeBadge').style.display = 'flex';
 }
 
-function showSelectedTour() {
-    var selected = $('#select-tour').val();
-
-    hideRoutes();
-
-    if (selected == -1) {
-        if (user.id !== null) {
-            getRoutesByUserId(user.id);
-        } else {
-            getPublicRoutes();
-        }
+/**
+ * Leaves Tour Mode and goes back to showing all of the user's own (or, if
+ * signed out, all public) routes.
+ */
+function exitTourMode() {
+    document.getElementById('tourModeBadge').style.display = 'none';
+    if (user.id !== null) {
+        getRoutesByUserId(user.id);
     } else {
-        getRoutesByTourId(selected);
+        getPublicRoutes();
     }
-    closeMenu();
 }

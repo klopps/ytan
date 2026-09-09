@@ -22,11 +22,21 @@ final class UserController extends BaseController
     ) {
     }
 
+    private const TOUR_RIGHT_FIELDS = ['is_admin', 'tour_create', 'tour_publish', 'tour_manage', 'tour_copy'];
+
     public function index(Request $request, Response $response): Response
     {
         $this->requireAdmin($request);
 
-        return $this->json($response, ['data' => $this->users->findAll()]);
+        $params = $request->getQueryParams();
+        $filters = [];
+        foreach (self::TOUR_RIGHT_FIELDS as $field) {
+            if (isset($params[$field])) {
+                $filters[$field] = $params[$field];
+            }
+        }
+
+        return $this->json($response, ['data' => $this->users->findAll($filters)]);
     }
 
     public function show(Request $request, Response $response, array $args): Response

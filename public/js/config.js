@@ -10,6 +10,12 @@ const LOG_DEBUG = 3;
 const ZINDEX_ROUTE = 10;
 const ZINDEX_POI = 20;
 
+// Page-size choices offered by the admin panels' "rows per page" dropdowns
+// (admin-user.js's user table, tour-admin.js's My/Public Tours sections),
+// and which one is selected by default whenever a panel is (re)opened.
+const ADMIN_LIST_PAGE_SIZES = [5, 10, 50, 100];
+const ADMIN_LIST_DEFAULT_PAGE_SIZE = 10;
+
 // Below this zoom level, individual POI markers are replaced by clustered
 // count indicators (grouped by screen proximity); at this zoom level and
 // above, individual POI markers are shown as usual.

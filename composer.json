@@ -27,5 +27,9 @@
     },
     "config": {
         "sort-packages": true
+    },
+    "scripts": {
+        "test": "phpunit",
+        "test-db": "php bin/setup-test-db.php"
     }
 }

@@ -266,6 +266,10 @@ function loginUser() {
         user.firstname  = answer.user.firstname;
         user.lastname   = answer.user.lastname;
         user.is_admin   = !!answer.user.is_admin;
+        user.tour_create  = !!answer.user.tour_create;
+        user.tour_publish = !!answer.user.tour_publish;
+        user.tour_manage  = !!answer.user.tour_manage;
+        user.tour_copy    = !!answer.user.tour_copy;
 
         sessionStorage.setItem('user', JSON.stringify(user));
         closeUserWindow();

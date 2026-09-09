@@ -8,8 +8,6 @@
  * service worker and drop the old cache automatically.
  */
 $shellFiles = [
-    '/lib/jquery/jquery-3.7.1.min.js',
-    '/lib/selectize/selectize.min.js',
     '/lib/measuretool-googlemap-v3/gmaps-measuretool.umd.js',
     '/lib/marked/marked.min.js',
     '/lib/markerWithLabel/markerwithlabel.min.js',
@@ -29,11 +27,11 @@ $shellFiles = [
     '/js/route.js',
     '/js/area.js',
     '/js/tour.js',
+    '/js/tour-admin.js',
     '/js/user.js',
     '/js/admin-user.js',
     '/css/style.css',
     '/css/fonts.css',
-    '/lib/selectize/selectize.default.min.css',
     '/favicon.ico',
     '/favicon-16x16.png',
     '/favicon-32x32.png',

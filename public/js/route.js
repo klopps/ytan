@@ -293,18 +293,41 @@ async function removeRoute(i) {
 
     log('removeRoute(' + i + ')', LOG_INFO, id);
 
-    Ytan.del('/routes/' + id).then(() => {
-        log('removeRoute() success', LOG_INFO);
-        measureTool.index = null;
-        measureTool.end();
-        hideRoute(i);
-        routes.splice(i, 1);
-        document.getElementById('routeButton').classList.remove('active');
-        routeEditWindow.close();
-    }).catch(err => {
-        log('removeRoute() failed', LOG_ERROR, err);
-        showToast('Removing the route failed: ' + err.message, 'error');
-    });
+    var path = '/routes/' + id;
+
+    try {
+        await Ytan.del(path);
+    } catch (err) {
+        // A route that's part of >=1 tours 422s with a captcha challenge
+        // instead of deleting immediately (Touren.md's "warn + simple
+        // captcha before deleting a tour route" flow) - solve it and retry
+        // the same DELETE with the answer attached.
+        if (err.status === 422 && err.data && err.data.captcha) {
+            var answer = await showCaptchaDialog(err.data.captcha.question);
+            if (answer === null) {
+                return false;
+            }
+            try {
+                await Ytan.del(path + '?captcha_token=' + encodeURIComponent(err.data.captcha.token) + '&captcha_answer=' + encodeURIComponent(answer));
+            } catch (err2) {
+                log('removeRoute() failed (after captcha)', LOG_ERROR, err2);
+                showToast('Removing the route failed: ' + err2.message, 'error');
+                return false;
+            }
+        } else {
+            log('removeRoute() failed', LOG_ERROR, err);
+            showToast('Removing the route failed: ' + err.message, 'error');
+            return false;
+        }
+    }
+
+    log('removeRoute() success', LOG_INFO);
+    measureTool.index = null;
+    measureTool.end();
+    hideRoute(i);
+    routes.splice(i, 1);
+    document.getElementById('routeButton').classList.remove('active');
+    routeEditWindow.close();
 }
 
 /**
@@ -314,6 +337,14 @@ async function removeRoute(i) {
  * ihrer auf den alten Array-Index geschlossenen Click-Handler auf der Karte
  * hängen bleiben - ein Klick darauf würde dann per Index in das neue,
  * inzwischen andere routes[]-Array greifen und die falsche Route auswählen.
+ *
+ * Same problem applies to a route's distance-label markers (showRouteLabels()) -
+ * they're a separate set of map overlays, not children of the polyline, so
+ * wiping routes[] here without also removing them first orphans whatever
+ * labels happened to be visible: still on the map, but frozen at their
+ * last zoom level forever, since renewVisibleRouteLabels() only walks the
+ * (now different) routes[] array on future zoom changes and never finds
+ * them again to update or remove.
  */
 function deleteRoutes() {
     for (let i = 0; i < routePaths.length; i++) {
@@ -322,6 +353,11 @@ function deleteRoutes() {
             google.maps.event.clearInstanceListeners(routePaths[i].routePathBackground);
             routePaths[i].routePathLine.setMap(null);
             routePaths[i].routePathBackground.setMap(null);
+        }
+    }
+    for (let i = 0; i < routes.length; i++) {
+        if (typeof routes[i] !== "undefined") {
+            hideRouteLabels(i);
         }
     }
     routes = [];
@@ -552,6 +588,15 @@ function hideRoutes() {
 
 function renewVisibleRouteLabels() {
     for (let i = 0; i < routes.length; i++) {
+        // Unlike every other loop over routes[] in this file, this one was
+        // missing the "is this slot actually populated" guard - a single
+        // stale/undefined entry (e.g. a route deleted mid-session) would
+        // throw here and silently abort the whole zoom_changed handler,
+        // freezing every route's labels from that point on, not just the
+        // broken one's.
+        if (typeof routes[i] === 'undefined') {
+            continue;
+        }
         if ((typeof routes[i].labels !== 'undefined') && (routes[i].labels != null)) {
             if (routes[i].labels.length > 0) {
                 hideRouteLabels(i);
@@ -659,9 +704,17 @@ function showRouteContextMenu(event, i) {
         if ((routes[i].user_id == user.id) || (user.is_admin === true)) {
             log('Show contextMenu', LOG_DEBUG);
 
+            contextMenuLastLatLng = event.latLng; // routeContextMenuAddToTour() reuses this to reposition routeInfoWindow
+
             var content =
                 '<div class="contextMenuItem" onClick="routeContextMenuEditRoute(' + i + ', null, null);">Edit route</div>' +
-                '<div class="contextMenuItem" onClick="routeContextMenuEditInfo(' + i + ');">Edit Info</div>' +
+                '<div class="contextMenuItem" onClick="routeContextMenuEditInfo(' + i + ');">Edit Info</div>';
+
+            if (routes[i].user_id == user.id) {
+                content += '<div class="contextMenuItem" onClick="routeContextMenuAddToTour(' + i + ');">Add to tour</div>';
+            }
+
+            content +=
                 '<div class="contextMenuItem" onClick="routeContextMenuRemoveRoute(' + i + ');">Delete route</div>' +
                 '<div class="contextMenuItem" onClick="closeContextMenu();">Cancel</div>'
                 ;
@@ -689,6 +742,27 @@ function routeContextMenuEditInfo(i) {
 function routeContextMenuEditRoute(i) {
     closeContextMenu();
     editRoute(i, null, null);
+}
+
+/**
+ * Right-click equivalent of double-clicking a route then tapping its
+ * "Add to tour" icon - opens the same routeInfoWindow (reusing the latLng
+ * showRouteContextMenu() captured, since a context-menu click carries a
+ * position too) and immediately expands its "Add to tour" popup.
+ *
+ * showRouteInfoWindow()'s open() call only queues the InfoWindow's content
+ * for the DOM - #addToTourMenu doesn't actually exist yet on the next line,
+ * so toggleAddToTourMenu(i) would find nothing and silently no-op. Google's
+ * own 'domready' event (already used the same way by e.g. routeEditWindow
+ * above) fires once the content is actually attached; addListenerOnce keeps
+ * it from stacking up across repeated opens.
+ */
+function routeContextMenuAddToTour(i) {
+    closeContextMenu();
+    showRouteInfoWindow({ latLng: contextMenuLastLatLng }, i);
+    google.maps.event.addListenerOnce(routeInfoWindow, 'domready', function() {
+        toggleAddToTourMenu(i);
+    });
 }
 
 function routeContextMenuRemoveRoute(i) {
@@ -727,9 +801,10 @@ function showRouteInfoWindow(event, i) {
         if (routes[i].user_id == user.id) {
             content +=
             '<div class="infoWindowBottom">' +
-                '<div class="lefthalf">&nbsp;</div>' +
+                '<div class="lefthalf"><i class="material-icons-round" title="Add to tour" onClick="toggleAddToTourMenu(' + i + ');">playlist_add</i></div>' +
                 '<div class="routeEdit"><i class="material-icons-round" onClick="editRoute(' + i + ', ' + event.latLng.lat() + ', ' + event.latLng.lng() +');">edit</i></div>' +
-            '</div>';
+            '</div>' +
+            '<div id="addToTourMenu" class="addToTourMenu" style="display:none;"></div>';
         }
     }
 
@@ -742,6 +817,119 @@ function showRouteInfoWindow(event, i) {
 function closeRouteInfoWindow(i) {
     routeInfoWindow.close();
     hideRouteLabels(i);
+}
+
+/**
+ * "Option C" from the Touren feature design: a contextual shortcut for
+ * adding the currently-open route straight into one of the user's own
+ * tours, without leaving the map or opening the full Tours panel. Building
+ * up a tour from scratch route-by-route is still better done through the
+ * Tours panel's "Edit Routes" checklist ("Option B") - this is a
+ * complement to that, not a replacement for it.
+ *
+ * Also reachable via the route's right-click menu (routeContextMenuAddToTour()).
+ *
+ * @param {number} i index of the route in routes[]
+ */
+function toggleAddToTourMenu(i) {
+    var menu = document.getElementById('addToTourMenu');
+    if (!menu) {
+        return;
+    }
+
+    if (menu.style.display === 'block') {
+        menu.style.display = 'none';
+        return;
+    }
+
+    addToTourMenuRouteIndex = i;
+    addToTourMenuSearchQuery = '';
+    addToTourMenuLengthFilter = { min: '', max: '' };
+    renderAddToTourMenu();
+    menu.style.display = 'block';
+}
+
+/**
+ * Builds the popup's static shell (search bar + length filter, mirroring
+ * tour-admin.js's list view) once, then delegates the actual tour list to
+ * renderFilteredAddToTourMenuList() - the same split renderTourList()/
+ * renderFilteredTourList() uses, so typing in the search box only re-renders
+ * the results, not the input itself.
+ */
+function renderAddToTourMenu() {
+    var menu = document.getElementById('addToTourMenu');
+    if (!menu) {
+        return;
+    }
+
+    var html = '<div class="search-bar"><i class="material-icons-round">search</i>' +
+            '<input type="text" id="addToTourMenuSearchInput" placeholder="Search tours" oninput="onAddToTourMenuSearchInput();"></div>' +
+        '<div class="tour-length-filter">' +
+            '<span class="nav-field-label" style="margin:0;">Length (km)</span>' +
+            '<input type="number" min="0" id="addToTourMenuLengthMin" placeholder="From" oninput="onAddToTourMenuLengthFilterChange();">' +
+            '<span>&ndash;</span>' +
+            '<input type="number" min="0" id="addToTourMenuLengthMax" placeholder="To" oninput="onAddToTourMenuLengthFilterChange();">' +
+        '</div>' +
+        '<div id="addToTourMenuResults"></div>';
+
+    menu.innerHTML = html;
+    renderFilteredAddToTourMenuList();
+}
+
+function onAddToTourMenuSearchInput() {
+    addToTourMenuSearchQuery = document.getElementById('addToTourMenuSearchInput').value;
+    renderFilteredAddToTourMenuList();
+}
+
+function onAddToTourMenuLengthFilterChange() {
+    addToTourMenuLengthFilter.min = document.getElementById('addToTourMenuLengthMin').value;
+    addToTourMenuLengthFilter.max = document.getElementById('addToTourMenuLengthMax').value;
+    renderFilteredAddToTourMenuList();
+}
+
+function renderFilteredAddToTourMenuList() {
+    var i = addToTourMenuRouteIndex;
+    var query = foldSearchText(addToTourMenuSearchQuery);
+    var minKm = parseFloat(addToTourMenuLengthFilter.min);
+    var maxKm = parseFloat(addToTourMenuLengthFilter.max);
+
+    var ownTours = tours.filter(t => user.id !== null && t.user_id == user.id).filter(t => {
+        if (query !== '' && !foldSearchText(t.name).includes(query)) {
+            return false;
+        }
+        var km = (t.total_length || 0) / 1000;
+        if (!isNaN(minKm) && km < minKm) return false;
+        if (!isNaN(maxKm) && km > maxKm) return false;
+        return true;
+    });
+
+    var html = '';
+    if (ownTours.length === 0) {
+        html += '<div class="addToTourMenuItem addToTourMenuEmpty">No tours found</div>';
+    } else {
+        for (let t = 0; t < ownTours.length; t++) {
+            html += '<div class="addToTourMenuItem" onclick="addRouteToTourFromPopup(' + i + ', ' + ownTours[t].id + ');">' + escapeHTML(ownTours[t].name) + '</div>';
+        }
+    }
+    if (canCreateTours()) {
+        html += '<div class="addToTourMenuItem addToTourMenuNew" onclick="addRouteToTourFromPopupAsNewTour(' + i + ');">+ New tour&hellip;</div>';
+    }
+
+    document.getElementById('addToTourMenuResults').innerHTML = html;
+}
+
+function addRouteToTourFromPopup(i, tourId) {
+    Ytan.post('/tours/' + tourId + '/routes', { route_id: routes[i].id }).then(() => {
+        document.getElementById('addToTourMenu').style.display = 'none';
+        showToast('Added to tour.', 'success');
+    }).catch(err => showToast('Adding to tour failed: ' + err.message, 'error'));
+}
+
+function addRouteToTourFromPopupAsNewTour(i) {
+    var routeId = routes[i].id;
+    closeRouteInfoWindow(i);
+    openTourAdminMenu();
+    showTourCreateForm(routeId);
 }
 
 function editRoute(i, lat, lng) {
@@ -766,11 +954,12 @@ function fitToRouteBounds() {
     var minLng = 180;
     var maxLng = -180;
 
-    var lat, lng, r, p;
+    var lat, lng, r, p, hasPoints = false;
 
     for (r = 0; r < routes.length; r++) {
         if (typeof routes[r] !== "undefined") {
             for (p = 0; p < routes[r].points.length; p++) {
+                hasPoints = true;
                 lat = routes[r].points[p].lat;
                 lng = routes[r].points[p].lng;
 
@@ -780,6 +969,14 @@ function fitToRouteBounds() {
                 if (lng > maxLng) maxLng = lng;
             }
         }
+    }
+
+    if (!hasPoints) {
+        // No routes (or only empty ones) - min/max stay at their inverted
+        // sentinel values, which would otherwise produce a degenerate
+        // LatLngBounds that Google Maps interprets as spanning the whole
+        // world instead of leaving the current view alone.
+        return;
     }
 
     log('SW:' + minLat + ', ' + minLng + '    NE:' + maxLat + ', ' + maxLng, LOG_DEBUG);

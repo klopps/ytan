@@ -52,6 +52,74 @@ const Ytan = (() => {
             const message = (payload && payload.error && payload.error.message) || ('HTTP ' + response.status);
             const error = new Error(message);
             error.status = response.status;
+            // Some error bodies (CaptchaRequiredException) carry extra
+            // structured fields (tour_count, captcha) alongside message -
+            // exposed here so callers like route.js's deleteRoute captcha
+            // flow don't need to re-fetch or re-parse the response.
+            if (payload && payload.error) {
+                error.data = payload.error;
+            }
+            throw error;
+        }
+
+        return payload;
+    }
+
+    /**
+     * Fetches a binary resource (e.g. a tour photo) as a Blob, with the
+     * same Bearer auth as request() above. A plain <img src="..."> can't
+     * attach an Authorization header, so callers that need to show a
+     * possibly-private image (tour photos) fetch it through here and set
+     * img.src to URL.createObjectURL(blob) instead of pointing at the URL
+     * directly - see tour-admin.js's renderTourImage().
+     */
+    async function fetchBlob(path) {
+        const headers = {};
+        const token = getToken();
+        if (token) {
+            headers['Authorization'] = 'Bearer ' + token;
+        }
+
+        const response = await fetch(BASE_URL + path, { headers });
+        if (!response.ok) {
+            throw new Error('HTTP ' + response.status);
+        }
+
+        return response.blob();
+    }
+
+    /**
+     * POSTs a FormData body (e.g. a tour photo upload) - unlike request()
+     * above, this must NOT set a JSON Content-Type; the browser sets its
+     * own multipart boundary header when given a FormData body.
+     */
+    async function postFile(path, formData) {
+        const headers = {};
+        const token = getToken();
+        if (token) {
+            headers['Authorization'] = 'Bearer ' + token;
+        }
+
+        const response = await fetch(BASE_URL + path, {
+            method: 'POST',
+            headers,
+            body: formData,
+        });
+
+        let payload = null;
+        try {
+            payload = await response.json();
+        } catch (e) {
+            // no/invalid JSON body
+        }
+
+        if (!response.ok) {
+            const message = (payload && payload.error && payload.error.message) || ('HTTP ' + response.status);
+            const error = new Error(message);
+            error.status = response.status;
+            if (payload && payload.error) {
+                error.data = payload.error;
+            }
             throw error;
         }
 
@@ -64,6 +132,8 @@ const Ytan = (() => {
         put: (path, body) => request('PUT', path, body),
         del: (path) => request('DELETE', path),
         wsiImageUrl: (code) => BASE_URL + '/wsi/' + code,
+        fetchBlob,
+        postFile,
         setToken,
         getToken,
         isLoggedIn: () => !!getToken(),

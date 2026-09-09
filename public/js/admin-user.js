@@ -15,12 +15,31 @@
  * "Forgot password?" request would send (sendResetEmailRow).
  */
 
+const TOUR_RIGHT_FIELDS = ['tour_create', 'tour_publish', 'tour_manage', 'tour_copy'];
+// "Admin" is an app-wide right, so it's left bare; the other four are all
+// specifically about tours and are labelled "Tour: ..." everywhere they're
+// shown (this table's badges, the filter panel below) so that's never
+// ambiguous - "Create"/"Publish"/"Manage"/"Copy" alone read as generic
+// permissions otherwise.
+const USER_RIGHT_LABELS = { is_admin: 'Admin', tour_create: 'Tour: Create', tour_publish: 'Tour: Publish', tour_manage: 'Tour: Manage', tour_copy: 'Tour: Copy' };
+let adminUserFilters = {}; // { is_admin: 1, tour_manage: 1, ... } - AND'ed together, see loadUserList()
+let adminUserFilterPanelOpen = false; // whether the collapsible "Filter by right" panel is expanded
+let adminUserLastList = []; // last list rendered, so toggling the filter panel/typing a search can re-render without a re-fetch
+let adminUserSearchQuery = ''; // client-side search over username/email/firstname/lastname, see renderFilteredUserRows()
+let adminUserPageSize = ADMIN_LIST_DEFAULT_PAGE_SIZE; // config.js
+let adminUserPage = 1; // 1-indexed, over the filtered result set (not the unfiltered list)
+
 function openUserAdminMenu() {
     closeMenu();
     document.getElementById("useradminmenu").style.width = "100%";
     document.getElementById("useradminmenu-close-btn").style.display = "flex";
     panelOpened();
     closeUserForm();
+    adminUserFilters = {};
+    adminUserFilterPanelOpen = false;
+    adminUserSearchQuery = '';
+    adminUserPageSize = ADMIN_LIST_DEFAULT_PAGE_SIZE;
+    adminUserPage = 1;
     loadUserList();
 }
 
@@ -31,13 +50,66 @@ function closeUserAdminMenu() {
 }
 
 function loadUserList() {
-    Ytan.get('/users').then(answer => {
+    var query = Object.keys(adminUserFilters).map(k => k + '=' + adminUserFilters[k]).join('&');
+
+    Ytan.get('/users' + (query ? '?' + query : '')).then(answer => {
         log('loadUserList()', LOG_INFO, answer);
         renderUserTable(answer.data);
     }).catch(err => {
         log('loadUserList() failed', LOG_ERROR, err);
         showToast('Loading users failed: ' + err.message, 'error');
     });
+}
+
+/**
+ * Toggles one right on/off in the filter panel (each right combines with
+ * any others already active, matching UserController::index()'s
+ * exact-match-per-field query params) and reloads the list.
+ */
+function toggleUserFilter(field) {
+    if (adminUserFilters.hasOwnProperty(field)) {
+        delete adminUserFilters[field];
+    } else {
+        adminUserFilters[field] = 1;
+    }
+    adminUserPage = 1; // the result set is about to change - stay on a page that still exists
+    loadUserList();
+}
+
+/**
+ * Expands/collapses the "Filter by right" panel - a plain UI toggle with no
+ * data to (re)fetch, so this re-renders from the already-loaded
+ * adminUserLastList instead of going through loadUserList() again.
+ */
+function toggleUserFilterPanel() {
+    adminUserFilterPanelOpen = !adminUserFilterPanelOpen;
+    renderUserTable(adminUserLastList);
+}
+
+function userFilterPanelHtml() {
+    var fields = ['is_admin'].concat(TOUR_RIGHT_FIELDS);
+    var activeCount = Object.keys(adminUserFilters).length;
+
+    var html = '<div class="admin-filter-toggle" onclick="toggleUserFilterPanel();">' +
+        '<i class="material-icons-round">tune</i>' +
+        '<span>Filter by right' + (activeCount > 0 ? ' (' + activeCount + ')' : '') + '</span>' +
+        '<i class="material-icons-round admin-filter-chevron">' + (adminUserFilterPanelOpen ? 'expand_less' : 'expand_more') + '</i>' +
+        '</div>';
+
+    if (adminUserFilterPanelOpen) {
+        html += '<div class="admin-filter-panel">';
+        for (let i = 0; i < fields.length; i++) {
+            var field = fields[i];
+            var checked = adminUserFilters.hasOwnProperty(field);
+            html += '<div class="admin-filter-check-row">' +
+                '<input type="checkbox" id="userFilter_' + field + '"' + (checked ? ' checked' : '') + ' onchange="toggleUserFilter(\'' + field + '\');">' +
+                '<label for="userFilter_' + field + '"><span></span>' + USER_RIGHT_LABELS[field] + '</label>' +
+                '</div>';
+        }
+        html += '</div>';
+    }
+
+    return html;
 }
 
 function iconButton(icon, title, onclick) {
@@ -51,40 +123,131 @@ function iconButton(icon, title, onclick) {
 }
 
 function renderUserTable(users) {
+    adminUserLastList = users;
+
     var html = '<div class="admin-panel-header">' +
         '<div class="startbtn" onclick="showUserCreateForm();"><i class="material-icons-round">person_add</i>&nbsp;New user</div>' +
         '</div>';
 
-    html += '<div class="admin-user-table-wrap"><table class="admin-user-table"><thead><tr>' +
-        '<th>Username</th><th>Email</th><th>Name</th><th></th><th class="actions">Actions</th>' +
+    html += '<div class="search-bar"><i class="material-icons-round">search</i>' +
+        '<input type="text" id="userSearchInput" placeholder="Search by name, username or email" value="' + escapeHTML(adminUserSearchQuery) + '" oninput="onAdminUserSearchInput();"></div>';
+
+    html += userFilterPanelHtml();
+
+    html += '<div id="adminUserTableResults"></div>';
+
+    document.getElementById('useradminmenu-list').innerHTML = html;
+    renderFilteredUserRows();
+}
+
+function onAdminUserSearchInput() {
+    adminUserSearchQuery = document.getElementById('userSearchInput').value;
+    adminUserPage = 1; // the result set is about to change - stay on a page that still exists
+    renderFilteredUserRows();
+}
+
+function onAdminUserPageSizeChange() {
+    adminUserPageSize = parseInt(document.getElementById('userPageSize').value, 10);
+    adminUserPage = 1;
+    renderFilteredUserRows();
+}
+
+function goToAdminUserPage(delta) {
+    adminUserPage += delta;
+    renderFilteredUserRows();
+}
+
+/**
+ * Renders just the results table + pagination bar (into
+ * #adminUserTableResults) from the already-loaded adminUserLastList,
+ * filtered client-side by adminUserSearchQuery across username/email/
+ * firstname/lastname and paged by adminUserPageSize/adminUserPage - kept
+ * separate from renderUserTable() so typing in the search box never
+ * rebuilds the search input itself (which would steal focus/cursor
+ * position), the same split renderFilteredTourList() uses in tour-admin.js.
+ */
+function renderFilteredUserRows() {
+    var query = foldSearchText(adminUserSearchQuery);
+
+    function matches(u) {
+        if (query === '') {
+            return true;
+        }
+        var fullName = [u.firstname, u.lastname].filter(Boolean).join(' ');
+        return foldSearchText(u.username).includes(query)
+            || foldSearchText(u.email || '').includes(query)
+            || foldSearchText(u.firstname || '').includes(query)
+            || foldSearchText(u.lastname || '').includes(query)
+            || foldSearchText(fullName).includes(query);
+    }
+
+    var allMatches = adminUserLastList.filter(u => u.username !== 'system').filter(matches);
+
+    var totalPages = Math.max(1, Math.ceil(allMatches.length / adminUserPageSize));
+    adminUserPage = Math.min(Math.max(1, adminUserPage), totalPages);
+    var pageStart = (adminUserPage - 1) * adminUserPageSize;
+    var users = allMatches.slice(pageStart, pageStart + adminUserPageSize);
+
+    var html = '<div class="admin-user-table-wrap"><table class="admin-user-table"><thead><tr>' +
+        '<th>Username</th><th>Email</th><th>Name</th><th>Rights</th><th class="actions">Actions</th>' +
         '</tr></thead><tbody>';
 
     for (let i = 0; i < users.length; i++) {
         var u = users[i];
-        if (u.username !== "system")  { // hide user "system"
-            var name = [u.firstname, u.lastname].filter(Boolean).map(escapeHTML).join(' ');
-            html += '<tr>' +
-                '<td data-label="Username">' + escapeHTML(u.username) + '</td>' +
-                '<td data-label="Email">' + escapeHTML(u.email || '') + '</td>' +
-                '<td data-label="Name">' + name + '</td>' +
-                '<td data-label="Role">' + (u.is_admin ? '<span class="admin-badge">Admin</span>' : '') + '</td>' +
-                '<td class="actions" data-label="Actions">' +
-                    iconButton('edit', 'Edit', 'editUserRow(' + u.id + ');') +
-                    iconButton('vpn_key', 'Set password', 'showSetPasswordForm(' + u.id + ', ' + JSON.stringify(u.username) + ');') +
-                    iconButton('forward_to_inbox', 'Send password reset email', 'sendResetEmailRow(' + u.id + ');') +
-                    iconButton('delete', 'Delete', 'deleteUserRow(' + u.id + ');') +
-                '</td>' +
-                '</tr>';
+        var name = [u.firstname, u.lastname].filter(Boolean).map(escapeHTML).join(' ');
+
+        var badges = u.is_admin ? '<span class="admin-badge">' + USER_RIGHT_LABELS.is_admin + '</span>' : '';
+        for (let r = 0; r < TOUR_RIGHT_FIELDS.length; r++) {
+            if (u[TOUR_RIGHT_FIELDS[r]]) {
+                badges += '<span class="admin-badge admin-badge-tour">' + USER_RIGHT_LABELS[TOUR_RIGHT_FIELDS[r]] + '</span>';
+            }
         }
+
+        html += '<tr>' +
+            '<td data-label="Username">' + escapeHTML(u.username) + '</td>' +
+            '<td data-label="Email">' + escapeHTML(u.email || '') + '</td>' +
+            '<td data-label="Name">' + name + '</td>' +
+            '<td data-label="Rights">' + (badges || '&ndash;') + '</td>' +
+            '<td class="actions" data-label="Actions">' +
+                iconButton('edit', 'Edit', 'editUserRow(' + u.id + ');') +
+                iconButton('vpn_key', 'Set password', 'showSetPasswordForm(' + u.id + ', ' + JSON.stringify(u.username) + ');') +
+                iconButton('forward_to_inbox', 'Send password reset email', 'sendResetEmailRow(' + u.id + ');') +
+                iconButton('delete', 'Delete', 'deleteUserRow(' + u.id + ');') +
+            '</td>' +
+            '</tr>';
     }
 
     html += '</tbody></table></div>';
 
-    document.getElementById('useradminmenu-list').innerHTML = html;
+    html += adminUserPaginationHtml(allMatches.length, totalPages);
+
+    document.getElementById('adminUserTableResults').innerHTML = allMatches.length
+        ? html
+        : '<p class="hint">No users found.</p>' + adminUserPaginationHtml(0, totalPages);
+}
+
+function adminUserPaginationHtml(totalMatches, totalPages) {
+    var sizeOptions = '';
+    for (let i = 0; i < ADMIN_LIST_PAGE_SIZES.length; i++) {
+        var size = ADMIN_LIST_PAGE_SIZES[i];
+        sizeOptions += '<option value="' + size + '"' + (size === adminUserPageSize ? ' selected' : '') + '>' + size + '</option>';
+    }
+
+    return '<div class="admin-pagination">' +
+        '<div class="admin-pagination-size">' +
+            '<label for="userPageSize">Rows per page:</label>' +
+            '<select id="userPageSize" class="select-css select-css-compact" onchange="onAdminUserPageSizeChange();">' + sizeOptions + '</select>' +
+        '</div>' +
+        '<div class="admin-pagination-nav">' +
+            '<span class="admin-pagination-nav-btn' + (adminUserPage <= 1 ? ' disabled' : '') + '" onclick="' + (adminUserPage > 1 ? 'goToAdminUserPage(-1);' : '') + '"><i class="material-icons-round">chevron_left</i></span>' +
+            '<span class="admin-pagination-page">' + (totalMatches === 0 ? '0 users' : 'Page ' + adminUserPage + ' of ' + totalPages) + '</span>' +
+            '<span class="admin-pagination-nav-btn' + (adminUserPage >= totalPages ? ' disabled' : '') + '" onclick="' + (adminUserPage < totalPages ? 'goToAdminUserPage(1);' : '') + '"><i class="material-icons-round">chevron_right</i></span>' +
+        '</div>' +
+        '</div>';
 }
 
 function userFormHtml(u) {
-    u = u || { id: null, username: '', email: '', firstname: '', lastname: '', is_admin: false };
+    u = u || { id: null, username: '', email: '', firstname: '', lastname: '', is_admin: false, tour_create: false, tour_publish: false, tour_manage: false, tour_copy: false };
 
     var saveCall = u.id === null ? 'saveNewUser()' : 'saveEditedUser(' + u.id + ')';
     var hint = u.id === null
@@ -113,6 +276,23 @@ function userFormHtml(u) {
         '<div class="adminFormRow">' +
             '<div class="adminFormLabel"><label for="userFormIsAdmin">Admin: </label></div>' +
             '<div class="adminFormField"><input id="userFormIsAdmin" type="checkbox"' + (u.is_admin ? ' checked' : '') + '><label for="userFormIsAdmin"><span></span></label></div>' +
+        '</div>' +
+        '<p class="nav-field-label">Tour rights</p>' +
+        '<div class="adminFormRow">' +
+            '<div class="adminFormLabel"><label for="userFormTourCreate">Create: </label></div>' +
+            '<div class="adminFormField"><input id="userFormTourCreate" type="checkbox"' + (u.tour_create ? ' checked' : '') + '><label for="userFormTourCreate"><span></span></label></div>' +
+        '</div>' +
+        '<div class="adminFormRow">' +
+            '<div class="adminFormLabel"><label for="userFormTourPublish">Publish: </label></div>' +
+            '<div class="adminFormField"><input id="userFormTourPublish" type="checkbox"' + (u.tour_publish ? ' checked' : '') + '><label for="userFormTourPublish"><span></span></label></div>' +
+        '</div>' +
+        '<div class="adminFormRow">' +
+            '<div class="adminFormLabel"><label for="userFormTourManage">Manage: </label></div>' +
+            '<div class="adminFormField"><input id="userFormTourManage" type="checkbox"' + (u.tour_manage ? ' checked' : '') + '><label for="userFormTourManage"><span></span></label></div>' +
+        '</div>' +
+        '<div class="adminFormRow">' +
+            '<div class="adminFormLabel"><label for="userFormTourCopy">Copy: </label></div>' +
+            '<div class="adminFormField"><input id="userFormTourCopy" type="checkbox"' + (u.tour_copy ? ' checked' : '') + '><label for="userFormTourCopy"><span></span></label></div>' +
         '</div>' +
         '<div class="adminFormRow">' +
             '<div class="adminFormLabel">&nbsp;</div>' +
@@ -147,6 +327,10 @@ function readUserForm() {
         firstname: document.getElementById('userFormFirstname').value,
         lastname: document.getElementById('userFormLastname').value,
         is_admin: document.getElementById('userFormIsAdmin').checked,
+        tour_create: document.getElementById('userFormTourCreate').checked,
+        tour_publish: document.getElementById('userFormTourPublish').checked,
+        tour_manage: document.getElementById('userFormTourManage').checked,
+        tour_copy: document.getElementById('userFormTourCopy').checked,
     };
 }
 

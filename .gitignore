@@ -7,3 +7,6 @@ Thumbs.db
 !/public/images/wsi/.gitkeep
 *.af~lock~
 /.playwright-mcp/
+/storage/tour-images/*
+!/storage/tour-images/.gitkeep
+/.phpunit.cache/

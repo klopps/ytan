@@ -29,7 +29,10 @@ use Ytan\Http\Controllers\WsiController;
 use Ytan\Http\Middleware\AuthMiddleware;
 use Ytan\Http\Middleware\CorsMiddleware;
 use Ytan\Service\AuthService;
+use Ytan\Service\CaptchaService;
 use Ytan\Service\MailService;
+use Ytan\Service\TourImageService;
+use Ytan\Service\TourNotificationService;
 use Ytan\Service\WsiRenderer;
 
 final class App
@@ -63,8 +66,12 @@ final class App
             $appUrl
         );
         $poiController = new PoiController(new PoiRepository($pdo));
-        $routeController = new RouteController(new RouteRepository($pdo));
-        $tourController = new TourController(new TourRepository($pdo));
+        $tourRepository = new TourRepository($pdo);
+        $captchaService = new CaptchaService($_ENV['JWT_SECRET'] ?? 'insecure-dev-secret');
+        $tourNotificationService = new TourNotificationService($userRepository, $mailService, $appUrl);
+        $tourImageService = new TourImageService($rootDir . '/storage/tour-images');
+        $routeController = new RouteController(new RouteRepository($pdo), $tourRepository, $captchaService, $tourNotificationService);
+        $tourController = new TourController($tourRepository, $tourImageService);
         $areaController = new AreaController(new AreaRepository($pdo));
         $authController = new AuthController($authService, $userRepository, $mailService, $appUrl);
         $userController = new UserController($userRepository, $mailService, $authService, $appUrl);
@@ -100,6 +107,9 @@ final class App
                     default => 500,
                 };
                 $payload = ['error' => ['message' => $exception->getMessage()]];
+                if ($exception instanceof \Ytan\Exception\CaptchaRequiredException) {
+                    $payload['error'] = array_merge($payload['error'], $exception->getPayload());
+                }
                 if ($displayErrors && $status === 500) {
                     $payload['error']['trace'] = explode("\n", $exception->getTraceAsString());
                 }
@@ -137,6 +147,18 @@ final class App
 
         $app->get('/api/v1/tours', [$tourController, 'index']);
         $app->get('/api/v1/tours/{id}', [$tourController, 'show']);
+        $app->post('/api/v1/tours', [$tourController, 'create']);
+        $app->put('/api/v1/tours/{id}', [$tourController, 'update']);
+        $app->delete('/api/v1/tours/{id}', [$tourController, 'delete']);
+        $app->post('/api/v1/tours/{id}/routes', [$tourController, 'addRoute']);
+        $app->delete('/api/v1/tours/{id}/routes/{routeId}', [$tourController, 'removeRoute']);
+        $app->put('/api/v1/tours/{id}/routes/order', [$tourController, 'reorderRoutes']);
+        $app->put('/api/v1/tours/{id}/publish', [$tourController, 'publish']);
+        $app->post('/api/v1/tours/{id}/copy', [$tourController, 'copy']);
+        $app->post('/api/v1/tours/{id}/images', [$tourController, 'uploadImage']);
+        $app->get('/api/v1/tours/{id}/images/{imageId}', [$tourController, 'showImage']);
+        $app->delete('/api/v1/tours/{id}/images/{imageId}', [$tourController, 'deleteImage']);
+        $app->put('/api/v1/tours/{id}/images/order', [$tourController, 'reorderImages']);
 
         $app->get('/api/v1/areas', [$areaController, 'index']);
         $app->get('/api/v1/areas/{id}', [$areaController, 'show']);

@@ -56,6 +56,37 @@ final class MailService
         );
     }
 
+    public function sendTourRouteChanged(string $toEmail, string $tourName, string $routeName, string $link): void
+    {
+        $this->send(
+            $toEmail,
+            $this->appName . " - A route in your tour \"$tourName\" was changed",
+            "The route \"$routeName\", which is part of your tour \"$tourName\", was just changed.\n" .
+            "Please check your tour to make sure it still makes sense:\n\n" .
+            "$link"
+        );
+    }
+
+    public function sendTourRouteDeleted(string $toEmail, string $tourName, string $routeName): void
+    {
+        $this->send(
+            $toEmail,
+            $this->appName . " - A route in your tour \"$tourName\" was deleted",
+            "The route \"$routeName\", which was part of your tour \"$tourName\", has just been deleted.\n" .
+            "Please check your tour and remove it if it's no longer needed."
+        );
+    }
+
+    public function sendRouteAutoUnpublished(string $toEmail, string $routeName): void
+    {
+        $this->send(
+            $toEmail,
+            $this->appName . ' - Your public route was deleted',
+            "Your public route \"$routeName\" has been deleted. Because it was part of one or more tours, " .
+            "you're receiving this separate notice: it is no longer publicly visible."
+        );
+    }
+
     private function send(string $toEmail, string $subject, string $bodyText): void
     {
         $mail = new PHPMailer(true);

@@ -81,6 +81,15 @@ let poiInfoWindows = [];
 let sectorLights = []; // Array mit den derzeit sichtbaren Sector Lights
 let selectedTour = null; // aktuell ausgwewählte Tour oder null
 
+// route.js's "Add to tour" popup (routeInfoWindow's #addToTourMenu, toggled
+// by toggleAddToTourMenu()/routeContextMenuAddToTour()): which routes[]
+// index it's for, plus its own search/length-filter state, mirroring
+// tour-admin.js's list view (tourAdminAllTours's search/tourAdminLengthFilter).
+let addToTourMenuRouteIndex = null;
+let addToTourMenuSearchQuery = '';
+let addToTourMenuLengthFilter = { min: '', max: '' };
+let contextMenuLastLatLng = null; // captured by showRouteContextMenu() so routeContextMenuAddToTour() can reposition routeInfoWindow
+
 let mapClickListener;
 let maxZoomService;
 
@@ -805,6 +814,10 @@ function initUser() {
         firstname: '',
         lastname: '',
         is_admin: false,
+        tour_create: false,
+        tour_publish: false,
+        tour_manage: false,
+        tour_copy: false,
         pending_email: null,
         pending_email_expires_at: null
     }

@@ -8,8 +8,6 @@
     <script>window.YTAN_API_BASE = "<?= htmlspecialchars($baseUrl, ENT_QUOTES) ?>/api/v1";</script>
     <script>window.YTAN_GOOGLE_SEARCH_REQUIRES_LOGIN = <?= $googleSearchRequiresLogin ? 'true' : 'false' ?>;</script>
 
-    <script src="./lib/jquery/jquery-3.7.1.min.js?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/jquery/jquery-3.7.1.min.js') ?>"></script>
-    <script src="./lib/selectize/selectize.min.js?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/selectize/selectize.min.js') ?>"></script>
     <script src="./lib/measuretool-googlemap-v3/gmaps-measuretool.umd.js?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/measuretool-googlemap-v3/gmaps-measuretool.umd.js') ?>"></script>
     <script src="./lib/marked/marked.min.js?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/marked/marked.min.js') ?>"></script>
     <script src="./lib/markerWithLabel/markerwithlabel.min.js?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/markerWithLabel/markerwithlabel.min.js') ?>"></script>
@@ -28,12 +26,12 @@
     <script src="./js/route.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/route.js') ?>"></script>
     <script src="./js/area.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/area.js') ?>"></script>
     <script src="./js/tour.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/tour.js') ?>"></script>
+    <script src="./js/tour-admin.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/tour-admin.js') ?>"></script>
     <script src="./js/user.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/user.js') ?>"></script>
     <script src="./js/admin-user.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/admin-user.js') ?>"></script>
 
     <link rel="stylesheet" type="text/css" href="./css/style.css?v=<?= \Ytan\App::assetVersion($rootDir, '/css/style.css') ?>" />
     <link rel="stylesheet" type="text/css" href="./css/fonts.css?v=<?= \Ytan\App::assetVersion($rootDir, '/css/fonts.css') ?>" />
-    <link rel="stylesheet" type="text/css" href="./lib/selectize/selectize.default.min.css?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/selectize/selectize.default.min.css') ?>" />
 
     <link rel="shortcut icon" href="<?= $baseUrl ?>/favicon.ico">
     <link rel="icon" type="image/png" href="<?= $baseUrl ?>/favicon-16x16.png" sizes="16x16">
@@ -107,7 +105,7 @@
           <ul class="nav-menu-list">
             <li><button type="button" class="nav-menu-row" onclick="navMenuGoTo('map-settings');"><i class="material-icons-round nav-menu-row-icon">straighten</i><span class="nav-menu-row-labels">Map Settings</span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
             <li><button type="button" class="nav-menu-row" onclick="navMenuGoTo('pois');"><i class="material-icons-round nav-menu-row-icon">place</i><span class="nav-menu-row-labels">POIs</span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
-            <li><button type="button" class="nav-menu-row" onclick="navMenuGoTo('tours');"><i class="material-icons-round nav-menu-row-icon">tour</i><span class="nav-menu-row-labels">Tours</span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
+            <li><button type="button" class="nav-menu-row" onclick="openTourAdminMenu();"><i class="material-icons-round nav-menu-row-icon">tour</i><span class="nav-menu-row-labels">Tours</span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
             <li><button type="button" class="nav-menu-row" onclick="fitToPoiBounds();"><i class="material-icons-round nav-menu-row-icon">fit_screen</i><span class="nav-menu-row-labels">Fit POIs</span></button></li>
             <li><button type="button" class="nav-menu-row" onclick="shareMap();"><i class="material-icons-round nav-menu-row-icon">share</i><span class="nav-menu-row-labels">Share</span></button></li>
             <li id="userAdminMenuBtn" style="display:none;"><button type="button" class="nav-menu-row" onclick="navMenuGoTo('site-settings');"><i class="material-icons-round nav-menu-row-icon">settings</i><span class="nav-menu-row-labels">Site Settings</span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
@@ -183,23 +181,6 @@
           <label class="nav-toggle-row"><span class="nav-swatch" style="background:#60609f"></span><span class="nav-toggle-text">Routes</span><input type="checkbox" id="detailroutes" name="detailroutes" class="nav-switch-input" onchange="toggleRoutes(this);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
           <label class="nav-toggle-row"><span class="nav-swatch" style="background:#8886c9"></span><span class="nav-toggle-text">Areas</span><input type="checkbox" id="detailareas" name="detailareas" class="nav-switch-input" onchange="toggleAreas(this);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
           <label class="nav-toggle-row"><span class="nav-swatch" style="background:#9c99ad"></span><span class="nav-toggle-text">Windshelter Indicators</span><input type="checkbox" id="detailwsi" name="detailwsi" class="nav-switch-input" onchange="toggleWsiMarkers(this);"><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
-        </div>
-      </div>
-
-      <!-- TOURS -->
-      <div class="nav-screen nav-screen-off-right" data-nav-screen="tours">
-        <div class="nav-screen-header">
-          <button type="button" class="nav-back" onclick="navMenuBack();"><i class="material-icons-round">arrow_back</i></button>
-          <h3>Tours</h3>
-        </div>
-        <div class="nav-screen-body">
-          <p class="nav-field-label">Choose a tour</p>
-          <div class="nav-select-wrap">
-            <select id="select-tour" placeholder="Select a tour...">
-              <option value="">No tour defined</option>
-            </select>
-          </div>
-          <button type="button" class="nav-btn-primary" onclick="showSelectedTour();"><i class="material-icons-round">fit_screen</i>&nbsp;Show Tour</button>
         </div>
       </div>
 
@@ -279,6 +260,32 @@
       </div>
     </div>
 
+    <!-- TOUR ADMIN MENU (browse/search tours, view details, manage a
+         tour's own metadata and route membership) ----------------------->
+    <div id="touradminmenu" class="cookiemenu">
+      <div id="touradminmenu-close-btn" class="panel-close-btn" onclick="closeTourAdminMenu();"><i class="material-icons-round">close</i></div>
+      <div class="cm_content">
+        <h2>Tours</h2>
+        <div id="touradminmenu-body"></div>
+        <div class="panel-logo"></div>
+      </div>
+    </div>
+
+    <!-- TOUR MODE BADGE - shown on the main map while a tour is active
+         (see tour.js: activateTourMode()/exitTourMode()). Positioned below
+         the sidemenu-toggle/map-search row so it never overlaps them, and
+         left-aligned rather than centered so it never crowds #editToolbar
+         on the opposite corner - editToolbar stays fully usable while a
+         tour is active, it's just a route filter, not an overlay. -->
+    <div id="tourModeBadge" class="tour-mode-badge" style="display:none;">
+      <i class="material-icons-round tour-mode-badge-icon">explore</i>
+      <div class="tour-mode-badge-text">
+        <span id="tourModeBadgeName" class="tour-mode-badge-name"></span>
+        <span class="tour-mode-badge-sub">Tour Mode</span>
+      </div>
+      <div class="tour-mode-badge-close" onclick="exitTourMode();"><i class="material-icons-round">close</i></div>
+    </div>
+
     <!-- EDIT ADDITIONAL TOOLBAR -------------------------------------->
     <div id="secondToolbar">
     </div>
@@ -311,6 +318,10 @@
           user.firstname = answer.data.firstname;
           user.lastname = answer.data.lastname;
           user.is_admin = !!answer.data.is_admin;
+          user.tour_create = !!answer.data.tour_create;
+          user.tour_publish = !!answer.data.tour_publish;
+          user.tour_manage = !!answer.data.tour_manage;
+          user.tour_copy = !!answer.data.tour_copy;
           user.pending_email = answer.data.pending_email;
           user.pending_email_expires_at = answer.data.pending_email_expires_at;
 

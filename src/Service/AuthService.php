@@ -189,6 +189,10 @@ final class AuthService
             'firstname' => $user['firstname'],
             'lastname' => $user['lastname'],
             'is_admin' => (bool) $user['is_admin'],
+            'tour_create' => (bool) ($user['tour_create'] ?? false),
+            'tour_publish' => (bool) ($user['tour_publish'] ?? false),
+            'tour_manage' => (bool) ($user['tour_manage'] ?? false),
+            'tour_copy' => (bool) ($user['tour_copy'] ?? false),
             'iat' => time(),
             'exp' => $expiresAt,
         ], $this->jwtSecret, 'HS256');

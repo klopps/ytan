@@ -39,6 +39,18 @@ abstract class BaseController
     }
 
     /**
+     * 403s unless the caller is an admin or has the named boolean right on
+     * their JWT payload (e.g. "tour_create") - mirrors requireAdmin()'s
+     * "admin overrides everything" shape for the Touren granular rights.
+     */
+    protected function assertTourRight(array $authUser, string $right): void
+    {
+        if (!($authUser['is_admin'] ?? false) && !($authUser[$right] ?? false)) {
+            throw new ForbiddenException();
+        }
+    }
+
+    /**
      * @return array{sub:int,username:string,is_admin:bool}
      */
     protected function requireAdmin(Request $request): array

@@ -4,8 +4,9 @@ REM
 REM There is no composer on the remote host, so production dependencies are
 REM built locally (in a throwaway temp copy, so the developer's own vendor\
 REM with dev dependencies like phpunit is left untouched) and shipped as
-REM part of the upload. Uses the native Windows tar.exe/ssh.exe (both ship
-REM with Windows 10/11) piped together - no rsync/Git-Bash required.
+REM part of the upload. The actual upload uses PuTTY's plink.exe (not
+REM ssh.exe) piped together with tar.exe - see the DEPLOY_SSH_PASSWORD block
+REM below for why.
 REM
 REM The remote .env is never touched: it's excluded from the package, and
 REM this script never deletes anything on the remote side, it only extracts
@@ -18,12 +19,33 @@ REM Override any of these by setting the env var before running, e.g.:
 REM   set REMOTE_PHP=php8.1
 REM   bin\deploy.bat
 
-setlocal enabledelayedexpansion
+REM Delayed expansion (!var!) stays OFF on purpose: DEPLOY_SSH_PASSWORD is
+REM used later as a plain %-expanded value, and if it ever contains a "!"
+REM (this file's own does), delayed expansion's own "!...!" scanning could
+REM mangle it on the command line. Nothing in this script needs !var! syntax.
+setlocal
 
 if not defined DEPLOY_USER set "DEPLOY_USER=csteindorff"
 if not defined DEPLOY_HOST set "DEPLOY_HOST=steindorff.de"
 if not defined DEPLOY_PORT set "DEPLOY_PORT=22"
 if not defined DEPLOY_PATH set "DEPLOY_PATH=/home/www/doc/9769/ytan.pesr.org/www"
+
+REM Windows' native ssh.exe has no flag to supply a password non-interactively
+REM (only key-based auth or an interactive prompt) - plink.exe (PuTTY) does,
+REM via -pw, and is already installed on this machine. Falls back to reading
+REM DEPLOY_SSH_PASSWORD from .env (never committed - see .gitignore) if it
+REM isn't already set as an environment variable.
+if not defined DEPLOY_SSH_CLIENT set "DEPLOY_SSH_CLIENT=plink"
+if not defined DEPLOY_SSH_PASSWORD (
+    for /f "usebackq eol=# tokens=1,* delims==" %%A in ("%~dp0..\.env") do (
+        if "%%A"=="DEPLOY_SSH_PASSWORD" set "DEPLOY_SSH_PASSWORD=%%B"
+    )
+)
+if not defined DEPLOY_SSH_PASSWORD (
+    echo ==^> DEPLOY_SSH_PASSWORD is not set and not found in .env - add a line
+    echo      DEPLOY_SSH_PASSWORD=... to .env, or set the env var before running.
+    goto :error
+)
 
 REM PHP/Composer used LOCALLY to build the production vendor\ directory.
 REM Plain `php`/`composer` on PATH resolve to PHP 7.4 on this machine, which
@@ -56,7 +78,12 @@ echo ==^> Installing production dependencies (composer install --no-dev)
 if errorlevel 1 goto :error
 
 echo ==^> Uploading to %DEPLOY_USER%@%DEPLOY_HOST%:%DEPLOY_PATH% and running migrations
-tar -C "%BUILD_DIR%" -cf - . | ssh -p %DEPLOY_PORT% %DEPLOY_USER%@%DEPLOY_HOST% "mkdir -p '%DEPLOY_PATH%' && tar -C '%DEPLOY_PATH%' -xf - && cd '%DEPLOY_PATH%' && %REMOTE_PHP% bin/migrate.php"
+REM No -batch here on purpose: plink keeps its own host-key cache, separate
+REM from ssh.exe's known_hosts, so the very first run against a host may
+REM still show a one-time "store this host key?" prompt even though the
+REM password itself is no longer asked for - accept it once and it's cached
+REM for every run after that.
+tar -C "%BUILD_DIR%" -cf - . | "%DEPLOY_SSH_CLIENT%" -ssh -P %DEPLOY_PORT% -l %DEPLOY_USER% -pw %DEPLOY_SSH_PASSWORD% %DEPLOY_HOST% "mkdir -p '%DEPLOY_PATH%' && tar -C '%DEPLOY_PATH%' -xf - && cd '%DEPLOY_PATH%' && %REMOTE_PHP% bin/migrate.php"
 if errorlevel 1 goto :error
 
 echo ==^> Deploy finished.

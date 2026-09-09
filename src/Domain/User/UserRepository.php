@@ -41,21 +41,42 @@ final class UserRepository
         return $user === false ? null : $user;
     }
 
+    private const TOUR_RIGHT_COLUMNS = ['is_admin', 'tour_create', 'tour_publish', 'tour_manage', 'tour_copy'];
+
     /**
+     * @param array<string,mixed> $filters optional exact-match filters, one
+     *        key per column in TOUR_RIGHT_COLUMNS (e.g. ['tour_manage' => 1])
+     *        - the admin user list's "filter by right" controls.
      * @return array<int, array<string, mixed>> all users, password hashes excluded
      */
-    public function findAll(): array
+    public function findAll(array $filters = []): array
     {
-        return $this->db->query(
-            'SELECT id, username, email, firstname, lastname, is_admin FROM user ORDER BY username'
-        )->fetchAll();
+        $where = [];
+        $params = [];
+        foreach (self::TOUR_RIGHT_COLUMNS as $column) {
+            if (isset($filters[$column])) {
+                $where[] = "$column = ?";
+                $params[] = (int) $filters[$column];
+            }
+        }
+
+        $sql = 'SELECT id, username, email, firstname, lastname, is_admin, tour_create, tour_publish, tour_manage, tour_copy FROM user';
+        if ($where !== []) {
+            $sql .= ' WHERE ' . implode(' AND ', $where);
+        }
+        $sql .= ' ORDER BY username';
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll();
     }
 
     public function create(array $data): array
     {
         $stmt = $this->db->prepare(
-            'INSERT INTO user (username, email, firstname, lastname, is_admin, password)
-             VALUES (?, ?, ?, ?, ?, NULL)'
+            'INSERT INTO user (username, email, firstname, lastname, is_admin, tour_create, tour_publish, tour_manage, tour_copy, password)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)'
         );
 
         try {
@@ -65,6 +86,10 @@ final class UserRepository
                 $data['firstname'] ?? null,
                 $data['lastname'] ?? null,
                 (int) ($data['is_admin'] ?? 0),
+                (int) ($data['tour_create'] ?? 0),
+                (int) ($data['tour_publish'] ?? 0),
+                (int) ($data['tour_manage'] ?? 0),
+                (int) ($data['tour_copy'] ?? 0),
             ]);
         } catch (PDOException $e) {
             if ($e->getCode() === '23000') {
@@ -76,19 +101,32 @@ final class UserRepository
         return $this->findById((int) $this->db->lastInsertId());
     }
 
+    /**
+     * Merges $data onto the existing row before writing, so a caller that
+     * only sends e.g. {tour_manage: 1} (any partial payload - not just the
+     * admin panel's full form, which always sends every field anyway)
+     * doesn't blank out firstname/lastname/etc. it didn't mean to touch.
+     */
     public function update(int $id, array $data): array
     {
+        $existing = $this->findById($id) ?? [];
+        $merged = array_merge($existing, $data);
+
         $stmt = $this->db->prepare(
-            'UPDATE user SET username=?, email=?, firstname=?, lastname=?, is_admin=? WHERE id=?'
+            'UPDATE user SET username=?, email=?, firstname=?, lastname=?, is_admin=?, tour_create=?, tour_publish=?, tour_manage=?, tour_copy=? WHERE id=?'
         );
 
         try {
             $stmt->execute([
-                $data['username'],
-                $data['email'],
-                $data['firstname'] ?? null,
-                $data['lastname'] ?? null,
-                (int) ($data['is_admin'] ?? 0),
+                $merged['username'],
+                $merged['email'],
+                $merged['firstname'] ?? null,
+                $merged['lastname'] ?? null,
+                (int) ($merged['is_admin'] ?? 0),
+                (int) ($merged['tour_create'] ?? 0),
+                (int) ($merged['tour_publish'] ?? 0),
+                (int) ($merged['tour_manage'] ?? 0),
+                (int) ($merged['tour_copy'] ?? 0),
                 $id,
             ]);
         } catch (PDOException $e) {

@@ -39,7 +39,8 @@ final class RouteRepository
         $stmt = $this->db->prepare(
             'SELECT route.* FROM tour_route
              LEFT JOIN route ON route.id = tour_route.route_id
-             WHERE tour_route.tour_id = ?'
+             WHERE tour_route.tour_id = ?
+             ORDER BY tour_route.sort_order'
         );
         $stmt->execute([$tourId]);
 

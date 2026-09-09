@@ -1,0 +1,2 @@
+ALTER TABLE tour
+    ADD COLUMN total_length INT UNSIGNED NOT NULL DEFAULT 0 AFTER public;
