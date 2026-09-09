@@ -121,6 +121,8 @@
             <li><button type="button" class="nav-menu-row" onclick="openCookieMenu();"><i class="material-icons-round nav-menu-row-icon">verified_user</i><span class="nav-menu-row-labels">Cookies</span></button></li>
           </ul>
 
+          <div class="nav-version-text">v<?= htmlspecialchars($appVersion) ?></div>
+
           <div class="panel-logo"></div>
         </div>
       </div>

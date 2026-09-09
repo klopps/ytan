@@ -183,6 +183,11 @@ final class App
             $mapsApiKey = $_ENV['MAPS_API_KEY'] ?? '';
             $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
             $googleSearchRequiresLogin = $settingsRepository->googleSearchRequiresLogin();
+            $appVersion = 'dev';
+            $versionFile = $rootDir . '/VERSION';
+            if (is_file($versionFile)) {
+                $appVersion = trim(file_get_contents($versionFile));
+            }
             require $rootDir . '/templates/app.php';
             $res->getBody()->write(ob_get_clean());
 
