@@ -544,6 +544,13 @@ function showPoiInfoWindow(event, i, marker) {
 }
 
 function closePoiInfoWindow(i) {
+    // editPoi() calls this unconditionally, but it's also reachable via the
+    // right-click context menu's "Edit" item, which never opens the POI's
+    // InfoWindow first - poiInfoWindows[i] is only ever set once that
+    // InfoWindow has actually been opened (see setPoi() above).
+    if (typeof poiInfoWindows[i] === 'undefined') {
+        return;
+    }
     poiInfoWindows[i].close();
     delete poiInfoWindows[i];
 }
@@ -573,7 +580,7 @@ function showPoiContextMenu(event, i) {
                     sectorLightVisible = true;
                     sectorLightCommand = 'Show';
                 }
-                content = '<div class="contextMenuItem" onClick="poiContextMenuSwitchSectorLight(' + i + ', ' + sectorLightVisible + ');">' + sectorLightCommand + ' Sector Light</div>';
+                content = '<div class="contextMenuItem" onClick="poiContextMenuSwitchSectorLight(' + i + ', ' + sectorLightVisible + ');"><i class="material-icons-round">lightbulb_outline</i>' + sectorLightCommand + ' Sector Light</div>';
             }
         }
     }
@@ -583,13 +590,13 @@ function showPoiContextMenu(event, i) {
             log('show contextMenu (Edit)', LOG_DEBUG);
 
             content +=
-                '<div class="contextMenuItem" onClick="poiContextMenuEditPoi(' + i + ', null, null);">Edit</div>' +
-                '<div class="contextMenuItem" onClick="poiContextMenuRemovePoi(' + i + ');">Delete</div>';
+                '<div class="contextMenuItem" onClick="poiContextMenuEditPoi(' + i + ', null, null);"><i class="material-icons-round">edit</i>Edit</div>' +
+                '<div class="contextMenuItem" onClick="poiContextMenuRemovePoi(' + i + ');"><i class="material-icons-round">delete</i>Delete</div>';
         }
     }
 
     if (content != '') {
-        content += '<div class="contextMenuItem" onClick="closeContextMenu();">Cancel</div>';
+        content += '<div class="contextMenuItem" onClick="closeContextMenu();"><i class="material-icons-round">close</i>Cancel</div>';
 
         contextMenu.setPosition(event.latLng);
         contextMenu.setContent(content);

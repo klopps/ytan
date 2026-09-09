@@ -707,16 +707,16 @@ function showRouteContextMenu(event, i) {
             contextMenuLastLatLng = event.latLng; // routeContextMenuAddToTour() reuses this to reposition routeInfoWindow
 
             var content =
-                '<div class="contextMenuItem" onClick="routeContextMenuEditRoute(' + i + ', null, null);">Edit route</div>' +
-                '<div class="contextMenuItem" onClick="routeContextMenuEditInfo(' + i + ');">Edit Info</div>';
+                '<div class="contextMenuItem" onClick="routeContextMenuEditRoute(' + i + ', null, null);"><i class="material-icons-round">edit</i>Edit route</div>' +
+                '<div class="contextMenuItem" onClick="routeContextMenuEditInfo(' + i + ');"><i class="material-icons-round">description</i>Edit Info</div>';
 
             if (routes[i].user_id == user.id) {
-                content += '<div class="contextMenuItem" onClick="routeContextMenuAddToTour(' + i + ');">Add to tour</div>';
+                content += '<div class="contextMenuItem" onClick="routeContextMenuAddToTour(' + i + ');"><i class="material-icons-round">playlist_add</i>Add to tour</div>';
             }
 
             content +=
-                '<div class="contextMenuItem" onClick="routeContextMenuRemoveRoute(' + i + ');">Delete route</div>' +
-                '<div class="contextMenuItem" onClick="closeContextMenu();">Cancel</div>'
+                '<div class="contextMenuItem" onClick="routeContextMenuRemoveRoute(' + i + ');"><i class="material-icons-round">delete</i>Delete route</div>' +
+                '<div class="contextMenuItem" onClick="closeContextMenu();"><i class="material-icons-round">close</i>Cancel</div>'
                 ;
 
             contextMenu.setPosition(event.latLng);

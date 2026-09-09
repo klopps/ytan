@@ -451,10 +451,10 @@ function showAreaContextMenu(event, i) {
             log('show contextMenu', LOG_DEBUG);
 
             var content =
-                '<div class="contextMenuItem" onClick="areaContextMenuEditArea(' + i + ', null, null);">Edit area</div>' +
-                '<div class="contextMenuItem" onClick="areaContextMenuEditInfo(' + i + ');">Edit Info</div>' +
-                '<div class="contextMenuItem" onClick="areaContextMenuRemoveArea(' + i + ');">Delete area</div>' +
-                '<div class="contextMenuItem" onClick="closeContextMenu();">Cancel</div>'
+                '<div class="contextMenuItem" onClick="areaContextMenuEditArea(' + i + ', null, null);"><i class="material-icons-round">edit</i>Edit area</div>' +
+                '<div class="contextMenuItem" onClick="areaContextMenuEditInfo(' + i + ');"><i class="material-icons-round">description</i>Edit Info</div>' +
+                '<div class="contextMenuItem" onClick="areaContextMenuRemoveArea(' + i + ');"><i class="material-icons-round">delete</i>Delete area</div>' +
+                '<div class="contextMenuItem" onClick="closeContextMenu();"><i class="material-icons-round">close</i>Cancel</div>'
                 ;
 
             contextMenu.setPosition(event.latLng);

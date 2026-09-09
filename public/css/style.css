@@ -424,6 +424,20 @@ img.wsi {
 * needed since Google's rules are injected after ours and would otherwise
 * win the cascade at equal specificity.
 */
+/* Google's InfoWindow close button (.gm-ui-hover-effect, a real <button>)
+   gets programmatically focus()'d by the Maps API itself right after the
+   InfoWindow renders (its own accessibility behavior, not something this
+   app triggers) - with no override, the browser's default focus outline
+   then shows around it. That outline visually dims while the browser
+   window is inactive and flashes back once on refocus, which is just
+   normal :focus rendering tied to window activation, not a real second
+   state - the underlying fix is the same in both light and dark mode:
+   suppress the default ring, matching .select-css:focus's precedent
+   elsewhere in this file. !important since Google's rules load after ours. */
+.gm-ui-hover-effect:focus {
+  outline: none !important;
+}
+
 :root[data-theme="dark"] .gm-style-iw-c {
   background-color: var(--color-bg-panel) !important;
 }
@@ -1970,6 +1984,9 @@ p.LighthouseCharacteristic {
 
 
 .contextMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 2px 4px 2px 4px;
   color: var(--color-text);
 }
@@ -1977,6 +1994,16 @@ p.LighthouseCharacteristic {
 .contextMenuItem:hover {
   color: var(--color-on-accent);
   background-color: var(--color-accent);
+}
+
+.contextMenuItem .material-icons-round {
+  font-size: 16px;
+  color: var(--color-text-faint);
+  flex-shrink: 0;
+}
+
+.contextMenuItem:hover .material-icons-round {
+  color: var(--color-on-accent);
 }
 
 
