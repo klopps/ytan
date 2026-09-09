@@ -136,7 +136,7 @@ function renderTourList() {
         '<div class="search-bar"><i class="material-icons-round">search</i>' +
             '<input type="text" id="tourSearchInput" placeholder="Search by name, description or creator" oninput="onTourSearchInput();"></div>' +
         '<div class="tour-length-filter">' +
-            '<span class="nav-field-label" style="margin:0;">Length (km)</span>' +
+            '<span class="nav-field-label" style="margin:0;">' + (settings.unit === 'nautical' ? 'Length (nm)' : 'Length (km)') + '</span>' +
             '<input type="number" min="0" id="tourLengthMin" placeholder="From" value="' + escapeHTML(tourAdminLengthFilter.min) + '" oninput="onTourLengthFilterChange();">' +
             '<span>&ndash;</span>' +
             '<input type="number" min="0" id="tourLengthMax" placeholder="To" value="' + escapeHTML(tourAdminLengthFilter.max) + '" oninput="onTourLengthFilterChange();">' +
@@ -177,8 +177,9 @@ function goToTourAdminPage(section, delta) {
 function renderFilteredTourList() {
     var input = document.getElementById('tourSearchInput');
     var query = input ? foldSearchText(input.value) : '';
-    var minKm = parseFloat(tourAdminLengthFilter.min);
-    var maxKm = parseFloat(tourAdminLengthFilter.max);
+    var minLength = parseFloat(tourAdminLengthFilter.min);
+    var maxLength = parseFloat(tourAdminLengthFilter.max);
+    var lengthDivisor = settings.unit === 'nautical' ? 1852 : 1000; // matches the "Length (nm)"/"Length (km)" label above
 
     function matches(t) {
         if (query !== ''
@@ -189,9 +190,9 @@ function renderFilteredTourList() {
             return false;
         }
 
-        var km = (t.total_length || 0) / 1000;
-        if (!isNaN(minKm) && km < minKm) return false;
-        if (!isNaN(maxKm) && km > maxKm) return false;
+        var length = (t.total_length || 0) / lengthDivisor;
+        if (!isNaN(minLength) && length < minLength) return false;
+        if (!isNaN(maxLength) && length > maxLength) return false;
 
         return true;
     }

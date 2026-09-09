@@ -60,3 +60,29 @@ function navMenuReset() {
     });
     navMenuStack = ['root'];
 }
+
+/**
+ * Fallback "hard reload" escape hatch: clicking the drawer's bottom logo
+ * (#sidemenuLogo, the root screen's .panel-logo) 4 times in quick succession
+ * reloads the page from scratch - useful if the SPA ever gets into a stuck
+ * state a normal drawer/panel close can't recover from. Wired up via this
+ * one element's own onclick in app.php rather than a global handler on the
+ * .panel-logo class, since that same markup is reused, deliberately
+ * non-interactive, by every other full-screen panel (cookie/legal/admin/tours).
+ */
+var sidemenuLogoClickCount = 0;
+var sidemenuLogoClickTimer = null;
+
+function handleSidemenuLogoClick() {
+    sidemenuLogoClickCount++;
+    clearTimeout(sidemenuLogoClickTimer);
+
+    if (sidemenuLogoClickCount >= 4) {
+        location.reload();
+        return;
+    }
+
+    sidemenuLogoClickTimer = setTimeout(function () {
+        sidemenuLogoClickCount = 0;
+    }, 600);
+}

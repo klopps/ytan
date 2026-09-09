@@ -652,6 +652,14 @@ img.wsi {
   -webkit-mask-size: contain;
 }
 
+/* Only the drawer's own logo (handleSidemenuLogoClick(), nav-menu.js) is
+   interactive - every other panel reuses the same .panel-logo markup purely
+   decoratively, so this stays scoped to that one instance's id rather than
+   the shared class. */
+#sidemenuLogo {
+  cursor: pointer;
+}
+
 .forgotPasswordLink {
   font-size: 11px;
   color: var(--color-accent);

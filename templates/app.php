@@ -103,7 +103,6 @@
           </form>
 
           <ul class="nav-menu-list">
-            <li><button type="button" class="nav-menu-row" onclick="navMenuGoTo('map-settings');"><i class="material-icons-round nav-menu-row-icon">straighten</i><span class="nav-menu-row-labels">Map Settings</span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
             <li><button type="button" class="nav-menu-row" onclick="navMenuGoTo('pois');"><i class="material-icons-round nav-menu-row-icon">place</i><span class="nav-menu-row-labels">POIs</span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
             <li><button type="button" class="nav-menu-row" onclick="openTourAdminMenu();"><i class="material-icons-round nav-menu-row-icon">tour</i><span class="nav-menu-row-labels">Tours</span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
             <li><button type="button" class="nav-menu-row" onclick="fitToPoiBounds();"><i class="material-icons-round nav-menu-row-icon">fit_screen</i><span class="nav-menu-row-labels">Fit POIs</span></button></li>
@@ -123,31 +122,7 @@
 
           <div class="nav-version-text">v<?= htmlspecialchars($appVersion) ?></div>
 
-          <div class="panel-logo"></div>
-        </div>
-      </div>
-
-      <!-- MAP SETTINGS -->
-      <div class="nav-screen nav-screen-off-right" data-nav-screen="map-settings">
-        <div class="nav-screen-header">
-          <button type="button" class="nav-back" onclick="navMenuBack();"><i class="material-icons-round">arrow_back</i></button>
-          <h3>Map Settings</h3>
-        </div>
-        <div class="nav-screen-body">
-          <p class="nav-field-label">Units</p>
-          <form name="units">
-            <div class="nav-segmented">
-              <input type="radio" id="unit1" name="unitselector" onclick="editUnit(this)" value="metric" checked><label for="unit1">METRIC</label>
-              <input type="radio" id="unit2" name="unitselector" onclick="editUnit(this)" value="nautical"><label for="unit2">NAUTICAL</label>
-            </div>
-          </form>
-          <div class="nav-example-card">
-            <div>
-              <div class="nav-example-value" id="unitExampleValue">12.4km</div>
-              <div class="nav-example-caption">Fynshav &ndash; S&oslash;by crossing</div>
-            </div>
-            <i class="material-icons-round">straighten</i>
-          </div>
+          <div class="panel-logo" id="sidemenuLogo" onclick="handleSidemenuLogoClick();"></div>
         </div>
       </div>
 
@@ -218,6 +193,20 @@
               <input type="radio" id="theme2" name="themeselector" onclick="setTheme('dark')" value="dark"><label for="theme2">DARK</label>
             </div>
           </form>
+          <p class="nav-field-label">Units</p>
+          <form name="units">
+            <div class="nav-segmented">
+              <input type="radio" id="unit1" name="unitselector" onclick="editUnit(this)" value="metric" checked><label for="unit1">METRIC</label>
+              <input type="radio" id="unit2" name="unitselector" onclick="editUnit(this)" value="nautical"><label for="unit2">NAUTICAL</label>
+            </div>
+          </form>
+          <div class="nav-example-card">
+            <div>
+              <div class="nav-example-value" id="unitExampleValue">12.4km</div>
+              <div class="nav-example-caption">Fynshav &ndash; S&oslash;by crossing</div>
+            </div>
+            <i class="material-icons-round">straighten</i>
+          </div>
           <div class="nav-divider"></div>
           <div id="userWindow"></div>
         </div>

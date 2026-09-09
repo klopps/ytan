@@ -716,7 +716,7 @@ function editUnit(element) {
 }
 
 /**
- * Keeps the live example distance in the "Map Settings" screen (nav-menu.js)
+ * Keeps the live example distance in the "Preferences" screen (nav-menu.js)
  * in sync with the current unit - called on toggle and once at boot.
  */
 function updateUnitExample() {

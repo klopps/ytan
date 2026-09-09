@@ -865,7 +865,7 @@ function renderAddToTourMenu() {
     var html = '<div class="search-bar"><i class="material-icons-round">search</i>' +
             '<input type="text" id="addToTourMenuSearchInput" placeholder="Search tours" oninput="onAddToTourMenuSearchInput();"></div>' +
         '<div class="tour-length-filter">' +
-            '<span class="nav-field-label" style="margin:0;">Length (km)</span>' +
+            '<span class="nav-field-label" style="margin:0;">' + (settings.unit === 'nautical' ? 'Length (nm)' : 'Length (km)') + '</span>' +
             '<input type="number" min="0" id="addToTourMenuLengthMin" placeholder="From" oninput="onAddToTourMenuLengthFilterChange();">' +
             '<span>&ndash;</span>' +
             '<input type="number" min="0" id="addToTourMenuLengthMax" placeholder="To" oninput="onAddToTourMenuLengthFilterChange();">' +
@@ -890,16 +890,17 @@ function onAddToTourMenuLengthFilterChange() {
 function renderFilteredAddToTourMenuList() {
     var i = addToTourMenuRouteIndex;
     var query = foldSearchText(addToTourMenuSearchQuery);
-    var minKm = parseFloat(addToTourMenuLengthFilter.min);
-    var maxKm = parseFloat(addToTourMenuLengthFilter.max);
+    var minLength = parseFloat(addToTourMenuLengthFilter.min);
+    var maxLength = parseFloat(addToTourMenuLengthFilter.max);
+    var lengthDivisor = settings.unit === 'nautical' ? 1852 : 1000; // matches the "Length (nm)"/"Length (km)" label above
 
     var ownTours = tours.filter(t => user.id !== null && t.user_id == user.id).filter(t => {
         if (query !== '' && !foldSearchText(t.name).includes(query)) {
             return false;
         }
-        var km = (t.total_length || 0) / 1000;
-        if (!isNaN(minKm) && km < minKm) return false;
-        if (!isNaN(maxKm) && km > maxKm) return false;
+        var length = (t.total_length || 0) / lengthDivisor;
+        if (!isNaN(minLength) && length < minLength) return false;
+        if (!isNaN(maxLength) && length > maxLength) return false;
         return true;
     });
 
