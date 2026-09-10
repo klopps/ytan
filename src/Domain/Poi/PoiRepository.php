@@ -31,34 +31,71 @@ final class PoiRepository
     {
     }
 
-    public function findPublic(): array
+    public function findPublic(?int $limit = null, int $offset = 0): array
     {
-        $stmt = $this->db->query(self::BASE_SELECT . ' WHERE p.public = 1');
+        $stmt = $this->db->query(self::BASE_SELECT . ' WHERE p.public = 1 ORDER BY p.id' . $this->limitSuffix($limit, $offset));
 
         return $stmt->fetchAll();
     }
 
-    public function findByUser(int $userId): array
+    public function countPublic(): int
     {
-        $stmt = $this->db->prepare(self::BASE_SELECT . ' WHERE p.user_id = ?');
+        return (int) $this->db->query('SELECT COUNT(*) FROM poi WHERE public = 1')->fetchColumn();
+    }
+
+    public function findByUser(int $userId, ?int $limit = null, int $offset = 0): array
+    {
+        $stmt = $this->db->prepare(self::BASE_SELECT . ' WHERE p.user_id = ? ORDER BY p.id' . $this->limitSuffix($limit, $offset));
         $stmt->execute([$userId]);
 
         return $stmt->fetchAll();
     }
 
-    public function findByUserWithPublic(int $userId): array
+    public function countByUser(int $userId): int
     {
-        $stmt = $this->db->prepare(self::BASE_SELECT . ' WHERE p.user_id = ? OR p.public = 1');
+        $stmt = $this->db->prepare('SELECT COUNT(*) FROM poi WHERE user_id = ?');
+        $stmt->execute([$userId]);
+
+        return (int) $stmt->fetchColumn();
+    }
+
+    public function findByUserWithPublic(int $userId, ?int $limit = null, int $offset = 0): array
+    {
+        $stmt = $this->db->prepare(self::BASE_SELECT . ' WHERE p.user_id = ? OR p.public = 1 ORDER BY p.id' . $this->limitSuffix($limit, $offset));
         $stmt->execute([$userId]);
 
         return $stmt->fetchAll();
     }
 
-    public function findAll(): array
+    public function countByUserWithPublic(int $userId): int
     {
-        $stmt = $this->db->query(self::BASE_SELECT);
+        $stmt = $this->db->prepare('SELECT COUNT(*) FROM poi WHERE user_id = ? OR public = 1');
+        $stmt->execute([$userId]);
+
+        return (int) $stmt->fetchColumn();
+    }
+
+    public function findAll(?int $limit = null, int $offset = 0): array
+    {
+        $stmt = $this->db->query(self::BASE_SELECT . ' ORDER BY p.id' . $this->limitSuffix($limit, $offset));
 
         return $stmt->fetchAll();
+    }
+
+    public function countAll(): int
+    {
+        return (int) $this->db->query('SELECT COUNT(*) FROM poi')->fetchColumn();
+    }
+
+    /**
+     * `$limit`/`$offset` are always cast to int by the caller before reaching
+     * here, so interpolating them directly is safe - PDO's LIMIT/OFFSET
+     * placeholder binding is a well-known source of driver-specific quirks,
+     * this sidesteps it entirely.
+     */
+    private function limitSuffix(?int $limit, int $offset): string
+    {
+        return $limit !== null ? ' LIMIT ' . $limit . ' OFFSET ' . max(0, $offset) : '';
     }
 
     public function findById(int $id): array

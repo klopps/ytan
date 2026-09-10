@@ -1316,6 +1316,11 @@ img.wsi {
   cursor: pointer;
 }
 
+.tour-photo-tile-pending {
+  outline: 2px dashed var(--color-accent);
+  outline-offset: -2px;
+}
+
 .tour-photo-gallery {
   display: flex;
   gap: 8px;
@@ -1437,6 +1442,10 @@ img.wsi {
 
 .tour-route-manager-add {
   color: var(--color-accent);
+}
+
+.tour-route-manager-actions {
+  margin-top: 14px;
 }
 
 .addToTourMenu {

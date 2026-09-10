@@ -16,11 +16,22 @@ Stateless JWT bearer tokens (no server-side session). Include
 There is no `/auth/logout` endpoint: since tokens are stateless, "logging
 out" just means the client discards the token it's holding.
 
+## Pagination
+
+`GET /pois`, `GET /routes` (scope-based, not `?tour_id=`), `GET /areas`,
+`GET /tours` and `GET /users` all accept optional `limit`/`offset` query
+params. Omit both to get the full unpaginated result set for the given scope
+(the historical, still-default behavior every existing caller relies on).
+When `limit` is given (clamped to 1-500), the response gains a `meta` object
+alongside `data`: `{"total": <matching rows across all pages>, "limit": ...,
+"offset": ...}` - `total` reflects the same scope/search/filters as `data`,
+just without the limit applied, so a client can compute page count from it.
+
 ## POIs
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| GET | `/pois?scope=public\|mine\|mine_public\|all` | scope-dependent | `mine`/`mine_public`/`all` require auth; `all` requires `is_admin` |
+| GET | `/pois?scope=public\|mine\|mine_public\|all` | scope-dependent | `mine`/`mine_public`/`all` require auth; `all` requires `is_admin`; see Pagination above |
 | GET | `/pois/bounds` | - | `{max_lat, min_lat, max_lng, min_lng}` across all POIs |
 | GET | `/pois/{id}` | - | |
 | POST | `/pois` | required | body: `poitype_id, name, description, public, latitude, longitude, url`, plus `direction` (camps/campsites, 16 chars of `0`/`1`/`2`) or `characteristic`/`sector_characteristic` (lighthouses) |
@@ -32,15 +43,24 @@ out" just means the client discards the token it's holding.
 Same CRUD shape as POIs, under `/routes` and `/areas`:
 `GET ?scope=public|mine|mine_public`, `GET /{id}`, `POST`, `PUT /{id}`, `DELETE /{id}`.
 `GET /routes?tour_id={id}` returns the routes belonging to a tour instead of
-filtering by scope.
+filtering by scope, and is never paginated (a tour's own route list is
+inherently small).
 
 Route body: `name, description, public, length, points (JSON-encoded array of {lat,lng}), color`.
 Area body: `name, description, public, points (JSON-encoded array of {lat,lng}), color, opacity, zindex`.
 
 ## Tours
 
-Read-only (no UI to create/edit tours yet, matching PESR):
-`GET /tours?scope=public|mine|mine_public`, `GET /tours/{id}`.
+`GET /tours?scope=public|mine|mine_public`, `GET /tours/{id}`. `GET /tours`
+also takes `search` (matches name/description/creator username) and
+`min_length`/`max_length` (meters) filters, on top of the shared
+`limit`/`offset` from Pagination above.
+
+## Users (admin only)
+
+`GET /users` - optional exact-match filters `is_admin`/`tour_create`/
+`tour_publish`/`tour_manage`/`tour_copy` (each `0` or `1`), plus the shared
+`limit`/`offset` from Pagination above.
 
 ## WSI (wind shelter indicator)
 

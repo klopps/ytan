@@ -35,8 +35,14 @@ final class UserController extends BaseController
                 $filters[$field] = $params[$field];
             }
         }
+        ['limit' => $limit, 'offset' => $offset] = $this->parsePagination($request);
 
-        return $this->json($response, ['data' => $this->users->findAll($filters)]);
+        $body = ['data' => $this->users->findAll($filters, $limit, $offset)];
+        if ($limit !== null) {
+            $body['meta'] = ['total' => $this->users->countAll($filters), 'limit' => $limit, 'offset' => $offset];
+        }
+
+        return $this->json($response, $body);
     }
 
     public function show(Request $request, Response $response, array $args): Response

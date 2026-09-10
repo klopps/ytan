@@ -16,6 +16,13 @@ const ZINDEX_POI = 20;
 const ADMIN_LIST_PAGE_SIZES = [5, 10, 50, 100];
 const ADMIN_LIST_DEFAULT_PAGE_SIZE = 10;
 
+// Max rows rendered in route.js's small "Add to tour" popup (opened from a
+// route's context menu / InfoWindow) - unlike the admin Tours panel, this
+// popup has no pagination controls of its own, so an unbounded match list
+// would just keep growing as a user's tour count grows. Matches the same
+// cap map-core.js's own-POI search dropdown already uses.
+const ADD_TO_TOUR_MENU_RESULT_CAP = 8;
+
 // Below this zoom level, individual POI markers are replaced by clustered
 // count indicators (grouped by screen proximity); at this zoom level and
 // above, individual POI markers are shown as usual.

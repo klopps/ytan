@@ -318,8 +318,26 @@ async function removeArea(i) {
         log('removeArea() success', LOG_INFO);
         measureTool.index = null;
         measureTool.end();
-        hideArea(i);
-        areas.splice(i, 1);
+
+        // delete areas[i]/areaPolygons[i] rather than .splice() them out - a
+        // splice() shifts every later area down by one array index, but
+        // createArea()'s click/contextmenu listeners on each area's polygon
+        // are closed over the index it had at creation time, so a shift
+        // leaves them stale (pointing at the wrong area, or past the end of
+        // the now-shorter array - "Cannot read properties of undefined
+        // (reading 'user_id')" in showAreaContextMenu()). delete leaves a
+        // hole instead of shifting anything, so every other area's index -
+        // and its listeners - stays valid. Same approach poi.js's
+        // removeMarkerById() already uses; the rest of this file already
+        // guards every areas[]/areaPolygons[] access with
+        // typeof !== 'undefined' for exactly this reason (createArea(),
+        // createAreas(), hideArea(), ...), so no new guards are needed here
+        // - just this deletion itself.
+        google.maps.event.clearInstanceListeners(areaPolygons[i]);
+        areaPolygons[i].setMap(null);
+        delete areaPolygons[i];
+        delete areas[i];
+
         document.getElementById('areaButton').classList.remove('active');
         areaEditWindow.close();
     }).catch(err => {

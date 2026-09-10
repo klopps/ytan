@@ -76,6 +76,10 @@ function getDistance(p1, p2) {
  */
 function formatDistance(distance, unit = 'metric') {
 
+    if (distance == 0) {
+        return unit == 'nautical' ? '0.0nm' : '0.0km';
+    }
+
     if (unit == 'nautical') {
         // Nautical
         var nm = distance / 1852;

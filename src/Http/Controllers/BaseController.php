@@ -73,4 +73,31 @@ abstract class BaseController
 
         return is_array($data) ? $data : [];
     }
+
+    private const MAX_PAGINATION_LIMIT = 500;
+
+    /**
+     * Reads the optional `limit`/`offset` query params shared by every list
+     * endpoint (Poi/Route/Area/User/Tour). `limit` is null when the caller
+     * didn't ask to paginate - repositories then apply no LIMIT at all,
+     * preserving the existing "return everything" behavior for callers that
+     * don't opt in (e.g. the main map bootstrap). When given, it's clamped
+     * to [1, MAX_PAGINATION_LIMIT] so a stray huge value can't defeat the
+     * point of pagination.
+     *
+     * @return array{limit: ?int, offset: int}
+     */
+    protected function parsePagination(Request $request): array
+    {
+        $params = $request->getQueryParams();
+
+        $limit = isset($params['limit']) ? (int) $params['limit'] : null;
+        if ($limit !== null) {
+            $limit = max(1, min($limit, self::MAX_PAGINATION_LIMIT));
+        }
+
+        $offset = isset($params['offset']) ? max(0, (int) $params['offset']) : 0;
+
+        return ['limit' => $limit, 'offset' => $offset];
+    }
 }

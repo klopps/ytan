@@ -23,7 +23,43 @@ final class TourRepository
      *
      * @param array{search?:string,min_length?:int,max_length?:int} $filters
      */
-    public function search(string $scope, ?int $userId, array $filters = []): array
+    public function search(string $scope, ?int $userId, array $filters = [], ?int $limit = null, int $offset = 0): array
+    {
+        [$where, $params] = $this->buildSearchWhere($scope, $userId, $filters);
+
+        $sql = 'SELECT tour.*, user.username AS creator_username FROM tour JOIN user ON user.id = tour.user_id
+                WHERE ' . implode(' AND ', $where) . ' ORDER BY tour.name' . $this->limitSuffix($limit, $offset);
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Total matching count for search()'s same scope/filters, ignoring
+     * limit/offset - what the Tours panel's pagination bar needs to know
+     * how many pages exist.
+     *
+     * @param array{search?:string,min_length?:int,max_length?:int} $filters
+     */
+    public function countSearch(string $scope, ?int $userId, array $filters = []): int
+    {
+        [$where, $params] = $this->buildSearchWhere($scope, $userId, $filters);
+
+        $sql = 'SELECT COUNT(*) FROM tour JOIN user ON user.id = tour.user_id WHERE ' . implode(' AND ', $where);
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * @param array{search?:string,min_length?:int,max_length?:int} $filters
+     * @return array{0: string[], 1: array<int,mixed>}
+     */
+    private function buildSearchWhere(string $scope, ?int $userId, array $filters): array
     {
         $where = [];
         $params = [];
@@ -56,13 +92,12 @@ final class TourRepository
             $params[] = (int) $filters['max_length'];
         }
 
-        $sql = 'SELECT tour.*, user.username AS creator_username FROM tour JOIN user ON user.id = tour.user_id
-                WHERE ' . implode(' AND ', $where) . ' ORDER BY tour.name';
+        return [$where, $params];
+    }
 
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-
-        return $stmt->fetchAll();
+    private function limitSuffix(?int $limit, int $offset): string
+    {
+        return $limit !== null ? ' LIMIT ' . $limit . ' OFFSET ' . max(0, $offset) : '';
     }
 
     public function findById(int $id): array

@@ -32,4 +32,62 @@ final class RouteRepositoryTest extends TestCase
 
         $this->assertSame(['First', 'Second', 'Third'], array_column($result, 'name'));
     }
+
+    public function testFindPublicWithoutLimitReturnsEverything(): void
+    {
+        $routes = new RouteRepository($this->pdo);
+        $userId = $this->createUser();
+        $this->createRoute($userId, ['public' => 1]);
+        $this->createRoute($userId, ['public' => 1]);
+        $this->createRoute($userId, ['public' => 0]);
+
+        $this->assertCount(2, $routes->findPublic());
+        $this->assertSame(2, $routes->countPublic());
+    }
+
+    public function testFindPublicLimitAndOffsetPageThroughResultsWithoutOverlap(): void
+    {
+        $routes = new RouteRepository($this->pdo);
+        $userId = $this->createUser();
+        $ids = [];
+        for ($i = 0; $i < 5; $i++) {
+            $ids[] = (int) $this->createRoute($userId, ['public' => 1]);
+        }
+
+        $page1 = array_map('intval', array_column($routes->findPublic(2, 0), 'id'));
+        $page2 = array_map('intval', array_column($routes->findPublic(2, 2), 'id'));
+        $page3 = array_map('intval', array_column($routes->findPublic(2, 4), 'id'));
+
+        $this->assertSame(array_slice($ids, 0, 2), $page1);
+        $this->assertSame(array_slice($ids, 2, 2), $page2);
+        $this->assertSame(array_slice($ids, 4, 2), $page3);
+    }
+
+    public function testFindByUserRespectsLimitAndOffset(): void
+    {
+        $routes = new RouteRepository($this->pdo);
+        $userId = $this->createUser();
+        $this->createRoute($userId);
+        $this->createRoute($userId);
+        $this->createRoute($userId);
+
+        $this->assertCount(2, $routes->findByUser($userId, 2, 0));
+        $this->assertCount(1, $routes->findByUser($userId, 2, 2));
+        $this->assertSame(3, $routes->countByUser($userId));
+    }
+
+    public function testFindByUserWithPublicCombinesOwnAndPublic(): void
+    {
+        $routes = new RouteRepository($this->pdo);
+        $owner = $this->createUser();
+        $other = $this->createUser();
+        $this->createRoute($owner, ['public' => 0]);
+        $this->createRoute($other, ['public' => 1]);
+        $this->createRoute($other, ['public' => 0]);
+
+        $result = $routes->findByUserWithPublic($owner);
+
+        $this->assertCount(2, $result);
+        $this->assertSame(2, $routes->countByUserWithPublic($owner));
+    }
 }

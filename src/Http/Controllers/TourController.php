@@ -40,11 +40,21 @@ final class TourController extends BaseController
         if (isset($params['max_length'])) {
             $filters['max_length'] = (int) $params['max_length'];
         }
+        ['limit' => $limit, 'offset' => $offset] = $this->parsePagination($request);
 
-        $data = $this->tours->search($scope, $userId, $filters);
+        $data = $this->tours->search($scope, $userId, $filters, $limit, $offset);
         $data = $this->attachTags($data);
 
-        return $this->json($response, ['data' => $data]);
+        $body = ['data' => $data];
+        if ($limit !== null) {
+            $body['meta'] = [
+                'total' => $this->tours->countSearch($scope, $userId, $filters),
+                'limit' => $limit,
+                'offset' => $offset,
+            ];
+        }
+
+        return $this->json($response, $body);
     }
 
     public function show(Request $request, Response $response, array $args): Response

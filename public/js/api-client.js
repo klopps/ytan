@@ -28,6 +28,20 @@ const Ytan = (() => {
         }
     }
 
+    /**
+     * fetch() itself rejects (as opposed to resolving with a non-ok status)
+     * when the request never reaches a server at all - offline, DNS/
+     * connection failure, CORS, etc. Its rejection message is a raw browser
+     * string ("Failed to fetch" in Chrome, "NetworkError when attempting to
+     * fetch resource" in Firefox, ...) that isn't meaningful to an end user
+     * once it lands in a showToast(err.message) call - wrapped here into one
+     * consistent, friendly message instead. The original error is kept as
+     * `cause` so it still shows up in the browser console for debugging.
+     */
+    function networkError(cause) {
+        return new Error('Network error - please check your connection and try again.', { cause });
+    }
+
     async function request(method, path, body) {
         const headers = { 'Content-Type': 'application/json' };
         const token = getToken();
@@ -35,11 +49,16 @@ const Ytan = (() => {
             headers['Authorization'] = 'Bearer ' + token;
         }
 
-        const response = await fetch(BASE_URL + path, {
-            method,
-            headers,
-            body: body !== undefined ? JSON.stringify(body) : undefined,
-        });
+        let response;
+        try {
+            response = await fetch(BASE_URL + path, {
+                method,
+                headers,
+                body: body !== undefined ? JSON.stringify(body) : undefined,
+            });
+        } catch (e) {
+            throw networkError(e);
+        }
 
         let payload = null;
         try {
@@ -80,7 +99,12 @@ const Ytan = (() => {
             headers['Authorization'] = 'Bearer ' + token;
         }
 
-        const response = await fetch(BASE_URL + path, { headers });
+        let response;
+        try {
+            response = await fetch(BASE_URL + path, { headers });
+        } catch (e) {
+            throw networkError(e);
+        }
         if (!response.ok) {
             throw new Error('HTTP ' + response.status);
         }
@@ -100,11 +124,16 @@ const Ytan = (() => {
             headers['Authorization'] = 'Bearer ' + token;
         }
 
-        const response = await fetch(BASE_URL + path, {
-            method: 'POST',
-            headers,
-            body: formData,
-        });
+        let response;
+        try {
+            response = await fetch(BASE_URL + path, {
+                method: 'POST',
+                headers,
+                body: formData,
+            });
+        } catch (e) {
+            throw networkError(e);
+        }
 
         let payload = null;
         try {

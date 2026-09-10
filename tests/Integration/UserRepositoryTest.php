@@ -102,4 +102,27 @@ final class UserRepositoryTest extends TestCase
         $usernames = array_map(fn (array $u) => $u['username'], $result);
         $this->assertSame(['both'], $usernames);
     }
+
+    public function testFindAllLimitAndOffsetPageThroughResultsOrderedByUsername(): void
+    {
+        $this->createUser(['username' => 'charlie']);
+        $this->createUser(['username' => 'alice']);
+        $this->createUser(['username' => 'bob']);
+
+        $page1 = array_column($this->users->findAll([], 2, 0), 'username');
+        $page2 = array_column($this->users->findAll([], 2, 2), 'username');
+
+        $this->assertSame(['alice', 'bob'], $page1);
+        $this->assertSame(['charlie'], $page2);
+        $this->assertSame(3, $this->users->countAll());
+    }
+
+    public function testCountAllRespectsTheSameFiltersAsFindAll(): void
+    {
+        $this->createUser(['username' => 'a', 'tour_manage' => 1]);
+        $this->createUser(['username' => 'b', 'tour_manage' => 0]);
+        $this->createUser(['username' => 'c', 'tour_manage' => 1]);
+
+        $this->assertSame(2, $this->users->countAll(['tour_manage' => 1]));
+    }
 }

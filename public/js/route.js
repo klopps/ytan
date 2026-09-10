@@ -246,6 +246,10 @@ function saveRoute(i) {
             routeData.id = answer.data.id;
             index = routes.push(routeData) - 1;
             log('new index: ' + index, LOG_INFO);
+
+            if (activeTourModeId !== null) {
+                addNewRouteToActiveTour(routeData.id);
+            }
         } else {
             routes[index] = routeData;
             log('UPDATE array routes[' + i +']', LOG_INFO, routes[index]);
@@ -324,8 +328,27 @@ async function removeRoute(i) {
     log('removeRoute() success', LOG_INFO);
     measureTool.index = null;
     measureTool.end();
-    hideRoute(i);
-    routes.splice(i, 1);
+
+    // delete routes[i]/routePaths[i] rather than .splice() them out - a
+    // splice() shifts every later route down by one array index, but
+    // createRoute()'s click/dblclick/contextmenu listeners on each route's
+    // polylines are closed over the index it had at creation time, so a
+    // shift leaves them stale (pointing at the wrong route, or past the end
+    // of the now-shorter array - "Cannot read properties of undefined
+    // (reading 'user_id')" in showRouteContextMenu()). delete leaves a hole
+    // instead of shifting anything, so every other route's index - and its
+    // listeners - stays valid. Same approach poi.js's removeMarkerById()
+    // already uses; the rest of this file already guards every routes[]/
+    // routePaths[] access with typeof !== 'undefined' for exactly this
+    // reason (createRoute(), createRoutes(), hideRoute(), ...), so no new
+    // guards are needed here - just this deletion itself.
+    google.maps.event.clearInstanceListeners(routePaths[i].routePathLine);
+    google.maps.event.clearInstanceListeners(routePaths[i].routePathBackground);
+    routePaths[i].routePathLine.setMap(null);
+    routePaths[i].routePathBackground.setMap(null);
+    delete routePaths[i];
+    delete routes[i];
+
     document.getElementById('routeButton').classList.remove('active');
     routeEditWindow.close();
 }
@@ -894,7 +917,7 @@ function renderFilteredAddToTourMenuList() {
     var maxLength = parseFloat(addToTourMenuLengthFilter.max);
     var lengthDivisor = settings.unit === 'nautical' ? 1852 : 1000; // matches the "Length (nm)"/"Length (km)" label above
 
-    var ownTours = tours.filter(t => user.id !== null && t.user_id == user.id).filter(t => {
+    var allOwnTours = tours.filter(t => user.id !== null && t.user_id == user.id).filter(t => {
         if (query !== '' && !foldSearchText(t.name).includes(query)) {
             return false;
         }
@@ -903,6 +926,7 @@ function renderFilteredAddToTourMenuList() {
         if (!isNaN(maxLength) && length > maxLength) return false;
         return true;
     });
+    var ownTours = allOwnTours.slice(0, ADD_TO_TOUR_MENU_RESULT_CAP);
 
     var html = '';
     if (ownTours.length === 0) {
@@ -910,6 +934,9 @@ function renderFilteredAddToTourMenuList() {
     } else {
         for (let t = 0; t < ownTours.length; t++) {
             html += '<div class="addToTourMenuItem" onclick="addRouteToTourFromPopup(' + i + ', ' + ownTours[t].id + ');">' + escapeHTML(ownTours[t].name) + '</div>';
+        }
+        if (allOwnTours.length > ownTours.length) {
+            html += '<div class="addToTourMenuItem addToTourMenuEmpty">' + (allOwnTours.length - ownTours.length) + ' more &ndash; refine your search</div>';
         }
     }
     if (canCreateTours()) {
@@ -931,6 +958,18 @@ function addRouteToTourFromPopupAsNewTour(i) {
     closeRouteInfoWindow(i);
     openTourAdminMenu();
     showTourCreateForm(routeId);
+}
+
+/**
+ * Auto-attaches a just-created route to the active Tour Mode tour
+ * (tour.js's activeTourModeId/activeTourModeName) - saveRoute() calls this
+ * right after a successful POST /routes, never on an edit (PUT) of an
+ * existing route.
+ */
+function addNewRouteToActiveTour(routeId) {
+    Ytan.post('/tours/' + activeTourModeId + '/routes', { route_id: routeId }).then(() => {
+        showToast('Route added to "' + activeTourModeName + '".', 'success');
+    }).catch(err => showToast('Route saved, but adding it to the active tour failed: ' + err.message, 'error'));
 }
 
 function editRoute(i, lat, lng) {

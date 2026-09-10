@@ -29,16 +29,35 @@ final class RouteController extends BaseController
         $scope = $params['scope'] ?? ($auth !== null ? 'mine_public' : 'public');
 
         if (isset($params['tour_id'])) {
-            $data = $this->routes->findByTour((int) $params['tour_id']);
-        } else {
-            $data = match ($scope) {
-                'mine' => $this->routes->findByUser($this->requireAuthUser($request)['sub']),
-                'mine_public' => $this->routes->findByUserWithPublic($this->requireAuthUser($request)['sub']),
-                default => $this->routes->findPublic(),
-            };
+            // A tour's own route list is inherently small (bounded by how
+            // many routes a tour can reasonably contain) - no pagination
+            // needed here, unlike the scope-based branches below.
+            return $this->json($response, ['data' => $this->routes->findByTour((int) $params['tour_id'])]);
         }
 
-        return $this->json($response, ['data' => $data]);
+        ['limit' => $limit, 'offset' => $offset] = $this->parsePagination($request);
+        $userId = in_array($scope, ['mine', 'mine_public'], true) ? (int) $this->requireAuthUser($request)['sub'] : null;
+
+        $data = match ($scope) {
+            'mine' => $this->routes->findByUser($userId, $limit, $offset),
+            'mine_public' => $this->routes->findByUserWithPublic($userId, $limit, $offset),
+            default => $this->routes->findPublic($limit, $offset),
+        };
+
+        $body = ['data' => $data];
+        if ($limit !== null) {
+            $body['meta'] = [
+                'total' => match ($scope) {
+                    'mine' => $this->routes->countByUser($userId),
+                    'mine_public' => $this->routes->countByUserWithPublic($userId),
+                    default => $this->routes->countPublic(),
+                },
+                'limit' => $limit,
+                'offset' => $offset,
+            ];
+        }
+
+        return $this->json($response, $body);
     }
 
     public function show(Request $request, Response $response, array $args): Response

@@ -54,7 +54,7 @@ abstract class ControllerTestCase extends TestCase
     }
 
     /**
-     * @return array{status:int, data:mixed, error:mixed}
+     * @return array{status:int, data:mixed, error:mixed, meta:mixed}
      */
     protected function decode(ResponseInterface $response): array
     {
@@ -64,6 +64,7 @@ abstract class ControllerTestCase extends TestCase
             'status' => $response->getStatusCode(),
             'data' => $decoded['data'] ?? null,
             'error' => $decoded['error'] ?? null,
+            'meta' => $decoded['meta'] ?? null,
         ];
     }
 }

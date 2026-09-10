@@ -18,15 +18,35 @@ final class PoiController extends BaseController
     {
         $auth = $request->getAttribute('auth');
         $scope = $request->getQueryParams()['scope'] ?? ($auth !== null ? 'mine_public' : 'public');
+        ['limit' => $limit, 'offset' => $offset] = $this->parsePagination($request);
+
+        if ($scope === 'all') {
+            $this->requireAdmin($request);
+        }
+        $userId = in_array($scope, ['mine', 'mine_public'], true) ? (int) $this->requireAuthUser($request)['sub'] : null;
 
         $data = match ($scope) {
-            'mine' => $this->pois->findByUser($this->requireAuthUser($request)['sub']),
-            'mine_public' => $this->pois->findByUserWithPublic($this->requireAuthUser($request)['sub']),
-            'all' => $this->requireAdmin($request) ? $this->pois->findAll() : [],
-            default => $this->pois->findPublic(),
+            'mine' => $this->pois->findByUser($userId, $limit, $offset),
+            'mine_public' => $this->pois->findByUserWithPublic($userId, $limit, $offset),
+            'all' => $this->pois->findAll($limit, $offset),
+            default => $this->pois->findPublic($limit, $offset),
         };
 
-        return $this->json($response, ['data' => $data]);
+        $body = ['data' => $data];
+        if ($limit !== null) {
+            $body['meta'] = [
+                'total' => match ($scope) {
+                    'mine' => $this->pois->countByUser($userId),
+                    'mine_public' => $this->pois->countByUserWithPublic($userId),
+                    'all' => $this->pois->countAll(),
+                    default => $this->pois->countPublic(),
+                },
+                'limit' => $limit,
+                'offset' => $offset,
+            ];
+        }
+
+        return $this->json($response, $body);
     }
 
     public function bounds(Request $request, Response $response): Response

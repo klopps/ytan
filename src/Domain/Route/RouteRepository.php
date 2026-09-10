@@ -13,25 +13,51 @@ final class RouteRepository
     {
     }
 
-    public function findPublic(): array
+    public function findPublic(?int $limit = null, int $offset = 0): array
     {
-        return $this->db->query('SELECT * FROM route WHERE public = 1')->fetchAll();
+        return $this->db->query('SELECT * FROM route WHERE public = 1 ORDER BY id' . $this->limitSuffix($limit, $offset))->fetchAll();
     }
 
-    public function findByUser(int $userId): array
+    public function countPublic(): int
     {
-        $stmt = $this->db->prepare('SELECT * FROM route WHERE user_id = ?');
+        return (int) $this->db->query('SELECT COUNT(*) FROM route WHERE public = 1')->fetchColumn();
+    }
+
+    public function findByUser(int $userId, ?int $limit = null, int $offset = 0): array
+    {
+        $stmt = $this->db->prepare('SELECT * FROM route WHERE user_id = ? ORDER BY id' . $this->limitSuffix($limit, $offset));
         $stmt->execute([$userId]);
 
         return $stmt->fetchAll();
     }
 
-    public function findByUserWithPublic(int $userId): array
+    public function countByUser(int $userId): int
     {
-        $stmt = $this->db->prepare('SELECT * FROM route WHERE user_id = ? OR public = 1');
+        $stmt = $this->db->prepare('SELECT COUNT(*) FROM route WHERE user_id = ?');
+        $stmt->execute([$userId]);
+
+        return (int) $stmt->fetchColumn();
+    }
+
+    public function findByUserWithPublic(int $userId, ?int $limit = null, int $offset = 0): array
+    {
+        $stmt = $this->db->prepare('SELECT * FROM route WHERE user_id = ? OR public = 1 ORDER BY id' . $this->limitSuffix($limit, $offset));
         $stmt->execute([$userId]);
 
         return $stmt->fetchAll();
+    }
+
+    public function countByUserWithPublic(int $userId): int
+    {
+        $stmt = $this->db->prepare('SELECT COUNT(*) FROM route WHERE user_id = ? OR public = 1');
+        $stmt->execute([$userId]);
+
+        return (int) $stmt->fetchColumn();
+    }
+
+    private function limitSuffix(?int $limit, int $offset): string
+    {
+        return $limit !== null ? ' LIMIT ' . $limit . ' OFFSET ' . max(0, $offset) : '';
     }
 
     public function findByTour(int $tourId): array

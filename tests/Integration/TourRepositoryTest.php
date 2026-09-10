@@ -296,4 +296,31 @@ final class TourRepositoryTest extends TestCase
         $this->assertCount(1, $result);
         $this->assertSame('Long', $result[0]['name']);
     }
+
+    public function testSearchLimitAndOffsetPageThroughResultsOrderedByName(): void
+    {
+        $owner = $this->createUser();
+        $this->tours->create($owner, ['name' => 'Charlie']);
+        $this->tours->create($owner, ['name' => 'Alpha']);
+        $this->tours->create($owner, ['name' => 'Bravo']);
+
+        $page1 = array_column($this->tours->search('mine', $owner, [], 2, 0), 'name');
+        $page2 = array_column($this->tours->search('mine', $owner, [], 2, 2), 'name');
+
+        $this->assertSame(['Alpha', 'Bravo'], $page1);
+        $this->assertSame(['Charlie'], $page2);
+    }
+
+    public function testCountSearchMatchesSearchRegardlessOfLimit(): void
+    {
+        $owner = $this->createUser();
+        $this->tours->create($owner, ['name' => 'Alpha Tour']);
+        $this->tours->create($owner, ['name' => 'Beta Tour']);
+        $this->tours->create($owner, ['name' => 'Gamma Tour']);
+
+        $this->assertSame(3, $this->tours->countSearch('mine', $owner));
+        $this->assertCount(2, $this->tours->search('mine', $owner, [], 2, 0));
+
+        $this->assertSame(1, $this->tours->countSearch('mine', $owner, ['search' => 'Alpha']));
+    }
 }

@@ -49,7 +49,44 @@ final class UserRepository
      *        - the admin user list's "filter by right" controls.
      * @return array<int, array<string, mixed>> all users, password hashes excluded
      */
-    public function findAll(array $filters = []): array
+    public function findAll(array $filters = [], ?int $limit = null, int $offset = 0): array
+    {
+        [$where, $params] = $this->buildRightFilterWhere($filters);
+
+        $sql = 'SELECT id, username, email, firstname, lastname, is_admin, tour_create, tour_publish, tour_manage, tour_copy FROM user';
+        if ($where !== []) {
+            $sql .= ' WHERE ' . implode(' AND ', $where);
+        }
+        $sql .= ' ORDER BY username' . $this->limitSuffix($limit, $offset);
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * @param array<string,mixed> $filters same shape as findAll()'s
+     */
+    public function countAll(array $filters = []): int
+    {
+        [$where, $params] = $this->buildRightFilterWhere($filters);
+
+        $sql = 'SELECT COUNT(*) FROM user';
+        if ($where !== []) {
+            $sql .= ' WHERE ' . implode(' AND ', $where);
+        }
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * @return array{0: string[], 1: array<int,mixed>}
+     */
+    private function buildRightFilterWhere(array $filters): array
     {
         $where = [];
         $params = [];
@@ -60,16 +97,12 @@ final class UserRepository
             }
         }
 
-        $sql = 'SELECT id, username, email, firstname, lastname, is_admin, tour_create, tour_publish, tour_manage, tour_copy FROM user';
-        if ($where !== []) {
-            $sql .= ' WHERE ' . implode(' AND ', $where);
-        }
-        $sql .= ' ORDER BY username';
+        return [$where, $params];
+    }
 
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-
-        return $stmt->fetchAll();
+    private function limitSuffix(?int $limit, int $offset): string
+    {
+        return $limit !== null ? ' LIMIT ' . $limit . ' OFFSET ' . max(0, $offset) : '';
     }
 
     public function create(array $data): array

@@ -40,6 +40,11 @@ let tourFormTagList = []; // the create/edit form's current tag chips
 let tourFormImages = []; // the edit form's current photo list (create form has none yet - a tour needs an id first)
 let tourFormTourId = null; // the tour id the open form is editing, or null while creating
 let tourFormPendingRouteId = null; // set by route.js's "+ New tour…" shortcut - the route to add once the new tour is saved
+let tourFormPendingPhotoUploads = []; // File objects added but not yet uploaded - applied only when Save is clicked
+let tourFormPendingPhotoRemovals = []; // ids of existing images marked for removal but not yet deleted - applied only when Save is clicked
+let tourRouteManagerOriginalIds = []; // route ids/order as loaded, to diff against on Save; the manager itself edits tourRouteManagerInTour locally only
+let tourRouteManagerCandidatePage = 1; // 1-indexed - pagination for the "Add more routes" candidate list below
+let tourRouteManagerCandidatePageSize = ADMIN_LIST_DEFAULT_PAGE_SIZE; // config.js - shared with the other admin lists' page-size options
 
 function openTourAdminMenu() {
     closeMenu();
@@ -384,6 +389,8 @@ function showTourCreateForm(pendingRouteId = null) {
     tourFormImages = [];
     tourFormTourId = null;
     tourFormPendingRouteId = pendingRouteId;
+    tourFormPendingPhotoUploads = [];
+    tourFormPendingPhotoRemovals = [];
     document.getElementById('touradminmenu-body').innerHTML = tourFormHtml(null);
 }
 
@@ -397,6 +404,8 @@ function showTourEditForm(id) {
         tourFormTagList = (answer.data.tags || []).slice();
         tourFormImages = answer.data.images || [];
         tourFormTourId = id;
+        tourFormPendingPhotoUploads = [];
+        tourFormPendingPhotoRemovals = [];
         document.getElementById('touradminmenu-body').innerHTML = tourFormHtml(answer.data);
         loadTourImagesInto(document.getElementById('touradminmenu-body'));
     }).catch(err => showToast('Loading tour failed: ' + err.message, 'error'));
@@ -485,21 +494,33 @@ function removeTourFormTag(index) {
 /* --- Photos (edit form only - a tour needs an id first) --- */
 
 function tourFormPhotosInnerHtml() {
+    var visibleImages = tourFormImages.filter(img => !tourFormPendingPhotoRemovals.includes(img.id));
+    var totalCount = visibleImages.length + tourFormPendingPhotoUploads.length;
+
     var html = '<div class="tour-photo-grid" id="tourFormPhotoGrid">';
-    for (let i = 0; i < tourFormImages.length; i++) {
-        var img = tourFormImages[i];
+    for (let i = 0; i < visibleImages.length; i++) {
+        var img = visibleImages[i];
         html += '<div class="tour-photo-tile">' +
             '<img data-tour-id="' + tourFormTourId + '" data-image-id="' + img.id + '">' +
             '<div class="tour-photo-remove" onclick="removeTourFormImage(' + img.id + ');"><i class="material-icons-round">close</i></div>' +
             '</div>';
     }
-    if (tourFormImages.length < 8) {
+    for (let i = 0; i < tourFormPendingPhotoUploads.length; i++) {
+        // Not yet uploaded - preview straight from the local File via a blob:
+        // URL rather than loadTourImagesInto()'s fetchBlob() path, which is
+        // only for photos that already exist on the server.
+        html += '<div class="tour-photo-tile tour-photo-tile-pending" title="Uploaded when you click Save">' +
+            '<img src="' + URL.createObjectURL(tourFormPendingPhotoUploads[i]) + '">' +
+            '<div class="tour-photo-remove" onclick="removePendingTourFormPhoto(' + i + ');"><i class="material-icons-round">close</i></div>' +
+            '</div>';
+    }
+    if (totalCount < 8) {
         html += '<div class="tour-photo-tile tour-photo-add" onclick="document.getElementById(\'tourFormPhotoInput\').click();">' +
             '<i class="material-icons-round">add</i></div>';
     }
     html += '</div>' +
-        '<input type="file" id="tourFormPhotoInput" accept="image/jpeg,image/png,image/webp" style="display:none;" onchange="uploadTourFormPhoto(event);">' +
-        '<p class="hint">Up to 8 photos, 5 MB each.</p>';
+        '<input type="file" id="tourFormPhotoInput" accept="image/jpeg,image/png,image/webp" style="display:none;" onchange="stageTourFormPhoto(event);">' +
+        '<p class="hint">Up to 8 photos, 5 MB each. Added/removed photos are saved when you click Save.</p>';
 
     return html;
 }
@@ -509,28 +530,40 @@ function refreshTourFormPhotos() {
     loadTourImagesInto(document.getElementById('tourFormPhotosWrap'));
 }
 
-function uploadTourFormPhoto(event) {
+/**
+ * Stages a photo locally (preview only, via a blob: URL) instead of
+ * uploading it immediately - the actual POST happens in
+ * applyPendingTourPhotoChanges(), only once the form's Save button is
+ * clicked, matching the explicit-save behaviour of the rest of this form.
+ */
+function stageTourFormPhoto(event) {
     var file = event.target.files[0];
     if (!file) {
         return;
     }
+    if (file.size > 5 * 1024 * 1024) {
+        showToast('Photo must be at most 5 MB.', 'error');
+        event.target.value = '';
+        return;
+    }
 
-    var formData = new FormData();
-    formData.append('image', file);
-
-    Ytan.postFile('/tours/' + tourFormTourId + '/images', formData).then(answer => {
-        tourFormImages = answer.data;
-        refreshTourFormPhotos();
-    }).catch(err => showToast('Uploading photo failed: ' + err.message, 'error'));
-
+    tourFormPendingPhotoUploads.push(file);
+    refreshTourFormPhotos();
     event.target.value = '';
 }
 
+function removePendingTourFormPhoto(index) {
+    tourFormPendingPhotoUploads.splice(index, 1);
+    refreshTourFormPhotos();
+}
+
+/**
+ * Marks an already-saved photo for removal - the actual DELETE happens in
+ * applyPendingTourPhotoChanges() on Save, so a Cancel leaves it untouched.
+ */
 function removeTourFormImage(imageId) {
-    Ytan.del('/tours/' + tourFormTourId + '/images/' + imageId).then(answer => {
-        tourFormImages = answer.data;
-        refreshTourFormPhotos();
-    }).catch(err => showToast('Removing photo failed: ' + err.message, 'error'));
+    tourFormPendingPhotoRemovals.push(imageId);
+    refreshTourFormPhotos();
 }
 
 /* --- Save --- */
@@ -578,12 +611,37 @@ function saveEditedTour(id) {
     }
     document.getElementById('tourFormSaveBtn').disabled = true;
 
-    Ytan.put('/tours/' + id, readTourForm()).then(() => {
-        getToursByUserId(user.id);
-        showTourDetail(id);
-    }).catch(err => {
-        document.getElementById('tourFormSaveBtn').disabled = false;
-        showToast('Save failed: ' + err.message, 'error');
+    Ytan.put('/tours/' + id, readTourForm())
+        .then(() => applyPendingTourPhotoChanges(id))
+        .then(() => {
+            getToursByUserId(user.id);
+            showTourDetail(id);
+        }).catch(err => {
+            document.getElementById('tourFormSaveBtn').disabled = false;
+            showToast('Save failed: ' + err.message, 'error');
+        });
+}
+
+/**
+ * Applies the photo add/remove operations staged by stageTourFormPhoto()/
+ * removeTourFormImage() while the edit form was open. A failure here is
+ * reported but doesn't block the rest of Save - the tour's own fields were
+ * already saved by the time this runs.
+ */
+function applyPendingTourPhotoChanges(tourId) {
+    var removals = tourFormPendingPhotoRemovals.map(imageId => Ytan.del('/tours/' + tourId + '/images/' + imageId));
+    var uploads = tourFormPendingPhotoUploads.map(file => {
+        var formData = new FormData();
+        formData.append('image', file);
+        return Ytan.postFile('/tours/' + tourId + '/images', formData);
+    });
+
+    if (removals.length === 0 && uploads.length === 0) {
+        return Promise.resolve();
+    }
+
+    return Promise.all(removals.concat(uploads)).catch(err => {
+        showToast('Some photo changes failed to save: ' + err.message, 'error');
     });
 }
 
@@ -591,6 +649,8 @@ function saveEditedTour(id) {
 
 function manageTourRoutes(tourId) {
     tourAdminCurrentTourId = tourId;
+    tourRouteManagerCandidatePage = 1;
+    tourRouteManagerCandidatePageSize = ADMIN_LIST_DEFAULT_PAGE_SIZE;
     var myToken = ++tourAdminRenderToken;
 
     Promise.all([
@@ -602,6 +662,7 @@ function manageTourRoutes(tourId) {
         }
         tourRouteManagerOwnRoutes = ownAnswer.data;
         tourRouteManagerInTour = tourRoutesAnswer.data;
+        tourRouteManagerOriginalIds = tourRouteManagerInTour.map(r => r.id);
         renderTourRouteManager('');
     }).catch(err => {
         log('manageTourRoutes() failed', LOG_ERROR, err);
@@ -611,7 +672,6 @@ function manageTourRoutes(tourId) {
 
 function renderTourRouteManager(searchQuery) {
     var tourId = tourAdminCurrentTourId;
-    var inTourIds = tourRouteManagerInTour.map(r => r.id);
     var totalLength = tourRouteManagerInTour.reduce((sum, r) => sum + (r.length || 0), 0);
 
     var html = '<button type="button" class="nav-back tour-detail-back" onclick="showTourDetail(' + tourId + ');"><i class="material-icons-round">arrow_back</i></button>' +
@@ -640,12 +700,40 @@ function renderTourRouteManager(searchQuery) {
 
     html += '<p class="nav-field-label">Add more routes</p>' +
         '<div class="search-bar"><i class="material-icons-round">search</i>' +
-            '<input type="text" id="tourRouteSearchInput" placeholder="Search your routes…" value="' + escapeHTML(searchQuery) + '" oninput="filterTourRouteManager();"></div>';
+            '<input type="text" id="tourRouteSearchInput" placeholder="Search your routes…" value="' + escapeHTML(searchQuery) + '" oninput="filterTourRouteManager();"></div>' +
+        '<div id="tourRouteManagerCandidatesResults"></div>';
 
-    var query = foldSearchText(searchQuery);
-    var candidates = tourRouteManagerOwnRoutes.filter(r => !inTourIds.includes(r.id) && (query === '' || foldSearchText(r.name).includes(query)));
+    html += '<div class="tour-action-row tour-route-manager-actions">' +
+        '<button id="tourRouteManagerSaveBtn" class="button" type="button" onclick="saveTourRouteManager();">Save</button>' +
+        '<button class="button" type="button" onclick="cancelTourRouteManager();">Cancel</button>' +
+    '</div>';
 
-    html += '<div class="tour-route-manager-list">';
+    document.getElementById('touradminmenu-body').innerHTML = html;
+    renderFilteredTourRouteManagerCandidates();
+}
+
+/**
+ * Renders just the "Add more routes" candidate rows + their pagination bar
+ * (into #tourRouteManagerCandidatesResults) from the already-loaded
+ * tourRouteManagerOwnRoutes, filtered client-side by the live search input
+ * and paged by tourRouteManagerCandidatePage/PageSize - kept separate from
+ * renderTourRouteManager() so typing in the search box never rebuilds the
+ * search input itself (which would steal focus/cursor position after every
+ * keystroke), the same split renderFilteredTourList()/renderFilteredUserRows()
+ * already use for their own search boxes.
+ */
+function renderFilteredTourRouteManagerCandidates() {
+    var searchInput = document.getElementById('tourRouteSearchInput');
+    var query = foldSearchText(searchInput ? searchInput.value : '');
+    var inTourIds = tourRouteManagerInTour.map(r => r.id);
+    var allCandidates = tourRouteManagerOwnRoutes.filter(r => !inTourIds.includes(r.id) && (query === '' || foldSearchText(r.name).includes(query)));
+
+    var totalPages = Math.max(1, Math.ceil(allCandidates.length / tourRouteManagerCandidatePageSize));
+    tourRouteManagerCandidatePage = Math.min(Math.max(1, tourRouteManagerCandidatePage), totalPages);
+    var pageStart = (tourRouteManagerCandidatePage - 1) * tourRouteManagerCandidatePageSize;
+    var candidates = allCandidates.slice(pageStart, pageStart + tourRouteManagerCandidatePageSize);
+
+    var html = '<div class="tour-route-manager-list">';
     if (candidates.length === 0) {
         html += '<p class="hint">No matching routes.</p>';
     } else {
@@ -660,25 +748,71 @@ function renderTourRouteManager(searchQuery) {
     }
     html += '</div>';
 
-    html += '<div class="nav-btn-primary" onclick="showTourDetail(' + tourId + ');">Done</div>';
+    html += tourRouteManagerCandidatePaginationHtml(allCandidates.length, totalPages);
 
-    document.getElementById('touradminmenu-body').innerHTML = html;
+    document.getElementById('tourRouteManagerCandidatesResults').innerHTML = html;
+}
+
+/**
+ * Mirrors adminUserPaginationHtml() (admin-user.js) / the Tours list's own
+ * pagination block - same page-size dropdown (ADMIN_LIST_PAGE_SIZES) and
+ * prev/next nav, just scoped to this one "Add more routes" candidate list
+ * instead of a two-section split.
+ */
+function tourRouteManagerCandidatePaginationHtml(totalMatches, totalPages) {
+    var sizeOptions = '';
+    for (let i = 0; i < ADMIN_LIST_PAGE_SIZES.length; i++) {
+        var size = ADMIN_LIST_PAGE_SIZES[i];
+        sizeOptions += '<option value="' + size + '"' + (size === tourRouteManagerCandidatePageSize ? ' selected' : '') + '>' + size + '</option>';
+    }
+
+    return '<div class="admin-pagination">' +
+        '<div class="admin-pagination-size">' +
+            '<label for="tourRouteCandidatePageSize">Rows per page:</label>' +
+            '<select id="tourRouteCandidatePageSize" class="select-css select-css-compact" onchange="onTourRouteManagerCandidatePageSizeChange();">' + sizeOptions + '</select>' +
+        '</div>' +
+        '<div class="admin-pagination-nav">' +
+            '<span class="admin-pagination-nav-btn' + (tourRouteManagerCandidatePage <= 1 ? ' disabled' : '') + '" onclick="' + (tourRouteManagerCandidatePage > 1 ? 'goToTourRouteManagerCandidatePage(-1);' : '') + '"><i class="material-icons-round">chevron_left</i></span>' +
+            '<span class="admin-pagination-page">' + (totalMatches === 0 ? '0 routes' : 'Page ' + tourRouteManagerCandidatePage + ' of ' + totalPages) + '</span>' +
+            '<span class="admin-pagination-nav-btn' + (tourRouteManagerCandidatePage >= totalPages ? ' disabled' : '') + '" onclick="' + (tourRouteManagerCandidatePage < totalPages ? 'goToTourRouteManagerCandidatePage(1);' : '') + '"><i class="material-icons-round">chevron_right</i></span>' +
+        '</div>' +
+        '</div>';
 }
 
 function filterTourRouteManager() {
-    renderTourRouteManager(document.getElementById('tourRouteSearchInput').value);
+    tourRouteManagerCandidatePage = 1; // the result set is about to change - stay on a page that still exists
+    renderFilteredTourRouteManagerCandidates();
 }
 
+function onTourRouteManagerCandidatePageSizeChange() {
+    tourRouteManagerCandidatePageSize = parseInt(document.getElementById('tourRouteCandidatePageSize').value, 10);
+    tourRouteManagerCandidatePage = 1;
+    renderFilteredTourRouteManagerCandidates();
+}
+
+function goToTourRouteManagerCandidatePage(delta) {
+    tourRouteManagerCandidatePage += delta;
+    renderFilteredTourRouteManagerCandidates();
+}
+
+/**
+ * addRouteToTour()/removeRouteFromTour()/reorderTourRoute() only edit the
+ * local tourRouteManagerInTour buffer and re-render - nothing is sent to the
+ * server until saveTourRouteManager() runs (Save button), so a Cancel (or
+ * the back arrow) can discard every change made in this view for free.
+ */
 function addRouteToTour(routeId) {
-    Ytan.post('/tours/' + tourAdminCurrentTourId + '/routes', { route_id: routeId }).then(() => {
-        manageTourRoutes(tourAdminCurrentTourId);
-    }).catch(err => showToast('Adding route failed: ' + err.message, 'error'));
+    var route = tourRouteManagerOwnRoutes.find(r => r.id === routeId);
+    if (!route || tourRouteManagerInTour.some(r => r.id === routeId)) {
+        return;
+    }
+    tourRouteManagerInTour.push(route);
+    renderTourRouteManager(document.getElementById('tourRouteSearchInput') ? document.getElementById('tourRouteSearchInput').value : '');
 }
 
 function removeRouteFromTour(routeId) {
-    Ytan.del('/tours/' + tourAdminCurrentTourId + '/routes/' + routeId).then(() => {
-        manageTourRoutes(tourAdminCurrentTourId);
-    }).catch(err => showToast('Removing route failed: ' + err.message, 'error'));
+    tourRouteManagerInTour = tourRouteManagerInTour.filter(r => r.id !== routeId);
+    renderTourRouteManager(document.getElementById('tourRouteSearchInput') ? document.getElementById('tourRouteSearchInput').value : '');
 }
 
 function reorderTourRoute(index, direction) {
@@ -687,12 +821,46 @@ function reorderTourRoute(index, direction) {
         return;
     }
 
-    var ids = tourRouteManagerInTour.map(r => r.id);
-    var tmp = ids[index];
-    ids[index] = ids[newIndex];
-    ids[newIndex] = tmp;
+    var tmp = tourRouteManagerInTour[index];
+    tourRouteManagerInTour[index] = tourRouteManagerInTour[newIndex];
+    tourRouteManagerInTour[newIndex] = tmp;
 
-    Ytan.put('/tours/' + tourAdminCurrentTourId + '/routes/order', { route_ids: ids }).then(() => {
-        manageTourRoutes(tourAdminCurrentTourId);
-    }).catch(err => showToast('Reordering failed: ' + err.message, 'error'));
+    renderTourRouteManager(document.getElementById('tourRouteSearchInput') ? document.getElementById('tourRouteSearchInput').value : '');
+}
+
+/**
+ * Diffs tourRouteManagerInTour against the snapshot taken when the manager
+ * was opened (tourRouteManagerOriginalIds) and applies exactly the API
+ * calls needed: POST for newly added routes, DELETE for removed ones, then
+ * PUT .../routes/order with the full final id list so the server-side order
+ * always matches the buffer regardless of where adds/removes landed it.
+ */
+function saveTourRouteManager() {
+    var tourId = tourAdminCurrentTourId;
+    var finalIds = tourRouteManagerInTour.map(r => r.id);
+    var addedIds = finalIds.filter(id => !tourRouteManagerOriginalIds.includes(id));
+    var removedIds = tourRouteManagerOriginalIds.filter(id => !finalIds.includes(id));
+    var orderChanged = finalIds.length !== tourRouteManagerOriginalIds.length
+        || finalIds.some((id, i) => id !== tourRouteManagerOriginalIds[i]);
+
+    document.getElementById('tourRouteManagerSaveBtn').disabled = true;
+
+    var addCalls = addedIds.map(id => Ytan.post('/tours/' + tourId + '/routes', { route_id: id }));
+    var removeCalls = removedIds.map(id => Ytan.del('/tours/' + tourId + '/routes/' + id));
+
+    Promise.all(addCalls.concat(removeCalls)).then(() => {
+        return orderChanged && finalIds.length > 0
+            ? Ytan.put('/tours/' + tourId + '/routes/order', { route_ids: finalIds })
+            : Promise.resolve();
+    }).then(() => {
+        showToast('Saved.', 'success');
+        showTourDetail(tourId);
+    }).catch(err => {
+        document.getElementById('tourRouteManagerSaveBtn').disabled = false;
+        showToast('Save failed: ' + err.message, 'error');
+    });
+}
+
+function cancelTourRouteManager() {
+    showTourDetail(tourAdminCurrentTourId);
 }

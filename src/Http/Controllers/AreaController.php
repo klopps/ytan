@@ -18,14 +18,29 @@ final class AreaController extends BaseController
     {
         $auth = $request->getAttribute('auth');
         $scope = $request->getQueryParams()['scope'] ?? ($auth !== null ? 'mine_public' : 'public');
+        ['limit' => $limit, 'offset' => $offset] = $this->parsePagination($request);
+        $userId = in_array($scope, ['mine', 'mine_public'], true) ? (int) $this->requireAuthUser($request)['sub'] : null;
 
         $data = match ($scope) {
-            'mine' => $this->areas->findByUser($this->requireAuthUser($request)['sub']),
-            'mine_public' => $this->areas->findByUserWithPublic($this->requireAuthUser($request)['sub']),
-            default => $this->areas->findPublic(),
+            'mine' => $this->areas->findByUser($userId, $limit, $offset),
+            'mine_public' => $this->areas->findByUserWithPublic($userId, $limit, $offset),
+            default => $this->areas->findPublic($limit, $offset),
         };
 
-        return $this->json($response, ['data' => $data]);
+        $body = ['data' => $data];
+        if ($limit !== null) {
+            $body['meta'] = [
+                'total' => match ($scope) {
+                    'mine' => $this->areas->countByUser($userId),
+                    'mine_public' => $this->areas->countByUserWithPublic($userId),
+                    default => $this->areas->countPublic(),
+                },
+                'limit' => $limit,
+                'offset' => $offset,
+            ];
+        }
+
+        return $this->json($response, $body);
     }
 
     public function show(Request $request, Response $response, array $args): Response

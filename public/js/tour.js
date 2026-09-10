@@ -31,6 +31,9 @@ function getPublicTours() {
     }).catch(err => log('getPublicTours() failed', LOG_ERROR, err));
 }
 
+let activeTourModeId = null; // the tour active in Tour Mode, or null - route.js's saveRoute() reads this to auto-add newly created routes to it
+let activeTourModeName = null; // kept alongside the id so saveRoute()'s toast can name the tour without reading it back out of the badge's DOM
+
 /**
  * Enters Tour Mode: filters the map down to just this tour's routes and
  * shows the persistent "Tour Mode" badge (see #tourModeBadge in app.php)
@@ -42,6 +45,8 @@ function getPublicTours() {
  * @param {string} name
  */
 function activateTourMode(id, name) {
+    activeTourModeId = id;
+    activeTourModeName = name;
     getRoutesByTourId(id);
     document.getElementById('tourModeBadgeName').textContent = name;
     document.getElementById('tourModeBadge').style.display = 'flex';
@@ -52,6 +57,8 @@ function activateTourMode(id, name) {
  * signed out, all public) routes.
  */
 function exitTourMode() {
+    activeTourModeId = null;
+    activeTourModeName = null;
     document.getElementById('tourModeBadge').style.display = 'none';
     if (user.id !== null) {
         getRoutesByUserId(user.id);
