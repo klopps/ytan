@@ -213,7 +213,7 @@ final class TourRepositoryTest extends TestCase
 
         $copy = $this->tours->copy((int) $tour['id'], $copierId);
 
-        $this->assertSame('Original', $copy['name']);
+        $this->assertSame('Original (Copy)', $copy['name']);
         $this->assertSame('Desc', $copy['description']);
         $this->assertSame($copierId, (int) $copy['user_id']);
         $this->assertSame(0, (int) $copy['public'], 'a copy must never inherit the source tour\'s public status');
@@ -223,6 +223,37 @@ final class TourRepositoryTest extends TestCase
         $stmt = $this->pdo->prepare('SELECT route_id FROM tour_route WHERE tour_id = ?');
         $stmt->execute([$copy['id']]);
         $this->assertSame([$route], array_map('intval', $stmt->fetchAll(\PDO::FETCH_COLUMN)));
+    }
+
+    public function testCopyNumbersSubsequentDuplicatesButLeavesTheFirstCopyBare(): void
+    {
+        $userId = $this->createUser();
+        $tour = $this->tours->create($userId, ['name' => 'Original']);
+
+        $first = $this->tours->copy((int) $tour['id'], $userId);
+        $second = $this->tours->copy((int) $tour['id'], $userId);
+        $third = $this->tours->copy((int) $tour['id'], $userId);
+
+        $this->assertSame('Original (Copy)', $first['name']);
+        $this->assertSame('Original (Copy 2)', $second['name']);
+        $this->assertSame('Original (Copy 3)', $third['name']);
+    }
+
+    public function testCopyNameUniquenessIsScopedToTheNewOwnerNotGlobal(): void
+    {
+        $owner = $this->createUser();
+        $otherOwner = $this->createUser();
+        $tour = $this->tours->create($owner, ['name' => 'Original']);
+
+        // otherOwner already has a tour named exactly what owner's first
+        // copy would be called - since that name only needs to be unique
+        // within its own owner's tours, this must not force a number onto
+        // owner's copy.
+        $this->tours->create($otherOwner, ['name' => 'Original (Copy)']);
+
+        $copy = $this->tours->copy((int) $tour['id'], $owner);
+
+        $this->assertSame('Original (Copy)', $copy['name']);
     }
 
     public function testSearchScopeMineOnlyReturnsTheOwnersTours(): void

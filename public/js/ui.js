@@ -137,10 +137,85 @@ function closeMenu() {
     if (typeof navMenuReset === 'function') {
         window.setTimeout(navMenuReset, 500);
     }
+
+    // Mirrors toggleMapSearch()'s own hide-reason below 640px (same
+    // .hidden-for-menu rule, style.css) - only below that width does the
+    // open drawer's max-width:85vw reach far enough right to get under
+    // #editToolbar's fixed top-right position.
+    if (window.matchMedia("(max-width: 640px)").matches) {
+        document.getElementById("editToolbar").classList.remove("hidden-for-menu");
+    }
 }
 
 function openMenu() {
     document.getElementById("sidemenu").style.marginLeft = "0";
+
+    if (window.matchMedia("(max-width: 640px)").matches) {
+        document.getElementById("editToolbar").classList.add("hidden-for-menu");
+    }
+}
+
+/**
+ * Purely visual companion to opening the Tours/Users panels (tour-admin.js's
+ * openTourAdminMenu()/admin-user.js's openUserAdminMenu()) directly over the
+ * drawer - adds the same "pushed fully off to the left" look
+ * (.sidemenu-pushed-left, style.css) that navMenuGoTo() already gives a
+ * nav-screen like Site Settings when it slides in a sub-screen, so opening
+ * either panel reads the same way instead of the drawer just sitting there
+ * static while the panel wipes in over it. Independent of margin-left
+ * (openMenu()/closeMenu()'s own open/closed state) so it composes safely
+ * either way - if the drawer was already closed, this is invisible.
+ *
+ * Uses `left` (style.css), not `transform` - a `transform` on a
+ * position:fixed element, even briefly mid-transition, makes some mobile
+ * Chrome builds permanently miscompute the page's own layout viewport
+ * width (confirmed by direct testing: window.innerWidth reports far wider
+ * than the real device width from the moment a transform is applied, and
+ * never recovers even after the transform is later removed - so cleaning
+ * up after the fact, tried first, doesn't help). `left` is a plain layout
+ * property and doesn't trigger it.
+ */
+function pushMenuLeft() {
+    document.getElementById("sidemenu").classList.add("sidemenu-pushed-left");
+}
+
+function unpushMenuLeft() {
+    document.getElementById("sidemenu").classList.remove("sidemenu-pushed-left");
+}
+
+var panelSlideTimers = {}; // one pending "display:none once closed" timeout per panel id
+
+/**
+ * Slides a Tours/Users-style panel (#touradminmenu/#useradminmenu,
+ * style.css) in from the right via `left`, not `transform` - see
+ * pushMenuLeft() above for why. The panel's default closed state is
+ * display:none (a position:fixed box left sitting at left:100% still counts
+ * toward the page's own scrollable width, confirmed by testing - no
+ * ancestor overflow clips it out), so this un-hides it first and forces a
+ * reflow before starting the `left` transition - otherwise the browser can
+ * batch "now visible" and "now at left:0" into a single frame with no
+ * visible slide, since you can't transition out of display:none.
+ */
+function slideInPanel(id) {
+    var el = document.getElementById(id);
+    clearTimeout(panelSlideTimers[id]);
+    el.style.display = 'block'; // not '' - that would just fall back to the stylesheet's display:none
+    void el.offsetWidth; // force a reflow so the off-screen state paints before the transition starts
+    el.style.left = '0';
+}
+
+/**
+ * Slides the panel back out, then sets display:none once the 0.35s
+ * transition (matching that rule's own duration) finishes - see
+ * slideInPanel() above for why display:none matters here.
+ */
+function slideOutPanel(id) {
+    var el = document.getElementById(id);
+    el.style.left = '100%';
+    clearTimeout(panelSlideTimers[id]);
+    panelSlideTimers[id] = window.setTimeout(function () {
+        el.style.display = 'none';
+    }, 350);
 }
 
 function hideMenu() {

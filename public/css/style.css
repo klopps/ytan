@@ -12,12 +12,13 @@
 :root {
   --color-bg-page: #f3f4f8;
   --color-bg-subtle: #f2f1f7;
+  --color-bg-stripe: #e8e7ed;
   --color-bg-panel: #ffffff;
   --color-border: #999999;
   --color-border-subtle: #e4e2ed;
   --color-text: #2c2c3d;
   --color-text-secondary: #666666;
-  --color-text-faint: #999999;
+  --color-text-faint: #555555;
   --color-on-accent: #ffffff;
   --color-accent: #60609f;
   --color-accent-soft: #ecebf7;
@@ -47,6 +48,7 @@ a:focus-visible {
 :root[data-theme="dark"] {
   --color-bg-page: #17151f;
   --color-bg-subtle: #322f45;
+  --color-bg-stripe: #28253a;
   --color-bg-panel: #211f2c;
   --color-border: #4c4964;
   --color-border-subtle: #454165;
@@ -77,6 +79,21 @@ body {
   line-height: 1.2em;
   background-color: var(--color-bg-page);
   color: var(--color-text);
+  /* The Tours/Users panels (#touradminmenu/#useradminmenu) sit at
+     left:100% while closed, ready to slide in - a real, positioned box
+     just off the right edge of the viewport. position:fixed boxes aren't
+     reliably clipped out of the page's own scrollable area by an ancestor's
+     overflow-x alone (confirmed by testing: overflow-x:hidden here didn't
+     stop document.documentElement.scrollWidth from including it) - only
+     `overflow: hidden` on both axes does. Body/html never need their own
+     scroll in this SPA anyway; every scrollable area is an inner element
+     (.cm_content, .nav-screen-body, ...). Without this, the off-screen
+     panel's box not only allows a real (if empty-looking) horizontal
+     scrollbar but plausibly also feeds mobile browsers' "does this page
+     need a wider layout viewport" heuristic - a leading suspect for the
+     intermittent very-wide window.innerWidth readings under mobile
+     emulation. */
+  overflow: hidden;
 }
 
 hr {
@@ -540,11 +557,25 @@ img.wsi {
   left: 0;
   background: var(--color-bg-panel);
   overflow: hidden;
-  transition: 0.5s;
+  transition: margin-left 0.5s, left 0.35s ease;
   color: var(--color-text);
 
   -webkit-box-shadow: var(--shadow-panel)!important;
   box-shadow: var(--shadow-panel)!important;
+}
+
+/* Purely visual "push" companion to opening Tours/Users (see #touradminmenu/
+   #useradminmenu below) - independent of margin-left, which is reserved for
+   openMenu()/closeMenu()'s own open/closed state, so this composes with
+   either: a still-open drawer visibly slides fully out of view as the panel
+   slides in over it, matching .nav-screen-off-left's look for opening a
+   nav-screen like Site Settings. Toggled by tour-admin.js/admin-user.js via
+   ui.js's pushMenuLeft()/unpushMenuLeft(). Uses `left`, not `transform` -
+   see #touradminmenu/#useradminmenu below for why. -335px stacks on top of
+   whatever margin-left currently is (0 open / -335px closed), so it's
+   guaranteed off-screen either way without needing to know which. */
+#sidemenu.sidemenu-pushed-left {
+  left: -335px;
 }
 
 .cookiemenu {
@@ -561,6 +592,54 @@ img.wsi {
   color: var(--color-text);
 }
 
+/* Tours/Users are opened straight from inside the drawer (#sidemenu,
+   z-index 101) without closing it first - openTourAdminMenu()/
+   openUserAdminMenu() (tour-admin.js/admin-user.js) rely on this to sit
+   above it, so the panel simply covers the still-open drawer instead of the
+   drawer (which would otherwise win at the shared .cookiemenu z-index of
+   10) staying on top of it. Legal/cookie-consent stay at that shared
+   default since neither is opened from inside an open drawer. */
+#touradminmenu,
+#useradminmenu {
+  z-index: 110;
+  width: 100%;
+  /* left, not transform - a `transform` on a position:fixed element (even
+     briefly, mid-transition) makes some mobile Chrome builds permanently
+     miscompute the page's own layout viewport width (confirmed by direct
+     testing: window.innerWidth reports far wider than the real device
+     width from the moment a transform is applied, and never recovers even
+     after the transform is later removed). left is a plain layout property
+     and doesn't trigger it. */
+  left: 100%;
+  transition: left 0.35s ease;
+  /* Default closed state - display:none, not just left:100%. A
+     position:fixed box positioned outside the viewport still counts toward
+     the page's own scrollable width (confirmed by testing: no ancestor
+     overflow, not even `overflow:hidden` on html/body, clips it out of
+     document.documentElement.scrollWidth), so left:100% alone leaves a real
+     horizontal scrollbar and a wider effective page. display:none removes
+     it from layout entirely. slideInPanel()/slideOutPanel() (ui.js) toggle
+     it around the left transition (forcing a reflow in between, since you
+     can't animate out of display:none - the element must already be
+     display:block at its off-screen position before `left` starts moving). */
+  display: none;
+  /* Scrolling moves down to .cm_content below instead of staying here -
+     combining overflow-x:hidden with overflow-y:auto on the same
+     position:fixed element is a separate, long-documented mobile
+     Chrome/Safari inconsistency where the horizontal clip stops being
+     reliably enforced. Splitting the two axes onto outer (clip) vs. inner
+     (scroll) elements is the standard workaround - kept regardless of the
+     transform/left change above since it's an independent issue. */
+  overflow-y: hidden;
+}
+
+#touradminmenu > .cm_content,
+#useradminmenu > .cm_content {
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .cm_content {
   max-width: 760px;
   margin: 0 auto;
@@ -568,6 +647,15 @@ img.wsi {
   text-align: left;
   box-sizing: border-box;
   line-height: 1.3;
+  overflow-x: hidden;
+  /* Free-text content (tour descriptions, POI notes, ...) is user-entered
+     and can contain a long unbroken run of characters (a URL, a word with
+     no spaces) with nothing else in this panel constraining its width -
+     without this, that single run can force a wider-than-viewport layout
+     instead of wrapping, which then drags every other 100%-width element
+     below it (buttons, the closing logo) out of the visible area too. */
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .cm_content h2 {
@@ -586,6 +674,54 @@ img.wsi {
    of the content. */
 #cookiemenu .cm_content h2 {
   text-align: center;
+}
+
+/* Sticky title bar shared by every sub-view of the Tours/Users panels
+   (list/detail/form/route manager) - one back-arrow + truncating title +
+   optional right-aligned action slot, replacing the old pattern of a
+   permanent <h2> plus each sub-view building its own back-button+heading
+   below it. Set via setTourAdminHeader()/setUserAdminHeader() (tour-admin.js/
+   admin-user.js). Sticky within the panel's own scroll container so it stays
+   visible while scrolling a long list. */
+.cm-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background-color: var(--color-bg-page);
+  padding-top: 4px;
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+}
+
+.cm-panel-header .nav-back {
+  flex-shrink: 0;
+}
+
+.cm-panel-header .cm-panel-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 19px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cm-panel-header .startbtn {
+  flex-shrink: 0;
+  padding: 5px 10px;
+  font-size: 13px;
+}
+
+/* Shrinks the panel's own top padding since .cm-panel-header now provides
+   its own clearance above the content - used on the Tours/Users panels
+   only (cm_content's base 70px is sized for the old permanent-heading
+   layout, still needed as-is on the other .cookiemenu panels). */
+.cm_content-compact {
+  padding-top: 12px;
 }
 
 .cm_content h3 {
@@ -1084,6 +1220,14 @@ img.wsi {
     padding: 70px 16px 30px 16px;
   }
 
+  /* Same fix as the base .cm_content-compact rule above (near
+     .cm-panel-header) - this media query's own .cm_content override just
+     above would otherwise reset padding-top back to 70px on exactly the
+     mobile viewports this compact header matters most on. */
+  .cm_content-compact {
+    padding-top: 12px;
+  }
+
   .admin-user-table thead {
     display: none;
   }
@@ -1339,6 +1483,11 @@ img.wsi {
 
 .tour-list-row {
   cursor: pointer;
+  padding: 12px 14px;
+}
+
+.tour-list-row:nth-child(even) {
+  background-color: var(--color-bg-stripe);
 }
 
 .tour-list-meta {
@@ -1409,21 +1558,30 @@ img.wsi {
   padding: 8px 8px;
 }
 
-.tour-route-manager-order {
-  display: flex;
-  flex-direction: column;
-  color: var(--color-accent);
+.tour-route-manager-handle {
+  color: var(--color-text-faint);
   flex-shrink: 0;
+  cursor: grab;
+  font-size: 20px;
+  /* Stops the browser's own touch-scroll/pan gesture from taking over a
+     touchmove that started on the handle, so pointermove events keep
+     arriving for the drag instead of the page scrolling under the finger. */
+  touch-action: none;
 }
 
-.tour-route-manager-order .material-icons-round {
-  font-size: 15px;
-  cursor: pointer;
+.tour-route-manager-row-dragging {
+  opacity: 0.35;
 }
 
-.tour-route-manager-order-disabled {
-  opacity: 0.3;
-  cursor: not-allowed !important;
+/* The floating clone that follows the pointer while dragging - appended
+   directly to <body> (see startRouteDrag() in tour-admin.js) so it survives
+   the underlying list re-rendering on every reorder mid-drag. */
+.tour-route-manager-ghost {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  background-color: var(--color-bg-panel);
 }
 
 .tour-route-manager-name {
@@ -1442,6 +1600,12 @@ img.wsi {
 
 .tour-route-manager-add {
   color: var(--color-accent);
+}
+
+.tour-route-manager-subtitle {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  margin: 0 0 10px 0;
 }
 
 .tour-route-manager-actions {
@@ -1570,7 +1734,7 @@ img.wsi {
   font-size: 13px;
 }
 
-/* Below this width the route-manager's reorder/remove/add icons (15-21px,
+/* Below this width the route-manager's handle/remove/add icons (15-21px,
    fine for a precise mouse pointer) are too small to reliably tap - bump
    them to the same ~40px touch-target minimum admin-user-table's .icon-btn
    already uses on mobile (style.css, "Tours" section above). */
@@ -1582,8 +1746,8 @@ img.wsi {
     line-height: 1;
   }
 
-  .tour-route-manager-order .material-icons-round {
-    font-size: 20px;
+  .tour-route-manager-handle {
+    font-size: 24px;
     padding: 9px 11px;
   }
 }
@@ -2208,9 +2372,15 @@ input[type="color"] {
    long as the search box is expanded (toggleMapSearch(), ui.js). Uses
    transform/visibility rather than panelOpened()/panelClosed()'s inline
    style.visibility, so the two hide-reasons compose correctly instead of
-   one clobbering the other (see toggleMapSearch()'s comment). */
+   one clobbering the other (see toggleMapSearch()'s comment). Same deal for
+   .hidden-for-menu below - on a narrow viewport the open drawer's own
+   max-width:85vw can reach far enough right to reach under #editToolbar's
+   top-right position (openMenu()/closeMenu(), ui.js); wider than 640px the
+   320px-capped drawer never gets close, so neither rule below applies and
+   the toolbar just stays put next to it. */
 @media screen and (max-width: 640px) {
-  #editToolbar.hidden-for-search {
+  #editToolbar.hidden-for-search,
+  #editToolbar.hidden-for-menu {
     transform: translateX(150%);
     visibility: hidden;
     /* Delay the visibility switch until the slide-out transform finishes,

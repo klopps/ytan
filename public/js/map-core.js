@@ -44,6 +44,7 @@ if (!(isNaN(initialLat) || isNaN(initialLng))) {
 }
 
 let map;
+let mapInitialized = false; // set true at the end of initMap() - app.php's /auth/me callback checks this to tell whether it lost the race against Google Maps loading (see initMap()'s user.id !== null branch)
 let googleMapsScriptIsInjected = false;
 let measureTool;
 let infoWindow;
@@ -210,6 +211,8 @@ function initMap() {
         getPublicAreas();
         getPublicTours();
     }
+
+    mapInitialized = true;
 
     google.maps.InfoWindow.prototype.isOpen = function() {
         var m = this.getMap();

@@ -242,9 +242,12 @@
 
     <!-- USER ADMIN MENU (admin only) ----------------------------------->
     <div id="useradminmenu" class="cookiemenu">
-      <div id="useradminmenu-close-btn" class="panel-close-btn" onclick="closeUserAdminMenu();"><i class="material-icons-round">close</i></div>
-      <div class="cm_content">
-        <h2>Users</h2>
+      <div class="cm_content cm_content-compact">
+        <div class="cm-panel-header" id="useradminmenu-header">
+          <button type="button" class="nav-back" id="useradminmenu-back" style="display:none;"><i class="material-icons-round">arrow_back</i></button>
+          <h2 id="useradminmenu-title" class="cm-panel-title">Users</h2>
+          <div id="useradminmenu-action"></div>
+        </div>
         <div id="useradminmenu-form"></div>
         <div id="useradminmenu-list"></div>
         <div class="panel-logo"></div>
@@ -254,9 +257,12 @@
     <!-- TOUR ADMIN MENU (browse/search tours, view details, manage a
          tour's own metadata and route membership) ----------------------->
     <div id="touradminmenu" class="cookiemenu">
-      <div id="touradminmenu-close-btn" class="panel-close-btn" onclick="closeTourAdminMenu();"><i class="material-icons-round">close</i></div>
-      <div class="cm_content">
-        <h2>Tours</h2>
+      <div class="cm_content cm_content-compact">
+        <div class="cm-panel-header" id="touradminmenu-header">
+          <button type="button" class="nav-back" id="touradminmenu-back" style="display:none;"><i class="material-icons-round">arrow_back</i></button>
+          <h2 id="touradminmenu-title" class="cm-panel-title">Tours</h2>
+          <div id="touradminmenu-action"></div>
+        </div>
         <div id="touradminmenu-body"></div>
         <div class="panel-logo"></div>
       </div>
@@ -320,6 +326,21 @@
           updatePreferencesRowLabel();
           updateAdminMenuVisibility();
           updateGoogleSearchAllowed();
+
+          // initMap() (map-core.js) is racing this same fetch - if it
+          // already ran (loadGoogleMaps() above, and this took the slower
+          // round trip), it captured user.id as still null and loaded only
+          // the public POIs/routes/areas/tours, leaving the create-POI
+          // button disabled. Load the user's own data and flip it on now
+          // that we actually know who's logged in, instead of leaving the
+          // UI stuck in its anonymous state for the rest of the session.
+          if (typeof mapInitialized !== 'undefined' && mapInitialized) {
+            getPoisByUserId(user.id);
+            getRoutesByUserId(user.id);
+            getAreasByUserId(user.id);
+            getToursByUserId(user.id);
+            enablePoiButton();
+          }
         }).catch(() => {
           // stored token is invalid/expired - fall back to the logged-out state
           Ytan.setToken(null);

@@ -27,7 +27,9 @@ final class TourRepository
     {
         [$where, $params] = $this->buildSearchWhere($scope, $userId, $filters);
 
-        $sql = 'SELECT tour.*, user.username AS creator_username FROM tour JOIN user ON user.id = tour.user_id
+        $sql = 'SELECT tour.*, user.username AS creator_username,
+                (SELECT COUNT(*) FROM tour_route WHERE tour_route.tour_id = tour.id) AS route_count
+                FROM tour JOIN user ON user.id = tour.user_id
                 WHERE ' . implode(' AND ', $where) . ' ORDER BY tour.name' . $this->limitSuffix($limit, $offset);
 
         $stmt = $this->db->prepare($sql);
@@ -168,11 +170,12 @@ final class TourRepository
     public function copy(int $sourceId, int $newOwnerId): array
     {
         $source = $this->findById($sourceId);
+        $name = $this->uniqueCopyName($source['name'], $newOwnerId);
 
         $stmt = $this->db->prepare(
             'INSERT INTO tour (user_id, name, description, public, created_at, updated_at) VALUES (?, ?, ?, 0, NOW(), NOW())'
         );
-        $stmt->execute([$newOwnerId, $source['name'], $source['description']]);
+        $stmt->execute([$newOwnerId, $name, $source['description']]);
         $newId = (int) $this->db->lastInsertId();
 
         $stmt = $this->db->prepare('SELECT route_id, sort_order FROM tour_route WHERE tour_id = ? ORDER BY sort_order');
@@ -186,6 +189,37 @@ final class TourRepository
         $this->recalculateTotalLength($newId);
 
         return $this->findById($newId);
+    }
+
+    /**
+     * "$baseName (Copy)", or "$baseName (Copy 2)"/"(Copy 3)"/... if that (or
+     * an earlier-numbered candidate) already exists among $ownerId's own
+     * tours - only the first copy is left unnumbered, matching how a user
+     * would expect their own copies to read in a list. Scoped to the new
+     * owner's tours rather than globally, since that's the only list a
+     * clashing name would actually be confusing in.
+     */
+    private function uniqueCopyName(string $baseName, int $ownerId): string
+    {
+        $candidate = $baseName . ' (Copy)';
+        if (!$this->nameExistsForOwner($candidate, $ownerId)) {
+            return $candidate;
+        }
+
+        for ($n = 2; ; $n++) {
+            $candidate = $baseName . ' (Copy ' . $n . ')';
+            if (!$this->nameExistsForOwner($candidate, $ownerId)) {
+                return $candidate;
+            }
+        }
+    }
+
+    private function nameExistsForOwner(string $name, int $ownerId): bool
+    {
+        $stmt = $this->db->prepare('SELECT COUNT(*) FROM tour WHERE user_id = ? AND name = ?');
+        $stmt->execute([$ownerId, $name]);
+
+        return (int) $stmt->fetchColumn() > 0;
     }
 
     /**

@@ -43,13 +43,26 @@ let tourFormPendingRouteId = null; // set by route.js's "+ New tour…" shortcut
 let tourFormPendingPhotoUploads = []; // File objects added but not yet uploaded - applied only when Save is clicked
 let tourFormPendingPhotoRemovals = []; // ids of existing images marked for removal but not yet deleted - applied only when Save is clicked
 let tourRouteManagerOriginalIds = []; // route ids/order as loaded, to diff against on Save; the manager itself edits tourRouteManagerInTour locally only
+let tourRouteManagerTourName = ''; // the tour being edited - the header alone just says "Edit Routes", so this is shown right below it
 let tourRouteManagerCandidatePage = 1; // 1-indexed - pagination for the "Add more routes" candidate list below
 let tourRouteManagerCandidatePageSize = ADMIN_LIST_DEFAULT_PAGE_SIZE; // config.js - shared with the other admin lists' page-size options
 
+/**
+ * Deliberately does NOT call closeMenu() - #touradminmenu's z-index sits
+ * above #sidemenu's (style.css, ".cookiemenu opening over the drawer"), so
+ * this opens directly on top of the drawer exactly as it currently is
+ * (open on whichever screen, or closed) rather than needing to hide it
+ * first. closeTourAdminMenu() then needs no matching "reopen the drawer"
+ * step either - the drawer was never touched, so it's simply revealed
+ * again in the same state once this panel closes. pushMenuLeft() (ui.js)
+ * makes a still-open drawer slide fully out of view as this panel slides in
+ * over it, the same "pushed left" look navMenuGoTo() gives a nav-screen
+ * like Site Settings. slideInPanel()/slideOutPanel() (ui.js) drive the
+ * panel's own slide-in-from-the-right transform.
+ */
 function openTourAdminMenu() {
-    closeMenu();
-    document.getElementById('touradminmenu').style.width = '100%';
-    document.getElementById('touradminmenu-close-btn').style.display = 'flex';
+    slideInPanel('touradminmenu');
+    pushMenuLeft();
     panelOpened();
     tourAdminPageSize = ADMIN_LIST_DEFAULT_PAGE_SIZE;
     tourAdminPage = { mine: 1, public: 1 };
@@ -58,9 +71,31 @@ function openTourAdminMenu() {
 }
 
 function closeTourAdminMenu() {
-    document.getElementById('touradminmenu').style.width = '0%';
-    document.getElementById('touradminmenu-close-btn').style.display = 'none';
+    slideOutPanel('touradminmenu');
+    unpushMenuLeft();
     panelClosed();
+}
+
+/**
+ * Shared sticky title bar for every sub-view (list/detail/form/route
+ * manager) - replaces the old pattern of a permanent "Tours" <h2> in
+ * app.php PLUS each sub-view building its own back-button+heading below
+ * it (two stacked headings on every screen but the list). Each render*()
+ * function calls this once at the top instead.
+ *
+ * @param {string} title plain text - the title itself truncates with an
+ *        ellipsis via CSS rather than wrapping, so no HTML/badges here.
+ * @param {?function} backOnClick called on back-arrow click; the arrow is
+ *        hidden entirely when this is null/undefined (root list view).
+ * @param {string} [actionHtml] optional right-aligned action button HTML
+ *        (list view's "New tour"), empty otherwise.
+ */
+function setTourAdminHeader(title, backOnClick, actionHtml) {
+    document.getElementById('touradminmenu-title').textContent = title;
+    var backBtn = document.getElementById('touradminmenu-back');
+    backBtn.style.display = backOnClick ? '' : 'none';
+    backBtn.onclick = backOnClick || null;
+    document.getElementById('touradminmenu-action').innerHTML = actionHtml || '';
 }
 
 /* ------------------------------------------------------- Right helpers */
@@ -135,20 +170,21 @@ function renderTourList() {
         sizeOptions += '<option value="' + size + '"' + (size === tourAdminPageSize ? ' selected' : '') + '>' + size + '</option>';
     }
 
-    var html = '<div class="admin-panel-header">' +
-        (canCreateTours() ? '<div class="startbtn" onclick="showTourCreateForm();"><i class="material-icons-round">add</i>&nbsp;New tour</div>' : '') +
-        '</div>' +
-        '<div class="search-bar"><i class="material-icons-round">search</i>' +
+    setTourAdminHeader('Tours', closeTourAdminMenu, canCreateTours() ? '<div class="startbtn" onclick="showTourCreateForm();"><i class="material-icons-round">add</i>&nbsp;New tour</div>' : '');
+
+    var html = '<div class="search-bar"><i class="material-icons-round">search</i>' +
             '<input type="text" id="tourSearchInput" placeholder="Search by name, description or creator" oninput="onTourSearchInput();"></div>' +
-        '<div class="tour-length-filter">' +
-            '<span class="nav-field-label" style="margin:0;">' + (settings.unit === 'nautical' ? 'Length (nm)' : 'Length (km)') + '</span>' +
-            '<input type="number" min="0" id="tourLengthMin" placeholder="From" value="' + escapeHTML(tourAdminLengthFilter.min) + '" oninput="onTourLengthFilterChange();">' +
-            '<span>&ndash;</span>' +
-            '<input type="number" min="0" id="tourLengthMax" placeholder="To" value="' + escapeHTML(tourAdminLengthFilter.max) + '" oninput="onTourLengthFilterChange();">' +
-        '</div>' +
-        '<div class="admin-pagination-size tour-page-size-row">' +
-            '<label for="tourPageSize">Rows per page:</label>' +
-            '<select id="tourPageSize" class="select-css select-css-compact" onchange="onTourAdminPageSizeChange();">' + sizeOptions + '</select>' +
+        '<div class="tour-list-toolbar-row">' +
+            '<div class="tour-length-filter">' +
+                '<span class="nav-field-label" style="margin:0;">' + (settings.unit === 'nautical' ? 'Length (nm)' : 'Length (km)') + '</span>' +
+                '<input type="number" min="0" id="tourLengthMin" placeholder="From" value="' + escapeHTML(tourAdminLengthFilter.min) + '" oninput="onTourLengthFilterChange();">' +
+                '<span>&ndash;</span>' +
+                '<input type="number" min="0" id="tourLengthMax" placeholder="To" value="' + escapeHTML(tourAdminLengthFilter.max) + '" oninput="onTourLengthFilterChange();">' +
+            '</div>' +
+            '<div class="admin-pagination-size tour-page-size-row">' +
+                '<label for="tourPageSize">Rows per page:</label>' +
+                '<select id="tourPageSize" class="select-css select-css-compact" onchange="onTourAdminPageSizeChange();">' + sizeOptions + '</select>' +
+            '</div>' +
         '</div>' +
         '<div id="tourListResults"></div>';
 
@@ -220,7 +256,7 @@ function tourListSectionHtml(title, list, showCreator, sectionKey) {
     var pageItems = list.slice(pageStart, pageStart + tourAdminPageSize);
 
     var html = '<p class="nav-field-label">' + escapeHTML(title) + ' (' + list.length + ')</p>' +
-        '<div class="admin-user-table-wrap"><table class="admin-user-table"><tbody>';
+        '<div class="admin-user-table-wrap">';
 
     for (let i = 0; i < pageItems.length; i++) {
         var t = pageItems[i];
@@ -229,19 +265,17 @@ function tourListSectionHtml(title, list, showCreator, sectionKey) {
             tags += '<span class="tag-chip">+' + (t.tags.length - 3) + '</span>';
         }
 
-        html += '<tr class="tour-list-row" onclick="showTourDetail(' + t.id + ');">' +
-            '<td data-label="Tour">' +
+        html += '<div class="tour-list-row" onclick="showTourDetail(' + t.id + ');">' +
                 '<strong>' + escapeHTML(t.name) + '</strong>' +
                 (t.public == 1 ? ' <span class="admin-badge">Public</span>' : '') +
                 '<br><span class="tour-list-meta">' + formatDistance(t.total_length || 0, settings.unit) +
+                '  &middot;  ' + (t.route_count || 0) + (t.route_count == 1 ? ' route' : ' routes') +
                 (showCreator ? ' &middot; by ' + escapeHTML(t.creator_username) : '') + '</span>' +
                 (tags ? '<div class="chip-row">' + tags + '</div>' : '') +
-            '</td>' +
-            '<td class="actions"><i class="material-icons-round">chevron_right</i></td>' +
-            '</tr>';
+            '</div>';
     }
 
-    html += '</tbody></table></div>';
+    html += '</div>';
 
     if (totalPages > 1) {
         var page = tourAdminPage[sectionKey];
@@ -277,11 +311,11 @@ function showTourDetail(id) {
 }
 
 function renderTourDetail(t, routesInTour) {
-    var html = '<button type="button" class="nav-back tour-detail-back" onclick="showTourList();"><i class="material-icons-round">arrow_back</i></button>' +
-        '<h3 class="tour-detail-name">' + escapeHTML(t.name) +
-            (t.public == 1 ? ' <span class="admin-badge">Public</span>' : '') +
-        '</h3>' +
-        '<div class="tour-detail-meta">' + formatDistance(t.total_length || 0, settings.unit) + ' &middot; ' +
+    setTourAdminHeader(t.name, showTourList, '');
+
+    var html = '<div class="tour-detail-meta">' +
+            (t.public == 1 ? '<span class="admin-badge">Public</span> &middot; ' : '') +
+            formatDistance(t.total_length || 0, settings.unit) + ' &middot; ' +
             routesInTour.length + (routesInTour.length == 1 ? ' route' : ' routes') +
             ' &middot; by ' + escapeHTML(t.creator_username) +
         '</div>';
@@ -323,7 +357,12 @@ function renderTourDetail(t, routesInTour) {
     // attribute - it must be HTML-escaped as a whole (see iconButton() in
     // admin-user.js) or the browser ends the attribute early at the first
     // embedded quote, silently mangling the handler into invalid JS.
-    var activateTourModeCall = 'activateTourMode(' + t.id + ', ' + JSON.stringify(t.name) + '); closeTourAdminMenu();';
+    // closeMenu() too, not just closeTourAdminMenu() - the Tours panel now
+    // opens directly over a still-open drawer (openTourAdminMenu() no
+    // longer calls closeMenu() itself, see its own comment), so closing
+    // only the panel would leave the drawer sitting there behind it instead
+    // of landing back on the clean map Tour Mode is meant to show.
+    var activateTourModeCall = 'activateTourMode(' + t.id + ', ' + JSON.stringify(t.name) + '); closeTourAdminMenu(); closeMenu();';
     html += '<div class="tour-detail-actions">' +
         '<div class="nav-btn-primary" onclick="' + escapeHTML(activateTourModeCall) + '">' +
             '<i class="material-icons-round">explore</i>&nbsp;Activate Tour Mode' +
@@ -416,10 +455,10 @@ function tourFormHtml(t) {
 
     var saveCall = t.id === null ? 'saveNewTour()' : 'saveEditedTour(' + t.id + ')';
     var cancelCall = t.id === null ? 'showTourList()' : 'showTourDetail(' + t.id + ')';
+    var cancelFn = t.id === null ? showTourList : function () { showTourDetail(t.id); };
+    setTourAdminHeader(t.id === null ? 'New tour' : 'Edit tour', cancelFn, '');
 
-    var html = '<button type="button" class="nav-back tour-detail-back" onclick="' + cancelCall + ';"><i class="material-icons-round">arrow_back</i></button>' +
-        '<div class="admin-user-form">' +
-        '<h3>' + (t.id === null ? 'New tour' : 'Edit tour') + '</h3>' +
+    var html = '<div class="admin-user-form">' +
         '<div class="adminFormRow">' +
             '<div class="adminFormLabel"><label for="tourFormName">Name: </label></div>' +
             '<div class="adminFormField"><input id="tourFormName" type="text" value="' + escapeHTML(t.name) + '" placeholder="At least 3 characters"></div>' +
@@ -655,14 +694,16 @@ function manageTourRoutes(tourId) {
 
     Promise.all([
         Ytan.get('/routes?scope=mine'),
-        Ytan.get('/routes?tour_id=' + tourId)
-    ]).then(([ownAnswer, tourRoutesAnswer]) => {
+        Ytan.get('/routes?tour_id=' + tourId),
+        Ytan.get('/tours/' + tourId)
+    ]).then(([ownAnswer, tourRoutesAnswer, tourAnswer]) => {
         if (myToken !== tourAdminRenderToken) {
             return;
         }
         tourRouteManagerOwnRoutes = ownAnswer.data;
         tourRouteManagerInTour = tourRoutesAnswer.data;
         tourRouteManagerOriginalIds = tourRouteManagerInTour.map(r => r.id);
+        tourRouteManagerTourName = tourAnswer.data.name;
         renderTourRouteManager('');
     }).catch(err => {
         log('manageTourRoutes() failed', LOG_ERROR, err);
@@ -673,43 +714,67 @@ function manageTourRoutes(tourId) {
 function renderTourRouteManager(searchQuery) {
     var tourId = tourAdminCurrentTourId;
     var totalLength = tourRouteManagerInTour.reduce((sum, r) => sum + (r.length || 0), 0);
+    // The sticky header shows the tour's own name rather than a generic
+    // "Edit Routes" label - matches renderTourDetail()'s header, and its
+    // .cm-panel-title already truncates with an ellipsis instead of
+    // wrapping when the name doesn't fit.
+    setTourAdminHeader(tourRouteManagerTourName, function () { showTourDetail(tourId); }, '');
 
-    var html = '<button type="button" class="nav-back tour-detail-back" onclick="showTourDetail(' + tourId + ');"><i class="material-icons-round">arrow_back</i></button>' +
-        '<h3>Edit Routes</h3>';
+    var html = '<p class="tour-route-manager-subtitle">Edit Routes</p>';
+
+    // Save/Cancel sit right under the heading rather than at the very
+    // bottom of the view - on a phone, with a long route list, the bottom
+    // of this panel can be a long scroll away, which made the buttons hard
+    // to reach in practice.
+    html += '<div class="tour-action-row tour-route-manager-actions">' +
+        '<button id="tourRouteManagerSaveBtn" class="button" type="button" onclick="saveTourRouteManager();">Save</button>' +
+        '<button class="button" type="button" onclick="cancelTourRouteManager();">Cancel</button>' +
+    '</div>';
 
     html += '<p class="nav-field-label">In this tour (' + tourRouteManagerInTour.length + ') &middot; ' + formatDistance(totalLength, settings.unit) + '</p>';
-
-    if (tourRouteManagerInTour.length === 0) {
-        html += '<p class="hint">No routes yet - add some below.</p>';
-    } else {
-        html += '<div class="tour-route-manager-list">';
-        for (let i = 0; i < tourRouteManagerInTour.length; i++) {
-            var r = tourRouteManagerInTour[i];
-            html += '<div class="tour-route-manager-row tour-route-manager-row-selected">' +
-                '<span class="tour-route-manager-order">' +
-                    '<i class="material-icons-round' + (i === 0 ? ' tour-route-manager-order-disabled' : '') + '" onclick="reorderTourRoute(' + i + ', -1);">arrow_upward</i>' +
-                    '<i class="material-icons-round' + (i === tourRouteManagerInTour.length - 1 ? ' tour-route-manager-order-disabled' : '') + '" onclick="reorderTourRoute(' + i + ', 1);">arrow_downward</i>' +
-                '</span>' +
-                '<span class="tour-route-manager-name">' + escapeHTML(r.name) + '</span>' +
-                '<span class="tour-list-meta">' + formatDistance(r.length || 0, settings.unit) + '</span>' +
-                '<i class="material-icons-round tour-route-manager-remove" title="Remove from tour" onclick="removeRouteFromTour(' + r.id + ');">close</i>' +
-                '</div>';
-        }
-        html += '</div>';
-    }
+    html += '<div id="tourRouteManagerInTourList"></div>';
 
     html += '<p class="nav-field-label">Add more routes</p>' +
         '<div class="search-bar"><i class="material-icons-round">search</i>' +
             '<input type="text" id="tourRouteSearchInput" placeholder="Search your routes…" value="' + escapeHTML(searchQuery) + '" oninput="filterTourRouteManager();"></div>' +
         '<div id="tourRouteManagerCandidatesResults"></div>';
 
-    html += '<div class="tour-action-row tour-route-manager-actions">' +
-        '<button id="tourRouteManagerSaveBtn" class="button" type="button" onclick="saveTourRouteManager();">Save</button>' +
-        '<button class="button" type="button" onclick="cancelTourRouteManager();">Cancel</button>' +
-    '</div>';
-
     document.getElementById('touradminmenu-body').innerHTML = html;
+    renderTourRouteManagerInTourList();
     renderFilteredTourRouteManagerCandidates();
+}
+
+/**
+ * Renders just the "In this tour" rows (into #tourRouteManagerInTourList) -
+ * kept separate from renderTourRouteManager() so a drag-reorder can re-render
+ * only this list on every pointermove instead of rebuilding the whole panel
+ * (Save/Cancel row, search box, candidates list) on every frame of the drag.
+ */
+function renderTourRouteManagerInTourList() {
+    var container = document.getElementById('tourRouteManagerInTourList');
+    if (!container) {
+        return;
+    }
+
+    if (tourRouteManagerInTour.length === 0) {
+        container.innerHTML = '<p class="hint">No routes yet - add some below.</p>';
+        return;
+    }
+
+    var html = '<div class="tour-route-manager-list">';
+    for (let i = 0; i < tourRouteManagerInTour.length; i++) {
+        var r = tourRouteManagerInTour[i];
+        var dragging = tourRouteDragState && tourRouteDragState.routeId === r.id;
+        html += '<div class="tour-route-manager-row tour-route-manager-row-selected' + (dragging ? ' tour-route-manager-row-dragging' : '') + '">' +
+            '<i class="material-icons-round tour-route-manager-handle" onpointerdown="startRouteDrag(event, ' + r.id + ');">drag_indicator</i>' +
+            '<span class="tour-route-manager-name">' + escapeHTML(r.name) + '</span>' +
+            '<span class="tour-list-meta">' + formatDistance(r.length || 0, settings.unit) + '</span>' +
+            '<i class="material-icons-round tour-route-manager-remove" title="Remove from tour" onclick="removeRouteFromTour(' + r.id + ');">close</i>' +
+            '</div>';
+    }
+    html += '</div>';
+
+    container.innerHTML = html;
 }
 
 /**
@@ -796,8 +861,8 @@ function goToTourRouteManagerCandidatePage(delta) {
 }
 
 /**
- * addRouteToTour()/removeRouteFromTour()/reorderTourRoute() only edit the
- * local tourRouteManagerInTour buffer and re-render - nothing is sent to the
+ * addRouteToTour()/removeRouteFromTour()/the drag-reorder handlers only edit
+ * the local tourRouteManagerInTour buffer and re-render - nothing is sent to the
  * server until saveTourRouteManager() runs (Save button), so a Cancel (or
  * the back arrow) can discard every change made in this view for free.
  */
@@ -815,17 +880,96 @@ function removeRouteFromTour(routeId) {
     renderTourRouteManager(document.getElementById('tourRouteSearchInput') ? document.getElementById('tourRouteSearchInput').value : '');
 }
 
-function reorderTourRoute(index, direction) {
-    var newIndex = index + direction;
-    if (newIndex < 0 || newIndex >= tourRouteManagerInTour.length) {
+/**
+ * Drag-to-reorder for the "In this tour" list, via Pointer Events (unifies
+ * mouse/touch/pen - a native HTML5 draggable wouldn't fire on touch at all,
+ * which matters since this app is mobile-first). tourRouteDragState tracks
+ * the one active drag; a floating "ghost" clone (appended straight to
+ * <body>, not into the re-rendered list) follows the pointer and holds
+ * pointer capture for the whole gesture, so it keeps receiving move/up
+ * events even though renderTourRouteManagerInTourList() rebuilds the actual
+ * rows underneath it on every reorder.
+ */
+let tourRouteDragState = null; // { pointerId, routeId, ghost, offsetY }
+
+function startRouteDrag(event, routeId) {
+    if (event.pointerType === 'mouse' && event.button !== 0) {
         return;
     }
 
-    var tmp = tourRouteManagerInTour[index];
-    tourRouteManagerInTour[index] = tourRouteManagerInTour[newIndex];
-    tourRouteManagerInTour[newIndex] = tmp;
+    var row = event.currentTarget.closest('.tour-route-manager-row');
+    if (!row) {
+        return;
+    }
+    var rect = row.getBoundingClientRect();
 
-    renderTourRouteManager(document.getElementById('tourRouteSearchInput') ? document.getElementById('tourRouteSearchInput').value : '');
+    var ghost = row.cloneNode(true);
+    ghost.classList.add('tour-route-manager-ghost');
+    ghost.style.width = rect.width + 'px';
+    ghost.style.left = rect.left + 'px';
+    ghost.style.top = rect.top + 'px';
+    document.body.appendChild(ghost);
+
+    tourRouteDragState = {
+        pointerId: event.pointerId,
+        routeId: routeId,
+        ghost: ghost,
+        offsetY: event.clientY - rect.top
+    };
+
+    ghost.setPointerCapture(event.pointerId);
+    ghost.addEventListener('pointermove', onRouteDragMove);
+    ghost.addEventListener('pointerup', endRouteDrag);
+    ghost.addEventListener('pointercancel', endRouteDrag);
+
+    renderTourRouteManagerInTourList();
+    event.preventDefault();
+}
+
+function onRouteDragMove(event) {
+    if (!tourRouteDragState || event.pointerId !== tourRouteDragState.pointerId) {
+        return;
+    }
+    var state = tourRouteDragState;
+    state.ghost.style.top = (event.clientY - state.offsetY) + 'px';
+
+    var container = document.getElementById('tourRouteManagerInTourList');
+    if (!container) {
+        return;
+    }
+    var rows = Array.from(container.querySelectorAll('.tour-route-manager-row-selected'));
+    var fromIndex = tourRouteManagerInTour.findIndex(r => r.id === state.routeId);
+    if (fromIndex === -1) {
+        return;
+    }
+
+    var targetIndex = rows.length - 1;
+    for (let i = 0; i < rows.length; i++) {
+        var r = rows[i].getBoundingClientRect();
+        if (event.clientY < r.top + r.height / 2) {
+            targetIndex = i;
+            break;
+        }
+    }
+
+    if (targetIndex !== fromIndex) {
+        var item = tourRouteManagerInTour.splice(fromIndex, 1)[0];
+        tourRouteManagerInTour.splice(targetIndex, 0, item);
+        renderTourRouteManagerInTourList();
+    }
+}
+
+function endRouteDrag(event) {
+    if (!tourRouteDragState || event.pointerId !== tourRouteDragState.pointerId) {
+        return;
+    }
+    var state = tourRouteDragState;
+    state.ghost.removeEventListener('pointermove', onRouteDragMove);
+    state.ghost.removeEventListener('pointerup', endRouteDrag);
+    state.ghost.removeEventListener('pointercancel', endRouteDrag);
+    state.ghost.remove();
+    tourRouteDragState = null;
+    renderTourRouteManagerInTourList();
 }
 
 /**

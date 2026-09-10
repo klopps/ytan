@@ -22,6 +22,7 @@ const TOUR_RIGHT_FIELDS = ['tour_create', 'tour_publish', 'tour_manage', 'tour_c
 // ambiguous - "Create"/"Publish"/"Manage"/"Copy" alone read as generic
 // permissions otherwise.
 const USER_RIGHT_LABELS = { is_admin: 'Admin', tour_create: 'Tour: Create', tour_publish: 'Tour: Publish', tour_manage: 'Tour: Manage', tour_copy: 'Tour: Copy' };
+const USER_ADMIN_NEW_BUTTON_HTML = '<div class="startbtn" onclick="showUserCreateForm();"><i class="material-icons-round">person_add</i>&nbsp;New user</div>';
 let adminUserFilters = {}; // { is_admin: 1, tour_manage: 1, ... } - AND'ed together, see loadUserList()
 let adminUserFilterPanelOpen = false; // whether the collapsible "Filter by right" panel is expanded
 let adminUserLastList = []; // last list rendered, so toggling the filter panel/typing a search can re-render without a re-fetch
@@ -29,10 +30,22 @@ let adminUserSearchQuery = ''; // client-side search over username/email/firstna
 let adminUserPageSize = ADMIN_LIST_DEFAULT_PAGE_SIZE; // config.js
 let adminUserPage = 1; // 1-indexed, over the filtered result set (not the unfiltered list)
 
+/**
+ * Deliberately does NOT call closeMenu() - #useradminmenu's z-index sits
+ * above #sidemenu's (style.css, ".cookiemenu opening over the drawer"), so
+ * this opens directly on top of the drawer exactly as it currently is
+ * (open on whichever screen, or closed) rather than needing to hide it
+ * first. closeUserAdminMenu() then needs no matching "reopen the drawer"
+ * step either - the drawer was never touched, so it's simply revealed
+ * again in the same state once this panel closes. pushMenuLeft() (ui.js)
+ * makes a still-open drawer slide fully out of view as this panel slides in
+ * over it, the same "pushed left" look navMenuGoTo() gives a nav-screen
+ * like Site Settings. slideInPanel()/slideOutPanel() (ui.js) drive the
+ * panel's own slide-in-from-the-right transform.
+ */
 function openUserAdminMenu() {
-    closeMenu();
-    document.getElementById("useradminmenu").style.width = "100%";
-    document.getElementById("useradminmenu-close-btn").style.display = "flex";
+    slideInPanel('useradminmenu');
+    pushMenuLeft();
     panelOpened();
     closeUserForm();
     adminUserFilters = {};
@@ -44,9 +57,24 @@ function openUserAdminMenu() {
 }
 
 function closeUserAdminMenu() {
-    document.getElementById("useradminmenu").style.width = "0%";
-    document.getElementById("useradminmenu-close-btn").style.display = "none";
+    slideOutPanel('useradminmenu');
+    unpushMenuLeft();
     panelClosed();
+}
+
+/**
+ * Shared sticky title bar for the list/form sub-views - mirrors
+ * tour-admin.js's setTourAdminHeader() for the same .cm-panel-header
+ * markup. Kept as its own function here (not a cross-file shared utility)
+ * to match how this panel's list/pagination logic already duplicates
+ * tour-admin.js's equivalents rather than sharing them.
+ */
+function setUserAdminHeader(title, backOnClick, actionHtml) {
+    document.getElementById('useradminmenu-title').textContent = title;
+    var backBtn = document.getElementById('useradminmenu-back');
+    backBtn.style.display = backOnClick ? '' : 'none';
+    backBtn.onclick = backOnClick || null;
+    document.getElementById('useradminmenu-action').innerHTML = actionHtml || '';
 }
 
 function loadUserList() {
@@ -124,15 +152,27 @@ function iconButton(icon, title, onclick) {
 
 function renderUserTable(users) {
     adminUserLastList = users;
+    setUserAdminHeader('Users', closeUserAdminMenu, USER_ADMIN_NEW_BUTTON_HTML);
 
-    var html = '<div class="admin-panel-header">' +
-        '<div class="startbtn" onclick="showUserCreateForm();"><i class="material-icons-round">person_add</i>&nbsp;New user</div>' +
-        '</div>';
+    var sizeOptions = '';
+    for (let i = 0; i < ADMIN_LIST_PAGE_SIZES.length; i++) {
+        var size = ADMIN_LIST_PAGE_SIZES[i];
+        sizeOptions += '<option value="' + size + '"' + (size === adminUserPageSize ? ' selected' : '') + '>' + size + '</option>';
+    }
 
-    html += '<div class="search-bar"><i class="material-icons-round">search</i>' +
+    var html = '<div class="search-bar"><i class="material-icons-round">search</i>' +
         '<input type="text" id="userSearchInput" placeholder="Search by name, username or email" value="' + escapeHTML(adminUserSearchQuery) + '" oninput="onAdminUserSearchInput();"></div>';
 
     html += userFilterPanelHtml();
+
+    // Rows-per-page sits above the list, next to the search/filter controls
+    // it affects - matches tour-admin.js's list view (.tour-page-size-row) -
+    // only the prev/next page nav stays with the results below, since that
+    // depends on the current (filtered) result count.
+    html += '<div class="admin-pagination-size tour-page-size-row">' +
+        '<label for="userPageSize">Rows per page:</label>' +
+        '<select id="userPageSize" class="select-css select-css-compact" onchange="onAdminUserPageSizeChange();">' + sizeOptions + '</select>' +
+    '</div>';
 
     html += '<div id="adminUserTableResults"></div>';
 
@@ -227,17 +267,7 @@ function renderFilteredUserRows() {
 }
 
 function adminUserPaginationHtml(totalMatches, totalPages) {
-    var sizeOptions = '';
-    for (let i = 0; i < ADMIN_LIST_PAGE_SIZES.length; i++) {
-        var size = ADMIN_LIST_PAGE_SIZES[i];
-        sizeOptions += '<option value="' + size + '"' + (size === adminUserPageSize ? ' selected' : '') + '>' + size + '</option>';
-    }
-
-    return '<div class="admin-pagination">' +
-        '<div class="admin-pagination-size">' +
-            '<label for="userPageSize">Rows per page:</label>' +
-            '<select id="userPageSize" class="select-css select-css-compact" onchange="onAdminUserPageSizeChange();">' + sizeOptions + '</select>' +
-        '</div>' +
+    return '<div class="admin-pagination admin-pagination-section-only">' +
         '<div class="admin-pagination-nav">' +
             '<span class="admin-pagination-nav-btn' + (adminUserPage <= 1 ? ' disabled' : '') + '" onclick="' + (adminUserPage > 1 ? 'goToAdminUserPage(-1);' : '') + '"><i class="material-icons-round">chevron_left</i></span>' +
             '<span class="admin-pagination-page">' + (totalMatches === 0 ? '0 users' : 'Page ' + adminUserPage + ' of ' + totalPages) + '</span>' +
@@ -253,9 +283,9 @@ function userFormHtml(u) {
     var hint = u.id === null
         ? '<p class="hint">The user will receive an email with a link to set their own password.</p>'
         : '';
+    setUserAdminHeader(u.id === null ? 'New user' : 'Edit user', closeUserForm, '');
 
     return '<div class="admin-user-form">' +
-        '<h3>' + (u.id === null ? 'New user' : 'Edit user') + '</h3>' +
         hint +
         '<div class="adminFormRow">' +
             '<div class="adminFormLabel"><label for="userFormUsername">Username: </label></div>' +
@@ -318,6 +348,7 @@ function editUserRow(id) {
 
 function closeUserForm() {
     document.getElementById('useradminmenu-form').innerHTML = '';
+    setUserAdminHeader('Users', closeUserAdminMenu, USER_ADMIN_NEW_BUTTON_HTML);
 }
 
 function readUserForm() {
@@ -376,9 +407,10 @@ async function deleteUserRow(id) {
  * receive mail themselves.
  */
 function showSetPasswordForm(id, username) {
+    setUserAdminHeader('Set password for ' + username, closeUserForm, '');
+
     document.getElementById('useradminmenu-form').innerHTML =
         '<div class="admin-user-form">' +
-        '<h3>Set password for ' + escapeHTML(username) + '</h3>' +
         '<div class="adminFormRow">' +
             '<div class="adminFormLabel"><label for="setPasswordNew">New password: </label></div>' +
             '<div class="adminFormField"><input id="setPasswordNew" type="password" autocomplete="new-password"></div>' +
