@@ -2358,34 +2358,53 @@ input[type="color"] {
   box-shadow: var(--shadow-soft)!important;
   /* visibility isn't itself animatable - transitioning it with 0s duration
      and 0s delay just means "switch to visible the instant this rule
-     applies", i.e. immediately when .hidden-for-search is removed, so the
-     slide-back-in is visible from the first frame. */
-  transition: transform 0.2s ease, visibility 0s linear 0s; /* matches .map-search-container's own 0.2s expand/collapse */
+     applies", i.e. immediately when .hidden-for-search/.hidden-for-menu is
+     removed, so the fade-back-in is visible from the first frame. opacity
+     is listed here (not just on the .hidden-for-search/.hidden-for-menu
+     rule below) because THIS is the rule that applies once that class is
+     removed - without it here too, the fade-out (0.5s, that rule's own
+     transition) was smooth but fading back in snapped instantly instead of
+     mirroring it. */
+  transition: transform 0.2s ease, opacity 0.5s ease, visibility 0s linear 0s; /* transform matches .map-search-container's own 0.2s expand/collapse */
 
   -webkit-user-select: none; /* Safari */
   -ms-user-select: none; /* IE 10 and IE 11 */
   user-select: none; /* Standard syntax */
 }
 
-/* Below this width the expanded search pill's dropdown zone overlaps
-   #editToolbar's fixed top-right position - slide it off-screen for as
-   long as the search box is expanded (toggleMapSearch(), ui.js). Uses
-   transform/visibility rather than panelOpened()/panelClosed()'s inline
-   style.visibility, so the two hide-reasons compose correctly instead of
-   one clobbering the other (see toggleMapSearch()'s comment). Same deal for
-   .hidden-for-menu below - on a narrow viewport the open drawer's own
-   max-width:85vw can reach far enough right to reach under #editToolbar's
-   top-right position (openMenu()/closeMenu(), ui.js); wider than 640px the
-   320px-capped drawer never gets close, so neither rule below applies and
-   the toolbar just stays put next to it. */
+/* Below this width, #editToolbar needs to get out of the way of either the
+   expanded search pill's dropdown zone (.hidden-for-search,
+   toggleMapSearch() in ui.js) or the open drawer's own max-width:85vw
+   reaching under its top-right position (.hidden-for-menu, openMenu()/
+   closeMenu() in ui.js) - both pre-existing/added this session respectively.
+
+   opacity + visibility, not display or any offsetting property (transform,
+   or `right` with a large negative value): root-caused by direct bisection
+   (confirmed reproducible on the pre-session commit too, so this predates
+   today) that moving #editToolbar off-screen via such a property AT THE
+   SAME TIME .map-search-container or #sidemenu's own width/margin-left
+   transition is running makes some mobile Chrome builds permanently
+   miscompute the page's layout viewport width - the offset amount gets
+   added directly to it (confirmed: right:-1000px reproducibly added
+   exactly 1000px to window.innerWidth). display:none avoided that too, but
+   only as a hard cut with no animation; opacity was confirmed safe in that
+   same bisection and gives back the fade #touradminmenu/#useradminmenu
+   still don't have (they need actual layout removal since they're full
+   panels with real content size; this is a fixed-size toolbar, so a purely
+   visual fade is enough). No !important needed either, unlike the
+   display:none version - showToolbar()/unhideEditToolbar() (ui.js) only
+   ever set an *inline* display, never opacity/visibility, so there's no
+   inline value here to lose to. */
 @media screen and (max-width: 640px) {
   #editToolbar.hidden-for-search,
   #editToolbar.hidden-for-menu {
-    transform: translateX(150%);
+    opacity: 0;
     visibility: hidden;
-    /* Delay the visibility switch until the slide-out transform finishes,
-       instead of hiding instantly and skipping the animation. */
-    transition: transform 0.2s ease, visibility 0s linear 0.2s;
+    pointer-events: none;
+    /* Delay the visibility switch until the fade finishes, instead of
+       removing it from hit-testing/tab order instantly and cutting the
+       animation short. */
+    transition: opacity 0.5s ease, visibility 0s linear 0.5s;
   }
 }
 

@@ -53,13 +53,12 @@ function toggleMapSearch() {
     container.classList.toggle("expanded", expanding);
 
     // Below 640px the expanded search pill's dropdown zone overlaps
-    // #editToolbar's fixed top-right position - slide it off-screen for
-    // as long as the search box is open. Uses a CSS class (transform +
-    // visibility) rather than panelOpened()/panelClosed()'s inline
-    // style.visibility, so the two hide-reasons compose correctly instead
-    // of one clobbering the other: panelClosed() only ever *clears* its
-    // own inline override, which then falls back to this class if it's
-    // still applied.
+    // #editToolbar's fixed top-right position - fade it out (opacity, see
+    // style.css) for as long as the search box is open. Uses a CSS class
+    // rather than panelOpened()/panelClosed()'s inline style.visibility, so
+    // the two hide-reasons compose correctly instead of one clobbering the
+    // other: panelClosed() only ever *clears* its own inline override,
+    // which then falls back to this class if it's still applied.
     if (window.matchMedia("(max-width: 640px)").matches) {
         document.getElementById("editToolbar").classList.toggle("hidden-for-search", expanding);
     }
