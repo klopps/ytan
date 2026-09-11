@@ -1077,6 +1077,23 @@ function setTheme(theme) {
     saveSettings();
 }
 
+/**
+ * Unlike setTheme() (pure CSS, applied instantly via a data-theme
+ * attribute), translations are baked server-side into the initial render
+ * and the one window.YTAN_TRANSLATIONS blob (see templates/app.php,
+ * src/Service/Translator.php) - re-translating every already-open panel
+ * in place isn't attempted, a reload is simplest and safest (same
+ * reload-based approach ui.js's revokeConsent() already uses).
+ */
+function setLanguage(lang) {
+    if (!['en', 'de'].includes(lang)) {
+        return;
+    }
+    settings.language = lang;
+    saveSettings();
+    window.location.reload();
+}
+
 function zoomToMaxAndPan(event) {
     maxZoomService.getMaxZoomAtLatLng(event.latLng, (result) => {
         if (result.status !== "OK") {

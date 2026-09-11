@@ -33,6 +33,7 @@ use Ytan\Service\CaptchaService;
 use Ytan\Service\MailService;
 use Ytan\Service\TourImageService;
 use Ytan\Service\TourNotificationService;
+use Ytan\Service\Translator;
 use Ytan\Service\WsiRenderer;
 
 final class App
@@ -47,6 +48,14 @@ final class App
 
         $appName = $_ENV['APP_NAME'] ?? 'YTAN';
         $appUrl = rtrim($_ENV['APP_URL'] ?? '', '/');
+
+        $supportedLocales = array_map('trim', explode(',', $_ENV['SUPPORTED_LOCALES'] ?? 'en,de'));
+        $locale = Translator::resolveLocale(
+            $supportedLocales,
+            $_COOKIE['settings'] ?? null,
+            $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? null
+        );
+        $translator = new Translator($rootDir . '/resources/i18n', $locale);
 
         $userRepository = new UserRepository($pdo);
         $mailService = new MailService(
@@ -178,7 +187,7 @@ final class App
 
         $app->put('/api/v1/settings/google-search-requires-login', [$settingsController, 'updateGoogleSearchRequiresLogin']);
 
-        $app->get('/', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $settingsRepository) {
+        $app->get('/', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $settingsRepository, $translator) {
             ob_start();
             $mapsApiKey = $_ENV['MAPS_API_KEY'] ?? '';
             $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
@@ -188,6 +197,7 @@ final class App
             if (is_file($versionFile)) {
                 $appVersion = trim(file_get_contents($versionFile));
             }
+            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
             require $rootDir . '/templates/app.php';
             $res->getBody()->write(ob_get_clean());
 
