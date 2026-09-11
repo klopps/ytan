@@ -51,10 +51,10 @@
     <div id="gdpr">
       <div id="policy-disclaimer">
         <p><?= htmlspecialchars($appName) ?> uses Google Maps. In addition, <?= htmlspecialchars($appName) ?> sets a cookie to store data for convenience purposes
-        and to remember that you have agreed to these rules. Our <a href="<?= $baseUrl ?>/legal/datenschutz" target="_blank">privacy policy</a> applies.</p>
+        and to remember that you have agreed to these rules. Our <a href="<?= $baseUrl ?>/legal/privacy" target="_blank">privacy policy</a> applies.</p>
 
         <p>
-        <input id="agreement" type="checkbox" name="agreement" onclick="toggleDisabled('startBtn')"><label for="agreement"><span></span>I have read and accept the above notice and the <a href="<?= $baseUrl ?>/legal/datenschutz" target="_blank">privacy policy</a>.</label>
+        <input id="agreement" type="checkbox" name="agreement" onclick="toggleDisabled('startBtn')"><label for="agreement"><span></span>I have read and accept the above notice and the <a href="<?= $baseUrl ?>/legal/privacy" target="_blank">privacy policy</a>.</label>
         </p>
         <p>
           <button id="startBtn" class="startbtn" onclick="loadGoogleMaps('<?= htmlspecialchars($mapsApiKey) ?>')" disabled>START</button>
@@ -114,9 +114,9 @@
           <div class="nav-divider"></div>
 
           <ul class="nav-menu-list nav-menu-footer">
-            <li><button type="button" class="nav-menu-row" onclick="openLegalMenu('<?= $baseUrl ?>/about');"><i class="material-icons-round nav-menu-row-icon">info</i><span class="nav-menu-row-labels">About</span></button></li>
-            <li><button type="button" class="nav-menu-row" onclick="openLegalMenu('<?= $baseUrl ?>/legal/imprint');"><i class="material-icons-round nav-menu-row-icon">description</i><span class="nav-menu-row-labels">Imprint</span></button></li>
-            <li><button type="button" class="nav-menu-row" onclick="openLegalMenu('<?= $baseUrl ?>/legal/privacy');"><i class="material-icons-round nav-menu-row-icon">privacy_tip</i><span class="nav-menu-row-labels">Privacy Note</span></button></li>
+            <li><button type="button" class="nav-menu-row" onclick="openLegalMenu('<?= $baseUrl ?>/about', 'About');"><i class="material-icons-round nav-menu-row-icon">info</i><span class="nav-menu-row-labels">About</span></button></li>
+            <li><button type="button" class="nav-menu-row" onclick="openLegalMenu('<?= $baseUrl ?>/legal/imprint', 'Imprint');"><i class="material-icons-round nav-menu-row-icon">description</i><span class="nav-menu-row-labels">Imprint</span></button></li>
+            <li><button type="button" class="nav-menu-row" onclick="openLegalMenu('<?= $baseUrl ?>/legal/privacy', 'Privacy Note');"><i class="material-icons-round nav-menu-row-icon">privacy_tip</i><span class="nav-menu-row-labels">Privacy Note</span></button></li>
             <li><button type="button" class="nav-menu-row" onclick="openCookieMenu();"><i class="material-icons-round nav-menu-row-icon">verified_user</i><span class="nav-menu-row-labels">Cookies</span></button></li>
           </ul>
 
@@ -216,8 +216,11 @@
 
     <!-- COOKIE MENU ----------------------------------->
     <div id="cookiemenu" class="cookiemenu">
-      <div class="cm_content">
-        <h2><?= htmlspecialchars($appName) ?></h2>
+      <div class="cm_content cm_content-compact">
+        <div class="cm-panel-header">
+          <button type="button" class="nav-back" onclick="closeCookieMenu();"><i class="material-icons-round">arrow_back</i></button>
+          <h2 class="cm-panel-title">Cookies</h2>
+        </div>
         <div class="cookieConsentBody">
           <p>
             <?= htmlspecialchars($appName) ?> requires the use of cookies to function properly and you have consented to their use.
@@ -231,10 +234,13 @@
       </div>
     </div>
 
-    <!-- LEGAL MENU (Imprint / Privacy Notice) ----------------------------------->
+    <!-- LEGAL MENU (About / Imprint / Privacy Notice) ----------------------------------->
     <div id="legalmenu" class="cookiemenu">
-      <div id="legalmenu-close-btn" class="panel-close-btn" onclick="closeLegalMenu();"><i class="material-icons-round">close</i></div>
-      <div class="cm_content">
+      <div class="cm_content cm_content-compact">
+        <div class="cm-panel-header">
+          <button type="button" class="nav-back" onclick="closeLegalMenu();"><i class="material-icons-round">arrow_back</i></button>
+          <h2 id="legalmenu-title" class="cm-panel-title"></h2>
+        </div>
         <div id="legalmenu-content"></div>
         <div class="panel-logo"></div>
       </div>

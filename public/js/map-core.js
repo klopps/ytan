@@ -457,6 +457,8 @@ function loadGoogleMaps(APIKey) {
     document.getElementById("map").style.display = "block";
     showToolbar();
     document.getElementById("sidemenu-toggle").style.display = "flex";
+    document.getElementById("mapSearchWrapper").style.display = "block";
+    document.getElementById("gotomylocation").style.display = "block";
 
     setCookie("gdpr_accepted", "yes", 365);
 }

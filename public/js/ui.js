@@ -74,34 +74,45 @@ function toggleMapSearch() {
 
 /**
  * Cookie-Menu
+ *
+ * Opens the same way as Tours/Users/Legal (slides in over the still-open
+ * drawer via slideInPanel()/pushMenuLeft() rather than closeMenu() first,
+ * with a back-arrow instead of a close-X) - see the
+ * #touradminmenu/#useradminmenu/#legalmenu/#cookiemenu comment in style.css.
  */
 
 function openCookieMenu() {
-    closeMenu();
-    document.getElementById("cookiemenu").style.width = "100%";
+    slideInPanel('cookiemenu');
+    pushMenuLeft();
     panelOpened();
 }
 
 function closeCookieMenu() {
-    document.getElementById("cookiemenu").style.width = "0%";
+    slideOutPanel('cookiemenu');
+    unpushMenuLeft();
     panelClosed();
 }
 
 
 /**
- * Legal-Menu (Imprint / Privacy Notice)
+ * Legal-Menu (About / Imprint / Privacy Notice)
  *
- * Content stays in its own template file (templates/impressum.php,
- * templates/datenschutz.php); we just fetch the rendered page and show
- * its body inline instead of navigating to it.
+ * Content stays in its own template file (templates/about.php,
+ * templates/imprint.php, templates/privacy.php); we just fetch the
+ * rendered page and show its body inline instead of navigating to it.
+ *
+ * Opens the same way as Tours/Users (slides in over the still-open drawer
+ * via slideInPanel()/pushMenuLeft() rather than closeMenu() first, with a
+ * back-arrow instead of a close-X) - see the #touradminmenu/#useradminmenu/
+ * #legalmenu comment in style.css.
  */
 
-function openLegalMenu(url) {
-    closeMenu();
+function openLegalMenu(url, title) {
     var container = document.getElementById("legalmenu-content");
     container.innerHTML = "";
-    document.getElementById("legalmenu").style.width = "100%";
-    document.getElementById("legalmenu-close-btn").style.display = "flex";
+    document.getElementById("legalmenu-title").textContent = title;
+    slideInPanel('legalmenu');
+    pushMenuLeft();
     panelOpened();
 
     fetch(url)
@@ -117,8 +128,8 @@ function openLegalMenu(url) {
 }
 
 function closeLegalMenu() {
-    document.getElementById("legalmenu").style.width = "0%";
-    document.getElementById("legalmenu-close-btn").style.display = "none";
+    slideOutPanel('legalmenu');
+    unpushMenuLeft();
     panelClosed();
 }
 
@@ -280,6 +291,11 @@ function toggleDisabled(elementId) {
 function revokeConsent() {
     deleteCookie("settings");
     deleteCookie("gdpr_accepted");
+    // The JWT lives in localStorage, not a cookie (see api-client.js), so
+    // it survives the two deleteCookie() calls above on its own - revoking
+    // consent must still log the user out, not just forget map/UI settings.
+    Ytan.setToken(null);
+    sessionStorage.removeItem('user');
     window.location.assign(window.location.href);
 }
 

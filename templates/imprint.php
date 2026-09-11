@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html class="standalone-page">
 <head>
     <title><?= htmlspecialchars($appName) ?> | Impressum</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">

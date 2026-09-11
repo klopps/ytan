@@ -76,7 +76,14 @@ body {
   margin: 0;
   padding: 0;
   font-family: var(--font-body);
-  line-height: 1.2em;
+  /* Unitless, not "1.2em": an em-based line-height computes to a fixed
+     pixel value here (16px * 1.2) that descendants then inherit as-is,
+     instead of recalculating relative to their own font-size - confirmed
+     this left large headings (e.g. legal-page h1 at 32px) with a computed
+     line-height of only 19.2px, tighter than the font itself, making a
+     two-line heading look cramped/overlapping. A unitless value is
+     re-multiplied by each element's own font-size on inheritance instead. */
+  line-height: 1.2;
   background-color: var(--color-bg-page);
   color: var(--color-text);
   /* The Tours/Users panels (#touradminmenu/#useradminmenu) sit at
@@ -94,6 +101,40 @@ body {
      intermittent very-wide window.innerWidth readings under mobile
      emulation. */
   overflow: hidden;
+}
+
+/* Standalone (non-SPA) pages - about.php, confirm-email.php,
+   forgot-password.php, imprint.php, privacy.php, set-password.php - load
+   this same stylesheet for consistent theming/fonts (see CLAUDE.md) but
+   dump their content straight into <body> with no inner scrolling
+   container of their own, unlike the SPA. The html/body overflow:hidden
+   above is SPA-only - applied here it silently made any of these pages
+   taller than one screen (e.g. the privacy policy, reached directly via
+   the GDPR dialog's target="_blank" link rather than through the SPA's own
+   openLegalMenu() panel, which only ever borrows their body.innerHTML into
+   its own scrollable container) completely unscrollable. Each such
+   template's <html> carries this class to opt back into normal scrolling -
+   it has to go on <html>, not just <body>: since html's own overflow here
+   is hidden (not the initial 'visible'), the browser does NOT propagate
+   body's overflow up to the viewport, so overriding body alone left the
+   page still stuck (confirmed: body.standalone-page{overflow-y:auto} alone
+   did not restore scrolling). */
+html.standalone-page,
+html.standalone-page body {
+  overflow-y: auto;
+}
+
+/* Same standalone pages, same reason: about/imprint/privacy dump raw
+   <h1>/<p> content straight into <body>, which only ever gets margin:0/
+   padding:0 from the shared html,body rule above (meant for the SPA, where
+   every real content area supplies its own padding) - so their text ran
+   edge-to-edge with no margin at all. confirm-email/forgot-password/
+   set-password already have their own centered, padded box and don't
+   need this, but inheriting a little extra breathing room around that box
+   doesn't hurt either. */
+html.standalone-page body {
+  padding: 20px;
+  box-sizing: border-box;
 }
 
 hr {
@@ -244,6 +285,12 @@ hr {
   top: 16px;
   left: 68px;
   z-index: 10;
+  /* Hidden until GDPR consent (shown by loadGoogleMaps(), same as
+     #sidemenu-toggle) - otherwise it renders on top of the still-visible
+     #gdpr screen, since both share z-index 10 and this comes later in the
+     DOM, overlapping the consent text before the user has agreed to
+     anything. */
+  display: none;
 }
 
 .map-search-container {
@@ -592,15 +639,17 @@ img.wsi {
   color: var(--color-text);
 }
 
-/* Tours/Users are opened straight from inside the drawer (#sidemenu,
-   z-index 101) without closing it first - openTourAdminMenu()/
-   openUserAdminMenu() (tour-admin.js/admin-user.js) rely on this to sit
-   above it, so the panel simply covers the still-open drawer instead of the
-   drawer (which would otherwise win at the shared .cookiemenu z-index of
-   10) staying on top of it. Legal/cookie-consent stay at that shared
-   default since neither is opened from inside an open drawer. */
+/* Tours/Users/Legal/Cookies are opened straight from inside the drawer
+   (#sidemenu, z-index 101) without closing it first - openTourAdminMenu()/
+   openUserAdminMenu()/openLegalMenu()/openCookieMenu()
+   (tour-admin.js/admin-user.js/ui.js) rely on this to sit above it, so the
+   panel simply covers the still-open drawer instead of the drawer (which
+   would otherwise win at the shared .cookiemenu z-index of 10) staying on
+   top of it. */
 #touradminmenu,
-#useradminmenu {
+#useradminmenu,
+#legalmenu,
+#cookiemenu {
   z-index: 110;
   width: 100%;
   /* left, not transform - a `transform` on a position:fixed element (even
@@ -634,7 +683,9 @@ img.wsi {
 }
 
 #touradminmenu > .cm_content,
-#useradminmenu > .cm_content {
+#useradminmenu > .cm_content,
+#legalmenu > .cm_content,
+#cookiemenu > .cm_content {
   height: 100%;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -665,15 +716,6 @@ img.wsi {
   color: var(--color-text);
   letter-spacing: 0.2px;
   margin: 1.5em 0 0.5em 0;
-}
-
-/* Only the cookie-consent panel's heading should be centered - it sits
-   above a short, centered block of text and two buttons. The legal-menu
-   (Impressum/Datenschutz) and user-admin panels show normal left-aligned
-   document/form content, so their headings stay left-aligned like the rest
-   of the content. */
-#cookiemenu .cm_content h2 {
-  text-align: center;
 }
 
 /* Sticky title bar shared by every sub-view of the Tours/Users panels
@@ -1798,6 +1840,10 @@ img.wsi {
   background-color: var(--color-bg-panel);
   user-select: none;
   -webkit-user-select: none;
+  /* Hidden until GDPR consent (shown by loadGoogleMaps(), same as
+     #sidemenu-toggle/#mapSearchWrapper) - otherwise it's visible over the
+     still-unaccepted #gdpr screen. */
+  display: none;
 }
 
 #gotomylocation i {
