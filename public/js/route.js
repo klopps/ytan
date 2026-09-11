@@ -55,21 +55,21 @@ function showRouteEditWindow(i, latLng) {
 
     var content =
         '<div class="infoWindowElement">' +
-            '<h3>Route</h3>' +
+            '<h3>' + t('route.edit.heading') + '</h3>' +
             '<div class="leftCol">' +
-                '<label for="editRouteName">Name: </label>' +
+                '<label for="editRouteName">' + t('route.edit.name_label') + '</label>' +
             '</div>' +
             '<div class="rightCol">' +
-                '<input id="editRouteName" type="text" oninput="validateRouteEditForm();" placeholder="Enter name of Route ..." title="Enter at least 3 characters" value="' + route.name + '">' +
+                '<input id="editRouteName" type="text" oninput="validateRouteEditForm();" placeholder="' + t('route.edit.name_placeholder') + '" title="' + t('common.min_3_chars_title') + '" value="' + route.name + '">' +
             '</div>' +
         '</div>' +
         '<div class="infoWindowElement">' +
-            '<label for="editRouteDescription">Description:</label><br>' +
-            '<textarea id="editRouteDescription" rows="5" oninput="validateRouteEditForm();"placeholder="Enter detailed description of route ...">' + route.description + '</textarea>' +
+            '<label for="editRouteDescription">' + t('route.edit.description_label') + '</label><br>' +
+            '<textarea id="editRouteDescription" rows="5" oninput="validateRouteEditForm();"placeholder="' + t('route.edit.description_placeholder') + '">' + route.description + '</textarea>' +
         '</div>' +
         '<div class="infoWindowElement">' +
             '<div class="leftCol">' +
-                '<label for="editRouteColor">Color: </label>' +
+                '<label for="editRouteColor">' + t('route.edit.color_label') + '</label>' +
             '</div>' +
             '<div class="rightCol">' +
                 '<div id="editRouteColorWrapper">' +
@@ -82,7 +82,7 @@ function showRouteEditWindow(i, latLng) {
         content +=
         '<div class="infoWindowElement">' +
             '<input type="checkbox" id="editRouteInvert" name="editRouteInvert">' +
-            '<label for="editRouteInvert"><span></span>invert route</label>' +
+            '<label for="editRouteInvert"><span></span>' + t('route.edit.invert_label') + '</label>' +
         '</div>';
     }
 
@@ -92,20 +92,20 @@ function showRouteEditWindow(i, latLng) {
             '<input type="checkbox" id="editRouteStatus" name="editRouteStatus"';
         if (route.public == 1) content += ' checked';
         content += '>' +
-            '<label for="editRouteStatus"><span></span>Public (visible for everyone)</label>' +
+            '<label for="editRouteStatus"><span></span>' + t('common.public_label') + '</label>' +
         '</div>';
     }
 
     content +=
         '<div class="infoWindowElement">' +
-            '<button id="editRouteSaveBtn" class="button" onClick="saveRoute(' + i + ')" disabled>Save</button>&nbsp;';
+            '<button id="editRouteSaveBtn" class="button" onClick="saveRoute(' + i + ')" disabled>' + t('common.save') + '</button>&nbsp;';
 
     if (((i !== null) && (typeof i !== 'undefined')) && (routes[i].user_id == user.id)) {
         content = content +
-            '<button id="editRouteRemoveBtn" class="button" onClick="removeRoute(' + i + ')">Remove</button>&nbsp;';
+            '<button id="editRouteRemoveBtn" class="button" onClick="removeRoute(' + i + ')">' + t('common.remove') + '</button>&nbsp;';
     }
 
-    content += '<button class="button" onClick="cancelEditRoute(' + i + ')">Cancel</button>' +
+    content += '<button class="button" onClick="cancelEditRoute(' + i + ')">' + t('common.cancel') + '</button>' +
         '</div>';
 
     routeEditWindow.setContent(content);
@@ -265,7 +265,7 @@ function saveRoute(i) {
         }
     }).catch(err => {
         log('saveRoute() failed', LOG_ERROR, err);
-        showToast('Saving the route failed: ' + err.message, 'error');
+        showToast(t('route.save_failed', { error: err.message }), 'error');
     });
 
     measureTool.index = null;
@@ -287,7 +287,7 @@ async function removeRoute(i) {
         return false;
     }
 
-    if (!(await showConfirmDialog('Do you really want to delete this Route?', { type: 'danger', confirmLabel: 'Delete' }))) {
+    if (!(await showConfirmDialog(t('route.confirm_delete'), { type: 'danger', confirmLabel: t('common.delete') }))) {
         return false;
     }
 
@@ -315,12 +315,12 @@ async function removeRoute(i) {
                 await Ytan.del(path + '?captcha_token=' + encodeURIComponent(err.data.captcha.token) + '&captcha_answer=' + encodeURIComponent(answer));
             } catch (err2) {
                 log('removeRoute() failed (after captcha)', LOG_ERROR, err2);
-                showToast('Removing the route failed: ' + err2.message, 'error');
+                showToast(t('route.remove_failed', { error: err2.message }), 'error');
                 return false;
             }
         } else {
             log('removeRoute() failed', LOG_ERROR, err);
-            showToast('Removing the route failed: ' + err.message, 'error');
+            showToast(t('route.remove_failed', { error: err.message }), 'error');
             return false;
         }
     }
@@ -745,16 +745,16 @@ function showRouteContextMenu(event, i) {
             contextMenuLastLatLng = event.latLng; // routeContextMenuAddToTour() reuses this to reposition routeInfoWindow
 
             var content =
-                '<div class="contextMenuItem" onClick="routeContextMenuEditRoute(' + i + ', null, null);"><i class="material-icons-round">edit</i>Edit route</div>' +
-                '<div class="contextMenuItem" onClick="routeContextMenuEditInfo(' + i + ');"><i class="material-icons-round">description</i>Edit Info</div>';
+                '<div class="contextMenuItem" onClick="routeContextMenuEditRoute(' + i + ', null, null);"><i class="material-icons-round">edit</i>' + t('route.context.edit_route') + '</div>' +
+                '<div class="contextMenuItem" onClick="routeContextMenuEditInfo(' + i + ');"><i class="material-icons-round">description</i>' + t('route.context.edit_info') + '</div>';
 
             if (routes[i].user_id == user.id) {
-                content += '<div class="contextMenuItem" onClick="routeContextMenuAddToTour(' + i + ');"><i class="material-icons-round">playlist_add</i>Add to tour</div>';
+                content += '<div class="contextMenuItem" onClick="routeContextMenuAddToTour(' + i + ');"><i class="material-icons-round">playlist_add</i>' + t('route.context.add_to_tour') + '</div>';
             }
 
             content +=
-                '<div class="contextMenuItem" onClick="routeContextMenuRemoveRoute(' + i + ');"><i class="material-icons-round">delete</i>Delete route</div>' +
-                '<div class="contextMenuItem" onClick="closeContextMenu();"><i class="material-icons-round">close</i>Cancel</div>'
+                '<div class="contextMenuItem" onClick="routeContextMenuRemoveRoute(' + i + ');"><i class="material-icons-round">delete</i>' + t('route.context.delete_route') + '</div>' +
+                '<div class="contextMenuItem" onClick="closeContextMenu();"><i class="material-icons-round">close</i>' + t('common.cancel') + '</div>'
                 ;
 
             contextMenu.setPosition(event.latLng);
@@ -832,14 +832,14 @@ function showRouteInfoWindow(event, i) {
 
     var content =
         '<h3>' + routes[i]['name'] + '</h3>' +
-        '<div class="infoWindowElement">Length: ' + length + ' km</div>' +
+        '<div class="infoWindowElement">' + t('route.info.length', { length: length }) + '</div>' +
         '<div class="infoWindowElement">' + marked.parse(routes[i]['description']) + '<div>';
 
     if (user.id !== null) {
         if (routes[i].user_id == user.id) {
             content +=
             '<div class="infoWindowBottom">' +
-                '<div class="lefthalf"><i class="material-icons-round" title="Add to tour" onClick="toggleAddToTourMenu(' + i + ');">playlist_add</i></div>' +
+                '<div class="lefthalf"><i class="material-icons-round" title="' + t('route.context.add_to_tour') + '" onClick="toggleAddToTourMenu(' + i + ');">playlist_add</i></div>' +
                 '<div class="routeEdit"><i class="material-icons-round" onClick="editRoute(' + i + ', ' + event.latLng.lat() + ', ' + event.latLng.lng() +');">edit</i></div>' +
             '</div>' +
             '<div id="addToTourMenu" class="addToTourMenu" style="display:none;"></div>';
@@ -901,12 +901,12 @@ function renderAddToTourMenu() {
     }
 
     var html = '<div class="search-bar"><i class="material-icons-round">search</i>' +
-            '<input type="text" id="addToTourMenuSearchInput" placeholder="Search tours" oninput="onAddToTourMenuSearchInput();"></div>' +
+            '<input type="text" id="addToTourMenuSearchInput" placeholder="' + t('route.add_to_tour.search_placeholder') + '" oninput="onAddToTourMenuSearchInput();"></div>' +
         '<div class="tour-length-filter">' +
-            '<span class="nav-field-label" style="margin:0;">' + (settings.unit === 'nautical' ? 'Length (nm)' : 'Length (km)') + '</span>' +
-            '<input type="number" min="0" id="addToTourMenuLengthMin" placeholder="From" oninput="onAddToTourMenuLengthFilterChange();">' +
+            '<span class="nav-field-label" style="margin:0;">' + (settings.unit === 'nautical' ? t('common.length_nm') : t('common.length_km')) + '</span>' +
+            '<input type="number" min="0" id="addToTourMenuLengthMin" placeholder="' + t('common.from') + '" oninput="onAddToTourMenuLengthFilterChange();">' +
             '<span>&ndash;</span>' +
-            '<input type="number" min="0" id="addToTourMenuLengthMax" placeholder="To" oninput="onAddToTourMenuLengthFilterChange();">' +
+            '<input type="number" min="0" id="addToTourMenuLengthMax" placeholder="' + t('common.to') + '" oninput="onAddToTourMenuLengthFilterChange();">' +
         '</div>' +
         '<div id="addToTourMenuResults"></div>';
 
@@ -945,17 +945,17 @@ function renderFilteredAddToTourMenuList() {
 
     var html = '';
     if (ownTours.length === 0) {
-        html += '<div class="addToTourMenuItem addToTourMenuEmpty">No tours found</div>';
+        html += '<div class="addToTourMenuItem addToTourMenuEmpty">' + t('route.add_to_tour.no_tours_found') + '</div>';
     } else {
-        for (let t = 0; t < ownTours.length; t++) {
-            html += '<div class="addToTourMenuItem" onclick="addRouteToTourFromPopup(' + i + ', ' + ownTours[t].id + ');">' + escapeHTML(ownTours[t].name) + '</div>';
+        for (let x = 0; x < ownTours.length; x++) {
+            html += '<div class="addToTourMenuItem" onclick="addRouteToTourFromPopup(' + i + ', ' + ownTours[x].id + ');">' + escapeHTML(ownTours[x].name) + '</div>';
         }
         if (allOwnTours.length > ownTours.length) {
-            html += '<div class="addToTourMenuItem addToTourMenuEmpty">' + (allOwnTours.length - ownTours.length) + ' more &ndash; refine your search</div>';
+            html += '<div class="addToTourMenuItem addToTourMenuEmpty">' + t('route.add_to_tour.more_refine', { count: allOwnTours.length - ownTours.length }) + '</div>';
         }
     }
     if (canCreateTours()) {
-        html += '<div class="addToTourMenuItem addToTourMenuNew" onclick="addRouteToTourFromPopupAsNewTour(' + i + ');">+ New tour&hellip;</div>';
+        html += '<div class="addToTourMenuItem addToTourMenuNew" onclick="addRouteToTourFromPopupAsNewTour(' + i + ');">' + t('route.add_to_tour.new_tour') + '</div>';
     }
 
     document.getElementById('addToTourMenuResults').innerHTML = html;
@@ -964,8 +964,8 @@ function renderFilteredAddToTourMenuList() {
 function addRouteToTourFromPopup(i, tourId) {
     Ytan.post('/tours/' + tourId + '/routes', { route_id: routes[i].id }).then(() => {
         document.getElementById('addToTourMenu').style.display = 'none';
-        showToast('Added to tour.', 'success');
-    }).catch(err => showToast('Adding to tour failed: ' + err.message, 'error'));
+        showToast(t('route.add_to_tour.success'), 'success');
+    }).catch(err => showToast(t('route.add_to_tour.failed', { error: err.message }), 'error'));
 }
 
 function addRouteToTourFromPopupAsNewTour(i) {
@@ -983,8 +983,8 @@ function addRouteToTourFromPopupAsNewTour(i) {
  */
 function addNewRouteToActiveTour(routeId) {
     Ytan.post('/tours/' + activeTourModeId + '/routes', { route_id: routeId }).then(() => {
-        showToast('Route added to "' + activeTourModeName + '".', 'success');
-    }).catch(err => showToast('Route saved, but adding it to the active tour failed: ' + err.message, 'error'));
+        showToast(t('route.added_to_active_tour', { tour: activeTourModeName }), 'success');
+    }).catch(err => showToast(t('route.active_tour_add_failed', { error: err.message }), 'error'));
 }
 
 function editRoute(i, lat, lng) {

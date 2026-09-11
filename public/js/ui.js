@@ -122,7 +122,7 @@ function openLegalMenu(url, title) {
             container.innerHTML = doc.body.innerHTML;
         })
         .catch(function (err) {
-            container.innerHTML = "<p>Failed to load content.</p>";
+            container.innerHTML = "<p>" + t('common.failed_to_load_content') + "</p>";
             log('openLegalMenu() failed', LOG_ERROR, err);
         });
 }

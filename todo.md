@@ -2,14 +2,23 @@
 
 ~~Was kann auf dem Smartphone statt eines Klicks mit der rechten Maustaste genutzt werden, um das contextMenu einer Route, Areas oder eines POIs zu öffnen?~~ Gelöst: Long-Press (~550ms) öffnet jetzt das contextMenu (kurzer Tap öffnet weiterhin nur das normale InfoWindow). Auf dem echten Smartphone bestätigt (2026-09-11) - Erkennung basiert auf einem eigenen Hit-Test der Touch-Koordinaten statt auf Maps' 'mousedown', da dieses Event bei Touch auf dem realen Gerät gar nicht zuverlässig feuert.
 
-Wenn ich in der Liste der Touren ganz nach unten scrolle und dann eine Tour öffne,  muss ich erst wieder nach oben scrollen, um die Details zu sehen. Das ist unerwartet und ungewollt.
+## i18n-Tool
+
+Es wird ein Tool benötigt, mit dem man komfortabel die Übersetzungen der Texte vornehmen kann. Idealerweise wir der entsprechende Dialog in dem der Text verwendet wird, direkt angezeigt.
+
+
+## Touren-Dokument
 
 Ausgabe eines PDF-Dokuments für eine Tour mit 
 - Bildern und Beschreibung der Gesamttour
 - Bildern und Beschreibungen der einzelnen Routen
 Die Bilder der Karte können alternativ als Hybrid, Terrain oder SAT ausgebeben werden.
 
+
+## Logo
+
 Logo-Alternative entwickeln
+
 
 ## Mobile-Anzeige-Audit (2026-09-10)
 

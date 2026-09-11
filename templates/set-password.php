@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html class="standalone-page">
 <head>
-    <title><?= htmlspecialchars($appName) ?> | Set password</title>
+    <title><?= htmlspecialchars($appName) ?> | <?= $t('page_title.set_password') ?></title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta charset="utf-8" />
+    <script>window.YTAN_TRANSLATIONS = <?= json_encode($translator->all(), JSON_UNESCAPED_UNICODE) ?>;</script>
+    <script src="<?= $baseUrl ?>/js/i18n.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/i18n.js') ?>"></script>
     <link rel="stylesheet" type="text/css" href="<?= $baseUrl ?>/css/style.css?v=<?= \Ytan\App::assetVersion($rootDir, '/css/style.css') ?>" />
     <link rel="shortcut icon" href="<?= $baseUrl ?>/favicon.ico">
     <style>
@@ -19,6 +21,12 @@
             box-sizing: border-box;
         }
         #setPasswordBox h1 { font-size: 20px; color: #2c2c3d; text-align: center; }
+        /* See forgot-password.php's identical override for why - a longer
+           translated label (e.g. German "Bestätigung:") overflows
+           .leftCol/.rightCol's default fixed-width float layout and
+           visually collides with the input next to it. */
+        #setPasswordBox .leftCol { width: 100%; float: none; margin-bottom: 4px; }
+        #setPasswordBox .rightCol { width: 100%; }
         #setPasswordBox input[type="password"] {
             width: calc(100% - 16px);
             border: 1px solid #d8d8e2;
@@ -31,18 +39,18 @@
 <body>
     <div id="setPasswordBox">
         <h1><?= htmlspecialchars($appName) ?></h1>
-        <p>Please choose a password for your account.</p>
+        <p><?= $t('setpw.subtitle') ?></p>
         <div class="infoWindowElement">
-            <div class="leftCol"><label for="password">Password: </label></div>
+            <div class="leftCol"><label for="password"><?= $t('setpw.password_label') ?> </label></div>
             <div class="rightCol"><input id="password" type="password" autocomplete="new-password"></div>
         </div>
         <div class="infoWindowElement">
-            <div class="leftCol"><label for="passwordConfirm">Confirm: </label></div>
+            <div class="leftCol"><label for="passwordConfirm"><?= $t('setpw.confirm_label') ?> </label></div>
             <div class="rightCol"><input id="passwordConfirm" type="password" autocomplete="new-password"></div>
         </div>
         <div id="setPasswordMessage"></div>
         <p>
-            <button id="setPasswordBtn" class="startbtn" onclick="submitPassword()">Set password &amp; log in</button>
+            <button id="setPasswordBtn" class="startbtn" onclick="submitPassword()"><?= $t('setpw.submit_button') ?></button>
         </p>
     </div>
 
@@ -57,12 +65,12 @@
             message.textContent = '';
 
             if (!token) {
-                message.textContent = 'This link is missing its token and cannot be used.';
+                message.textContent = t('common.missing_token');
                 return;
             }
 
             if (password !== passwordConfirm) {
-                message.textContent = 'The two passwords do not match.';
+                message.textContent = t('setpw.password_mismatch');
                 return;
             }
 
@@ -80,7 +88,7 @@
             })
             .then(function (result) {
                 if (!result.ok) {
-                    throw new Error((result.payload.error && result.payload.error.message) || 'Setting the password failed.');
+                    throw new Error((result.payload.error && result.payload.error.message) || t('setpw.generic_failure'));
                 }
                 localStorage.setItem('ytan_token', result.payload.token);
                 window.location.href = "<?= htmlspecialchars($baseUrl, ENT_QUOTES) ?>/";

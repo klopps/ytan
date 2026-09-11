@@ -53,21 +53,21 @@ function showAreaEditWindow(i, latLng) {
 
     var content =
         '<div class="infoWindowElement">' +
-            '<h3>Area</h3>' +
+            '<h3>' + t('area.edit.heading') + '</h3>' +
             '<div class="leftCol">' +
-                '<label for="editAreaName">Name: </label>' +
+                '<label for="editAreaName">' + t('area.edit.name_label') + '</label>' +
             '</div>' +
             '<div class="rightCol">' +
-                '<input id="editAreaName" type="text" oninput="validateAreaEditForm();" placeholder="Enter name of Area ..." title="Enter at least 3 characters" value="' + area.name + '">' +
+                '<input id="editAreaName" type="text" oninput="validateAreaEditForm();" placeholder="' + t('area.edit.name_placeholder') + '" title="' + t('common.min_3_chars_title') + '" value="' + area.name + '">' +
             '</div>' +
         '</div>' +
         '<div class="infoWindowElement">' +
-            '<label for="editAreaDescription">Description:</label><br>' +
-            '<textarea id="editAreaDescription" rows="5" oninput="validateAreaEditForm();"placeholder="Enter detailed description of area ...">' + area.description + '</textarea>' +
+            '<label for="editAreaDescription">' + t('area.edit.description_label') + '</label><br>' +
+            '<textarea id="editAreaDescription" rows="5" oninput="validateAreaEditForm();"placeholder="' + t('area.edit.description_placeholder') + '">' + area.description + '</textarea>' +
         '</div>' +
         '<div class="infoWindowElement">' +
             '<div class="leftCol">' +
-                '<label for="editAreaColor">Color: </label>' +
+                '<label for="editAreaColor">' + t('area.edit.color_label') + '</label>' +
             '</div>' +
             '<div class="rightCol">' +
                 '<div id="editAreaColorWrapper">' +
@@ -77,19 +77,19 @@ function showAreaEditWindow(i, latLng) {
         '</div>' +
         '<div class="infoWindowElement">' +
             '<div class="leftCol">' +
-                '<label for="editAreaOpacity">Opacity: </label>' +
+                '<label for="editAreaOpacity">' + t('area.edit.opacity_label') + '</label>' +
             '</div>' +
             '<div class="rightCol">' +
-                '<input id="editAreaOpacity" class="slider" type="range" min="0" max="20" oninput="validateAreaEditForm();" title="Enter at opacity (0.05 to 1.0)" value="' + area.opacity * 20 + '">' +
+                '<input id="editAreaOpacity" class="slider" type="range" min="0" max="20" oninput="validateAreaEditForm();" title="' + t('area.edit.opacity_title') + '" value="' + area.opacity * 20 + '">' +
                 '&nbsp;<span id="editAreaOpacityValue">' + area.opacity.toFixed(2) + '</span>' +
             '</div>' +
         '</div>' +
         '<div class="infoWindowElement">' +
             '<div class="leftCol">' +
-                '<label for="editAreaZindex">Z-Index: </label>' +
+                '<label for="editAreaZindex">' + t('area.edit.zindex_label') + '</label>' +
             '</div>' +
             '<div class="rightCol">' +
-                '<input id="editAreaZindex" type="text" oninput="validateAreaEditForm();" placeholder="1" title="Enter at z-index (integer)" value="' + area.zindex + '">' +
+                '<input id="editAreaZindex" type="text" oninput="validateAreaEditForm();" placeholder="1" title="' + t('area.edit.zindex_title') + '" value="' + area.zindex + '">' +
             '</div>' +
         '</div>'
         ;
@@ -100,20 +100,20 @@ function showAreaEditWindow(i, latLng) {
             '<input type="checkbox" id="editAreaStatus" name="editAreaStatus"';
         if (area.public == 1) content += ' checked';
         content += '>' +
-            '<label for="editAreaStatus"><span></span>Public (visible for everyone)</label>' +
+            '<label for="editAreaStatus"><span></span>' + t('common.public_label') + '</label>' +
         '</div>';
     }
 
     content +=
         '<div class="infoWindowElement">' +
-            '<button id="editAreaSaveBtn" class="button" onClick="saveArea(' + i + ')" disabled>Save</button>&nbsp;';
+            '<button id="editAreaSaveBtn" class="button" onClick="saveArea(' + i + ')" disabled>' + t('common.save') + '</button>&nbsp;';
 
     if (((i !== null) && (typeof i !== 'undefined')) && (areas[i].user_id == user.id)) {
         content = content +
-            '<button id="editAreaRemoveBtn" class="button" onClick="removeArea(' + i + ')">Remove</button>&nbsp;';
+            '<button id="editAreaRemoveBtn" class="button" onClick="removeArea(' + i + ')">' + t('common.remove') + '</button>&nbsp;';
     }
 
-    content += '<button class="button" onClick="cancelEditArea(' + i + ')">Cancel</button>' +
+    content += '<button class="button" onClick="cancelEditArea(' + i + ')">' + t('common.cancel') + '</button>' +
         '</div>';
 
     areaEditWindow.setContent(content);
@@ -283,7 +283,7 @@ function saveArea(i) {
         }
     }).catch(err => {
         log('saveArea() failed', LOG_ERROR, err);
-        showToast('Saving the area failed: ' + err.message, 'error');
+        showToast(t('area.save_failed', { error: err.message }), 'error');
     });
 
     measureTool.index = null;
@@ -306,7 +306,7 @@ async function removeArea(i) {
         return false;
     }
 
-    if (!(await showConfirmDialog('Do you really want to delete this Area?', { type: 'danger', confirmLabel: 'Delete' }))) {
+    if (!(await showConfirmDialog(t('area.confirm_delete'), { type: 'danger', confirmLabel: t('common.delete') }))) {
         return false;
     }
 
@@ -342,7 +342,7 @@ async function removeArea(i) {
         areaEditWindow.close();
     }).catch(err => {
         log('removeArea() failed', LOG_ERROR, err);
-        showToast('Removing the area failed: ' + err.message, 'error');
+        showToast(t('area.remove_failed', { error: err.message }), 'error');
     });
 }
 
@@ -478,10 +478,10 @@ function showAreaContextMenu(event, i) {
             log('show contextMenu', LOG_DEBUG);
 
             var content =
-                '<div class="contextMenuItem" onClick="areaContextMenuEditArea(' + i + ', null, null);"><i class="material-icons-round">edit</i>Edit area</div>' +
-                '<div class="contextMenuItem" onClick="areaContextMenuEditInfo(' + i + ');"><i class="material-icons-round">description</i>Edit Info</div>' +
-                '<div class="contextMenuItem" onClick="areaContextMenuRemoveArea(' + i + ');"><i class="material-icons-round">delete</i>Delete area</div>' +
-                '<div class="contextMenuItem" onClick="closeContextMenu();"><i class="material-icons-round">close</i>Cancel</div>'
+                '<div class="contextMenuItem" onClick="areaContextMenuEditArea(' + i + ', null, null);"><i class="material-icons-round">edit</i>' + t('area.context.edit_area') + '</div>' +
+                '<div class="contextMenuItem" onClick="areaContextMenuEditInfo(' + i + ');"><i class="material-icons-round">description</i>' + t('common.edit_info') + '</div>' +
+                '<div class="contextMenuItem" onClick="areaContextMenuRemoveArea(' + i + ');"><i class="material-icons-round">delete</i>' + t('area.context.delete_area') + '</div>' +
+                '<div class="contextMenuItem" onClick="closeContextMenu();"><i class="material-icons-round">close</i>' + t('common.cancel') + '</div>'
                 ;
 
             contextMenu.setPosition(event.latLng);

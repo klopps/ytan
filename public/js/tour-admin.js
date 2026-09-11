@@ -104,16 +104,16 @@ function canCreateTours() {
     return user.id !== null && (user.tour_create === true || user.is_admin === true);
 }
 
-function canManageTour(t) {
+function canManageTour(tour) {
     if (user.id === null) return false;
     if (user.is_admin === true || user.tour_manage === true) return true;
-    return t.user_id == user.id && user.tour_create === true;
+    return tour.user_id == user.id && user.tour_create === true;
 }
 
-function canPublishTour(t) {
+function canPublishTour(tour) {
     if (user.id === null) return false;
     if (user.is_admin === true || user.tour_manage === true) return true;
-    return t.user_id == user.id && user.tour_publish === true;
+    return tour.user_id == user.id && user.tour_publish === true;
 }
 
 function canCopyTours() {
@@ -159,7 +159,7 @@ function showTourList() {
         renderTourList();
     }).catch(err => {
         log('showTourList() failed', LOG_ERROR, err);
-        showToast('Loading tours failed: ' + err.message, 'error');
+        showToast(t('tour_admin.loading_tours_failed', { error: err.message }), 'error');
     });
 }
 
@@ -170,19 +170,19 @@ function renderTourList() {
         sizeOptions += '<option value="' + size + '"' + (size === tourAdminPageSize ? ' selected' : '') + '>' + size + '</option>';
     }
 
-    setTourAdminHeader('Tours', closeTourAdminMenu, canCreateTours() ? '<div class="startbtn" onclick="showTourCreateForm();"><i class="material-icons-round">add</i>&nbsp;New tour</div>' : '');
+    setTourAdminHeader(t('tour_admin.title'), closeTourAdminMenu, canCreateTours() ? '<div class="startbtn" onclick="showTourCreateForm();"><i class="material-icons-round">add</i>&nbsp;' + t('tour_admin.new_tour') + '</div>' : '');
 
     var html = '<div class="search-bar"><i class="material-icons-round">search</i>' +
-            '<input type="text" id="tourSearchInput" placeholder="Search by name, description or creator" oninput="onTourSearchInput();"></div>' +
+            '<input type="text" id="tourSearchInput" placeholder="' + t('tour_admin.search_placeholder') + '" oninput="onTourSearchInput();"></div>' +
         '<div class="tour-list-toolbar-row">' +
             '<div class="tour-length-filter">' +
-                '<span class="nav-field-label" style="margin:0;">' + (settings.unit === 'nautical' ? 'Length (nm)' : 'Length (km)') + '</span>' +
-                '<input type="number" min="0" id="tourLengthMin" placeholder="From" value="' + escapeHTML(tourAdminLengthFilter.min) + '" oninput="onTourLengthFilterChange();">' +
+                '<span class="nav-field-label" style="margin:0;">' + (settings.unit === 'nautical' ? t('common.length_nm') : t('common.length_km')) + '</span>' +
+                '<input type="number" min="0" id="tourLengthMin" placeholder="' + t('common.from') + '" value="' + escapeHTML(tourAdminLengthFilter.min) + '" oninput="onTourLengthFilterChange();">' +
                 '<span>&ndash;</span>' +
-                '<input type="number" min="0" id="tourLengthMax" placeholder="To" value="' + escapeHTML(tourAdminLengthFilter.max) + '" oninput="onTourLengthFilterChange();">' +
+                '<input type="number" min="0" id="tourLengthMax" placeholder="' + t('common.to') + '" value="' + escapeHTML(tourAdminLengthFilter.max) + '" oninput="onTourLengthFilterChange();">' +
             '</div>' +
             '<div class="admin-pagination-size tour-page-size-row">' +
-                '<label for="tourPageSize">Rows per page:</label>' +
+                '<label for="tourPageSize">' + t('common.rows_per_page') + '</label>' +
                 '<select id="tourPageSize" class="select-css select-css-compact" onchange="onTourAdminPageSizeChange();">' + sizeOptions + '</select>' +
             '</div>' +
         '</div>' +
@@ -222,27 +222,27 @@ function renderFilteredTourList() {
     var maxLength = parseFloat(tourAdminLengthFilter.max);
     var lengthDivisor = settings.unit === 'nautical' ? 1852 : 1000; // matches the "Length (nm)"/"Length (km)" label above
 
-    function matches(t) {
+    function matches(tour) {
         if (query !== ''
-            && !foldSearchText(t.name).includes(query)
-            && !foldSearchText(t.description || '').includes(query)
-            && !foldSearchText(t.creator_username || '').includes(query)
+            && !foldSearchText(tour.name).includes(query)
+            && !foldSearchText(tour.description || '').includes(query)
+            && !foldSearchText(tour.creator_username || '').includes(query)
         ) {
             return false;
         }
 
-        var length = (t.total_length || 0) / lengthDivisor;
+        var length = (tour.total_length || 0) / lengthDivisor;
         if (!isNaN(minLength) && length < minLength) return false;
         if (!isNaN(maxLength) && length > maxLength) return false;
 
         return true;
     }
 
-    var mine = tourAdminAllTours.filter(t => user.id !== null && t.user_id == user.id).filter(matches);
-    var pub = tourAdminAllTours.filter(t => !(user.id !== null && t.user_id == user.id) && t.public == 1).filter(matches);
+    var mine = tourAdminAllTours.filter(tour => user.id !== null && tour.user_id == user.id).filter(matches);
+    var pub = tourAdminAllTours.filter(tour => !(user.id !== null && tour.user_id == user.id) && tour.public == 1).filter(matches);
 
-    var html = tourListSectionHtml('My Tours', mine, false, 'mine') + tourListSectionHtml('Public Tours', pub, true, 'public');
-    document.getElementById('tourListResults').innerHTML = html || '<p class="hint">No tours found.</p>';
+    var html = tourListSectionHtml(t('tour_admin.my_tours'), mine, false, 'mine') + tourListSectionHtml(t('tour_admin.public_tours'), pub, true, 'public');
+    document.getElementById('tourListResults').innerHTML = html || '<p class="hint">' + t('tour_admin.no_tours_found') + '</p>';
 }
 
 function tourListSectionHtml(title, list, showCreator, sectionKey) {
@@ -259,18 +259,18 @@ function tourListSectionHtml(title, list, showCreator, sectionKey) {
         '<div class="admin-user-table-wrap">';
 
     for (let i = 0; i < pageItems.length; i++) {
-        var t = pageItems[i];
-        var tags = (t.tags || []).slice(0, 3).map(tag => '<span class="tag-chip">' + escapeHTML(tag) + '</span>').join('');
-        if ((t.tags || []).length > 3) {
-            tags += '<span class="tag-chip">+' + (t.tags.length - 3) + '</span>';
+        var tour = pageItems[i];
+        var tags = (tour.tags || []).slice(0, 3).map(tag => '<span class="tag-chip">' + escapeHTML(tag) + '</span>').join('');
+        if ((tour.tags || []).length > 3) {
+            tags += '<span class="tag-chip">+' + (tour.tags.length - 3) + '</span>';
         }
 
-        html += '<div class="tour-list-row" onclick="showTourDetail(' + t.id + ');">' +
-                '<strong>' + escapeHTML(t.name) + '</strong>' +
-                (t.public == 1 ? ' <span class="admin-badge">Public</span>' : '') +
-                '<br><span class="tour-list-meta">' + formatDistance(t.total_length || 0, settings.unit) +
-                '  &middot;  ' + (t.route_count || 0) + (t.route_count == 1 ? ' route' : ' routes') +
-                (showCreator ? ' &middot; by ' + escapeHTML(t.creator_username) : '') + '</span>' +
+        html += '<div class="tour-list-row" onclick="showTourDetail(' + tour.id + ');">' +
+                '<strong>' + escapeHTML(tour.name) + '</strong>' +
+                (tour.public == 1 ? ' <span class="admin-badge">' + t('common.public_badge') + '</span>' : '') +
+                '<br><span class="tour-list-meta">' + formatDistance(tour.total_length || 0, settings.unit) +
+                '  &middot;  ' + (tour.route_count || 0) + ' ' + (tour.route_count == 1 ? t('tour_admin.route_singular') : t('tour_admin.route_plural')) +
+                (showCreator ? ' &middot; ' + t('tour_admin.by', { creator: escapeHTML(tour.creator_username) }) : '') + '</span>' +
                 (tags ? '<div class="chip-row">' + tags + '</div>' : '') +
             '</div>';
     }
@@ -282,7 +282,7 @@ function tourListSectionHtml(title, list, showCreator, sectionKey) {
         html += '<div class="admin-pagination admin-pagination-section-only">' +
             '<div class="admin-pagination-nav">' +
                 '<span class="admin-pagination-nav-btn' + (page <= 1 ? ' disabled' : '') + '" onclick="' + (page > 1 ? "goToTourAdminPage('" + sectionKey + "', -1);" : '') + '"><i class="material-icons-round">chevron_left</i></span>' +
-                '<span class="admin-pagination-page">Page ' + page + ' of ' + totalPages + '</span>' +
+                '<span class="admin-pagination-page">' + t('common.page_of', { page: page, total: totalPages }) + '</span>' +
                 '<span class="admin-pagination-nav-btn' + (page >= totalPages ? ' disabled' : '') + '" onclick="' + (page < totalPages ? "goToTourAdminPage('" + sectionKey + "', 1);" : '') + '"><i class="material-icons-round">chevron_right</i></span>' +
             '</div>' +
         '</div>';
@@ -306,43 +306,43 @@ function showTourDetail(id) {
         renderTourDetail(tourAnswer.data, routesAnswer.data);
     }).catch(err => {
         log('showTourDetail() failed', LOG_ERROR, err);
-        showToast('Loading tour failed: ' + err.message, 'error');
+        showToast(t('tour_admin.loading_tour_failed', { error: err.message }), 'error');
     });
 }
 
-function renderTourDetail(t, routesInTour) {
-    setTourAdminHeader(t.name, showTourList, '');
+function renderTourDetail(tour, routesInTour) {
+    setTourAdminHeader(tour.name, showTourList, '');
 
     var html = '<div class="tour-detail-meta">' +
-            (t.public == 1 ? '<span class="admin-badge">Public</span> &middot; ' : '') +
-            formatDistance(t.total_length || 0, settings.unit) + ' &middot; ' +
-            routesInTour.length + (routesInTour.length == 1 ? ' route' : ' routes') +
-            ' &middot; by ' + escapeHTML(t.creator_username) +
+            (tour.public == 1 ? '<span class="admin-badge">' + t('common.public_badge') + '</span> &middot; ' : '') +
+            formatDistance(tour.total_length || 0, settings.unit) + ' &middot; ' +
+            routesInTour.length + ' ' + (routesInTour.length == 1 ? t('tour_admin.route_singular') : t('tour_admin.route_plural')) +
+            ' &middot; ' + t('tour_admin.by', { creator: escapeHTML(tour.creator_username) }) +
         '</div>';
 
-    if (t.public == 1 && t.published_by) {
-        html += '<div class="tour-detail-meta">Published' + (t.published_at ? ' ' + escapeHTML(t.published_at) : '') + '</div>';
+    if (tour.public == 1 && tour.published_by) {
+        html += '<div class="tour-detail-meta">' + t('tour_admin.published') + (tour.published_at ? ' ' + escapeHTML(tour.published_at) : '') + '</div>';
     }
 
-    if ((t.tags || []).length > 0) {
-        html += '<div class="chip-row">' + t.tags.map(tag => '<span class="tag-chip">' + escapeHTML(tag) + '</span>').join('') + '</div>';
+    if ((tour.tags || []).length > 0) {
+        html += '<div class="chip-row">' + tour.tags.map(tag => '<span class="tag-chip">' + escapeHTML(tag) + '</span>').join('') + '</div>';
     }
 
-    if (t.description) {
-        html += '<div class="tour-detail-desc">' + marked.parse(t.description) + '</div>';
+    if (tour.description) {
+        html += '<div class="tour-detail-desc">' + marked.parse(tour.description) + '</div>';
     }
 
-    if ((t.images || []).length > 0) {
+    if ((tour.images || []).length > 0) {
         html += '<div class="tour-photo-gallery">';
-        for (let i = 0; i < t.images.length; i++) {
-            html += '<img class="tour-photo-gallery-img" data-tour-id="' + t.id + '" data-image-id="' + t.images[i].id + '">';
+        for (let i = 0; i < tour.images.length; i++) {
+            html += '<img class="tour-photo-gallery-img" data-tour-id="' + tour.id + '" data-image-id="' + tour.images[i].id + '">';
         }
         html += '</div>';
     }
 
-    html += '<p class="nav-field-label">Routes in this tour</p>';
+    html += '<p class="nav-field-label">' + t('tour_admin.routes_in_tour') + '</p>';
     if (routesInTour.length === 0) {
-        html += '<p class="hint">This tour has no routes yet.</p>';
+        html += '<p class="hint">' + t('tour_admin.no_routes_yet') + '</p>';
     } else {
         html += '<ol class="tour-route-list">';
         for (let i = 0; i < routesInTour.length; i++) {
@@ -362,26 +362,26 @@ function renderTourDetail(t, routesInTour) {
     // longer calls closeMenu() itself, see its own comment), so closing
     // only the panel would leave the drawer sitting there behind it instead
     // of landing back on the clean map Tour Mode is meant to show.
-    var activateTourModeCall = 'activateTourMode(' + t.id + ', ' + JSON.stringify(t.name) + '); closeTourAdminMenu(); closeMenu();';
+    var activateTourModeCall = 'activateTourMode(' + tour.id + ', ' + JSON.stringify(tour.name) + '); closeTourAdminMenu(); closeMenu();';
     html += '<div class="tour-detail-actions">' +
         '<div class="nav-btn-primary" onclick="' + escapeHTML(activateTourModeCall) + '">' +
-            '<i class="material-icons-round">explore</i>&nbsp;Activate Tour Mode' +
+            '<i class="material-icons-round">explore</i>&nbsp;' + t('tour_admin.activate_tour_mode') +
         '</div>' +
         '<div class="tour-action-row">';
 
-    if (canManageTour(t)) {
+    if (canManageTour(tour)) {
         html +=
-            '<div class="button" onclick="showTourEditForm(' + t.id + ');"><i class="material-icons-round">edit</i>&nbsp;Edit</div>' +
-            '<div class="button" onclick="manageTourRoutes(' + t.id + ');"><i class="material-icons-round">reorder</i>&nbsp;Edit Routes</div>';
+            '<div class="button" onclick="showTourEditForm(' + tour.id + ');"><i class="material-icons-round">edit</i>&nbsp;' + t('common.edit') + '</div>' +
+            '<div class="button" onclick="manageTourRoutes(' + tour.id + ');"><i class="material-icons-round">reorder</i>&nbsp;' + t('tour_admin.edit_routes') + '</div>';
     }
-    if (canPublishTour(t)) {
-        html += '<div class="button" onclick="toggleTourPublic(' + t.id + ', ' + (t.public == 1 ? 'false' : 'true') + ');"><i class="material-icons-round">public</i>&nbsp;' + (t.public == 1 ? 'Unpublish' : 'Publish') + '</div>';
+    if (canPublishTour(tour)) {
+        html += '<div class="button" onclick="toggleTourPublic(' + tour.id + ', ' + (tour.public == 1 ? 'false' : 'true') + ');"><i class="material-icons-round">public</i>&nbsp;' + (tour.public == 1 ? t('tour_admin.unpublish') : t('tour_admin.publish')) + '</div>';
     }
     if (canCopyTours()) {
-        html += '<div class="button" onclick="copyTourRow(' + t.id + ');"><i class="material-icons-round">content_copy</i>&nbsp;Copy</div>';
+        html += '<div class="button" onclick="copyTourRow(' + tour.id + ');"><i class="material-icons-round">content_copy</i>&nbsp;' + t('tour_admin.copy') + '</div>';
     }
-    if (canManageTour(t)) {
-        html += '<div class="button" onclick="deleteTourRow(' + t.id + ');"><i class="material-icons-round">delete</i>&nbsp;Delete</div>';
+    if (canManageTour(tour)) {
+        html += '<div class="button" onclick="deleteTourRow(' + tour.id + ');"><i class="material-icons-round">delete</i>&nbsp;' + t('common.delete') + '</div>';
     }
 
     html += '</div></div>';
@@ -393,26 +393,26 @@ function renderTourDetail(t, routesInTour) {
 function toggleTourPublic(id, makePublic) {
     Ytan.put('/tours/' + id + '/publish', { public: makePublic }).then(() => {
         showTourDetail(id);
-    }).catch(err => showToast('Save failed: ' + err.message, 'error'));
+    }).catch(err => showToast(t('tour_admin.save_failed', { error: err.message }), 'error'));
 }
 
 function copyTourRow(id) {
     Ytan.post('/tours/' + id + '/copy').then(answer => {
         getToursByUserId(user.id);
-        showToast('Tour copied.', 'success');
+        showToast(t('tour_admin.tour_copied'), 'success');
         showTourDetail(answer.data.id);
-    }).catch(err => showToast('Copy failed: ' + err.message, 'error'));
+    }).catch(err => showToast(t('tour_admin.copy_failed', { error: err.message }), 'error'));
 }
 
 async function deleteTourRow(id) {
-    if (!(await showConfirmDialog('Do you really want to delete this tour? Its routes will not be deleted.', { type: 'danger', confirmLabel: 'Delete' }))) {
+    if (!(await showConfirmDialog(t('tour_admin.confirm_delete_tour'), { type: 'danger', confirmLabel: t('common.delete') }))) {
         return;
     }
 
     Ytan.del('/tours/' + id).then(() => {
         getToursByUserId(user.id);
         showTourList();
-    }).catch(err => showToast('Delete failed: ' + err.message, 'error'));
+    }).catch(err => showToast(t('tour_admin.delete_failed', { error: err.message }), 'error'));
 }
 
 /* --------------------------------------------------------- Create/Edit */
@@ -447,44 +447,44 @@ function showTourEditForm(id) {
         tourFormPendingPhotoRemovals = [];
         document.getElementById('touradminmenu-body').innerHTML = tourFormHtml(answer.data);
         loadTourImagesInto(document.getElementById('touradminmenu-body'));
-    }).catch(err => showToast('Loading tour failed: ' + err.message, 'error'));
+    }).catch(err => showToast(t('tour_admin.loading_tour_failed', { error: err.message }), 'error'));
 }
 
-function tourFormHtml(t) {
-    t = t || { id: null, name: '', description: '' };
+function tourFormHtml(tour) {
+    tour = tour || { id: null, name: '', description: '' };
 
-    var saveCall = t.id === null ? 'saveNewTour()' : 'saveEditedTour(' + t.id + ')';
-    var cancelCall = t.id === null ? 'showTourList()' : 'showTourDetail(' + t.id + ')';
-    var cancelFn = t.id === null ? showTourList : function () { showTourDetail(t.id); };
-    setTourAdminHeader(t.id === null ? 'New tour' : 'Edit tour', cancelFn, '');
+    var saveCall = tour.id === null ? 'saveNewTour()' : 'saveEditedTour(' + tour.id + ')';
+    var cancelCall = tour.id === null ? 'showTourList()' : 'showTourDetail(' + tour.id + ')';
+    var cancelFn = tour.id === null ? showTourList : function () { showTourDetail(tour.id); };
+    setTourAdminHeader(tour.id === null ? t('tour_admin.new_tour') : t('tour_admin.edit_tour'), cancelFn, '');
 
     var html = '<div class="admin-user-form">' +
         '<div class="adminFormRow">' +
-            '<div class="adminFormLabel"><label for="tourFormName">Name: </label></div>' +
-            '<div class="adminFormField"><input id="tourFormName" type="text" value="' + escapeHTML(t.name) + '" placeholder="At least 3 characters"></div>' +
+            '<div class="adminFormLabel"><label for="tourFormName">' + t('tour_admin.name_label') + '</label></div>' +
+            '<div class="adminFormField"><input id="tourFormName" type="text" value="' + escapeHTML(tour.name) + '" placeholder="' + t('tour_admin.name_min_chars') + '"></div>' +
         '</div>' +
         '<div class="adminFormRow">' +
-            '<div class="adminFormLabel"><label for="tourFormDescription">Description: </label></div>' +
-            '<div class="adminFormField"><textarea id="tourFormDescription" rows="4">' + escapeHTML(t.description || '') + '</textarea></div>' +
+            '<div class="adminFormLabel"><label for="tourFormDescription">' + t('tour_admin.description_label') + '</label></div>' +
+            '<div class="adminFormField"><textarea id="tourFormDescription" rows="4">' + escapeHTML(tour.description || '') + '</textarea></div>' +
         '</div>' +
         '<div class="adminFormRow">' +
-            '<div class="adminFormLabel"><label for="tourFormTagInput">Tags: </label></div>' +
+            '<div class="adminFormLabel"><label for="tourFormTagInput">' + t('tour_admin.tags_label') + '</label></div>' +
             '<div class="adminFormField" id="tourFormTagsWrap">' + tourFormTagsInnerHtml() + '</div>' +
         '</div>';
 
-    if (t.id !== null) {
+    if (tour.id !== null) {
         html += '<div class="adminFormRow">' +
-            '<div class="adminFormLabel">Photos:</div>' +
+            '<div class="adminFormLabel">' + t('tour_admin.photos_label') + '</div>' +
             '<div class="adminFormField" id="tourFormPhotosWrap">' + tourFormPhotosInnerHtml() + '</div>' +
         '</div>';
     }
 
-    html += '<p class="hint">Publishing this tour and managing its routes happen from the tour’s detail page, not here.</p>' +
+    html += '<p class="hint">' + t('tour_admin.form_hint') + '</p>' +
         '<div class="adminFormRow">' +
             '<div class="adminFormLabel">&nbsp;</div>' +
             '<div class="adminFormField">' +
-                '<button id="tourFormSaveBtn" class="button" type="button" onclick="' + saveCall + '">Save</button>&nbsp;' +
-                '<button class="button" type="button" onclick="' + cancelCall + ';">Cancel</button>' +
+                '<button id="tourFormSaveBtn" class="button" type="button" onclick="' + saveCall + '">' + t('common.save') + '</button>&nbsp;' +
+                '<button class="button" type="button" onclick="' + cancelCall + ';">' + t('common.cancel') + '</button>' +
             '</div>' +
         '</div>' +
         '</div>';
@@ -500,7 +500,7 @@ function tourFormTagsInnerHtml() {
         html += '<span class="tag-chip tag-chip-removable">' + escapeHTML(tourFormTagList[i]) +
             ' <i class="material-icons-round" onclick="removeTourFormTag(' + i + ');">close</i></span>';
     }
-    html += '<input type="text" id="tourFormTagInput" placeholder="+ Add tag" onkeydown="handleTourFormTagKeydown(event);">';
+    html += '<input type="text" id="tourFormTagInput" placeholder="' + t('tour_admin.add_tag_placeholder') + '" onkeydown="handleTourFormTagKeydown(event);">';
     html += '</div>';
 
     return html;
@@ -519,7 +519,7 @@ function handleTourFormTagKeydown(event) {
 
     var input = document.getElementById('tourFormTagInput');
     var value = input.value.trim().replace(/,$/, '');
-    if (value !== '' && value.length <= 50 && !tourFormTagList.some(t => t.toLowerCase() === value.toLowerCase())) {
+    if (value !== '' && value.length <= 50 && !tourFormTagList.some(tag => tag.toLowerCase() === value.toLowerCase())) {
         tourFormTagList.push(value);
     }
     refreshTourFormTags();
@@ -548,7 +548,7 @@ function tourFormPhotosInnerHtml() {
         // Not yet uploaded - preview straight from the local File via a blob:
         // URL rather than loadTourImagesInto()'s fetchBlob() path, which is
         // only for photos that already exist on the server.
-        html += '<div class="tour-photo-tile tour-photo-tile-pending" title="Uploaded when you click Save">' +
+        html += '<div class="tour-photo-tile tour-photo-tile-pending" title="' + t('tour_admin.pending_photo_title') + '">' +
             '<img src="' + URL.createObjectURL(tourFormPendingPhotoUploads[i]) + '">' +
             '<div class="tour-photo-remove" onclick="removePendingTourFormPhoto(' + i + ');"><i class="material-icons-round">close</i></div>' +
             '</div>';
@@ -559,7 +559,7 @@ function tourFormPhotosInnerHtml() {
     }
     html += '</div>' +
         '<input type="file" id="tourFormPhotoInput" accept="image/jpeg,image/png,image/webp" style="display:none;" onchange="stageTourFormPhoto(event);">' +
-        '<p class="hint">Up to 8 photos, 5 MB each. Added/removed photos are saved when you click Save.</p>';
+        '<p class="hint">' + t('tour_admin.photos_hint') + '</p>';
 
     return html;
 }
@@ -581,7 +581,7 @@ function stageTourFormPhoto(event) {
         return;
     }
     if (file.size > 5 * 1024 * 1024) {
-        showToast('Photo must be at most 5 MB.', 'error');
+        showToast(t('tour_admin.photo_too_large'), 'error');
         event.target.value = '';
         return;
     }
@@ -617,7 +617,7 @@ function readTourForm() {
 
 function saveNewTour() {
     if (document.getElementById('tourFormName').value.trim().length < 3) {
-        showToast('Name must be at least 3 characters.', 'error');
+        showToast(t('tour_admin.name_too_short'), 'error');
         return;
     }
     document.getElementById('tourFormSaveBtn').disabled = true;
@@ -634,18 +634,18 @@ function saveNewTour() {
         var addPendingRoute = pendingRouteId === null
             ? Promise.resolve()
             : Ytan.post('/tours/' + tourId + '/routes', { route_id: pendingRouteId })
-                .catch(err => showToast('Tour created, but adding the route failed: ' + err.message, 'error'));
+                .catch(err => showToast(t('tour_admin.created_but_add_route_failed', { error: err.message }), 'error'));
 
         return addPendingRoute.then(() => showTourDetail(tourId));
     }).catch(err => {
         document.getElementById('tourFormSaveBtn').disabled = false;
-        showToast('Save failed: ' + err.message, 'error');
+        showToast(t('tour_admin.save_failed', { error: err.message }), 'error');
     });
 }
 
 function saveEditedTour(id) {
     if (document.getElementById('tourFormName').value.trim().length < 3) {
-        showToast('Name must be at least 3 characters.', 'error');
+        showToast(t('tour_admin.name_too_short'), 'error');
         return;
     }
     document.getElementById('tourFormSaveBtn').disabled = true;
@@ -657,7 +657,7 @@ function saveEditedTour(id) {
             showTourDetail(id);
         }).catch(err => {
             document.getElementById('tourFormSaveBtn').disabled = false;
-            showToast('Save failed: ' + err.message, 'error');
+            showToast(t('tour_admin.save_failed', { error: err.message }), 'error');
         });
 }
 
@@ -680,7 +680,7 @@ function applyPendingTourPhotoChanges(tourId) {
     }
 
     return Promise.all(removals.concat(uploads)).catch(err => {
-        showToast('Some photo changes failed to save: ' + err.message, 'error');
+        showToast(t('tour_admin.photo_changes_failed', { error: err.message }), 'error');
     });
 }
 
@@ -707,7 +707,7 @@ function manageTourRoutes(tourId) {
         renderTourRouteManager('');
     }).catch(err => {
         log('manageTourRoutes() failed', LOG_ERROR, err);
-        showToast('Loading routes failed: ' + err.message, 'error');
+        showToast(t('tour_admin.loading_routes_failed', { error: err.message }), 'error');
     });
 }
 
@@ -720,23 +720,23 @@ function renderTourRouteManager(searchQuery) {
     // wrapping when the name doesn't fit.
     setTourAdminHeader(tourRouteManagerTourName, function () { showTourDetail(tourId); }, '');
 
-    var html = '<p class="tour-route-manager-subtitle">Edit Routes</p>';
+    var html = '<p class="tour-route-manager-subtitle">' + t('tour_admin.edit_routes') + '</p>';
 
     // Save/Cancel sit right under the heading rather than at the very
     // bottom of the view - on a phone, with a long route list, the bottom
     // of this panel can be a long scroll away, which made the buttons hard
     // to reach in practice.
     html += '<div class="tour-action-row tour-route-manager-actions">' +
-        '<button id="tourRouteManagerSaveBtn" class="button" type="button" onclick="saveTourRouteManager();">Save</button>' +
-        '<button class="button" type="button" onclick="cancelTourRouteManager();">Cancel</button>' +
+        '<button id="tourRouteManagerSaveBtn" class="button" type="button" onclick="saveTourRouteManager();">' + t('common.save') + '</button>' +
+        '<button class="button" type="button" onclick="cancelTourRouteManager();">' + t('common.cancel') + '</button>' +
     '</div>';
 
-    html += '<p class="nav-field-label">In this tour (' + tourRouteManagerInTour.length + ') &middot; ' + formatDistance(totalLength, settings.unit) + '</p>';
+    html += '<p class="nav-field-label">' + t('tour_admin.in_this_tour', { count: tourRouteManagerInTour.length }) + ' &middot; ' + formatDistance(totalLength, settings.unit) + '</p>';
     html += '<div id="tourRouteManagerInTourList"></div>';
 
-    html += '<p class="nav-field-label">Add more routes</p>' +
+    html += '<p class="nav-field-label">' + t('tour_admin.add_more_routes') + '</p>' +
         '<div class="search-bar"><i class="material-icons-round">search</i>' +
-            '<input type="text" id="tourRouteSearchInput" placeholder="Search your routes…" value="' + escapeHTML(searchQuery) + '" oninput="filterTourRouteManager();"></div>' +
+            '<input type="text" id="tourRouteSearchInput" placeholder="' + t('tour_admin.search_your_routes') + '" value="' + escapeHTML(searchQuery) + '" oninput="filterTourRouteManager();"></div>' +
         '<div id="tourRouteManagerCandidatesResults"></div>';
 
     document.getElementById('touradminmenu-body').innerHTML = html;
@@ -757,7 +757,7 @@ function renderTourRouteManagerInTourList() {
     }
 
     if (tourRouteManagerInTour.length === 0) {
-        container.innerHTML = '<p class="hint">No routes yet - add some below.</p>';
+        container.innerHTML = '<p class="hint">' + t('tour_admin.no_routes_added_yet') + '</p>';
         return;
     }
 
@@ -769,7 +769,7 @@ function renderTourRouteManagerInTourList() {
             '<i class="material-icons-round tour-route-manager-handle" onpointerdown="startRouteDrag(event, ' + r.id + ');">drag_indicator</i>' +
             '<span class="tour-route-manager-name">' + escapeHTML(r.name) + '</span>' +
             '<span class="tour-list-meta">' + formatDistance(r.length || 0, settings.unit) + '</span>' +
-            '<i class="material-icons-round tour-route-manager-remove" title="Remove from tour" onclick="removeRouteFromTour(' + r.id + ');">close</i>' +
+            '<i class="material-icons-round tour-route-manager-remove" title="' + t('tour_admin.remove_from_tour_title') + '" onclick="removeRouteFromTour(' + r.id + ');">close</i>' +
             '</div>';
     }
     html += '</div>';
@@ -800,14 +800,14 @@ function renderFilteredTourRouteManagerCandidates() {
 
     var html = '<div class="tour-route-manager-list">';
     if (candidates.length === 0) {
-        html += '<p class="hint">No matching routes.</p>';
+        html += '<p class="hint">' + t('tour_admin.no_matching_routes') + '</p>';
     } else {
         for (let i = 0; i < candidates.length; i++) {
             var c = candidates[i];
             html += '<div class="tour-route-manager-row">' +
                 '<span class="tour-route-manager-name">' + escapeHTML(c.name) + '</span>' +
                 '<span class="tour-list-meta">' + formatDistance(c.length || 0, settings.unit) + '</span>' +
-                '<i class="material-icons-round tour-route-manager-add" title="Add to tour" onclick="addRouteToTour(' + c.id + ');">add_circle</i>' +
+                '<i class="material-icons-round tour-route-manager-add" title="' + t('common.add_to_tour') + '" onclick="addRouteToTour(' + c.id + ');">add_circle</i>' +
                 '</div>';
         }
     }
@@ -833,12 +833,12 @@ function tourRouteManagerCandidatePaginationHtml(totalMatches, totalPages) {
 
     return '<div class="admin-pagination">' +
         '<div class="admin-pagination-size">' +
-            '<label for="tourRouteCandidatePageSize">Rows per page:</label>' +
+            '<label for="tourRouteCandidatePageSize">' + t('common.rows_per_page') + '</label>' +
             '<select id="tourRouteCandidatePageSize" class="select-css select-css-compact" onchange="onTourRouteManagerCandidatePageSizeChange();">' + sizeOptions + '</select>' +
         '</div>' +
         '<div class="admin-pagination-nav">' +
             '<span class="admin-pagination-nav-btn' + (tourRouteManagerCandidatePage <= 1 ? ' disabled' : '') + '" onclick="' + (tourRouteManagerCandidatePage > 1 ? 'goToTourRouteManagerCandidatePage(-1);' : '') + '"><i class="material-icons-round">chevron_left</i></span>' +
-            '<span class="admin-pagination-page">' + (totalMatches === 0 ? '0 routes' : 'Page ' + tourRouteManagerCandidatePage + ' of ' + totalPages) + '</span>' +
+            '<span class="admin-pagination-page">' + (totalMatches === 0 ? t('tour_admin.zero_routes') : t('common.page_of', { page: tourRouteManagerCandidatePage, total: totalPages })) + '</span>' +
             '<span class="admin-pagination-nav-btn' + (tourRouteManagerCandidatePage >= totalPages ? ' disabled' : '') + '" onclick="' + (tourRouteManagerCandidatePage < totalPages ? 'goToTourRouteManagerCandidatePage(1);' : '') + '"><i class="material-icons-round">chevron_right</i></span>' +
         '</div>' +
         '</div>';
@@ -997,11 +997,11 @@ function saveTourRouteManager() {
             ? Ytan.put('/tours/' + tourId + '/routes/order', { route_ids: finalIds })
             : Promise.resolve();
     }).then(() => {
-        showToast('Saved.', 'success');
+        showToast(t('tour_admin.saved'), 'success');
         showTourDetail(tourId);
     }).catch(err => {
         document.getElementById('tourRouteManagerSaveBtn').disabled = false;
-        showToast('Save failed: ' + err.message, 'error');
+        showToast(t('tour_admin.save_failed', { error: err.message }), 'error');
     });
 }
 

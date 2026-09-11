@@ -16,19 +16,19 @@ function showUserWindow() {
     if (user.id === null) {
         document.getElementById('userWindow').innerHTML =
             '<div class="nav-field">' +
-                '<label for="userLoginUsername">Username or email</label>' +
-                '<input id="userLoginUsername" type="text" placeholder="username" autocomplete="username" title="Enter your username or email used on registration." onkeypress="focusOnEnter(event, \'userLoginPassword\');">' +
+                '<label for="userLoginUsername">' + t('user.login.username_label') + '</label>' +
+                '<input id="userLoginUsername" type="text" placeholder="' + t('user.login.username_placeholder') + '" autocomplete="username" title="' + t('user.login.username_title') + '" onkeypress="focusOnEnter(event, \'userLoginPassword\');">' +
             '</div>' +
             '<div class="nav-field">' +
-                '<label for="userLoginPassword">Password</label>' +
-                '<input id="userLoginPassword" type="password" placeholder="Enter your password." autocomplete="current-password" onkeypress="clickOnEnter(event, \'userLoginBtn\');">' +
+                '<label for="userLoginPassword">' + t('user.login.password_label') + '</label>' +
+                '<input id="userLoginPassword" type="password" placeholder="' + t('user.login.password_placeholder') + '" autocomplete="current-password" onkeypress="clickOnEnter(event, \'userLoginBtn\');">' +
             '</div>' +
-            '<button id="userLoginBtn" class="nav-btn-primary" type="button" onClick="loginUser()"><i class="material-icons-round">login</i>&nbsp;Log in</button>' +
-            '<span class="nav-link-small" onclick="goToForgotPassword();">Forgot password?</span>'
+            '<button id="userLoginBtn" class="nav-btn-primary" type="button" onClick="loginUser()"><i class="material-icons-round">login</i>&nbsp;' + t('user.login.button') + '</button>' +
+            '<span class="nav-link-small" onclick="goToForgotPassword();">' + t('user.login.forgot_password') + '</span>'
         ;
     } else {
         var pendingEmailNotice = user.pending_email
-            ? '<div class="nav-form-message" style="color: var(--color-warning);">Email change pending confirmation for ' + user.pending_email + '. <span class="nav-link-small" onclick="cancelPendingEmailChange();">Cancel</span></div>'
+            ? '<div class="nav-form-message" style="color: var(--color-warning);">' + t('user.pending_email_notice', { email: user.pending_email }) + ' <span class="nav-link-small" onclick="cancelPendingEmailChange();">' + t('common.cancel') + '</span></div>'
             : '';
 
         document.getElementById('userWindow').innerHTML =
@@ -40,9 +40,9 @@ function showUserWindow() {
                 '</div>' +
             '</div>' +
             pendingEmailNotice +
-            '<button id="userEditProfileBtn" class="nav-btn-secondary" type="button" onClick="showEditProfileForm();"><i class="material-icons-round">edit</i>&nbsp;Edit profile</button>' +
-            '<button id="userChangePasswordBtn" class="nav-btn-secondary" type="button" onClick="showChangePasswordForm();"><i class="material-icons-round">lock</i>&nbsp;Change password</button>' +
-            '<button id="userLogoutBtn" class="nav-btn-secondary nav-btn-danger" type="button" onClick="logoutUser()"><i class="material-icons-round">logout</i>&nbsp;Log out</button>' +
+            '<button id="userEditProfileBtn" class="nav-btn-secondary" type="button" onClick="showEditProfileForm();"><i class="material-icons-round">edit</i>&nbsp;' + t('user.edit_profile_button') + '</button>' +
+            '<button id="userChangePasswordBtn" class="nav-btn-secondary" type="button" onClick="showChangePasswordForm();"><i class="material-icons-round">lock</i>&nbsp;' + t('user.change_password_button') + '</button>' +
+            '<button id="userLogoutBtn" class="nav-btn-secondary nav-btn-danger" type="button" onClick="logoutUser()"><i class="material-icons-round">logout</i>&nbsp;' + t('user.logout_button') + '</button>' +
             '<div id="userWindowSub"></div>'
         ;
     }
@@ -84,12 +84,12 @@ function goToForgotPassword() {
 function showChangePasswordForm() {
     document.getElementById('userWindowSub').innerHTML =
         '<div class="nav-divider"></div>' +
-        '<div class="nav-field"><label for="userChangePasswordCurrent">Current password</label><input id="userChangePasswordCurrent" type="password" autocomplete="current-password"></div>' +
-        '<div class="nav-field"><label for="userChangePasswordNew">New password</label><input id="userChangePasswordNew" type="password" autocomplete="new-password"></div>' +
-        '<div class="nav-field"><label for="userChangePasswordConfirm">Confirm new password</label><input id="userChangePasswordConfirm" type="password" autocomplete="new-password"></div>' +
+        '<div class="nav-field"><label for="userChangePasswordCurrent">' + t('user.current_password_label') + '</label><input id="userChangePasswordCurrent" type="password" autocomplete="current-password"></div>' +
+        '<div class="nav-field"><label for="userChangePasswordNew">' + t('user.new_password_label') + '</label><input id="userChangePasswordNew" type="password" autocomplete="new-password"></div>' +
+        '<div class="nav-field"><label for="userChangePasswordConfirm">' + t('user.confirm_new_password_label') + '</label><input id="userChangePasswordConfirm" type="password" autocomplete="new-password"></div>' +
         '<div class="nav-form-message" id="userChangePasswordMessage"></div>' +
-        '<button id="userChangePasswordSaveBtn" class="nav-btn-primary" type="button" onClick="submitChangePassword();"><i class="material-icons-round">check</i>&nbsp;Save password</button>' +
-        '<span class="nav-link-small" onclick="document.getElementById(\'userWindowSub\').innerHTML=\'\';">Cancel</span>'
+        '<button id="userChangePasswordSaveBtn" class="nav-btn-primary" type="button" onClick="submitChangePassword();"><i class="material-icons-round">check</i>&nbsp;' + t('user.save_password_button') + '</button>' +
+        '<span class="nav-link-small" onclick="document.getElementById(\'userWindowSub\').innerHTML=\'\';">' + t('common.cancel') + '</span>'
     ;
 }
 
@@ -101,7 +101,7 @@ function submitChangePassword() {
 
     if (newPassword !== confirmPassword) {
         message.style.color = 'var(--color-danger)';
-        message.textContent = 'The two passwords do not match.';
+        message.textContent = t('common.password_mismatch');
         return;
     }
 
@@ -109,7 +109,7 @@ function submitChangePassword() {
 
     Ytan.put('/auth/password', { current_password: current, new_password: newPassword }).then(() => {
         message.style.color = 'var(--color-success)';
-        message.textContent = 'Password changed successfully.';
+        message.textContent = t('user.password_changed_success');
         document.getElementById('userChangePasswordCurrent').value = '';
         document.getElementById('userChangePasswordNew').value = '';
         document.getElementById('userChangePasswordConfirm').value = '';
@@ -131,13 +131,13 @@ function submitChangePassword() {
 function showEditProfileForm() {
     document.getElementById('userWindowSub').innerHTML =
         '<div class="nav-divider"></div>' +
-        '<div class="nav-field"><label for="userEditProfileFirstname">First name</label><input id="userEditProfileFirstname" type="text" value="' + user.firstname + '"></div>' +
-        '<div class="nav-field"><label for="userEditProfileLastname">Last name</label><input id="userEditProfileLastname" type="text" value="' + user.lastname + '"></div>' +
-        '<div class="nav-field"><label for="userEditProfileEmail">Email</label><input id="userEditProfileEmail" type="email" value="' + user.email + '"></div>' +
-        '<div class="nav-field"><label for="userEditProfileCurrentPassword">Current password</label><input id="userEditProfileCurrentPassword" type="password" autocomplete="current-password"></div>' +
+        '<div class="nav-field"><label for="userEditProfileFirstname">' + t('user.firstname_label') + '</label><input id="userEditProfileFirstname" type="text" value="' + user.firstname + '"></div>' +
+        '<div class="nav-field"><label for="userEditProfileLastname">' + t('user.lastname_label') + '</label><input id="userEditProfileLastname" type="text" value="' + user.lastname + '"></div>' +
+        '<div class="nav-field"><label for="userEditProfileEmail">' + t('user.email_label') + '</label><input id="userEditProfileEmail" type="email" value="' + user.email + '"></div>' +
+        '<div class="nav-field"><label for="userEditProfileCurrentPassword">' + t('user.current_password_label') + '</label><input id="userEditProfileCurrentPassword" type="password" autocomplete="current-password"></div>' +
         '<div class="nav-form-message" id="userEditProfileMessage"></div>' +
-        '<button id="userEditProfileSaveBtn" class="nav-btn-primary" type="button" onClick="submitEditProfile();"><i class="material-icons-round">check</i>&nbsp;Save profile</button>' +
-        '<span class="nav-link-small" onclick="document.getElementById(\'userWindowSub\').innerHTML=\'\';">Cancel</span>'
+        '<button id="userEditProfileSaveBtn" class="nav-btn-primary" type="button" onClick="submitEditProfile();"><i class="material-icons-round">check</i>&nbsp;' + t('user.save_profile_button') + '</button>' +
+        '<span class="nav-link-small" onclick="document.getElementById(\'userWindowSub\').innerHTML=\'\';">' + t('common.cancel') + '</span>'
     ;
 }
 
@@ -168,8 +168,8 @@ function submitEditProfile() {
 
         showToast(
             answer.email_change_pending
-                ? 'Confirmation email sent to ' + answer.pending_email + '.'
-                : 'Profile updated.',
+                ? t('user.confirmation_email_sent', { email: answer.pending_email })
+                : t('user.profile_updated'),
             'success'
         );
 
@@ -189,7 +189,7 @@ function cancelPendingEmailChange() {
     Ytan.del('/auth/email-change').then(() => {
         user.pending_email = null;
         sessionStorage.setItem('user', JSON.stringify(user));
-        showToast('Pending email change canceled.', 'info');
+        showToast(t('user.pending_email_change_canceled'), 'info');
         showUserWindow();
     }).catch(err => {
         showToast(err.message, 'error');
@@ -211,7 +211,7 @@ function updateAdminMenuVisibility() {
  * same places as updateAdminMenuVisibility().
  */
 function updatePreferencesRowLabel() {
-    document.getElementById('preferencesRowSub').textContent = user.id !== null ? ('Signed in as ' + user.username) : 'Not signed in';
+    document.getElementById('preferencesRowSub').textContent = user.id !== null ? t('user.signed_in_as', { username: user.username }) : t('app.nav.not_signed_in');
 }
 
 /**
@@ -283,6 +283,6 @@ function loginUser() {
         document.getElementById('userLoginUsername').disabled = false;
         document.getElementById('userLoginPassword').disabled = false;
         document.getElementById('userLoginBtn').disabled = false;
-        showToast('Login failed: ' + err.message, 'error');
+        showToast(t('user.login_failed', { error: err.message }), 'error');
     });
 }

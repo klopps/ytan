@@ -12,8 +12,8 @@ const CONFIRM_DIALOG_ICON = {
 function showConfirmDialog(message, options) {
     var opts = options || {};
     var type = CONFIRM_DIALOG_ICON.hasOwnProperty(opts.type) ? opts.type : 'default';
-    var confirmLabel = opts.confirmLabel || 'OK';
-    var cancelLabel = opts.cancelLabel || 'Cancel';
+    var confirmLabel = opts.confirmLabel || t('confirm_dialog.ok');
+    var cancelLabel = opts.cancelLabel || t('common.cancel');
 
     return new Promise(function (resolve) {
         var overlay = document.createElement('div');
@@ -101,7 +101,7 @@ function showCaptchaDialog(question) {
 
         var text = document.createElement('div');
         text.className = 'confirm-dialog-message';
-        text.textContent = 'This route is part of one or more tours. To confirm deletion, please solve: ' + question;
+        text.textContent = t('confirm_dialog.captcha_message', { question: question });
 
         var input = document.createElement('input');
         input.type = 'number';
@@ -114,12 +114,12 @@ function showCaptchaDialog(question) {
         var cancelBtn = document.createElement('button');
         cancelBtn.type = 'button';
         cancelBtn.className = 'button';
-        cancelBtn.textContent = 'Cancel';
+        cancelBtn.textContent = t('common.cancel');
 
         var confirmBtn = document.createElement('button');
         confirmBtn.type = 'button';
         confirmBtn.className = 'startbtn';
-        confirmBtn.textContent = 'Delete';
+        confirmBtn.textContent = t('common.delete');
 
         function close(result) {
             document.removeEventListener('keydown', onKeydown);

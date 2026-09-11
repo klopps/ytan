@@ -21,8 +21,8 @@ const TOUR_RIGHT_FIELDS = ['tour_create', 'tour_publish', 'tour_manage', 'tour_c
 // shown (this table's badges, the filter panel below) so that's never
 // ambiguous - "Create"/"Publish"/"Manage"/"Copy" alone read as generic
 // permissions otherwise.
-const USER_RIGHT_LABELS = { is_admin: 'Admin', tour_create: 'Tour: Create', tour_publish: 'Tour: Publish', tour_manage: 'Tour: Manage', tour_copy: 'Tour: Copy' };
-const USER_ADMIN_NEW_BUTTON_HTML = '<div class="startbtn" onclick="showUserCreateForm();"><i class="material-icons-round">person_add</i>&nbsp;New user</div>';
+const USER_RIGHT_LABELS = { is_admin: t('admin_user.right_admin'), tour_create: t('admin_user.right_tour_create'), tour_publish: t('admin_user.right_tour_publish'), tour_manage: t('admin_user.right_tour_manage'), tour_copy: t('admin_user.right_tour_copy') };
+const USER_ADMIN_NEW_BUTTON_HTML = '<div class="startbtn" onclick="showUserCreateForm();"><i class="material-icons-round">person_add</i>&nbsp;' + t('admin_user.new_user') + '</div>';
 let adminUserFilters = {}; // { is_admin: 1, tour_manage: 1, ... } - AND'ed together, see loadUserList()
 let adminUserFilterPanelOpen = false; // whether the collapsible "Filter by right" panel is expanded
 let adminUserLastList = []; // last list rendered, so toggling the filter panel/typing a search can re-render without a re-fetch
@@ -85,7 +85,7 @@ function loadUserList() {
         renderUserTable(answer.data);
     }).catch(err => {
         log('loadUserList() failed', LOG_ERROR, err);
-        showToast('Loading users failed: ' + err.message, 'error');
+        showToast(t('admin_user.loading_users_failed', { error: err.message }), 'error');
     });
 }
 
@@ -120,7 +120,7 @@ function userFilterPanelHtml() {
 
     var html = '<div class="admin-filter-toggle" onclick="toggleUserFilterPanel();">' +
         '<i class="material-icons-round">tune</i>' +
-        '<span>Filter by right' + (activeCount > 0 ? ' (' + activeCount + ')' : '') + '</span>' +
+        '<span>' + t('admin_user.filter_by_right') + (activeCount > 0 ? ' (' + activeCount + ')' : '') + '</span>' +
         '<i class="material-icons-round admin-filter-chevron">' + (adminUserFilterPanelOpen ? 'expand_less' : 'expand_more') + '</i>' +
         '</div>';
 
@@ -152,7 +152,7 @@ function iconButton(icon, title, onclick) {
 
 function renderUserTable(users) {
     adminUserLastList = users;
-    setUserAdminHeader('Users', closeUserAdminMenu, USER_ADMIN_NEW_BUTTON_HTML);
+    setUserAdminHeader(t('admin_user.title'), closeUserAdminMenu, USER_ADMIN_NEW_BUTTON_HTML);
 
     var sizeOptions = '';
     for (let i = 0; i < ADMIN_LIST_PAGE_SIZES.length; i++) {
@@ -161,7 +161,7 @@ function renderUserTable(users) {
     }
 
     var html = '<div class="search-bar"><i class="material-icons-round">search</i>' +
-        '<input type="text" id="userSearchInput" placeholder="Search by name, username or email" value="' + escapeHTML(adminUserSearchQuery) + '" oninput="onAdminUserSearchInput();"></div>';
+        '<input type="text" id="userSearchInput" placeholder="' + t('admin_user.search_placeholder') + '" value="' + escapeHTML(adminUserSearchQuery) + '" oninput="onAdminUserSearchInput();"></div>';
 
     html += userFilterPanelHtml();
 
@@ -170,7 +170,7 @@ function renderUserTable(users) {
     // only the prev/next page nav stays with the results below, since that
     // depends on the current (filtered) result count.
     html += '<div class="admin-pagination-size tour-page-size-row">' +
-        '<label for="userPageSize">Rows per page:</label>' +
+        '<label for="userPageSize">' + t('common.rows_per_page') + '</label>' +
         '<select id="userPageSize" class="select-css select-css-compact" onchange="onAdminUserPageSizeChange();">' + sizeOptions + '</select>' +
     '</div>';
 
@@ -229,7 +229,7 @@ function renderFilteredUserRows() {
     var users = allMatches.slice(pageStart, pageStart + adminUserPageSize);
 
     var html = '<div class="admin-user-table-wrap"><table class="admin-user-table"><thead><tr>' +
-        '<th>Username</th><th>Email</th><th>Name</th><th>Rights</th><th class="actions">Actions</th>' +
+        '<th>' + t('admin_user.col_username') + '</th><th>' + t('admin_user.col_email') + '</th><th>' + t('admin_user.col_name') + '</th><th>' + t('admin_user.col_rights') + '</th><th class="actions">' + t('admin_user.col_actions') + '</th>' +
         '</tr></thead><tbody>';
 
     for (let i = 0; i < users.length; i++) {
@@ -244,15 +244,15 @@ function renderFilteredUserRows() {
         }
 
         html += '<tr>' +
-            '<td data-label="Username">' + escapeHTML(u.username) + '</td>' +
-            '<td data-label="Email">' + escapeHTML(u.email || '') + '</td>' +
-            '<td data-label="Name">' + name + '</td>' +
-            '<td data-label="Rights">' + (badges || '&ndash;') + '</td>' +
-            '<td class="actions" data-label="Actions">' +
-                iconButton('edit', 'Edit', 'editUserRow(' + u.id + ');') +
-                iconButton('vpn_key', 'Set password', 'showSetPasswordForm(' + u.id + ', ' + JSON.stringify(u.username) + ');') +
-                iconButton('forward_to_inbox', 'Send password reset email', 'sendResetEmailRow(' + u.id + ');') +
-                iconButton('delete', 'Delete', 'deleteUserRow(' + u.id + ');') +
+            '<td data-label="' + t('admin_user.col_username') + '">' + escapeHTML(u.username) + '</td>' +
+            '<td data-label="' + t('admin_user.col_email') + '">' + escapeHTML(u.email || '') + '</td>' +
+            '<td data-label="' + t('admin_user.col_name') + '">' + name + '</td>' +
+            '<td data-label="' + t('admin_user.col_rights') + '">' + (badges || '&ndash;') + '</td>' +
+            '<td class="actions" data-label="' + t('admin_user.col_actions') + '">' +
+                iconButton('edit', t('common.edit'), 'editUserRow(' + u.id + ');') +
+                iconButton('vpn_key', t('admin_user.set_password_title'), 'showSetPasswordForm(' + u.id + ', ' + JSON.stringify(u.username) + ');') +
+                iconButton('forward_to_inbox', t('admin_user.send_reset_title'), 'sendResetEmailRow(' + u.id + ');') +
+                iconButton('delete', t('common.delete'), 'deleteUserRow(' + u.id + ');') +
             '</td>' +
             '</tr>';
     }
@@ -263,14 +263,14 @@ function renderFilteredUserRows() {
 
     document.getElementById('adminUserTableResults').innerHTML = allMatches.length
         ? html
-        : '<p class="hint">No users found.</p>' + adminUserPaginationHtml(0, totalPages);
+        : '<p class="hint">' + t('admin_user.no_users_found') + '</p>' + adminUserPaginationHtml(0, totalPages);
 }
 
 function adminUserPaginationHtml(totalMatches, totalPages) {
     return '<div class="admin-pagination admin-pagination-section-only">' +
         '<div class="admin-pagination-nav">' +
             '<span class="admin-pagination-nav-btn' + (adminUserPage <= 1 ? ' disabled' : '') + '" onclick="' + (adminUserPage > 1 ? 'goToAdminUserPage(-1);' : '') + '"><i class="material-icons-round">chevron_left</i></span>' +
-            '<span class="admin-pagination-page">' + (totalMatches === 0 ? '0 users' : 'Page ' + adminUserPage + ' of ' + totalPages) + '</span>' +
+            '<span class="admin-pagination-page">' + (totalMatches === 0 ? t('admin_user.zero_users') : t('common.page_of', { page: adminUserPage, total: totalPages })) + '</span>' +
             '<span class="admin-pagination-nav-btn' + (adminUserPage >= totalPages ? ' disabled' : '') + '" onclick="' + (adminUserPage < totalPages ? 'goToAdminUserPage(1);' : '') + '"><i class="material-icons-round">chevron_right</i></span>' +
         '</div>' +
         '</div>';
@@ -281,54 +281,54 @@ function userFormHtml(u) {
 
     var saveCall = u.id === null ? 'saveNewUser()' : 'saveEditedUser(' + u.id + ')';
     var hint = u.id === null
-        ? '<p class="hint">The user will receive an email with a link to set their own password.</p>'
+        ? '<p class="hint">' + t('admin_user.invite_hint') + '</p>'
         : '';
-    setUserAdminHeader(u.id === null ? 'New user' : 'Edit user', closeUserForm, '');
+    setUserAdminHeader(u.id === null ? t('admin_user.new_user') : t('admin_user.edit_user'), closeUserForm, '');
 
     return '<div class="admin-user-form">' +
         hint +
         '<div class="adminFormRow">' +
-            '<div class="adminFormLabel"><label for="userFormUsername">Username: </label></div>' +
+            '<div class="adminFormLabel"><label for="userFormUsername">' + t('admin_user.username_label') + '</label></div>' +
             '<div class="adminFormField"><input id="userFormUsername" type="text" value="' + escapeHTML(u.username) + '"></div>' +
         '</div>' +
         '<div class="adminFormRow">' +
-            '<div class="adminFormLabel"><label for="userFormEmail">Email: </label></div>' +
+            '<div class="adminFormLabel"><label for="userFormEmail">' + t('admin_user.email_label') + '</label></div>' +
             '<div class="adminFormField"><input id="userFormEmail" type="email" value="' + escapeHTML(u.email || '') + '"></div>' +
         '</div>' +
         '<div class="adminFormRow">' +
-            '<div class="adminFormLabel"><label for="userFormFirstname">First name: </label></div>' +
+            '<div class="adminFormLabel"><label for="userFormFirstname">' + t('admin_user.firstname_label') + '</label></div>' +
             '<div class="adminFormField"><input id="userFormFirstname" type="text" value="' + escapeHTML(u.firstname || '') + '"></div>' +
         '</div>' +
         '<div class="adminFormRow">' +
-            '<div class="adminFormLabel"><label for="userFormLastname">Last name: </label></div>' +
+            '<div class="adminFormLabel"><label for="userFormLastname">' + t('admin_user.lastname_label') + '</label></div>' +
             '<div class="adminFormField"><input id="userFormLastname" type="text" value="' + escapeHTML(u.lastname || '') + '"></div>' +
         '</div>' +
         '<div class="adminFormRow">' +
-            '<div class="adminFormLabel"><label for="userFormIsAdmin">Admin: </label></div>' +
+            '<div class="adminFormLabel"><label for="userFormIsAdmin">' + t('admin_user.admin_label') + '</label></div>' +
             '<div class="adminFormField"><input id="userFormIsAdmin" type="checkbox"' + (u.is_admin ? ' checked' : '') + '><label for="userFormIsAdmin"><span></span></label></div>' +
         '</div>' +
-        '<p class="nav-field-label">Tour rights</p>' +
+        '<p class="nav-field-label">' + t('admin_user.tour_rights_label') + '</p>' +
         '<div class="adminFormRow">' +
-            '<div class="adminFormLabel"><label for="userFormTourCreate">Create: </label></div>' +
+            '<div class="adminFormLabel"><label for="userFormTourCreate">' + t('admin_user.tour_create_label') + '</label></div>' +
             '<div class="adminFormField"><input id="userFormTourCreate" type="checkbox"' + (u.tour_create ? ' checked' : '') + '><label for="userFormTourCreate"><span></span></label></div>' +
         '</div>' +
         '<div class="adminFormRow">' +
-            '<div class="adminFormLabel"><label for="userFormTourPublish">Publish: </label></div>' +
+            '<div class="adminFormLabel"><label for="userFormTourPublish">' + t('admin_user.tour_publish_label') + '</label></div>' +
             '<div class="adminFormField"><input id="userFormTourPublish" type="checkbox"' + (u.tour_publish ? ' checked' : '') + '><label for="userFormTourPublish"><span></span></label></div>' +
         '</div>' +
         '<div class="adminFormRow">' +
-            '<div class="adminFormLabel"><label for="userFormTourManage">Manage: </label></div>' +
+            '<div class="adminFormLabel"><label for="userFormTourManage">' + t('admin_user.tour_manage_label') + '</label></div>' +
             '<div class="adminFormField"><input id="userFormTourManage" type="checkbox"' + (u.tour_manage ? ' checked' : '') + '><label for="userFormTourManage"><span></span></label></div>' +
         '</div>' +
         '<div class="adminFormRow">' +
-            '<div class="adminFormLabel"><label for="userFormTourCopy">Copy: </label></div>' +
+            '<div class="adminFormLabel"><label for="userFormTourCopy">' + t('admin_user.tour_copy_label') + '</label></div>' +
             '<div class="adminFormField"><input id="userFormTourCopy" type="checkbox"' + (u.tour_copy ? ' checked' : '') + '><label for="userFormTourCopy"><span></span></label></div>' +
         '</div>' +
         '<div class="adminFormRow">' +
             '<div class="adminFormLabel">&nbsp;</div>' +
             '<div class="adminFormField">' +
-                '<button id="userFormSaveBtn" class="button" type="button" onclick="' + saveCall + '">Save</button>&nbsp;' +
-                '<button class="button" type="button" onclick="closeUserForm();">Cancel</button>' +
+                '<button id="userFormSaveBtn" class="button" type="button" onclick="' + saveCall + '">' + t('common.save') + '</button>&nbsp;' +
+                '<button class="button" type="button" onclick="closeUserForm();">' + t('common.cancel') + '</button>' +
             '</div>' +
         '</div>' +
         '</div>';
@@ -342,13 +342,13 @@ function editUserRow(id) {
     Ytan.get('/users/' + id).then(answer => {
         document.getElementById('useradminmenu-form').innerHTML = userFormHtml(answer.data);
     }).catch(err => {
-        showToast('Loading user failed: ' + err.message, 'error');
+        showToast(t('admin_user.loading_user_failed', { error: err.message }), 'error');
     });
 }
 
 function closeUserForm() {
     document.getElementById('useradminmenu-form').innerHTML = '';
-    setUserAdminHeader('Users', closeUserAdminMenu, USER_ADMIN_NEW_BUTTON_HTML);
+    setUserAdminHeader(t('admin_user.title'), closeUserAdminMenu, USER_ADMIN_NEW_BUTTON_HTML);
 }
 
 function readUserForm() {
@@ -373,7 +373,7 @@ function saveNewUser() {
         loadUserList();
     }).catch(err => {
         document.getElementById('userFormSaveBtn').disabled = false;
-        showToast('Save failed: ' + err.message, 'error');
+        showToast(t('common.save_failed', { error: err.message }), 'error');
     });
 }
 
@@ -385,19 +385,19 @@ function saveEditedUser(id) {
         loadUserList();
     }).catch(err => {
         document.getElementById('userFormSaveBtn').disabled = false;
-        showToast('Save failed: ' + err.message, 'error');
+        showToast(t('common.save_failed', { error: err.message }), 'error');
     });
 }
 
 async function deleteUserRow(id) {
-    if (!(await showConfirmDialog('Do you really want to delete this user?', { type: 'danger', confirmLabel: 'Delete' }))) {
+    if (!(await showConfirmDialog(t('admin_user.confirm_delete_user'), { type: 'danger', confirmLabel: t('common.delete') }))) {
         return;
     }
 
     Ytan.del('/users/' + id).then(() => {
         loadUserList();
     }).catch(err => {
-        showToast('Delete failed: ' + err.message, 'error');
+        showToast(t('common.delete_failed', { error: err.message }), 'error');
     });
 }
 
@@ -407,20 +407,20 @@ async function deleteUserRow(id) {
  * receive mail themselves.
  */
 function showSetPasswordForm(id, username) {
-    setUserAdminHeader('Set password for ' + username, closeUserForm, '');
+    setUserAdminHeader(t('admin_user.set_password_for', { username: username }), closeUserForm, '');
 
     document.getElementById('useradminmenu-form').innerHTML =
         '<div class="admin-user-form">' +
         '<div class="adminFormRow">' +
-            '<div class="adminFormLabel"><label for="setPasswordNew">New password: </label></div>' +
+            '<div class="adminFormLabel"><label for="setPasswordNew">' + t('admin_user.new_password_label') + '</label></div>' +
             '<div class="adminFormField"><input id="setPasswordNew" type="password" autocomplete="new-password"></div>' +
         '</div>' +
         '<div id="setPasswordMessage"></div>' +
         '<div class="adminFormRow">' +
             '<div class="adminFormLabel">&nbsp;</div>' +
             '<div class="adminFormField">' +
-                '<button id="setPasswordSaveBtn" class="button" type="button" onclick="submitSetPassword(' + id + ');">Save</button>&nbsp;' +
-                '<button class="button" type="button" onclick="closeUserForm();">Cancel</button>' +
+                '<button id="setPasswordSaveBtn" class="button" type="button" onclick="submitSetPassword(' + id + ');">' + t('common.save') + '</button>&nbsp;' +
+                '<button class="button" type="button" onclick="closeUserForm();">' + t('common.cancel') + '</button>' +
             '</div>' +
         '</div>' +
         '</div>'
@@ -443,14 +443,14 @@ function submitSetPassword(id) {
 }
 
 async function sendResetEmailRow(id) {
-    if (!(await showConfirmDialog('Send a password reset email to this user?', { type: 'default', confirmLabel: 'Send' }))) {
+    if (!(await showConfirmDialog(t('admin_user.confirm_send_reset'), { type: 'default', confirmLabel: t('admin_user.send') }))) {
         return;
     }
 
     Ytan.post('/users/' + id + '/send-reset').then(() => {
-        showToast('Password reset email sent.', 'success');
+        showToast(t('admin_user.reset_email_sent'), 'success');
     }).catch(err => {
-        showToast('Sending the reset email failed: ' + err.message, 'error');
+        showToast(t('admin_user.sending_reset_failed', { error: err.message }), 'error');
     });
 }
 
@@ -467,9 +467,9 @@ function toggleGoogleSearchRequiresLogin(checkbox) {
     Ytan.put('/settings/google-search-requires-login', { enabled: enabled }).then(() => {
         window.YTAN_GOOGLE_SEARCH_REQUIRES_LOGIN = enabled;
         googleSearchAllowed = !enabled || user.id !== null;
-        showToast('Saved.', 'success');
+        showToast(t('common.saved'), 'success');
     }).catch(err => {
         checkbox.checked = !enabled;
-        showToast('Save failed: ' + err.message, 'error');
+        showToast(t('common.save_failed', { error: err.message }), 'error');
     });
 }

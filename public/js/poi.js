@@ -533,7 +533,7 @@ function showPoiInfoWindow(event, i, marker) {
 
         content += '<div class="infoWindowBottom">';
         if (pois[i].url !== '') {
-            content += '<div class="lefthalf"><a href="' + pois[i].url + '" target="_blank"><i class="material-icons-round">info</i>&nbsp;Info</a></div>';
+            content += '<div class="lefthalf"><a href="' + pois[i].url + '" target="_blank"><i class="material-icons-round">info</i>&nbsp;' + t('common.info') + '</a></div>';
         }
 
         if ((pois[i].user_id == user.id) || user.is_admin) {
@@ -584,12 +584,12 @@ function showPoiContextMenu(event, i) {
                 var sectorLightCommand;
                 if (typeof(sectorLights[i]) != "undefined") {
                     sectorLightVisible = false;
-                    sectorLightCommand = 'Hide';
+                    sectorLightCommand = t('poi.context.hide_sector_light');
                 } else {
                     sectorLightVisible = true;
-                    sectorLightCommand = 'Show';
+                    sectorLightCommand = t('poi.context.show_sector_light');
                 }
-                content = '<div class="contextMenuItem" onClick="poiContextMenuSwitchSectorLight(' + i + ', ' + sectorLightVisible + ');"><i class="material-icons-round">lightbulb_outline</i>' + sectorLightCommand + ' Sector Light</div>';
+                content = '<div class="contextMenuItem" onClick="poiContextMenuSwitchSectorLight(' + i + ', ' + sectorLightVisible + ');"><i class="material-icons-round">lightbulb_outline</i>' + sectorLightCommand + '</div>';
             }
         }
     }
@@ -599,13 +599,13 @@ function showPoiContextMenu(event, i) {
             log('show contextMenu (Edit)', LOG_DEBUG);
 
             content +=
-                '<div class="contextMenuItem" onClick="poiContextMenuEditPoi(' + i + ', null, null);"><i class="material-icons-round">edit</i>Edit</div>' +
-                '<div class="contextMenuItem" onClick="poiContextMenuRemovePoi(' + i + ');"><i class="material-icons-round">delete</i>Delete</div>';
+                '<div class="contextMenuItem" onClick="poiContextMenuEditPoi(' + i + ', null, null);"><i class="material-icons-round">edit</i>' + t('common.edit') + '</div>' +
+                '<div class="contextMenuItem" onClick="poiContextMenuRemovePoi(' + i + ');"><i class="material-icons-round">delete</i>' + t('common.delete') + '</div>';
         }
     }
 
     if (content != '') {
-        content += '<div class="contextMenuItem" onClick="closeContextMenu();"><i class="material-icons-round">close</i>Cancel</div>';
+        content += '<div class="contextMenuItem" onClick="closeContextMenu();"><i class="material-icons-round">close</i>' + t('common.cancel') + '</div>';
 
         contextMenu.setPosition(event.latLng);
         contextMenu.setContent(content);
@@ -755,69 +755,69 @@ function initPoiEditWindow(i) {
     var content =
         '<div class="infoWindowElement">' +
             '<div class="leftCol">' +
-                '<label for="editPoiName">Name: *</label>' +
+                '<label for="editPoiName">' + t('poi.edit.name_label') + '</label>' +
             '</div>' +
             '<div class="rightCol">' +
-                '<input id="editPoiName" type="text" oninput="validatePoiEditForm();" placeholder="Enter name of POI ..." title="Enter at least 3 characters" value="' + poi.name + '">' +
+                '<input id="editPoiName" type="text" oninput="validatePoiEditForm();" placeholder="' + t('poi.edit.name_placeholder') + '" title="' + t('poi.edit.name_title') + '" value="' + poi.name + '">' +
             '</div>' +
         '</div>' +
         '<div class="infoWindowElement">' +
             '<div class="leftCol">' +
-                '<label for="editPoiType">Type:</label>&nbsp;' +
+                '<label for="editPoiType">' + t('poi.edit.type_label') + '</label>&nbsp;' +
             '</div>' +
             '<div class="rightCol">' +
-                '<select id="editPoiType" class="select-css" onChange="changePoiType(event); validatePoiEditForm();" placeholder="select type ...">' +
-                    '<option value="0"'  + selected[0]  + '>choose type ...</option>' +
-                    '<option value="1"'  + selected[1]  + '>Camp</option>' +
-                    '<option value="10"' + selected[10] + '>Shelter</option>' +
-                    '<option value="11"' + selected[11] + '>Campsite (commercial)</option>' +
-                    '<option value="2"'  + selected[2]  + '>Landing Site</option>' +
-                    '<option value="3"'  + selected[3]  + '>Drinking Water</option>' +
-                    '<option value="4"'  + selected[4]  + '>Toilet</option>' +
-                    '<option value="5"'  + selected[5]  + '>Historic Site</option>' +
-                    '<option value="6"'  + selected[6]  + '>Danger Zone</option>' +
-                    '<option value="7"'  + selected[7]  + '>Natural Sight</option>' +
-                    '<option value="8"'  + selected[8]  + '>Shopping</option>' +
-                    '<option value="12"'  + selected[12]  + '>Medical care</option>' +
-                    '<option value="13"'  + selected[13]  + '>Club / Institution</option>' +
-                    '<option value="14"'  + selected[14]  + '>Light (Lighthouse, Sea Mark)</option>' +
-                    '<option value="15"'  + selected[15]  + '>Parking</option>' +
-                    '<option value="16"'  + selected[16]  + '>Fishing</option>' +
+                '<select id="editPoiType" class="select-css" onChange="changePoiType(event); validatePoiEditForm();" placeholder="' + t('poi.edit.type_placeholder') + '">' +
+                    '<option value="0"'  + selected[0]  + '>' + t('poi.edit.type_choose') + '</option>' +
+                    '<option value="1"'  + selected[1]  + '>' + t('poi.type.1') + '</option>' +
+                    '<option value="10"' + selected[10] + '>' + t('poi.type.10') + '</option>' +
+                    '<option value="11"' + selected[11] + '>' + t('poi.type.11') + '</option>' +
+                    '<option value="2"'  + selected[2]  + '>' + t('poi.type.2') + '</option>' +
+                    '<option value="3"'  + selected[3]  + '>' + t('poi.type.3') + '</option>' +
+                    '<option value="4"'  + selected[4]  + '>' + t('poi.type.4') + '</option>' +
+                    '<option value="5"'  + selected[5]  + '>' + t('poi.type.5') + '</option>' +
+                    '<option value="6"'  + selected[6]  + '>' + t('poi.type.6') + '</option>' +
+                    '<option value="7"'  + selected[7]  + '>' + t('poi.type.7') + '</option>' +
+                    '<option value="8"'  + selected[8]  + '>' + t('poi.type.8') + '</option>' +
+                    '<option value="12"'  + selected[12]  + '>' + t('poi.type.12') + '</option>' +
+                    '<option value="13"'  + selected[13]  + '>' + t('poi.type.13') + '</option>' +
+                    '<option value="14"'  + selected[14]  + '>' + t('poi.type.14') + '</option>' +
+                    '<option value="15"'  + selected[15]  + '>' + t('poi.type.15') + '</option>' +
+                    '<option value="16"'  + selected[16]  + '>' + t('poi.type.16') + '</option>' +
                 '</select>' +
             '</div>' +
         '</div>' +
         '<div class="infoWindowElement">' +
-            '<label for="editPoiDescription">Description:</label><br>' +
-            '<textarea id="editPoiDescription" rows="5"  oninput="validatePoiEditForm();"placeholder="Enter detailed description of POI ...">' + poi.description + '</textarea>' +
+            '<label for="editPoiDescription">' + t('poi.edit.description_label') + '</label><br>' +
+            '<textarea id="editPoiDescription" rows="5"  oninput="validatePoiEditForm();"placeholder="' + t('poi.edit.description_placeholder') + '">' + poi.description + '</textarea>' +
         '</div>' +
         '<div id="infoWindowElement" class="infoWindowElement">' +
             '<div class="leftCol">' +
-                '<label for="editPoiUrl">URL:</label>' +
+                '<label for="editPoiUrl">' + t('poi.edit.url_label') + '</label>' +
             '</div>' +
             '<div class="rightCol">' +
-                '<input id="editPoiURL" type="text" maxlength="300" oninput="validatePoiEditForm();" placeholder="https://www.mypoi.tld" title="URL of POI" value="' + poi.url + '">' +
+                '<input id="editPoiURL" type="text" maxlength="300" oninput="validatePoiEditForm();" placeholder="https://www.mypoi.tld" title="' + t('poi.edit.url_title') + '" value="' + poi.url + '">' +
             '</div>' +
         '</div>' +
         '<div id="editPoiWSIContainer" class="infoWindowElement"' + styleWsi +'>' +
             '<div class="leftCol">' +
-                '<label for="editPoiWSI">WSI-Code: *</label>' +
+                '<label for="editPoiWSI">' + t('poi.edit.wsi_label') + '</label>' +
             '</div>' +
             '<div class="rightCol">' +
-                '<input id="editPoiWSI" type="text" maxlength="16" oninput="validatePoiEditForm();" placeholder="0011222222221100" title="The WSI code must consist of 16 characters from 0, 1 or 2." value="' + poi.direction + '">' +
+                '<input id="editPoiWSI" type="text" maxlength="16" oninput="validatePoiEditForm();" placeholder="0011222222221100" title="' + t('poi.edit.wsi_title') + '" value="' + poi.direction + '">' +
             '</div>' +
         '</div>' +
         '<div id="editPoiLighthouseContainer" class="infoWindowElement"' + styleLighthouse +'>' +
             '<div class="leftCol">' +
-                '<label for="editPoiLighthouseCharacteristic">Characteristic: </label>' +
+                '<label for="editPoiLighthouseCharacteristic">' + t('poi.edit.characteristic_label') + ' </label>' +
             '</div>' +
             '<div class="rightCol">' +
-                '<input id="editPoiLighthouseCharacteristic" type="text" maxlength="50" oninput="validatePoiEditForm();" placeholder="Iso WRG 6s" title="Lighthouse Charcteristic, e.g. Iso WRG 6s." value="' + poi.characteristic + '">' +
+                '<input id="editPoiLighthouseCharacteristic" type="text" maxlength="50" oninput="validatePoiEditForm();" placeholder="Iso WRG 6s" title="' + t('poi.edit.characteristic_title') + '" value="' + poi.characteristic + '">' +
             '</div>' +
             '<div class="infoWindowElement">' +
-                '<label for="editPoiLighthouseSectorCharacteristic">Sector Characteristic: </label>' +
+                '<label for="editPoiLighthouseSectorCharacteristic">' + t('poi.edit.sector_characteristic_label') + ' </label>' +
             '</div>' +
             '<div class="infoWindowElement">' +
-                '<textarea id="editPoiLighthouseSectorCharacteristic" rows="6" maxlength="250" oninput="validatePoiEditForm();" placeholder="G 8M 30-110&#10;W 10M 110-195&#10;R 8M 195-275" title="Light Charcteristic">' + poi.sector_characteristic + '</textarea>' +
+                '<textarea id="editPoiLighthouseSectorCharacteristic" rows="6" maxlength="250" oninput="validatePoiEditForm();" placeholder="G 8M 30-110&#10;W 10M 110-195&#10;R 8M 195-275" title="' + t('poi.edit.sector_characteristic_title') + '">' + poi.sector_characteristic + '</textarea>' +
             '</div>' +
         '</div>'+
     '</div>';
@@ -828,17 +828,17 @@ function initPoiEditWindow(i) {
             '<input type="checkbox" id="editPoiStatus" name="editPoiStatus"';
         if (poi.public == 1) content += ' checked';
         content += '>' +
-            '<label for="editPoiStatus"><span></span>Public (visible for everyone)</label>' +
+            '<label for="editPoiStatus"><span></span>' + t('poi.edit.public_label') + '</label>' +
         '</div>';
     }
     content +=
         '<div class="infoWindowElement">' +
-            '<button id="editPoiSaveBtn" class="button" onClick="savePoi(' + i + ')" disabled>Save</button>&nbsp;';
+            '<button id="editPoiSaveBtn" class="button" onClick="savePoi(' + i + ')" disabled>' + t('common.save') + '</button>&nbsp;';
 
     if ((i !== null) && (typeof i !== 'undefined')) {
-        content += '<button id="editPoiRemoveBtn" class="button" onClick="removePoi(' + i + ')">Remove</button>&nbsp;';
+        content += '<button id="editPoiRemoveBtn" class="button" onClick="removePoi(' + i + ')">' + t('common.remove') + '</button>&nbsp;';
     }
-    content += '<button class="button" onClick="cancelEditPoi(' + i +')">Cancel</button>' +
+    content += '<button class="button" onClick="cancelEditPoi(' + i +')">' + t('common.cancel') + '</button>' +
         '</div>';
 
     content += '<div id="poiCoordinates" class="poiEditWindowCoordinates"><i class="material-icons-round">navigation</i>' + Number.parseFloat(poi.latitude).toFixed(6) + ', ' + Number.parseFloat(poi.longitude).toFixed(6) + '</div>';
@@ -1062,7 +1062,7 @@ function savePoi(i) {
         setPoi(index);
     }).catch(err => {
         log('savePoi() failed', LOG_ERROR, err);
-        showToast('Saving the POI failed: ' + err.message, 'error');
+        showToast(t('poi.save_failed', { error: err.message }), 'error');
     });
 
     closePoiEditWindow();
@@ -1081,7 +1081,7 @@ function savePoi(i) {
  * @returns
  */
 async function removePoi(i) {
-    if (!(await showConfirmDialog('Do you really want to delete this POI?', { type: 'danger', confirmLabel: 'Delete' }))) {
+    if (!(await showConfirmDialog(t('poi.confirm_delete'), { type: 'danger', confirmLabel: t('common.delete') }))) {
         return false;
     }
 
@@ -1097,7 +1097,7 @@ async function removePoi(i) {
         delete pois[i];
     }).catch(err => {
         log('removePoi() failed', LOG_ERROR, err);
-        showToast('Removing the POI failed: ' + err.message, 'error');
+        showToast(t('poi.remove_failed', { error: err.message }), 'error');
     });
 
     closePoiEditWindow();

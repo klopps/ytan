@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html class="standalone-page">
 <head>
-    <title><?= htmlspecialchars($appName) ?> | Forgot password</title>
+    <title><?= htmlspecialchars($appName) ?> | <?= $t('page_title.forgot_password') ?></title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta charset="utf-8" />
+    <script>window.YTAN_TRANSLATIONS = <?= json_encode($translator->all(), JSON_UNESCAPED_UNICODE) ?>;</script>
+    <script src="<?= $baseUrl ?>/js/i18n.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/i18n.js') ?>"></script>
     <link rel="stylesheet" type="text/css" href="<?= $baseUrl ?>/css/style.css?v=<?= \Ytan\App::assetVersion($rootDir, '/css/style.css') ?>" />
     <link rel="shortcut icon" href="<?= $baseUrl ?>/favicon.ico">
     <style>
@@ -19,6 +21,14 @@
             box-sizing: border-box;
         }
         #forgotPasswordBox h1 { font-size: 20px; color: #2c2c3d; text-align: center; }
+        /* .leftCol/.rightCol's default fixed-width float layout (style.css)
+           is sized for short English labels - a longer translated label
+           (e.g. German "Benutzername / E-Mail:") overflows the 74px column
+           and visually collides with the input next to it. Stacking the
+           label above the input instead sidesteps any column-width
+           assumption entirely, regardless of label length/language. */
+        #forgotPasswordBox .leftCol { width: 100%; float: none; margin-bottom: 4px; }
+        #forgotPasswordBox .rightCol { width: 100%; }
         #forgotPasswordBox input[type="text"] {
             width: calc(100% - 16px);
             border: 1px solid #d8d8e2;
@@ -31,16 +41,16 @@
 <body>
     <div id="forgotPasswordBox">
         <h1><?= htmlspecialchars($appName) ?></h1>
-        <p>Enter your username or email and we'll send you a link to set a new password.</p>
+        <p><?= $t('forgot.subtitle') ?></p>
         <div class="infoWindowElement">
-            <div class="leftCol"><label for="identifier">Username / Email: </label></div>
+            <div class="leftCol"><label for="identifier"><?= $t('forgot.identifier_label') ?> </label></div>
             <div class="rightCol"><input id="identifier" type="text" autocomplete="username"></div>
         </div>
         <div id="forgotPasswordMessage"></div>
         <p>
-            <button id="forgotPasswordBtn" class="startbtn" onclick="submitForgotPassword()">Send reset link</button>
+            <button id="forgotPasswordBtn" class="startbtn" onclick="submitForgotPassword()"><?= $t('forgot.send_button') ?></button>
         </p>
-        <p><a href="<?= htmlspecialchars($baseUrl, ENT_QUOTES) ?>/">Back to <?= htmlspecialchars($appName) ?></a></p>
+        <p><a href="<?= htmlspecialchars($baseUrl, ENT_QUOTES) ?>/"><?= $t('common.back_to_app', ['app' => htmlspecialchars($appName)]) ?></a></p>
     </div>
 
     <script>
@@ -52,7 +62,7 @@
             var btn = document.getElementById('forgotPasswordBtn');
 
             if (!identifier) {
-                message.textContent = 'Please enter your username or email.';
+                message.textContent = t('forgot.missing_identifier');
                 return;
             }
 
@@ -67,7 +77,7 @@
                 // deliberately ignored below - always show the same generic message
             })
             .then(function () {
-                message.textContent = 'If an account exists, a password reset email has been sent.';
+                message.textContent = t('forgot.success');
             });
         }
     </script>

@@ -871,7 +871,7 @@ function showSearchResultOnMap(place) {
     });
 
     searchInfoWindow.setContent(
-        '<div class="search-remove-badge" onclick="clearSearchMarker()" title="Entfernen"><i class="material-icons-round">close</i></div>'
+        '<div class="search-remove-badge" onclick="clearSearchMarker()" title="' + t('common.remove') + '"><i class="material-icons-round">close</i></div>'
     );
     searchInfoWindow.open(map, searchMarker);
 
@@ -1138,14 +1138,14 @@ function shareMap() {
     if (navigator.share) {
         navigator.share({
             title: 'YTAN',
-            text: 'Check out this map on YTAN',
+            text: t('map.share_text'),
             url: mapUrl,
         })
             .then(() => log('shareMap() - successfull', LOG_INFO))
             .catch((error) => log('shareMap() - error', LOG_ERROR, error));
     } else {
         copyTextToClipboard(mapUrl);
-        showToast('Link copied to clipboard', 'success');
+        showToast(t('map.link_copied'), 'success');
     }
 }
 

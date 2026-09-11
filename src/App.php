@@ -212,8 +212,9 @@ final class App
             return $res->withHeader('Content-Type', 'application/javascript; charset=utf-8');
         });
 
-        $app->get('/about', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl) {
+        $app->get('/about', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
             ob_start();
+            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
             require $rootDir . '/templates/about.php';
             $res->getBody()->write(ob_get_clean());
 
@@ -236,24 +237,27 @@ final class App
             return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
         });
 
-        $app->get('/set-password', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl) {
+        $app->get('/set-password', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
             ob_start();
+            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
             require $rootDir . '/templates/set-password.php';
             $res->getBody()->write(ob_get_clean());
 
             return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
         });
 
-        $app->get('/forgot-password', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl) {
+        $app->get('/forgot-password', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
             ob_start();
+            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
             require $rootDir . '/templates/forgot-password.php';
             $res->getBody()->write(ob_get_clean());
 
             return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
         });
 
-        $app->get('/confirm-email', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl) {
+        $app->get('/confirm-email', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
             ob_start();
+            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
             require $rootDir . '/templates/confirm-email.php';
             $res->getBody()->write(ob_get_clean());
 
