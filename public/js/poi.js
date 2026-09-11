@@ -374,7 +374,7 @@ function addPoiClusterMarker(position, count, bounds) {
         zIndex: ZINDEX_POI,
         clickable: true,
         icon: ' ', // no default pin - the label below is the whole visual
-        labelContent: '<div class="poiClusterBubble" style="width:' + size + 'px;height:' + size + 'px;line-height:' + size + 'px;">' + count + '</div>',
+        labelContent: '<div class="poiClusterBubble" style="width:' + size + 'px;height:' + size + 'px;">' + count + '</div>',
         labelClass: 'poiClusterLabel',
         labelAnchor: new google.maps.Point(size / 2, size / 2),
     });

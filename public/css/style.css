@@ -2585,6 +2585,9 @@ input[type="color"] {
 }
 
 .poiClusterBubble {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 50%;
   background-color: var(--color-accent);
   color: var(--color-on-accent);
