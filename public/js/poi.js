@@ -459,8 +459,17 @@ function setPoi(i) {
         }
     );
 
+    // Fallback for touch devices where the browser doesn't translate a
+    // long-press into the 'contextmenu' event above (map-core.js).
+    attachLongPressContextMenu(marker, function(event) {
+        showPoiContextMenu.call(marker, event, i);
+    });
+
     google.maps.event.addListener(marker, 'click',
         function(event) {
+            if (shouldSuppressClick()) {
+                return;
+            }
             showPoiInfoWindow.call(this, event, i, marker);
         }
     );

@@ -93,6 +93,315 @@ let contextMenuLastLatLng = null; // captured by showRouteContextMenu() so route
 
 let mapClickListener;
 let maxZoomService;
+/**
+ * Manual long-press-to-contextmenu fallback for POI markers/route
+ * polylines/area polygons, alongside (not instead of) their existing
+ * 'contextmenu' listener. Google Maps' own 'contextmenu' overlay event is
+ * documented to also fire from a long-press on touch devices, piggybacking
+ * on the browser's native touch-and-hold-generates-a-contextmenu-DOM-event
+ * behavior - but that didn't actually happen on a real phone (confirmed).
+ *
+ * A first attempt drove this off Maps' own translated 'mousedown'/'mouseup'
+ * overlay events instead - also confirmed broken on a real phone ("a long
+ * click behaves the same as a short one"): Maps apparently doesn't fire its
+ * synthetic 'mousedown' for a touch until it has finished classifying the
+ * whole gesture (so it doesn't mistake the start of a pan/pinch for a
+ * click) - in practice that means 'mousedown' and 'mouseup' both arrive
+ * together right as the finger lifts, however long it was actually held,
+ * so a timer started on 'mousedown' never gets the time it needs.
+ *
+ * A second attempt tried binding raw DOM 'touchstart'/'touchend' straight to
+ * the overlay via google.maps.event.addDomListener() - that only works for
+ * Marker (POIs), which really does wrap a DOM node; Polyline/Polygon
+ * (routes/areas) are painted onto a shared canvas/SVG surface with no
+ * corresponding per-instance DOM element to listen on.
+ *
+ * A third attempt measured real elapsed time at the map-container level
+ * (map.getDiv()'s own 'touchstart'/'touchend', which DO reflect true
+ * physical hold duration) but still relied on the overlay's 'mousedown'
+ * MapMouseEvent - whenever it fires - to learn *which* overlay/handler was
+ * pressed. Real-device testing then proved 'mousedown' doesn't fire AT ALL
+ * for a touch-originated press on at least one real phone/Maps build - a
+ * genuine 3+ second hold still left it unset. So none of the three timing
+ * strategies above ever had a chance: all of them depend on identifying the
+ * target via Maps' 'mousedown', which this device's Maps build simply never
+ * sends for touch (confirmed: 'click' still fires normally on release, just
+ * not the separate 'mousedown'/'mouseup' pair around it).
+ *
+ * This version drops that dependency entirely and does its own hit test
+ * from the raw touch coordinates (findLongPressTarget()) against every
+ * marker/polyline/polygon registered via attachLongPressContextMenu()
+ * (longPressCandidates), using an OverlayView purely to get pixel<->LatLng
+ * conversion (overlayProjection, set in initMap()). Identification now
+ * happens synchronously at 'touchstart', independent of whatever Maps' own
+ * gesture recognizer does afterward.
+ */
+const LONG_PRESS_DURATION_MS = 550;
+const LONG_PRESS_MOVE_TOLERANCE_PX = 10;
+const LONG_PRESS_HIT_TEST_TOLERANCE_PX = 20; // line width/area edge tolerance for findLongPressTarget()'s polyline/polygon checks
+const LONG_PRESS_TOUCH_MARGIN_PX = 14; // extra slack around a marker's actual on-screen icon box, for finger imprecision
+const POI_ICON_WIDTH = 32; // public/markers/poi_*_mapicons.png are all this size
+const POI_ICON_HEIGHT = 37;
+let longPressTouchStartTime = 0;
+let longPressTouchStartPos = null;
+let longPressCancelled = false; // module-level (not just a closure in initLongPressTouchTracking()) so shouldSuppressClick() can read it too
+let longPressPendingOverlay = null; // {handler, event} - set by findLongPressTarget() at 'touchstart'
+let longPressCandidates = []; // every {overlay, handler} registered via attachLongPressContextMenu(), for findLongPressTarget()
+let overlayProjection; // OverlayView set in initMap(), exposes getProjection() for pixel<->LatLng conversion
+
+/**
+ * Registers overlay/handler with findLongPressTarget()'s hit-test registry
+ * - that plus the touch handling in initLongPressTouchTracking() is the
+ * whole mechanism now. An earlier version also armed a plain
+ * mousedown->550ms-timer->mouseup-cancels-it pair here as a "desktop"
+ * fallback, on the assumption that a real mouse's mousedown/mouseup aren't
+ * synthesized the way touch's are - but Maps can fire a synthetic
+ * 'mousedown' for a touch WITHOUT a reliably-following 'mouseup' to cancel
+ * it (confirmed: this fired the context menu for plain short taps too, the
+ * timer having nothing else to stop it). Real desktop users already have
+ * native right-click, handled by the separate, pre-existing 'contextmenu'
+ * listener each of poi.js/route.js/area.js keeps on these same overlays -
+ * this function's whole purpose is the touch fallback.
+ */
+function attachLongPressContextMenu(overlay, handler) {
+    longPressCandidates.push({ overlay: overlay, handler: handler });
+}
+
+/**
+ * Runs a long-press's handler (opens the context menu). Every call site
+ * that can trigger a long-press (the desktop timer above, and the touch
+ * paths in initLongPressTouchTracking()) calls this instead of invoking the
+ * handler directly, purely so there's one place documenting the click-
+ * suppression problem below (fireLongPress() itself does nothing beyond
+ * calling the handler - shouldSuppressClick() is what actually solves it).
+ */
+function fireLongPress(handler, event) {
+    handler(event);
+}
+
+/**
+ * poi.js/route.js/area.js's own 'click' listeners (which open the normal
+ * info window) call this first and skip opening anything if it returns
+ * true. Maps still fires a plain 'click' MapMouseEvent when the finger
+ * actually lifts, regardless of how long it was held - confirmed on a real
+ * device: a genuinely successful ~2.6s long-press DID open the context
+ * menu, but the release's ordinary click then opened the marker's normal
+ * info window right on top of it, making the whole thing look like it
+ * never worked.
+ *
+ * A first fix tried a "just fired" flag set inside fireLongPress() - broken
+ * by a race: that flag gets set only after our own (deliberately delayed,
+ * see resolveLongPress()) resolution runs, but Maps' 'click' for the same
+ * release can fire synchronously before that, so the flag wasn't armed yet
+ * when the click handler actually checked it. This version sidesteps the
+ * race entirely by not depending on our own resolution's timing at all -
+ * it recomputes "was the touch that's ending right now held long enough to
+ * be a long press" directly from longPressTouchStartTime at the moment the
+ * click itself fires, which needs no prior step to have already run.
+ */
+function shouldSuppressClick() {
+    if (longPressCancelled || !longPressTouchStartTime) {
+        return false;
+    }
+    return (Date.now() - longPressTouchStartTime) >= LONG_PRESS_DURATION_MS;
+}
+
+/**
+ * Finds which registered marker/polyline/polygon (if any) is under the
+ * given screen coordinates - see the big comment above for why this exists
+ * instead of trusting Maps' 'mousedown' MapMouseEvent to say so. Markers
+ * are checked first (closest within tolerance wins), then polylines, then
+ * polygons - matching visual stacking (a point drawn over a line/area
+ * should win). Returns null if nothing is close enough.
+ *
+ * Markers use a bounding-box test around the icon's actual on-screen
+ * rectangle, not a small radius around marker.getPosition()'s pixel -
+ * confirmed on a real device that a straightforward tap on a visible POI
+ * icon still reported hit=false. Root cause: these icons (32x37, see
+ * POI_ICON_WIDTH/HEIGHT) get no explicit `icon.anchor` for most POI types,
+ * so Maps defaults to bottom-center - meaning getPosition()'s pixel is at
+ * the icon's bottom edge, ~18px below where a user naturally taps its
+ * visual center. A 20px radius from that bottom point left barely any
+ * margin for real finger imprecision on top of that offset.
+ */
+function findLongPressTarget(clientX, clientY) {
+    if (!overlayProjection || !overlayProjection.getProjection()) {
+        return null;
+    }
+    const projection = overlayProjection.getProjection();
+    const rect = map.getDiv().getBoundingClientRect();
+    const touchPoint = new google.maps.Point(clientX - rect.left, clientY - rect.top);
+    const touchLatLng = projection.fromContainerPixelToLatLng(touchPoint);
+    const eventForHandler = { latLng: touchLatLng };
+
+    let closestMarker = null;
+    let closestMarkerDist = Infinity;
+
+    for (const candidate of longPressCandidates) {
+        const overlay = candidate.overlay;
+        if (!(overlay instanceof google.maps.Marker) || !overlay.getMap() || !overlay.getPosition()) {
+            continue;
+        }
+        const anchorPixel = projection.fromLatLngToContainerPixel(overlay.getPosition());
+        const icon = overlay.getIcon();
+        // Maps' own default anchor when none is set: bottom-center of the icon.
+        let anchorX = POI_ICON_WIDTH / 2;
+        let anchorY = POI_ICON_HEIGHT;
+        if (icon && typeof icon === 'object' && icon.anchor) {
+            anchorX = icon.anchor.x;
+            anchorY = icon.anchor.y;
+        }
+        const left = anchorPixel.x - anchorX - LONG_PRESS_TOUCH_MARGIN_PX;
+        const right = anchorPixel.x + (POI_ICON_WIDTH - anchorX) + LONG_PRESS_TOUCH_MARGIN_PX;
+        const top = anchorPixel.y - anchorY - LONG_PRESS_TOUCH_MARGIN_PX;
+        const bottom = anchorPixel.y + (POI_ICON_HEIGHT - anchorY) + LONG_PRESS_TOUCH_MARGIN_PX;
+        if (touchPoint.x < left || touchPoint.x > right || touchPoint.y < top || touchPoint.y > bottom) {
+            continue;
+        }
+        const centerX = (left + right) / 2;
+        const centerY = (top + bottom) / 2;
+        const dist = Math.hypot(centerX - touchPoint.x, centerY - touchPoint.y);
+        if (dist < closestMarkerDist) {
+            closestMarkerDist = dist;
+            closestMarker = candidate;
+        }
+    }
+    if (closestMarker) {
+        return { handler: closestMarker.handler, event: eventForHandler };
+    }
+
+    // isLocationOnEdge()'s tolerance is in degrees, not pixels - convert our
+    // pixel tolerance via the standard Web Mercator meters-per-pixel formula.
+    const metersPerPixel = 156543.03392 * Math.cos(touchLatLng.lat() * Math.PI / 180) / Math.pow(2, map.getZoom());
+    const toleranceDegrees = (LONG_PRESS_HIT_TEST_TOLERANCE_PX * metersPerPixel) / 111320;
+
+    for (const candidate of longPressCandidates) {
+        const overlay = candidate.overlay;
+        if (overlay instanceof google.maps.Polyline && overlay.getMap() &&
+            google.maps.geometry.poly.isLocationOnEdge(touchLatLng, overlay, toleranceDegrees)) {
+            return { handler: candidate.handler, event: eventForHandler };
+        }
+    }
+
+    for (const candidate of longPressCandidates) {
+        const overlay = candidate.overlay;
+        if (overlay instanceof google.maps.Polygon && overlay.getMap() &&
+            google.maps.geometry.poly.containsLocation(touchLatLng, overlay)) {
+            return { handler: candidate.handler, event: eventForHandler };
+        }
+    }
+
+    return null;
+}
+
+/**
+ * One-time setup (called from initMap()) for the touch-timing half of
+ * attachLongPressContextMenu() above - see that function's comment.
+ *
+ * A real device apparently doesn't get this far via 'touchend' at all
+ * (confirmed: still didn't work there even though this exact mechanism
+ * tested correctly under CDP touch emulation) - Chrome's own built-in
+ * long-press gesture detector likely intercepts a genuinely-held touch at
+ * around the same ~500ms mark and hands it off to native context-menu
+ * handling, which cancels the in-progress touch sequence (a 'touchcancel'
+ * instead of a 'touchend' reaching the page) and/or dispatches a native DOM
+ * 'contextmenu' event - something CDP's synthetic touch injection doesn't
+ * reproduce, which is why the emulated test didn't catch this. Two more
+ * paths are added below, independent of one another and of 'touchend', so
+ * whichever one the real device actually takes still ends up resolving the
+ * long-press.
+ */
+function initLongPressTouchTracking() {
+    const mapDiv = map.getDiv();
+
+    // A second finger touching down mid-gesture (pinch-zoom) also fires its
+    // own 'touchstart' on the same element, and lifting fingers one at a
+    // time also fires 'touchend'/'touchcancel' per finger, each time with
+    // however many touches remain - naively resetting/resolving on every
+    // such event let an earlier pinch/pan (while finding a POI to test on)
+    // leave a stale longPressTouchStartTime that a later, unrelated touchend
+    // then measured against, producing wildly-too-long durations (confirmed:
+    // a real test reported duration=4711 for what was actually a ~1s press).
+    // longPressCancelled (module-level, see top of file - also read by
+    // shouldSuppressClick()) tracks "this is no longer a plain single-finger
+    // touch, ignore it" for the whole gesture.
+
+    mapDiv.addEventListener('touchstart', function (domEvent) {
+        if (domEvent.touches.length !== 1) {
+            // a 2nd+ finger joined an already-tracked touch - no longer a
+            // candidate long press
+            longPressCancelled = true;
+            return;
+        }
+        const touch = domEvent.touches[0];
+        longPressTouchStartTime = Date.now();
+        longPressTouchStartPos = { x: touch.clientX, y: touch.clientY };
+        longPressCancelled = false;
+        // Don't wait for Maps' 'mousedown' MapMouseEvent - confirmed it may
+        // never fire for a touch at all (see the big comment above). Hit-test
+        // right now, synchronously, from the real touch coordinates instead.
+        longPressPendingOverlay = findLongPressTarget(touch.clientX, touch.clientY);
+    }, { passive: true });
+
+    mapDiv.addEventListener('touchmove', function (domEvent) {
+        if (longPressCancelled || !longPressTouchStartPos) {
+            return;
+        }
+        if (domEvent.touches.length !== 1) {
+            longPressCancelled = true;
+            return;
+        }
+        const touch = domEvent.touches[0];
+        if (Math.abs(touch.clientX - longPressTouchStartPos.x) > LONG_PRESS_MOVE_TOLERANCE_PX ||
+            Math.abs(touch.clientY - longPressTouchStartPos.y) > LONG_PRESS_MOVE_TOLERANCE_PX) {
+            longPressCancelled = true;
+        }
+    }, { passive: true });
+
+    function resolveLongPress(source, domEvent) {
+        if (domEvent.touches.length !== 0) {
+            // another finger is still down - not the real end of this touch yet
+            return;
+        }
+        const duration = Date.now() - longPressTouchStartTime;
+
+        // Small grace delay before the check, mostly harmless now that
+        // identification happens synchronously at 'touchstart' rather than
+        // waiting on Maps.
+        setTimeout(function () {
+            if (longPressCancelled || duration < LONG_PRESS_DURATION_MS || !longPressPendingOverlay) {
+                return;
+            }
+            const pending = longPressPendingOverlay;
+            longPressPendingOverlay = null;
+            fireLongPress(pending.handler, pending.event);
+        }, 50);
+    }
+
+    mapDiv.addEventListener('touchend', function (domEvent) { resolveLongPress('touchend', domEvent); }, { passive: true });
+    mapDiv.addEventListener('touchcancel', function (domEvent) { resolveLongPress('touchcancel', domEvent); }, { passive: true });
+
+    // Second, independent path: the real native long-press-to-contextmenu
+    // gesture (see comment above) - if it does fire, use it directly rather
+    // than the (confirmed unreliable on a real device) per-overlay
+    // 'contextmenu' MapMouseEvent translation. Capture phase so this runs
+    // before Maps' own handling might stop the event.
+    document.addEventListener('contextmenu', function (domEvent) {
+        const heldFor = Date.now() - longPressTouchStartTime;
+        // Don't just trust that the browser only fires this after its own
+        // ~500ms long-press threshold - confirmed unreliable under test
+        // tooling (CDP fired it for a plain 150ms tap); require our own
+        // duration check too, same as the touchend/touchcancel path.
+        if (!mapDiv.contains(domEvent.target) || !longPressPendingOverlay ||
+            longPressCancelled || heldFor < LONG_PRESS_DURATION_MS) {
+            return;
+        }
+        domEvent.preventDefault();
+        const pending = longPressPendingOverlay;
+        longPressPendingOverlay = null;
+        fireLongPress(pending.handler, pending.event);
+    }, true);
+}
 
 var settings = { // muss wegen JSON.stringify() ein Objekt sein
     detail0: true, // POI
@@ -237,6 +546,23 @@ function initMap() {
         },
         mapId: "DEMO_MAP_ID", // ggfs. eigene MapID generieren (https://developers.google.com/maps/documentation/get-map-id?hl=de)
     });
+
+    // A pending long-press (attachLongPressContextMenu() above) should not
+    // fire if the user is actually panning the map, not holding still on
+    // the marker/route/area it started on.
+    google.maps.event.addListener(map, 'dragstart', function () {
+        longPressPendingOverlay = null;
+        longPressCancelled = true;
+    });
+
+    // A plain, invisible OverlayView whose only purpose is to expose
+    // getProjection() once Maps has attached it - findLongPressTarget()
+    // uses it to convert between screen pixels and LatLng.
+    overlayProjection = new google.maps.OverlayView();
+    overlayProjection.draw = function () {};
+    overlayProjection.setMap(map);
+
+    initLongPressTouchTracking();
 
     autocompleteService = new google.maps.places.AutocompleteService();
     placesService = new google.maps.places.PlacesService(map);

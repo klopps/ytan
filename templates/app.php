@@ -341,8 +341,20 @@
             getToursByUserId(user.id);
             enablePoiButton();
           }
-        }).catch(() => {
-          // stored token is invalid/expired - fall back to the logged-out state
+        }).catch((err) => {
+          if (err.status !== 401) {
+            // A network-level failure (offline, flaky signal, server
+            // temporarily unreachable - err.status is undefined there, see
+            // api-client.js's networkError()) or a non-auth server error
+            // doesn't mean the token itself is bad. Discarding it here would
+            // force a fresh login the next time the app loads even though
+            // the still-valid token was sitting right there - leave it in
+            // place and just keep the UI in its logged-out state for this
+            // one page load.
+            log('Session check failed (not a 401), keeping stored token', LOG_WARN, err);
+            return;
+          }
+          // A genuine 401 means the stored token really is invalid/expired.
           Ytan.setToken(null);
           sessionStorage.removeItem('user');
         });

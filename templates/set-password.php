@@ -16,6 +16,7 @@
             box-shadow: 0 2px 16px rgba(0,0,0,0.1);
             margin: 80px auto;
             padding: 28px 32px;
+            box-sizing: border-box;
         }
         #setPasswordBox h1 { font-size: 20px; color: #2c2c3d; text-align: center; }
         #setPasswordBox input[type="password"] {

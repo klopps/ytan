@@ -675,12 +675,18 @@ function createRoute(i) {
 
         google.maps.event.addListener(routePathLine, 'click',
             function(event) {
+                if (shouldSuppressClick()) {
+                    return;
+                }
                 showRouteLabels.call(this, i);
             }
         );
 
         google.maps.event.addListener(routePathBackground, 'click',
             function(event) {
+                if (shouldSuppressClick()) {
+                    return;
+                }
                 showRouteLabels.call(this, i);
             }
         );
@@ -708,6 +714,15 @@ function createRoute(i) {
                 showRouteContextMenu.call(this, event, i);
             }
         );
+
+        // Fallback for touch devices where the browser doesn't translate a
+        // long-press into the 'contextmenu' event above (map-core.js).
+        attachLongPressContextMenu(routePathLine, function(event) {
+            showRouteContextMenu.call(routePathLine, event, i);
+        });
+        attachLongPressContextMenu(routePathBackground, function(event) {
+            showRouteContextMenu.call(routePathBackground, event, i);
+        });
 
         routePaths[i] = {
             routePathLine: routePathLine,

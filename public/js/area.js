@@ -443,6 +443,9 @@ function createArea(i) {
 
         google.maps.event.addListener(areaPolygon, 'click',
             function(event) {
+                if (shouldSuppressClick()) {
+                    return;
+                }
                 showAreaInfoWindow.call(this, event, i);
             }
         );
@@ -452,6 +455,12 @@ function createArea(i) {
                 showAreaContextMenu.call(this, event, i);
             }
         );
+
+        // Fallback for touch devices where the browser doesn't translate a
+        // long-press into the 'contextmenu' event above (map-core.js).
+        attachLongPressContextMenu(areaPolygon, function(event) {
+            showAreaContextMenu.call(areaPolygon, event, i);
+        });
 
         areaPolygons[i] = areaPolygon;
 
