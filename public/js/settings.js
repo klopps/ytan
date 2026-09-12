@@ -75,6 +75,20 @@ function saveSettings() {
         settings['unit'] = NAUTICAL;
     }
 
+    settings['windunit1'] = document.getElementById('windunit1').checked;
+    settings['windunit2'] = document.getElementById('windunit2').checked;
+    settings['windunit3'] = document.getElementById('windunit3').checked;
+    settings['windunit4'] = document.getElementById('windunit4').checked;
+    if (settings['windunit1']) {
+        settings['windUnit'] = WIND_UNIT_BFT;
+    } else if (settings['windunit2']) {
+        settings['windUnit'] = WIND_UNIT_MS;
+    } else if (settings['windunit4']) {
+        settings['windUnit'] = WIND_UNIT_KN;
+    } else {
+        settings['windUnit'] = WIND_UNIT_KMH;
+    }
+
     settings['theme'] = [THEME_LIGHT, THEME_DARK].includes(settings['theme']) ? settings['theme'] : THEME_LIGHT;
 
     settings['zoom'] = map.getZoom();
@@ -120,6 +134,17 @@ function loadSettings() {
         document.getElementById('unit1').checked = settings['unit1'];
         document.getElementById('unit2').checked = settings['unit2'];
         updateUnitExample();
+
+        document.getElementById('windunit1').checked = settings['windunit1'];
+        document.getElementById('windunit2').checked = settings['windunit2'];
+        document.getElementById('windunit3').checked = settings['windunit3'];
+        document.getElementById('windunit4').checked = settings['windunit4'];
+        // A settings cookie saved before this preference existed has none of
+        // the 4 fields above - fall back to the km/h default rather than
+        // leaving the whole segmented control looking unselected.
+        if (!settings['windunit1'] && !settings['windunit2'] && !settings['windunit3'] && !settings['windunit4']) {
+            document.getElementById('windunit3').checked = true;
+        }
 
         if (settings['theme'] === THEME_DARK) {
             document.documentElement.dataset.theme = THEME_DARK;

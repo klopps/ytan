@@ -115,6 +115,43 @@ function formatDistance(distance, unit = 'metric') {
 }
 
 
+/**
+ * Standard Beaufort scale upper bounds, in km/h (WMO) - index is the
+ * Beaufort number (0-11); a speed above the last entry is Bft 12.
+ */
+const BEAUFORT_UPPER_BOUNDS_KMH = [1, 5, 11, 19, 28, 38, 49, 61, 74, 88, 102, 117];
+
+function windSpeedToBeaufort(speedKmh) {
+    for (let bft = 0; bft < BEAUFORT_UPPER_BOUNDS_KMH.length; bft++) {
+        if (speedKmh <= BEAUFORT_UPPER_BOUNDS_KMH[bft]) {
+            return bft;
+        }
+    }
+    return 12;
+}
+
+/**
+ * Liefert einen formatierten String zur Darstellung einer Windgeschwindigkeit.
+ *
+ * @param {*} speedKmh Windgeschwindigkeit in km/h (Open-Meteo's unit)
+ * @param string unit  Einheit 'bft'=Beaufort, 'ms'=m/s, 'kmh'=km/h, 'kn'=Knoten
+ * @returns string formatierte Windgeschwindigkeit mit Einheit
+ */
+function formatWindSpeed(speedKmh, unit = 'kmh') {
+    switch (unit) {
+        case 'bft':
+            return windSpeedToBeaufort(speedKmh) + ' Bft';
+        case 'ms':
+            return (speedKmh / 3.6).toFixed(1) + ' m/s';
+        case 'kn':
+            return (speedKmh / 1.852).toFixed(1) + ' kn';
+        case 'kmh':
+        default:
+            return Math.round(speedKmh) + ' km/h';
+    }
+}
+
+
 // TODO: very dirty should be replaced
 function getMiddleCoordinate(p1, p2) {
     return { lat: (p1.lat + p2.lat) / 2, lng: (p1.lng + p2.lng) / 2};

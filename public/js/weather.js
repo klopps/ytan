@@ -18,6 +18,58 @@
 const WINDY_DEFAULT_ZOOM = 10;
 
 /**
+ * Windy's own default wind-speed color scale, in m/s (their internal SI
+ * unit), as [speed, [r,g,b]] stops with linear interpolation between
+ * them - live-extracted from windy.com's own running app
+ * (`W.colors.wind.defaultColorGradient` in the browser console), not
+ * guessed, since the project's own icon-font caveat ("verify, don't
+ * assume") applies just as much to a color scale as to a glyph name.
+ * Used so our own hour cards (never Windy's own UI) read as
+ * calmer/stormier at a glance the same way a Windy user would expect.
+ */
+const WIND_COLOR_SCALE_MS = [
+    [0, [98, 113, 183]],
+    [1, [57, 97, 159]],
+    [3, [74, 148, 169]],
+    [5, [77, 141, 123]],
+    [7, [83, 165, 83]],
+    [9, [53, 159, 53]],
+    [11, [167, 157, 81]],
+    [13, [159, 127, 58]],
+    [15, [161, 108, 92]],
+    [17, [129, 58, 78]],
+    [19, [175, 80, 136]],
+    [21, [117, 74, 147]],
+    [24, [109, 97, 163]],
+    [27, [68, 105, 141]],
+    [29, [92, 144, 152]],
+    [36, [125, 68, 165]],
+    [46, [231, 215, 215]],
+    [51, [219, 212, 135]],
+    [77, [205, 202, 112]],
+    [104, [128, 128, 128]],
+];
+
+function windSpeedColor(speedKmh) {
+    const speedMs = speedKmh / 3.6;
+    const scale = WIND_COLOR_SCALE_MS;
+
+    if (speedMs <= scale[0][0]) {
+        return 'rgb(' + scale[0][1].join(',') + ')';
+    }
+    for (let i = 0; i < scale.length - 1; i++) {
+        const [lowSpeed, lowColor] = scale[i];
+        const [highSpeed, highColor] = scale[i + 1];
+        if (speedMs >= lowSpeed && speedMs <= highSpeed) {
+            const ratio = (speedMs - lowSpeed) / (highSpeed - lowSpeed);
+            const rgb = lowColor.map((channel, idx) => Math.round(channel + (highColor[idx] - channel) * ratio));
+            return 'rgb(' + rgb.join(',') + ')';
+        }
+    }
+    return 'rgb(' + scale[scale.length - 1][1].join(',') + ')';
+}
+
+/**
  * Called once from map-core.js's initMap(). Registers this feature's items
  * in the generic map context menu instead of map-core.js needing to know
  * anything about weather - see that file's own comment on
@@ -34,6 +86,19 @@ function openWindyForLocation(latLng) {
     window.open('https://www.windy.com/?' + lat + ',' + lng + ',' + WINDY_DEFAULT_ZOOM, '_blank', 'noopener');
 }
 
+// Kept so the strip can be redrawn (formatWindSpeed()/windSpeedColor()
+// react to hour.wind_speed the same way, only the unit changes) without a
+// fresh fetch when the user switches the wind-speed unit in Preferences -
+// see refreshOpenWeatherTimelineWindUnit(), called from map-core.js's
+// editWindUnit().
+let lastWeatherTimelineData = null;
+
+// Marks the exact point the open timeline is for - same plain-marker
+// pattern map-core.js's own showSearchResultOnMap()/clearSearchMarker()
+// already use for "a temporary marker showing one location", not a
+// custom icon set of its own.
+let weatherLocationMarker = null;
+
 function openWeatherTimelineForLocation(latLng) {
     const lat = latLng.lat();
     const lng = latLng.lng();
@@ -47,9 +112,24 @@ function openWeatherTimelineForLocation(latLng) {
         '<div class="weather-timeline-message">' + escapeHTML(t('weather.timeline.loading')) + '</div>';
     document.getElementById('weatherTimelinePanel').style.display = 'flex';
     panelOpened();
+    lastWeatherTimelineData = null;
+
+    if (weatherLocationMarker) {
+        weatherLocationMarker.setPosition(latLng);
+    } else {
+        weatherLocationMarker = new google.maps.Marker({
+            position: latLng,
+            map: map,
+            title: t('weather.marker.title'),
+            zIndex: ZINDEX_POI + 10, // above regular POI markers, so it's never hidden underneath one at the same spot
+        });
+    }
 
     Ytan.get('/weather?lat=' + lat + '&lng=' + lng)
-        .then((answer) => renderWeatherTimeline(answer.data))
+        .then((answer) => {
+            lastWeatherTimelineData = answer.data;
+            renderWeatherTimeline(answer.data);
+        })
         .catch((err) => {
             log('openWeatherTimelineForLocation() failed', LOG_ERROR, err);
             document.getElementById('weatherTimelineStrip').innerHTML =
@@ -60,12 +140,32 @@ function openWeatherTimelineForLocation(latLng) {
 function closeWeatherTimeline() {
     document.getElementById('weatherTimelinePanel').style.display = 'none';
     panelClosed();
+    if (weatherLocationMarker) {
+        weatherLocationMarker.setMap(null);
+        weatherLocationMarker = null;
+    }
 }
 
-function renderWeatherTimeline(data) {
+/**
+ * Called from map-core.js's editWindUnit() whenever the Preferences wind
+ * unit changes. Only redraws (no re-fetch, no "no marine data" flicker)
+ * and only if the panel is actually open and already holds real data.
+ */
+function refreshOpenWeatherTimelineWindUnit() {
+    if (!lastWeatherTimelineData) {
+        return;
+    }
+    if (document.getElementById('weatherTimelinePanel').style.display === 'none') {
+        return;
+    }
+    renderWeatherTimeline(lastWeatherTimelineData, /* preserveScroll */ true);
+}
+
+function renderWeatherTimeline(data, preserveScroll) {
     document.getElementById('weatherTimelineMarineNotice').style.display = data.has_marine_data ? 'none' : 'block';
 
     const strip = document.getElementById('weatherTimelineStrip');
+    const previousScrollLeft = strip.scrollLeft;
     strip.innerHTML = '';
 
     const now = new Date();
@@ -93,7 +193,11 @@ function renderWeatherTimeline(data) {
         }
     });
 
-    if (nowCard) {
+    if (preserveScroll) {
+        // A wind-unit-only redraw shouldn't jump the user back to "now" if
+        // they'd already scrolled further into the strip.
+        strip.scrollLeft = previousScrollLeft;
+    } else if (nowCard) {
         // scrollIntoView with inline:'start' would also move the page/panel
         // vertically in some browsers - restrict the scroll to the strip's
         // own horizontal axis instead.
@@ -116,20 +220,35 @@ function buildHourCard(hour, hourDate, hasMarineData) {
     const card = document.createElement('div');
     card.className = 'weather-timeline-hour-card';
 
+    // A solid, full-width color block rather than a thin accent line -
+    // needs to read at a glance while scrolling the strip (see
+    // windSpeedColor()'s own comment on where the color scale comes from).
+    const windBand = document.createElement('div');
+    windBand.className = 'weather-timeline-hour-wind-band';
+    windBand.style.backgroundColor = windSpeedColor(hour.wind_speed);
+    card.appendChild(windBand);
+
+    const content = document.createElement('div');
+    content.className = 'weather-timeline-hour-card-content';
+
     const time = document.createElement('div');
     time.className = 'weather-timeline-hour-time';
     time.textContent = hour.time.slice(11, 16); // "HH:MM"
-    card.appendChild(time);
+    content.appendChild(time);
 
-    card.appendChild(buildHourRow('thermostat', t('weather.field.temperature_aria_label'), Math.round(hour.temperature) + '°C'));
+    content.appendChild(buildHourRow('thermostat', t('weather.field.temperature_aria_label'), Math.round(hour.temperature) + '°C'));
 
-    const windRow = buildHourRow('navigation', t('weather.field.wind_aria_label'), Math.round(hour.wind_speed) + ' km/h');
+    const windRow = buildHourRow('navigation', t('weather.field.wind_aria_label'), formatWindSpeed(hour.wind_speed, settings.windUnit));
     windRow.querySelector('.material-icons-round').style.transform = 'rotate(' + hour.wind_direction + 'deg)';
-    card.appendChild(windRow);
+    content.appendChild(windRow);
+
+    content.appendChild(buildHourRow('opacity', t('weather.field.precipitation_aria_label'), hour.precipitation.toFixed(1) + ' mm'));
 
     if (hasMarineData && hour.wave_height !== null) {
-        card.appendChild(buildHourRow('waves', t('weather.field.wave_aria_label'), hour.wave_height.toFixed(2) + ' m'));
+        content.appendChild(buildHourRow('waves', t('weather.field.wave_aria_label'), hour.wave_height.toFixed(2) + ' m'));
     }
+
+    card.appendChild(content);
 
     return card;
 }

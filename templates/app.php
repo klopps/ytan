@@ -221,6 +221,15 @@
             </div>
             <i class="material-icons-round">straighten</i>
           </div>
+          <p class="nav-field-label"><?= $t('app.preferences.wind_unit') ?></p>
+          <form name="windunit">
+            <div class="nav-segmented">
+              <input type="radio" id="windunit1" name="windunitselector" onclick="editWindUnit(this)" value="bft"><label for="windunit1"><?= $t('app.wind_unit.bft') ?></label>
+              <input type="radio" id="windunit2" name="windunitselector" onclick="editWindUnit(this)" value="ms"><label for="windunit2"><?= $t('app.wind_unit.ms') ?></label>
+              <input type="radio" id="windunit3" name="windunitselector" onclick="editWindUnit(this)" value="kmh" checked><label for="windunit3"><?= $t('app.wind_unit.kmh') ?></label>
+              <input type="radio" id="windunit4" name="windunitselector" onclick="editWindUnit(this)" value="kn"><label for="windunit4"><?= $t('app.wind_unit.kn') ?></label>
+            </div>
+          </form>
           <p class="nav-field-label"><?= $t('app.preferences.language') ?></p>
           <form name="language">
             <div class="nav-segmented">

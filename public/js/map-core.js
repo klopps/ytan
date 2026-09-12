@@ -9,6 +9,10 @@ const METRIC = 'metric';
 const NAUTICAL = 'nautical';
 const THEME_LIGHT = 'light';
 const THEME_DARK = 'dark';
+const WIND_UNIT_BFT = 'bft';
+const WIND_UNIT_MS = 'ms';
+const WIND_UNIT_KMH = 'kmh';
+const WIND_UNIT_KN = 'kn';
 const SEARCH_GOOGLE_MIN_LENGTH = 3; // avoid firing a billed Autocomplete call for very short, unspecific input
 
 class RouteTool extends MeasureTool {
@@ -485,7 +489,8 @@ var settings = { // muss wegen JSON.stringify() ein Objekt sein
     center: null,
     zoom: null,
     unit: METRIC,
-    theme: THEME_LIGHT
+    theme: THEME_LIGHT,
+    windUnit: WIND_UNIT_KMH
 };
 
 let language = window.navigator.userLanguage || window.navigator.language;
@@ -1112,6 +1117,24 @@ function editUnit(element) {
     renewVisibleRouteLabels();
     updateUnitExample();
     saveSettings();
+}
+
+/**
+ * Preferences screen's 4th wind-speed unit choice (Bft/m/s/km/h/kn) - only
+ * consumed by the weather timeline (weather.js) so far, unlike unit
+ * (metric/nautical) which affects route/area distance labels everywhere.
+ * refreshOpenWeatherTimelineWindUnit() lives in weather.js, loaded right
+ * after this file - same forward-reference pattern editUnit() above
+ * already uses for renewVisibleRouteLabels() (route.js, also loaded
+ * later), safe because both are only ever called from a user-triggered
+ * event, never during initial script evaluation.
+ */
+function editWindUnit(element) {
+    if ([WIND_UNIT_BFT, WIND_UNIT_MS, WIND_UNIT_KMH, WIND_UNIT_KN].includes(element.value)) {
+        settings.windUnit = element.value;
+    }
+    saveSettings();
+    refreshOpenWeatherTimelineWindUnit();
 }
 
 /**

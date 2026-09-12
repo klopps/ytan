@@ -1850,9 +1850,10 @@ img.wsi {
 .weather-timeline-strip {
   flex: 1;
   display: flex;
-  align-items: stretch;
+  align-items: center; /* not stretch - a card must size to its own content (up to 4 rows), never be force-squeezed to the strip's available height and have its bottom row(s) silently clipped by the card's own overflow:hidden */
   gap: 8px;
   overflow-x: auto;
+  overflow-y: auto; /* safety net for a viewport too short even for one un-stretched card - scroll rather than clip/spill past the panel */
   padding: 12px 14px;
 }
 
@@ -1883,16 +1884,30 @@ img.wsi {
   width: 62px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 4px;
   border-radius: 10px;
+  overflow: hidden; /* clips the square-cornered wind band below to the card's own rounded corners */
   background-color: var(--color-bg-subtle);
 }
 
 .weather-timeline-hour-card-current {
-  background-color: var(--color-accent-soft);
-  border: 1px solid var(--color-accent);
+  border: 2px solid var(--color-accent);
+}
+
+/* Solid block, not a thin accent line - deliberately prominent (see the
+   comment on windSpeedColor() in weather.js) so wind strength reads at a
+   glance while scrolling the strip, matching how present color is in
+   Windy's own map. */
+.weather-timeline-hour-wind-band {
+  height: 14px;
+  width: 100%;
+}
+
+.weather-timeline-hour-card-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 4px 8px 4px;
 }
 
 .weather-timeline-hour-time {
