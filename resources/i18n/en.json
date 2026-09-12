@@ -14,10 +14,10 @@
 
   "app.nav.pois": "POIs",
   "app.nav.tours": "Tours",
-  "app.nav.fit_pois": "Fit POIs",
   "app.nav.share": "Share",
-  "app.nav.site_settings": "Site Settings",
+  "app.nav.site_settings": "System settings",
   "app.nav.preferences": "Preferences",
+  "app.nav.profile": "Profile",
   "app.nav.not_signed_in": "Not signed in",
   "app.nav.about": "About",
   "app.nav.imprint": "Imprint",
@@ -26,6 +26,7 @@
 
   "app.pois.select_all": "Select all",
   "app.pois.select_none": "Select none",
+  "app.pois.fit_all": "Show all enabled POIs",
 
   "app.poitype.0": "POI",
   "app.poitype.1": "Camps",

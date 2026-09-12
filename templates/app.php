@@ -114,10 +114,10 @@
           <ul class="nav-menu-list">
             <li><button type="button" class="nav-menu-row" onclick="navMenuGoTo('pois');"><i class="material-icons-round nav-menu-row-icon">place</i><span class="nav-menu-row-labels"><?= $t('app.nav.pois') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
             <li><button type="button" class="nav-menu-row" onclick="openTourAdminMenu();"><i class="material-icons-round nav-menu-row-icon">tour</i><span class="nav-menu-row-labels"><?= $t('app.nav.tours') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
-            <li><button type="button" class="nav-menu-row" onclick="fitToPoiBounds();"><i class="material-icons-round nav-menu-row-icon">fit_screen</i><span class="nav-menu-row-labels"><?= $t('app.nav.fit_pois') ?></span></button></li>
             <li><button type="button" class="nav-menu-row" onclick="shareMap();"><i class="material-icons-round nav-menu-row-icon">share</i><span class="nav-menu-row-labels"><?= $t('app.nav.share') ?></span></button></li>
             <li id="userAdminMenuBtn" style="display:none;"><button type="button" class="nav-menu-row" onclick="navMenuGoTo('site-settings');"><i class="material-icons-round nav-menu-row-icon">settings</i><span class="nav-menu-row-labels"><?= $t('app.nav.site_settings') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
-            <li><button type="button" class="nav-menu-row" onclick="showUserWindow();"><i class="material-icons-round nav-menu-row-icon">account_circle</i><span class="nav-menu-row-labels"><?= $t('app.nav.preferences') ?><span class="nav-menu-row-sub" id="preferencesRowSub"><?= $t('app.nav.not_signed_in') ?></span></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
+            <li><button type="button" class="nav-menu-row" onclick="navMenuGoTo('preferences');"><i class="material-icons-round nav-menu-row-icon">tune</i><span class="nav-menu-row-labels"><?= $t('app.nav.preferences') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
+            <li><button type="button" class="nav-menu-row" onclick="showUserWindow();"><i class="material-icons-round nav-menu-row-icon">account_circle</i><span class="nav-menu-row-labels"><?= $t('app.nav.profile') ?><span class="nav-menu-row-sub" id="profileRowSub"><?= $t('app.nav.not_signed_in') ?></span></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
           </ul>
 
           <div class="nav-divider"></div>
@@ -167,6 +167,10 @@
           <label class="nav-toggle-row"><span class="nav-swatch" style="background:#60609f"></span><span class="nav-toggle-text"><?= $t('app.detail.routes') ?></span><input type="checkbox" id="detailroutes" name="detailroutes" class="nav-switch-input" onchange="toggleRoutes(this);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
           <label class="nav-toggle-row"><span class="nav-swatch" style="background:#8886c9"></span><span class="nav-toggle-text"><?= $t('app.detail.areas') ?></span><input type="checkbox" id="detailareas" name="detailareas" class="nav-switch-input" onchange="toggleAreas(this);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
           <label class="nav-toggle-row"><span class="nav-swatch" style="background:#9c99ad"></span><span class="nav-toggle-text"><?= $t('app.detail.wsi') ?></span><input type="checkbox" id="detailwsi" name="detailwsi" class="nav-switch-input" onchange="toggleWsiMarkers(this);"><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
+          <div class="nav-divider"></div>
+          <ul class="nav-menu-list">
+            <li><button type="button" class="nav-menu-row" onclick="fitToPoiBounds(); closeMenu();"><i class="material-icons-round nav-menu-row-icon">fit_screen</i><span class="nav-menu-row-labels"><?= $t('app.pois.fit_all') ?></span></button></li>
+          </ul>
         </div>
       </div>
 
@@ -223,7 +227,16 @@
               <input type="radio" id="language2" name="languageselector" onclick="setLanguage('de')" value="de" <?= $translator->locale() === 'de' ? 'checked' : '' ?>><label for="language2"><?= $t('app.language.de') ?></label>
             </div>
           </form>
-          <div class="nav-divider"></div>
+        </div>
+      </div>
+
+      <!-- PROFILE -->
+      <div class="nav-screen nav-screen-off-right" data-nav-screen="profile">
+        <div class="nav-screen-header">
+          <button type="button" class="nav-back" onclick="navMenuBack();"><i class="material-icons-round">arrow_back</i></button>
+          <h3><?= $t('app.nav.profile') ?></h3>
+        </div>
+        <div class="nav-screen-body">
           <div id="userWindow"></div>
         </div>
       </div>
@@ -343,7 +356,7 @@
           user.pending_email_expires_at = answer.data.pending_email_expires_at;
 
           sessionStorage.setItem('user', JSON.stringify(user));
-          updatePreferencesRowLabel();
+          updateProfileRowLabel();
           updateAdminMenuVisibility();
           updateGoogleSearchAllowed();
 

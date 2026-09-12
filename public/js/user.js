@@ -47,7 +47,7 @@ function showUserWindow() {
         ;
     }
 
-    navMenuGoTo('preferences');
+    navMenuGoTo('profile');
 }
 
 function clickOnEnter(event, elementId) {
@@ -164,7 +164,7 @@ function submitEditProfile() {
         user.pending_email = answer.email_change_pending ? answer.pending_email : null;
 
         sessionStorage.setItem('user', JSON.stringify(user));
-        updatePreferencesRowLabel();
+        updateProfileRowLabel();
 
         showToast(
             answer.email_change_pending
@@ -206,12 +206,12 @@ function updateAdminMenuVisibility() {
 }
 
 /**
- * Reflects the current sign-in state as the "Preferences" root menu row's
+ * Reflects the current sign-in state as the "Profile" root menu row's
  * subtitle (e.g. "Signed in as cst" / "Not signed in"). Called from the
  * same places as updateAdminMenuVisibility().
  */
-function updatePreferencesRowLabel() {
-    document.getElementById('preferencesRowSub').textContent = user.id !== null ? t('user.signed_in_as', { username: user.username }) : t('app.nav.not_signed_in');
+function updateProfileRowLabel() {
+    document.getElementById('profileRowSub').textContent = user.id !== null ? t('user.signed_in_as', { username: user.username }) : t('app.nav.not_signed_in');
 }
 
 /**
@@ -227,7 +227,7 @@ function logoutUser() {
     cancelEditRoute();
     closePoiEditWindow();
     document.getElementById('routeButton').classList.remove('active');
-    updatePreferencesRowLabel();
+    updateProfileRowLabel();
     updateAdminMenuVisibility();
     updateGoogleSearchAllowed();
     resetSearchState();
@@ -275,7 +275,7 @@ function loginUser() {
         closeUserWindow();
         getPoisByUserId(user.id);
         getRoutesByUserId(user.id);
-        updatePreferencesRowLabel();
+        updateProfileRowLabel();
         updateAdminMenuVisibility();
         updateGoogleSearchAllowed();
         enablePoiButton();

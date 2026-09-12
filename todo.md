@@ -1,10 +1,18 @@
+## Profile Menü
+
+Die Funktionen zum Benutzer, die bislang im Menü "Preferences" unterhalb des horizontalen Linie stehen, müssen in ein neues Menü "Profile". Das Icon und der Status der Benutzeranmeldung  von Preferences gehören dann zum Menüpunkt Profile. Der Menüpunkt Preferences benötigt ein neues Symbol/Icon. 
+
+## Kosmetik
+
 ~~In Site Settings > Users  soll wie bei Tours > Edit die Maske von Rechts ins Bild einfliegen und das Menü nach links aus dem Bild schieben und nicht oberhalb der Userliste eingeblendet werden.~~ Gelöst (Tours/Users-Redesign, siehe Commit-Historie). Zusätzlich (2026-09-11) auch Legal-Menü (About/Imprint/Privacy Note) und Cookies-Menü auf dasselbe Muster umgestellt: öffnen über dem weiterhin sichtbaren Drawer statt ihn zu schließen, Zurück-Pfeil mit Titel statt Schließen-Kreuz.
+
+## Aufruf des Kontextmenüs am Smartphone
 
 ~~Was kann auf dem Smartphone statt eines Klicks mit der rechten Maustaste genutzt werden, um das contextMenu einer Route, Areas oder eines POIs zu öffnen?~~ Gelöst: Long-Press (~550ms) öffnet jetzt das contextMenu (kurzer Tap öffnet weiterhin nur das normale InfoWindow). Auf dem echten Smartphone bestätigt (2026-09-11) - Erkennung basiert auf einem eigenen Hit-Test der Touch-Koordinaten statt auf Maps' 'mousedown', da dieses Event bei Touch auf dem realen Gerät gar nicht zuverlässig feuert.
 
 ## i18n-Tool
 
-Es wird ein Tool benötigt, mit dem man komfortabel die Übersetzungen der Texte vornehmen kann. Idealerweise wir der entsprechende Dialog in dem der Text verwendet wird, direkt angezeigt.
+Es wird ein Tool benötigt, mit dem man komfortabel die Übersetzungen der Texte vornehmen kann. Idealerweise wir der entsprechende Dialog in dem der Text verwendet wird, direkt angezeigt. Gibt es bereits entsprechende Software oder muss etwas gebaut werden?
 
 
 ## Touren-Dokument

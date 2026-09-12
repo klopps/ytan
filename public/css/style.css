@@ -594,7 +594,19 @@ img.wsi {
 * Side Menu
 */
 #sidemenu {
-  height: 100%;
+  height: 100%; /* fallback for browsers without dvh support */
+  /* 100% on a position:fixed element resolves like 100vh - mobile browsers
+     size that against the "large" viewport (address bar hidden), which is
+     taller than what's actually visible/touchable while the address bar is
+     still shown (the common case right after opening the menu). Because
+     #sidemenu is fixed at top:0, the excess height pushes its own bottom
+     edge below the real visible+touchable screen - permanently hiding
+     (and making unreachable by touch-scroll) whatever sits at the very
+     bottom of .nav-screen-body, e.g. the POIs screen's last row, no matter
+     how far it's scrolled. 100dvh tracks the actual visible viewport as
+     the address bar shows/hides, so this can't happen. Desktop has no
+     dynamic toolbar, which is why this only ever showed up on mobile. */
+  height: 100dvh;
   margin-left: -335px; /* mind the padding */
   width: 320px;
   max-width: 85vw;
@@ -2780,6 +2792,7 @@ input[type="color"] {
 .nav-screen-body {
   flex: 1;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch; /* matches .cm_content's identical rule (Tours/Users/Legal/Cookies) - smoother/more reliable momentum scrolling on iOS Safari */
   padding: 8px 0 16px;
 }
 
