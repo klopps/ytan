@@ -115,7 +115,14 @@ function openLegalMenu(url, title) {
     pushMenuLeft();
     panelOpened();
 
-    fetch(url)
+    // no-store: this fetch's response depends on the current UI locale
+    // (the server renders /about per the settings cookie), but the URL
+    // itself never changes - without this, the browser's HTTP cache can
+    // keep serving a stale response from before a language switch (a
+    // plain reload doesn't necessarily revalidate a fetch()-initiated
+    // request, only a hard reload reliably does), showing the old
+    // language until the user happens to hard-refresh.
+    fetch(url, { cache: 'no-store' })
         .then(function (response) { return response.text(); })
         .then(function (html) {
             var doc = new DOMParser().parseFromString(html, "text/html");

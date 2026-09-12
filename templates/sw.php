@@ -56,6 +56,19 @@ const CACHE_NAME = <?= json_encode($cacheName) ?>;
 const PRECACHE_URLS = <?= json_encode($precacheUrls) ?>;
 const NAVIGATION_FALLBACK_URL = <?= json_encode($navigationFallbackUrl) ?>;
 
+// Only the versioned static shell assets (the ?v=<mtime> files listed in
+// PRECACHE_URLS - JS/CSS/fonts/icons/manifest) are safe to serve cache-first
+// forever: a content change always produces a new URL for them, so a stale
+// cache entry can never linger. Dynamic, PHP-rendered HTML pages (/about,
+// /legal/*, /set-password, /forgot-password, /confirm-email, /translate,
+// ...) carry no such versioning and their content depends on the request's
+// cookies (e.g. the UI language) - caching one of those the same way means
+// whichever version was fetched first gets stuck being served forever, with
+// no way for it to ever refresh (confirmed: switching the UI language then
+// reopening the About page kept showing the old language indefinitely,
+// because this handler had already cached its first, pre-switch response).
+const CACHEABLE_EXTENSIONS = /\.(js|css|png|ico|svg|webmanifest|woff2?|ttf)$/;
+
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME)
@@ -66,10 +79,23 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
     event.waitUntil(
-        caches.keys().then((keys) => Promise.all(
-            keys.filter((key) => key.startsWith('ytan-shell-') && key !== CACHE_NAME)
-                .map((key) => caches.delete(key))
-        )).then(() => self.clients.claim())
+        Promise.all([
+            caches.keys().then((keys) => Promise.all(
+                keys.filter((key) => key.startsWith('ytan-shell-') && key !== CACHE_NAME)
+                    .map((key) => caches.delete(key))
+            )),
+            // Self-heals installs from before CACHEABLE_EXTENSIONS existed:
+            // a dynamic page cached under the old cache-everything fetch
+            // handler would otherwise keep being served stale forever, since
+            // CACHE_NAME itself doesn't change just because this file's own
+            // logic did (it's derived from the precached shell files' own
+            // mtimes, not sw.php's).
+            caches.open(CACHE_NAME).then((cache) => cache.keys().then((requests) => Promise.all(
+                requests
+                    .filter((request) => !CACHEABLE_EXTENSIONS.test(new URL(request.url).pathname))
+                    .map((request) => cache.delete(request))
+            ))),
+        ]).then(() => self.clients.claim())
     );
 });
 
@@ -87,6 +113,10 @@ self.addEventListener('fetch', (event) => {
         event.respondWith(
             fetch(event.request).catch(() => caches.match(NAVIGATION_FALLBACK_URL))
         );
+        return;
+    }
+
+    if (!CACHEABLE_EXTENSIONS.test(url.pathname)) {
         return;
     }
 

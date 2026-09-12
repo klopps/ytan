@@ -24,6 +24,7 @@ use Ytan\Http\Controllers\PoiController;
 use Ytan\Http\Controllers\RouteController;
 use Ytan\Http\Controllers\SettingsController;
 use Ytan\Http\Controllers\TourController;
+use Ytan\Http\Controllers\TranslationController;
 use Ytan\Http\Controllers\UserController;
 use Ytan\Http\Controllers\WsiController;
 use Ytan\Http\Middleware\AuthMiddleware;
@@ -33,6 +34,8 @@ use Ytan\Service\CaptchaService;
 use Ytan\Service\MailService;
 use Ytan\Service\TourImageService;
 use Ytan\Service\TourNotificationService;
+use Ytan\Service\TranslationRepository;
+use Ytan\Service\TranslationUsageScanner;
 use Ytan\Service\Translator;
 use Ytan\Service\WsiRenderer;
 
@@ -87,6 +90,10 @@ final class App
         $wsiController = new WsiController(new WsiRenderer($rootDir . '/public/images/wsi'));
         $settingsRepository = new SettingsRepository($pdo);
         $settingsController = new SettingsController($settingsRepository);
+        $translationController = new TranslationController(
+            new TranslationRepository($rootDir . '/resources/i18n'),
+            new TranslationUsageScanner($rootDir)
+        );
 
         $app = AppFactory::create();
 
@@ -120,6 +127,9 @@ final class App
                     $payload['error']['code'] = $exception->getErrorCode();
                 }
                 if ($exception instanceof \Ytan\Exception\CaptchaRequiredException) {
+                    $payload['error'] = array_merge($payload['error'], $exception->getPayload());
+                }
+                if ($exception instanceof \Ytan\Exception\TranslationKeyMismatchException) {
                     $payload['error'] = array_merge($payload['error'], $exception->getPayload());
                 }
                 if ($displayErrors && $status === 500) {
@@ -266,6 +276,29 @@ final class App
 
             return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
         });
+
+        // Dev-only translation editor (templates/translate.php,
+        // public/js/translate.js) - writes directly to
+        // resources/i18n/{en,de}.json, which every page injects into a
+        // <script> tag on every request. Admin-JWT-gated like every other
+        // admin endpoint (TranslationController::requireAdmin()), but that
+        // alone isn't enough given how much larger this endpoint's blast
+        // radius is than a typical admin action - it's additionally kept
+        // off entirely unless explicitly enabled, so a deployed production
+        // site is unreachable here even with a compromised admin token
+        // (JWTs are valid for 10 years by default - see JWT_TTL_SECONDS).
+        if (($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true') {
+            $app->get('/translate', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl) {
+                ob_start();
+                require $rootDir . '/templates/translate.php';
+                $res->getBody()->write(ob_get_clean());
+
+                return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
+            });
+
+            $app->get('/api/v1/translations', [$translationController, 'index']);
+            $app->put('/api/v1/translations', [$translationController, 'update']);
+        }
 
         return $app;
     }
