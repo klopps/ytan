@@ -1,6 +1,6 @@
 ## Profile Menü
 
-Die Funktionen zum Benutzer, die bislang im Menü "Preferences" unterhalb des horizontalen Linie stehen, müssen in ein neues Menü "Profile". Das Icon und der Status der Benutzeranmeldung  von Preferences gehören dann zum Menüpunkt Profile. Der Menüpunkt Preferences benötigt ein neues Symbol/Icon. 
+~~Die Funktionen zum Benutzer, die bislang im Menü "Preferences" unterhalb des horizontalen Linie stehen, müssen in ein neues Menü "Profile". Das Icon und der Status der Benutzeranmeldung  von Preferences gehören dann zum Menüpunkt Profile. Der Menüpunkt Preferences benötigt ein neues Symbol/Icon.~~ Gelöst (2026-09-12): neuer Menüpunkt "Profile" mit dem account_circle-Icon und dem Anmeldestatus als Untertitel (bisher bei Preferences), öffnet einen eigenen Screen mit Login/Konto-Funktionen. "Preferences" zeigt jetzt nur noch Erscheinungsbild/Einheiten/Sprache und hat ein neues Icon (tune).
 
 ## Kosmetik
 
@@ -12,7 +12,7 @@ Die Funktionen zum Benutzer, die bislang im Menü "Preferences" unterhalb des ho
 
 ## i18n-Tool
 
-Es wird ein Tool benötigt, mit dem man komfortabel die Übersetzungen der Texte vornehmen kann. Idealerweise wir der entsprechende Dialog in dem der Text verwendet wird, direkt angezeigt. Gibt es bereits entsprechende Software oder muss etwas gebaut werden?
+~~Es wird ein Tool benötigt, mit dem man komfortabel die Übersetzungen der Texte vornehmen kann. Idealerweise wir der entsprechende Dialog in dem der Text verwendet wird, direkt angezeigt. Gibt es bereits entsprechende Software oder muss etwas gebaut werden?~~ Gelöst (2026-09-12): eigenes, kleines Dev-Tool gebaut (fertige Software wie Crowdin/Locize/Tolgee wäre für 312 Keys/2 Sprachen deutlich überdimensioniert gewesen und hätte das eigene JSON-Format nicht ohne Anpassungsarbeit verstanden). Erreichbar unter `/translate` - nicht im normalen App-Menü verlinkt, nur per `TRANSLATE_TOOL_ENABLED=true` in `.env` aktiviert (Standard: aus), zusätzlich admin-only gegated. Zeigt alle Keys nach Namespace gruppiert und durchsuchbar, EN/DE nebeneinander editierbar, pro Key die Fundstellen (Datei:Zeile, automatisch per Grep ermittelt) sowie eine Live-Vorschau der laufenden App im iframe daneben (ein automatischer Sprung zum exakten Dialog war nicht praktikabel - die App-UI ist stark zustandsabhängig). Speichert direkt in `resources/i18n/{en,de}.json`, mit Warnung bei abweichenden Platzhaltern und Schutz gegen `</script>`-Werte (könnten sonst site-weite Script-Injection ermöglichen, da die Übersetzungen in ein `<script>`-Tag auf jeder Seite eingebettet werden).
 
 
 ## Touren-Dokument
@@ -26,6 +26,11 @@ Die Bilder der Karte können alternativ als Hybrid, Terrain oder SAT ausgebeben 
 ## Logo
 
 Logo-Alternative entwickeln
+
+
+## Service-Worker Cache-Bug (2026-09-12)
+
+Nach Umschalten der Sprache (EN→DE) zeigte die About-Seite weiterhin den alten Text - ein normales Reload (F5) half nicht, erst Ctrl+F5 zeigte schließlich Deutsch. Ursache: `sw.php`s Fetch-Handler behandelte bislang JEDEN Same-Origin-Request cache-first, nicht nur die statischen Shell-Assets (JS/CSS/Icons) - eine dynamische, vom Cookie abhängige Seite wie `/about` wurde beim ersten Laden dadurch dauerhaft im Cache Storage eingefroren und nie wieder neu geladen, unabhängig vom Browser-eigenen HTTP-Cache (den ein `fetch(..., {cache:'no-store'})` umgangen hätte - der Service Worker fängt den Request aber schon vorher ab). Behoben: der Fetch-Handler cached jetzt nur noch Requests mit statischen Datei-Endungen (`.js`/`.css`/`.png`/`.svg`/`.webmanifest`/...), alles andere (auch künftige neue Routen) geht immer ins Netz. Zusätzlich räumt die `activate`-Phase bereits bestehende Fehlcache-Einträge automatisch auf, sodass auch schon betroffene Browser sich selbst heilen, ohne dass Nutzer manuell die Website-Daten löschen müssen. Live per Playwright verifiziert (Cache-Inhalt vor/nach dem Fix direkt inspiziert, das gemeldete Szenario in beide Richtungen nachgestellt).
 
 
 ## Mobile-Anzeige-Audit (2026-09-10)
