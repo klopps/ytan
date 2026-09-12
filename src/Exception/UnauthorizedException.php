@@ -6,8 +6,8 @@ namespace Ytan\Exception;
 
 class UnauthorizedException extends ApiException
 {
-    public function __construct(string $message = 'Authentication required.')
+    public function __construct(string $message = 'Authentication required.', ?string $code = null)
     {
-        parent::__construct($message, 401);
+        parent::__construct($message, 401, $code);
     }
 }

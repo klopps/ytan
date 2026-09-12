@@ -327,5 +327,18 @@
 
   "map.link_copied": "Link copied to clipboard",
   "map.share_text": "Check out this map on YTAN",
-  "common.failed_to_load_content": "Failed to load content."
+  "common.failed_to_load_content": "Failed to load content.",
+
+  "error.auth.invalid_credentials": "Invalid username or password.",
+  "error.auth.link_expired": "This link is invalid or has expired.",
+  "error.auth.current_password_incorrect": "Current password is incorrect.",
+  "error.auth.invalid_email": "Please enter a valid email address.",
+  "error.auth.email_in_use": "This email address is already in use.",
+  "error.auth.password_policy": "Password must be at least 8 characters and use at least 3 of: lowercase, uppercase, digits, symbols.",
+  "error.auth.username_password_required": "Username and password are required.",
+  "error.auth.identifier_required": "Identifier is required.",
+  "error.auth.token_password_required": "Token and password are required.",
+  "error.auth.current_new_password_required": "Current password and new password are required.",
+  "error.auth.profile_fields_required": "First name, last name, email and current password are required.",
+  "error.auth.token_required": "Token is required."
 }

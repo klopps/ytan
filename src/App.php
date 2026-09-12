@@ -116,6 +116,9 @@ final class App
                     default => 500,
                 };
                 $payload = ['error' => ['message' => $exception->getMessage()]];
+                if ($exception instanceof ApiException && $exception->getErrorCode() !== null) {
+                    $payload['error']['code'] = $exception->getErrorCode();
+                }
                 if ($exception instanceof \Ytan\Exception\CaptchaRequiredException) {
                     $payload['error'] = array_merge($payload['error'], $exception->getPayload());
                 }

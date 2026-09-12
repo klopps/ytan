@@ -6,8 +6,23 @@
 
 
 /**
+ * Resolves a Ytan API error (thrown by api-client.js's request()/
+ * postFile()) into a user-facing message, preferring a translated
+ * machine-readable error code over the raw English message when the
+ * backend attached one - see i18n.js's translateApiError(), which this
+ * just adapts to the shape api-client.js throws (`err.data` holds the
+ * `{message, code}` error body; a network-level failure has no `.data`).
+ *
+ * @param {Error} err
+ * @returns {string}
+ */
+function apiErrorMessage(err) {
+    return translateApiError(err && err.data ? err.data : { message: err ? err.message : '' });
+}
+
+/**
  * Escape possible unsecure texts
- * 
+ *
  * @param {string} unsafe Unescaped text
  * @returns {string} escaped text
  */

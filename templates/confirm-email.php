@@ -61,14 +61,14 @@
             })
             .then(function (result) {
                 if (!result.ok) {
-                    throw new Error((result.payload.error && result.payload.error.message) || t('confirmemail.generic_failure'));
+                    throw (result.payload.error || { message: t('confirmemail.generic_failure') });
                 }
                 localStorage.setItem('ytan_token', result.payload.token);
                 window.location.href = "<?= htmlspecialchars($baseUrl, ENT_QUOTES) ?>/";
             })
             .catch(function (err) {
                 document.getElementById('confirmEmailBtn').disabled = false;
-                message.textContent = err.message;
+                message.textContent = translateApiError(err);
             });
         }
     </script>

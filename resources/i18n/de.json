@@ -327,5 +327,18 @@
 
   "map.link_copied": "Link in die Zwischenablage kopiert",
   "map.share_text": "Diese Karte auf YTAN ansehen",
-  "common.failed_to_load_content": "Laden des Inhalts fehlgeschlagen."
+  "common.failed_to_load_content": "Laden des Inhalts fehlgeschlagen.",
+
+  "error.auth.invalid_credentials": "Ungültiger Benutzername oder ungültiges Passwort.",
+  "error.auth.link_expired": "Dieser Link ist ungültig oder abgelaufen.",
+  "error.auth.current_password_incorrect": "Das aktuelle Passwort ist falsch.",
+  "error.auth.invalid_email": "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
+  "error.auth.email_in_use": "Diese E-Mail-Adresse wird bereits verwendet.",
+  "error.auth.password_policy": "Das Passwort muss mindestens 8 Zeichen lang sein und mindestens 3 der folgenden Arten enthalten: Kleinbuchstaben, Großbuchstaben, Ziffern, Sonderzeichen.",
+  "error.auth.username_password_required": "Benutzername und Passwort sind erforderlich.",
+  "error.auth.identifier_required": "Benutzername oder E-Mail sind erforderlich.",
+  "error.auth.token_password_required": "Token und Passwort sind erforderlich.",
+  "error.auth.current_new_password_required": "Aktuelles und neues Passwort sind erforderlich.",
+  "error.auth.profile_fields_required": "Vorname, Nachname, E-Mail und aktuelles Passwort sind erforderlich.",
+  "error.auth.token_required": "Token ist erforderlich."
 }

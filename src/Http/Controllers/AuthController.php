@@ -28,7 +28,7 @@ final class AuthController extends BaseController
         $password = (string) ($body['password'] ?? '');
 
         if ($username === '' || $password === '') {
-            throw new ValidationException('Username and password are required.');
+            throw new ValidationException('Username and password are required.', 'auth.username_password_required');
         }
 
         return $this->json($response, $this->authService->login($username, $password));
@@ -55,7 +55,7 @@ final class AuthController extends BaseController
         $body = $this->jsonBody($request);
         $identifier = trim((string) ($body['identifier'] ?? ''));
         if ($identifier === '') {
-            throw new ValidationException('Identifier is required.');
+            throw new ValidationException('Identifier is required.', 'auth.identifier_required');
         }
 
         $user = $this->users->findByUsername($identifier) ?? $this->users->findByEmail($identifier);
@@ -83,7 +83,7 @@ final class AuthController extends BaseController
         $password = (string) ($body['password'] ?? '');
 
         if ($token === '' || $password === '') {
-            throw new ValidationException('Token and password are required.');
+            throw new ValidationException('Token and password are required.', 'auth.token_password_required');
         }
 
         return $this->json($response, $this->authService->setNewPassword($token, $password));
@@ -102,7 +102,7 @@ final class AuthController extends BaseController
         $newPassword = (string) ($body['new_password'] ?? '');
 
         if ($currentPassword === '' || $newPassword === '') {
-            throw new ValidationException('Current password and new password are required.');
+            throw new ValidationException('Current password and new password are required.', 'auth.current_new_password_required');
         }
 
         $this->authService->changePassword((int) $auth['sub'], $currentPassword, $newPassword);
@@ -128,7 +128,7 @@ final class AuthController extends BaseController
         $currentPassword = (string) ($body['current_password'] ?? '');
 
         if ($firstname === '' || $lastname === '' || $email === '' || $currentPassword === '') {
-            throw new ValidationException('First name, last name, email and current password are required.');
+            throw new ValidationException('First name, last name, email and current password are required.', 'auth.profile_fields_required');
         }
 
         return $this->json(
@@ -160,7 +160,7 @@ final class AuthController extends BaseController
         $token = (string) ($body['token'] ?? '');
 
         if ($token === '') {
-            throw new ValidationException('Token is required.');
+            throw new ValidationException('Token is required.', 'auth.token_required');
         }
 
         return $this->json($response, $this->authService->confirmEmailChange($token));

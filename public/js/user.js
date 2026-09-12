@@ -116,7 +116,7 @@ function submitChangePassword() {
         document.getElementById('userChangePasswordSaveBtn').disabled = false;
     }).catch(err => {
         message.style.color = 'var(--color-danger)';
-        message.textContent = err.message;
+        message.textContent = apiErrorMessage(err);
         document.getElementById('userChangePasswordSaveBtn').disabled = false;
     });
 }
@@ -176,7 +176,7 @@ function submitEditProfile() {
         showUserWindow();
     }).catch(err => {
         message.style.color = 'var(--color-danger)';
-        message.textContent = err.message;
+        message.textContent = apiErrorMessage(err);
         document.getElementById('userEditProfileSaveBtn').disabled = false;
     });
 }
@@ -192,7 +192,7 @@ function cancelPendingEmailChange() {
         showToast(t('user.pending_email_change_canceled'), 'info');
         showUserWindow();
     }).catch(err => {
-        showToast(err.message, 'error');
+        showToast(apiErrorMessage(err), 'error');
     });
 }
 
@@ -283,6 +283,6 @@ function loginUser() {
         document.getElementById('userLoginUsername').disabled = false;
         document.getElementById('userLoginPassword').disabled = false;
         document.getElementById('userLoginBtn').disabled = false;
-        showToast(t('user.login_failed', { error: err.message }), 'error');
+        showToast(t('user.login_failed', { error: apiErrorMessage(err) }), 'error');
     });
 }

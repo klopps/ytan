@@ -42,6 +42,16 @@ final class AuthServicePasswordValidationTest extends TestCase
         $this->auth->validatePasswordFormat('Sh0rt!');
     }
 
+    public function testRejectionCarriesTheAuthPasswordPolicyErrorCode(): void
+    {
+        try {
+            $this->auth->validatePasswordFormat('Sh0rt!');
+            $this->fail('Expected ValidationException.');
+        } catch (ValidationException $e) {
+            $this->assertSame('auth.password_policy', $e->getErrorCode());
+        }
+    }
+
     /**
      * Needs at least 3 of: lowercase, uppercase, digit, symbol - all-lowercase
      * letters is only 1 class even at sufficient length.

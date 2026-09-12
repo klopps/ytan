@@ -31,7 +31,7 @@ final class AuthService
     {
         $user = $this->users->findByUsername($username) ?? $this->users->findByEmail($username);
         if ($user === null || $user['password'] === null) {
-            throw new UnauthorizedException('Invalid username or password.');
+            throw new UnauthorizedException('Invalid username or password.', 'auth.invalid_credentials');
         }
 
         if (password_verify($password, $user['password'])) {
@@ -40,7 +40,7 @@ final class AuthService
             $user['password'] = password_hash($password, PASSWORD_DEFAULT);
             $this->users->updatePassword((int) $user['id'], $user['password']);
         } else {
-            throw new UnauthorizedException('Invalid username or password.');
+            throw new UnauthorizedException('Invalid username or password.', 'auth.invalid_credentials');
         }
 
         unset($user['password']);
@@ -57,7 +57,7 @@ final class AuthService
     {
         $tokenRow = $this->users->findValidToken($rawToken);
         if ($tokenRow === null) {
-            throw new ValidationException('This link is invalid or has expired.');
+            throw new ValidationException('This link is invalid or has expired.', 'auth.link_expired');
         }
 
         $this->validatePasswordFormat($newPassword);
@@ -79,7 +79,7 @@ final class AuthService
     {
         $user = $this->users->findById($userId);
         if ($user === null || $user['password'] === null || !password_verify($currentPassword, $user['password'])) {
-            throw new UnauthorizedException('Current password is incorrect.');
+            throw new UnauthorizedException('Current password is incorrect.', 'auth.current_password_incorrect');
         }
 
         $this->validatePasswordFormat($newPassword);
@@ -109,7 +109,7 @@ final class AuthService
     {
         $user = $this->users->findById($userId);
         if ($user === null || $user['password'] === null || !password_verify($currentPassword, $user['password'])) {
-            throw new UnauthorizedException('Current password is incorrect.');
+            throw new UnauthorizedException('Current password is incorrect.', 'auth.current_password_incorrect');
         }
 
         $user = $this->users->updateProfile($userId, $firstname, $lastname);
@@ -119,12 +119,12 @@ final class AuthService
 
         if (strcasecmp($email, (string) $user['email']) !== 0) {
             if (filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
-                throw new ValidationException('Please enter a valid email address.');
+                throw new ValidationException('Please enter a valid email address.', 'auth.invalid_email');
             }
 
             $existing = $this->users->findByEmail($email);
             if ($existing !== null && (int) $existing['id'] !== $userId) {
-                throw new ValidationException('This email address is already in use.');
+                throw new ValidationException('This email address is already in use.', 'auth.email_in_use');
             }
 
             $token = $this->users->createToken($userId, 'email_change', 3600, $email);
@@ -161,14 +161,14 @@ final class AuthService
     {
         $tokenRow = $this->users->findValidToken($rawToken);
         if ($tokenRow === null || $tokenRow['purpose'] !== 'email_change') {
-            throw new ValidationException('This link is invalid or has expired.');
+            throw new ValidationException('This link is invalid or has expired.', 'auth.link_expired');
         }
 
         $newEmail = (string) $tokenRow['payload'];
 
         $existing = $this->users->findByEmail($newEmail);
         if ($existing !== null && (int) $existing['id'] !== (int) $tokenRow['user_id']) {
-            throw new ValidationException('This email address is already in use.');
+            throw new ValidationException('This email address is already in use.', 'auth.email_in_use');
         }
 
         $user = $this->users->updateEmail((int) $tokenRow['user_id'], $newEmail);
@@ -232,7 +232,8 @@ final class AuthService
 
         if (strlen($password) < 8 || $classes < 3) {
             throw new ValidationException(
-                'Password must be at least 8 characters and use at least 3 of: lowercase, uppercase, digits, symbols.'
+                'Password must be at least 8 characters and use at least 3 of: lowercase, uppercase, digits, symbols.',
+                'auth.password_policy'
             );
         }
     }

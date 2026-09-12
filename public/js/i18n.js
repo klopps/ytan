@@ -21,3 +21,28 @@ function t(key, vars) {
         return result.split('{' + name + '}').join(String(vars[name]));
     }, template);
 }
+
+/**
+ * Resolves a JSON API error body's {message, code} (the "error" object out
+ * of {"error":{"message":...,"code":...}} - see src/App.php's error
+ * handler and ApiException::getErrorCode()) into a user-facing string:
+ * prefers the machine-readable code translated via the "error.<code>" key
+ * when the backend attached one and a translation exists, falling back to
+ * the raw (English-only) message otherwise - so a throw site not yet
+ * migrated to a code still shows something sensible instead of breaking.
+ *
+ * api-client.js exposes this shape as a thrown Error's `.data` property;
+ * the standalone auth pages (forgot/set-password, confirm-email) read it
+ * directly off their parsed fetch() response body's `.error` field.
+ */
+function translateApiError(error) {
+    if (!error) {
+        return '';
+    }
+    if (!error.code) {
+        return error.message;
+    }
+    var key = 'error.' + error.code;
+    var translated = t(key);
+    return translated === key ? error.message : translated;
+}
