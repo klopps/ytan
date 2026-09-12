@@ -9,4 +9,6 @@ Thumbs.db
 /.playwright-mcp/
 /storage/tour-images/*
 !/storage/tour-images/.gitkeep
+/storage/weather-cache/*
+!/storage/weather-cache/.gitkeep
 /.phpunit.cache/

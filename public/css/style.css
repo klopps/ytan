@@ -1788,6 +1788,138 @@ img.wsi {
   font-size: 13px;
 }
 
+/**
+* Weather timeline panel (see weather.js) - a bottom sheet opened on
+* demand via the map's right-click/long-press context menu ("Weather data
+* for this location" - map-core.js's showMapContextMenu()), never shown
+* automatically. z-index:10, same tier as .cookiemenu: this is an
+* explicitly-opened overlay (unlike the passive, always-visible
+* .tour-mode-badge at z-index:5), but still sits below #sidemenu so
+* opening the drawer covers it, matching the app's established layering
+* convention for every other full-screen/overlay panel.
+*/
+.weather-timeline-panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 42vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-bg-panel);
+  box-shadow: var(--shadow-panel);
+  border-radius: 16px 16px 0 0;
+  z-index: 10;
+}
+
+.weather-timeline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  flex-shrink: 0;
+}
+
+.weather-timeline-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.weather-timeline-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.weather-timeline-marine-notice {
+  padding: 6px 14px 0;
+  font-size: 12px;
+  color: var(--color-text-faint);
+}
+
+.weather-timeline-strip {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 12px 14px;
+}
+
+.weather-timeline-message {
+  color: var(--color-text-faint);
+  font-size: 13px;
+  padding: 20px;
+  margin: auto;
+}
+
+.weather-timeline-day-divider {
+  flex-shrink: 0;
+  width: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  background-color: var(--color-accent-soft);
+  border-radius: 10px;
+  padding: 8px 4px;
+}
+
+.weather-timeline-hour-card {
+  flex-shrink: 0;
+  width: 62px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 4px;
+  border-radius: 10px;
+  background-color: var(--color-bg-subtle);
+}
+
+.weather-timeline-hour-card-current {
+  background-color: var(--color-accent-soft);
+  border: 1px solid var(--color-accent);
+}
+
+.weather-timeline-hour-time {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-faint);
+}
+
+.weather-timeline-hour-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.weather-timeline-hour-row .material-icons-round {
+  font-size: 15px;
+  color: var(--color-accent);
+}
+
+.weather-timeline-hour-row span {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
 /* Below this width the route-manager's handle/remove/add icons (15-21px,
    fine for a precise mouse pointer) are too small to reliably tap - bump
    them to the same ~40px touch-target minimum admin-user-table's .icon-btn

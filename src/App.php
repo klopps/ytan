@@ -26,6 +26,7 @@ use Ytan\Http\Controllers\SettingsController;
 use Ytan\Http\Controllers\TourController;
 use Ytan\Http\Controllers\TranslationController;
 use Ytan\Http\Controllers\UserController;
+use Ytan\Http\Controllers\WeatherController;
 use Ytan\Http\Controllers\WsiController;
 use Ytan\Http\Middleware\AuthMiddleware;
 use Ytan\Http\Middleware\CorsMiddleware;
@@ -34,9 +35,11 @@ use Ytan\Service\CaptchaService;
 use Ytan\Service\MailService;
 use Ytan\Service\TourImageService;
 use Ytan\Service\TourNotificationService;
+use Ytan\Service\CurlWeatherHttpClient;
 use Ytan\Service\TranslationRepository;
 use Ytan\Service\TranslationUsageScanner;
 use Ytan\Service\Translator;
+use Ytan\Service\WeatherService;
 use Ytan\Service\WsiRenderer;
 
 final class App
@@ -93,6 +96,9 @@ final class App
         $translationController = new TranslationController(
             new TranslationRepository($rootDir . '/resources/i18n'),
             new TranslationUsageScanner($rootDir)
+        );
+        $weatherController = new WeatherController(
+            new WeatherService($rootDir . '/storage/weather-cache', new CurlWeatherHttpClient())
         );
 
         $app = AppFactory::create();
@@ -197,6 +203,8 @@ final class App
         $app->post('/api/v1/users/{id}/send-reset', [$userController, 'sendResetEmail']);
 
         $app->get('/api/v1/wsi/{code}', [$wsiController, 'show']);
+
+        $app->get('/api/v1/weather', [$weatherController, 'show']);
 
         $app->put('/api/v1/settings/google-search-requires-login', [$settingsController, 'updateGoogleSearchRequiresLogin']);
 

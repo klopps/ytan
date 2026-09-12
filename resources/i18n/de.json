@@ -310,5 +310,15 @@
     "error.auth.token_password_required": "Token und Passwort sind erforderlich.",
     "error.auth.current_new_password_required": "Aktuelles und neues Passwort sind erforderlich.",
     "error.auth.profile_fields_required": "Vorname, Nachname, E-Mail und aktuelles Passwort sind erforderlich.",
-    "error.auth.token_required": "Token ist erforderlich."
+    "error.auth.token_required": "Token ist erforderlich.",
+    "weather.widget.close_aria_label": "Schließen",
+    "weather.field.temperature_aria_label": "Temperatur",
+    "weather.field.wind_aria_label": "Wind",
+    "weather.field.wave_aria_label": "Wellenhöhe",
+    "weather.marine.unavailable": "Hier keine Seegang-Daten verfügbar",
+    "weather.context_menu.item": "Meteodaten für diesen Ort",
+    "weather.context_menu.windy_item": "Auf Windy öffnen",
+    "weather.timeline.title": "Wetter für {lat}, {lng}",
+    "weather.timeline.loading": "Vorhersage wird geladen…",
+    "weather.timeline.failed": "Laden der Vorhersage fehlgeschlagen."
 }

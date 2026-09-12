@@ -150,6 +150,49 @@ let longPressCandidates = []; // every {overlay, handler} registered via attachL
 let overlayProjection; // OverlayView set in initMap(), exposes getProjection() for pixel<->LatLng conversion
 
 /**
+ * Generic "right-click / long-press on an empty point on the map" context
+ * menu - as opposed to poi.js/route.js/area.js's own per-overlay context
+ * menus (a click on one of THEIR markers/polylines/polygons is handled
+ * entirely separately, before this one ever gets a chance - see
+ * findLongPressTarget()'s "nothing hit" fallback below and the map-level
+ * 'rightclick' listener in initMap()). Feature files register their own
+ * item via registerMapContextMenuItem() (e.g. weather.js's "Weather data
+ * for this location") instead of this file needing to know about them -
+ * meant to grow over time, per the same "just push into a shared array"
+ * extensibility already used for longPressCandidates above.
+ */
+let mapContextMenuItems = []; // { icon, labelKey, handler(latLng) }
+let mapContextMenuLatLng = null; // the location the currently-open menu was opened for, read by invokeMapContextMenuItem()
+
+function registerMapContextMenuItem(iconName, labelKey, handler) {
+    mapContextMenuItems.push({ icon: iconName, labelKey: labelKey, handler: handler });
+}
+
+function invokeMapContextMenuItem(index) {
+    closeContextMenu();
+    if (mapContextMenuItems[index] && mapContextMenuLatLng) {
+        mapContextMenuItems[index].handler(mapContextMenuLatLng);
+    }
+}
+
+function showMapContextMenu(latLng) {
+    if (mapContextMenuItems.length === 0) {
+        return;
+    }
+    mapContextMenuLatLng = latLng;
+
+    var content = '';
+    for (let i = 0; i < mapContextMenuItems.length; i++) {
+        content += '<div class="contextMenuItem" onclick="invokeMapContextMenuItem(' + i + ');"><i class="material-icons-round">' + mapContextMenuItems[i].icon + '</i>' + t(mapContextMenuItems[i].labelKey) + '</div>';
+    }
+    content += '<div class="contextMenuItem" onclick="closeContextMenu();"><i class="material-icons-round">close</i>' + t('common.cancel') + '</div>';
+
+    contextMenu.setPosition(latLng);
+    contextMenu.setContent(content);
+    contextMenu.open(map);
+}
+
+/**
  * Registers overlay/handler with findLongPressTarget()'s hit-test registry
  * - that plus the touch handling in initLongPressTouchTracking() is the
  * whole mechanism now. An earlier version also armed a plain
@@ -168,15 +211,23 @@ function attachLongPressContextMenu(overlay, handler) {
 }
 
 /**
- * Runs a long-press's handler (opens the context menu). Every call site
- * that can trigger a long-press (the desktop timer above, and the touch
- * paths in initLongPressTouchTracking()) calls this instead of invoking the
- * handler directly, purely so there's one place documenting the click-
- * suppression problem below (fireLongPress() itself does nothing beyond
- * calling the handler - shouldSuppressClick() is what actually solves it).
+ * Runs a long-press's resolution - either a specific overlay's handler
+ * (POI/route/area), or, when findLongPressTarget() hit nothing, the
+ * generic map-level context menu (showMapContextMenu() above) at the
+ * long-pressed location. Every call site that can trigger a long-press
+ * (the touch paths in initLongPressTouchTracking()) calls this instead of
+ * invoking a handler directly, purely so there's one place documenting the
+ * click-suppression problem below (fireLongPress() itself does nothing
+ * beyond that dispatch - shouldSuppressClick() is what actually solves it).
+ *
+ * @param {{handler: ?function, event: {latLng: google.maps.LatLng}}} pending
  */
-function fireLongPress(handler, event) {
-    handler(event);
+function fireLongPress(pending) {
+    if (pending.handler) {
+        pending.handler(pending.event);
+    } else {
+        showMapContextMenu(pending.event.latLng);
+    }
 }
 
 /**
@@ -291,7 +342,13 @@ function findLongPressTarget(clientX, clientY) {
         }
     }
 
-    return null;
+    // Nothing registered (POI/route/area) is under this point - still
+    // return the computed location, with a null handler, so callers can
+    // fall back to the generic map-level context menu (showMapContextMenu())
+    // instead of just discarding the long-press. Only the "no projection
+    // available yet" case above returns a bare null - that one genuinely
+    // has no location to offer.
+    return { handler: null, event: eventForHandler };
 }
 
 /**
@@ -374,7 +431,7 @@ function initLongPressTouchTracking() {
             }
             const pending = longPressPendingOverlay;
             longPressPendingOverlay = null;
-            fireLongPress(pending.handler, pending.event);
+            fireLongPress(pending);
         }, 50);
     }
 
@@ -399,7 +456,7 @@ function initLongPressTouchTracking() {
         domEvent.preventDefault();
         const pending = longPressPendingOverlay;
         longPressPendingOverlay = null;
-        fireLongPress(pending.handler, pending.event);
+        fireLongPress(pending);
     }, true);
 }
 
@@ -634,6 +691,15 @@ function initMap() {
         updatePoiClustering();
     });
 
+    // Desktop equivalent of findLongPressTarget()'s touch fallback below -
+    // Maps only fires 'rightclick' on the map itself when the click isn't
+    // on a marker/polyline/polygon (those have their own 'rightclick'/
+    // 'contextmenu' listeners, wired up separately by poi.js/route.js/
+    // area.js), so this needs no hit-testing of its own.
+    map.addListener('rightclick', (event) => {
+        showMapContextMenu(event.latLng);
+    });
+
     map.setClickableIcons(true);
 
     myPositionMarker = new google.maps.Marker({
@@ -642,6 +708,8 @@ function initMap() {
         map: map
     });
     myPositionMarker.setVisible(false);
+
+    initWeatherWidget(); // weather.js - registers its "Weather data for this location" map context menu item
 }
 
 function panToGeolocation() {

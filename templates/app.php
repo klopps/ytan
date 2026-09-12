@@ -25,6 +25,7 @@
     <script src="./js/confirm-dialog.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/confirm-dialog.js') ?>"></script>
     <script src="./js/nav-menu.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/nav-menu.js') ?>"></script>
     <script src="./js/map-core.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/map-core.js') ?>"></script>
+    <script src="./js/weather.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/weather.js') ?>"></script>
     <script src="./js/poi.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/poi.js') ?>"></script>
     <script src="./js/route.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/route.js') ?>"></script>
     <script src="./js/area.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/area.js') ?>"></script>
@@ -314,6 +315,20 @@
         <span class="tour-mode-badge-sub"><?= $t('app.tour_mode.label') ?></span>
       </div>
       <div class="tour-mode-badge-close" onclick="exitTourMode();"><i class="material-icons-round">close</i></div>
+    </div>
+
+    <!-- WEATHER TIMELINE PANEL - opened on demand via the map's right-click/
+         long-press context menu ("Weather data for this location" - see
+         weather.js/map-core.js's showMapContextMenu()), never shown
+         automatically. A bottom sheet with a horizontally scrollable
+         hourly strip (temperature/wind/waves) covering the next 7 days. -->
+    <div id="weatherTimelinePanel" class="weather-timeline-panel" style="display:none;">
+      <div class="weather-timeline-header">
+        <span id="weatherTimelineTitle" class="weather-timeline-title"></span>
+        <div class="weather-timeline-close" onclick="closeWeatherTimeline();" aria-label="<?= htmlspecialchars($t('weather.widget.close_aria_label'), ENT_QUOTES) ?>"><i class="material-icons-round">close</i></div>
+      </div>
+      <div id="weatherTimelineMarineNotice" class="weather-timeline-marine-notice" style="display:none;"><?= htmlspecialchars($t('weather.marine.unavailable'), ENT_QUOTES) ?></div>
+      <div id="weatherTimelineStrip" class="weather-timeline-strip"></div>
     </div>
 
     <!-- EDIT ADDITIONAL TOOLBAR -------------------------------------->
