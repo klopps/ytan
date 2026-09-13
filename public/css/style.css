@@ -1805,11 +1805,20 @@ img.wsi {
   left: 0;
   right: 0;
   bottom: 0;
-  /* Taller than before (was 42vh) - the day-glance row and week chart
-     added above the hourly table need more headroom; the table itself
-     still scrolls internally (.weather-timeline-table-scroll) if the
-     viewport is short. */
-  max-height: 52vh;
+  /* Taller than before (was 42vh, then 52vh) - the day-glance row, week
+     chart and tide curve added above/within the hourly table need real
+     headroom (~420px of fixed, non-vh content: header + day-glance +
+     week-chart + the table's own 8 rows + attribution). 52vh looked
+     fine tested against a full DEVICE height (e.g. 844px), but a real
+     mobile BROWSER's actual viewport is significantly shorter than the
+     device once its own address bar/toolbar chrome is accounted for
+     (confirmed: ~660px, not 844px, is a realistic phone browser
+     viewport height) - at that more realistic height 52vh cut off most
+     of the table. 78vh keeps everything visible without scrolling on
+     any real viewport down to roughly 540px tall; the table itself
+     still scrolls internally (.weather-timeline-table-scroll) as a
+     fallback on anything shorter than that. */
+  max-height: 78vh;
   display: flex;
   flex-direction: column;
   background-color: var(--color-bg-panel);
@@ -1988,6 +1997,14 @@ img.wsi {
   left: 0;
   z-index: 3;
   flex: 0 0 auto;
+  /* Without this, .weather-timeline-table-scroll's default align-items
+     (stretch) forces this column's height down to whatever cross-space
+     table-scroll actually has - which can be less than this column's own
+     rows add up to once the panel runs out of room - instead of letting
+     it keep its full natural height and have table-scroll's own
+     overflow-y:auto do its job. flex-start makes this column size itself
+     from its own content, same reasoning as .weather-timeline-strip below. */
+  align-self: flex-start;
   display: flex;
   flex-direction: column;
   background-color: var(--color-bg-panel);
@@ -2024,6 +2041,15 @@ img.wsi {
   position: relative; /* containing block for .weather-timeline-now-line */
   display: flex;
   flex: 0 0 auto;
+  /* Same reasoning as .weather-timeline-row-labels' align-self above -
+     without it, .weather-timeline-table-scroll's default stretch can
+     squeeze this shorter than its own hour-columns actually need,
+     silently compressing every row instead of properly overflowing
+     table-scroll's own scroll area. Doesn't affect how THIS container's
+     own children (hour columns / day-divider-tiles) stretch to match
+     ITS height below - that's a separate stretch relationship and stays
+     default (the divider tiles rely on it to fill the full row stack). */
+  align-self: flex-start;
   padding-right: 14px;
 }
 
@@ -2079,21 +2105,88 @@ img.wsi {
 
 /* Row heights - identical values implied by .weather-timeline-row-labels
    .rl above, so every row lines up between the sticky label column and
-   every hour column/day-divider-tile. */
+   every hour column/day-divider-tile.
+   flex-shrink:0 on every single one of these is required, not cosmetic:
+   .weather-timeline-table-scroll is itself a flex:1 child inside the
+   panel's constrained max-height, and by default every flex item's
+   cross-size can be *shrunk* by its container's stretch behavior (the
+   default align-items) down past its own content size - without this,
+   once the panel ran out of room (confirmed: adding the 54px tide row
+   pushed total content past the available space), the browser silently
+   compressed every row a few percent instead of overflowing, which is
+   what actually broke scrolling (desktop) and made it impossible to
+   reach the rest of the table at all (mobile, no room left to shrink
+   into) - .weather-timeline-table-scroll's own overflow-y:auto never
+   got the chance to activate because nothing below it was allowed to
+   stay at its real size long enough to overflow it. It also desynced
+   the tide curve/dot/label SVG (positioned by weather.js by ADDING UP
+   these same pixel heights) from where the rows actually rendered,
+   which is what looked like "the label column doesn't line up with the
+   data" - both symptoms, one root cause. */
 .weather-timeline-hour-col .r-time,
-.weather-timeline-row-labels .r-time { height: 20px; }
+.weather-timeline-row-labels .r-time { height: 20px; flex-shrink: 0; }
 .weather-timeline-hour-col .r-icon,
-.weather-timeline-row-labels .r-icon { height: 22px; }
+.weather-timeline-row-labels .r-icon { height: 22px; flex-shrink: 0; }
 .weather-timeline-hour-col .r-temp,
-.weather-timeline-row-labels .r-temp { height: 30px; }
+.weather-timeline-row-labels .r-temp { height: 30px; flex-shrink: 0; }
 .weather-timeline-hour-col .r-rain,
-.weather-timeline-row-labels .r-rain { height: 18px; }
+.weather-timeline-row-labels .r-rain { height: 18px; flex-shrink: 0; }
 .weather-timeline-hour-col .r-wind,
-.weather-timeline-row-labels .r-wind { height: 22px; }
+.weather-timeline-row-labels .r-wind { height: 22px; flex-shrink: 0; }
 .weather-timeline-hour-col .r-gust,
-.weather-timeline-row-labels .r-gust { height: 22px; }
+.weather-timeline-row-labels .r-gust { height: 22px; flex-shrink: 0; }
 .weather-timeline-hour-col .r-wave,
-.weather-timeline-row-labels .r-wave { height: 18px; }
+.weather-timeline-row-labels .r-wave { height: 18px; flex-shrink: 0; }
+.weather-timeline-hour-col .r-tide,
+.weather-timeline-row-labels .r-tide { height: 34px; flex-shrink: 0; }
+
+/* Tide curve - one continuous SVG path spanning every hour column (built
+   by weather.js's buildWeatherTideCurve()), not per-cell numbers like the
+   other rows. Sits behind the now-line (lower z-index) so that line still
+   reads clearly wherever it crosses the curve. The .r-tide div each hour
+   column/row-label renders is otherwise empty - it only reserves this
+   row's height so the curve lines up under the right row. Flut/Ebbe time
+   labels sit INSIDE the curve's own range (a high's label below its dot,
+   a low's above - see buildWeatherTideCurve()), not in extra margin
+   outside it, which is what keeps this row reasonably short. */
+.weather-timeline-tide-curve {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.weather-timeline-tide-curve-fill {
+  fill: var(--color-accent);
+  opacity: 0.22;
+}
+
+.weather-timeline-tide-curve-line {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 2px;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/* Flut (high) / Ebbe (low) markers - same dot style for both, since the
+   dot's position (near the label zone above vs. below the curve) already
+   disambiguates high from low without needing a second visual cue. */
+.weather-timeline-tide-dot {
+  fill: var(--color-bg-panel);
+  stroke: var(--color-accent);
+  stroke-width: 2px;
+}
+
+.weather-timeline-tide-label {
+  font-family: var(--font-body);
+  font-size: 8px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  fill: var(--color-text-secondary);
+  text-anchor: middle;
+}
 
 .weather-timeline-hour-col .r-time,
 .weather-timeline-hour-col .r-rain,
@@ -2158,7 +2251,15 @@ img.wsi {
 .weather-timeline-hour-col .r-wind,
 .weather-timeline-hour-col .r-gust {
   width: 22px;
-  margin: 1px 2px 0;
+  /* Horizontal-only - a vertical margin here would add to this row's
+     total height in the flex column layout (margin-box, not just the
+     already-exact 22px border-box height), drifting this row and every
+     one below it out of alignment with the row-labels column, which has
+     no such margin on its own .r-wind/.r-gust. Confirmed precisely via
+     getBoundingClientRect() on every row of both columns - a stray
+     "margin: 1px 2px 0" (1px top) was the actual cause of the reported
+     misalignment, not the row heights themselves. */
+  margin: 0 2px;
   border-radius: 4px;
   display: flex;
   align-items: center;

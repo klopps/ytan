@@ -323,6 +323,7 @@
     "weather.row.wind": "Wind",
     "weather.row.gusts": "Gusts",
     "weather.row.wave": "Wave",
+    "weather.row.tide": "Tide",
     "weather.marine.unavailable": "No marine data available here",
     "weather.marker.title": "Weather location",
     "weather.context_menu.item": "Weather data for this location",

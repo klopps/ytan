@@ -323,6 +323,7 @@
     "weather.row.wind": "Wind",
     "weather.row.gusts": "Böen",
     "weather.row.wave": "Welle",
+    "weather.row.tide": "Gezeiten",
     "weather.marine.unavailable": "Hier keine Seegang-Daten verfügbar",
     "weather.marker.title": "Wetterstandort",
     "weather.context_menu.item": "Meteodaten für diesen Ort",

@@ -281,6 +281,7 @@ function renderWeatherTimeline(data, preserveScroll) {
     let cumulativeLeft = 0;
     let prevHourLeft = 0, prevHourTime = null;
     let nowLineLeft = null;
+    const tidePoints = []; // {x, value} - only collected when has_marine_data, drawn as one continuous curve after the loop
 
     data.hourly.forEach((hour) => {
         const hourDate = new Date(hour.time);
@@ -307,6 +308,12 @@ function renderWeatherTimeline(data, preserveScroll) {
 
         strip.appendChild(buildWeatherHourColumn(hour, hourDate, data.has_marine_data));
 
+        if (data.has_marine_data && hour.tide_height !== null) {
+            // Centered under its hour column, same as every per-hour value -
+            // the tide curve is drawn as one path afterwards, not per-cell.
+            tidePoints.push({ x: cumulativeLeft + WEATHER_HOUR_COL_WIDTH / 2, value: hour.tide_height, time: hour.time });
+        }
+
         prevHourLeft = cumulativeLeft;
         prevHourTime = hourDate;
         cumulativeLeft += WEATHER_HOUR_COL_WIDTH;
@@ -317,6 +324,10 @@ function renderWeatherTimeline(data, preserveScroll) {
         // 7-day window) - pin the line to the last column instead of
         // leaving it unset.
         nowLineLeft = prevHourLeft;
+    }
+
+    if (tidePoints.length > 1) {
+        strip.appendChild(buildWeatherTideCurve(tidePoints, cumulativeLeft));
     }
 
     const nowLine = document.createElement('div');
@@ -342,12 +353,13 @@ function weatherRowLabelsHTML(hasMarineData) {
     let html =
         '<div class="rl r-time"><svg><use href="#ic-clock"/></svg>' + escapeHTML(t('weather.row.time')) + '</div>' +
         '<div class="rl r-icon"></div>' +
-        '<div class="rl r-temp"><svg><use href="#ic-thermo"/></svg>' + escapeHTML(t('weather.row.temperature')) + '</div>' +
-        '<div class="rl r-rain"><svg><use href="#ic-drop"/></svg>' + escapeHTML(t('weather.row.precipitation')) + '</div>' +
+        '<div class="rl r-temp"><svg><use href="#ic-thermo"/></svg>' + escapeHTML(t('weather.row.temperature')) + ' <span class="rl-unit">&deg;C</span></div>' +
+        '<div class="rl r-rain"><svg><use href="#ic-drop"/></svg>' + escapeHTML(t('weather.row.precipitation')) + ' <span class="rl-unit">mm</span></div>' +
         '<div class="rl r-wind"><svg><use href="#ic-flag"/></svg>' + escapeHTML(t('weather.row.wind')) + ' <span class="rl-unit">' + escapeHTML(windUnit) + '</span></div>' +
         '<div class="rl r-gust"><svg><use href="#ic-gust"/></svg>' + escapeHTML(t('weather.row.gusts')) + ' <span class="rl-unit">' + escapeHTML(windUnit) + '</span></div>';
     if (hasMarineData) {
-        html += '<div class="rl r-wave"><svg><use href="#ic-wave"/></svg>' + escapeHTML(t('weather.row.wave')) + '</div>';
+        html += '<div class="rl r-wave"><svg><use href="#ic-wave"/></svg>' + escapeHTML(t('weather.row.wave')) + ' <span class="rl-unit">m</span></div>';
+        html += '<div class="rl r-tide"><svg><use href="#ic-tide"/></svg>' + escapeHTML(t('weather.row.tide')) + '</div>';
     }
     return html;
 }
@@ -402,7 +414,117 @@ function buildWeatherHourColumn(hour, hourDate, hasMarineData) {
         col.appendChild(waveRow);
     }
 
+    if (hasMarineData) {
+        // Empty on purpose - just reserves the row's height so every column
+        // stays the same total height and the tide curve (one continuous
+        // path drawn separately, see buildWeatherTideCurve()) lines up
+        // under the correct row.
+        const tideRow = document.createElement('div');
+        tideRow.className = 'r-tide';
+        col.appendChild(tideRow);
+    }
+
     return col;
+}
+
+// Row heights in DOM order, mirroring the CSS heights in style.css - used
+// to compute where the tide curve's row starts (sum of every row above it).
+const WEATHER_ROW_HEIGHTS = { time: 20, icon: 22, temp: 30, rain: 18, wind: 22, gust: 22, wave: 18, tide: 34 };
+
+function pad2(n) {
+    return String(n).padStart(2, '0');
+}
+
+/**
+ * A local high/low is only ever exactly on an hourly sample by
+ * coincidence - Open-Meteo gives hourly points, but the real tide peaks
+ * and dips between them. Fits a parabola through the extremum sample and
+ * its two immediate neighbors (standard 3-point vertex interpolation)
+ * and returns that vertex's estimated true time/value/x-position, rather
+ * than just reporting the hourly sample's own (always-:00) timestamp.
+ * xAt/timeAt bracket the vertex between whichever two ADJACENT points it
+ * falls between, using their real pixel/time gap - not an assumed
+ * uniform hour width, since a day-divider tile widens that gap by more
+ * than one hour's worth of pixels wherever a date boundary falls.
+ */
+function interpolateTideExtremum(points, i) {
+    const y0 = points[i - 1].value, y1 = points[i].value, y2 = points[i + 1].value;
+    const denom = y0 - 2 * y1 + y2;
+    let t = denom === 0 ? 0 : 0.5 * (y0 - y2) / denom; // fraction of one hour, offset from point i
+    t = Math.max(-0.999, Math.min(0.999, t));
+    const value = denom === 0 ? y1 : y1 - (y2 - y0) * (y2 - y0) / (8 * denom);
+
+    const neighbor = t >= 0 ? points[i + 1] : points[i - 1];
+    const x = points[i].x + Math.abs(t) * (neighbor.x - points[i].x) * (t >= 0 ? 1 : -1);
+    const timeMs = new Date(points[i].time).getTime() + t * 3600000;
+
+    return { x: x, value: value, time: new Date(timeMs) };
+}
+
+/**
+ * The tide row isn't per-cell numbers like the others - it's one
+ * continuous curve (an SVG line, optionally filled) spanning every hour
+ * column, since a rise/fall shape only reads as a shape when drawn
+ * continuously. Points are pixel positions already computed by the
+ * caller's main render loop (same x-coordinates the hour columns/day
+ * dividers actually ended up at), so the curve always lines up exactly
+ * under the (empty) .r-tide placeholder each hour column reserves.
+ *
+ * Each local high (Flut) and low (Ebbe) gets a dot at its interpolated
+ * true position (see interpolateTideExtremum()) plus that exact time as
+ * a label - on purpose placed on the INSIDE of the curve (a high's label
+ * sits just below its dot, a low's just above), not stacked in a
+ * dedicated margin outside the curve's own range, so the row doesn't
+ * need extra height reserved purely for labels.
+ */
+function buildWeatherTideCurve(points, totalWidth) {
+    const rowTop = WEATHER_ROW_HEIGHTS.time + WEATHER_ROW_HEIGHTS.icon + WEATHER_ROW_HEIGHTS.temp +
+        WEATHER_ROW_HEIGHTS.rain + WEATHER_ROW_HEIGHTS.wind + WEATHER_ROW_HEIGHTS.gust + WEATHER_ROW_HEIGHTS.wave;
+    const rowHeight = WEATHER_ROW_HEIGHTS.tide;
+    const padding = 3; // keeps the curve's own peaks/troughs off the row's top/bottom edge
+    // Label baseline distance from its dot, toward the row's center - a
+    // high's label sits a bit further from its dot than a low's (more
+    // breathing room from the curve line, per explicit request).
+    const labelOffsetHigh = 13;
+    const labelOffsetLow = 9;
+
+    const values = points.map((p) => p.value);
+    const vMin = Math.min.apply(null, values), vMax = Math.max.apply(null, values);
+    const vRange = Math.max(0.01, vMax - vMin); // guard against a perfectly flat curve dividing by zero
+
+    const toY = (value) => rowTop + rowHeight - padding - (value - vMin) / vRange * (rowHeight - 2 * padding);
+    const lineD = points.map((p, i) => (i === 0 ? 'M' : 'L') + p.x.toFixed(1) + ',' + toY(p.value).toFixed(1)).join(' ');
+    const fillD = lineD + ' L' + points[points.length - 1].x.toFixed(1) + ',' + (rowTop + rowHeight) +
+        ' L' + points[0].x.toFixed(1) + ',' + (rowTop + rowHeight) + ' Z';
+
+    let markersHTML = '';
+    for (let i = 1; i < points.length - 1; i++) {
+        const prev = points[i - 1].value, cur = points[i].value, next = points[i + 1].value;
+        const isHigh = cur > prev && cur > next;
+        const isLow = cur < prev && cur < next;
+        if (!isHigh && !isLow) {
+            continue;
+        }
+        const extremum = interpolateTideExtremum(points, i);
+        const x = extremum.x.toFixed(1);
+        const y = toY(extremum.value);
+        const timeLabel = pad2(extremum.time.getHours()) + ':' + pad2(extremum.time.getMinutes());
+        const labelY = isHigh ? (y + labelOffsetHigh) : (y - labelOffsetLow);
+        markersHTML +=
+            '<circle class="weather-timeline-tide-dot' + (isHigh ? ' is-high' : ' is-low') + '" cx="' + x + '" cy="' + y.toFixed(1) + '" r="2.2"/>' +
+            '<text class="weather-timeline-tide-label" x="' + x + '" y="' + labelY.toFixed(1) + '">' + timeLabel + '</text>';
+    }
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'weather-timeline-tide-curve');
+    svg.setAttribute('width', totalWidth);
+    svg.setAttribute('height', rowTop + rowHeight);
+    svg.setAttribute('viewBox', '0 0 ' + totalWidth + ' ' + (rowTop + rowHeight));
+    svg.innerHTML =
+        '<path class="weather-timeline-tide-curve-fill" d="' + fillD + '"/>' +
+        '<path class="weather-timeline-tide-curve-line" d="' + lineD + '"/>' +
+        markersHTML;
+    return svg;
 }
 
 /**

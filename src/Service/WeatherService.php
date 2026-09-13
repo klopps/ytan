@@ -30,7 +30,7 @@ final class WeatherService
     private const MARINE_URL = 'https://marine-api.open-meteo.com/v1/marine';
 
     private const GENERAL_HOURLY_VARS = 'temperature_2m,apparent_temperature,wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation,weather_code';
-    private const MARINE_HOURLY_VARS = 'wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,wind_wave_height,wind_wave_direction,wind_wave_period,sea_surface_temperature';
+    private const MARINE_HOURLY_VARS = 'wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,wind_wave_height,wind_wave_direction,wind_wave_period,sea_surface_temperature,sea_level_height_msl';
 
     // Open-Meteo's marine model caps hourly forecasts at 7 days - matching
     // that for the general forecast too keeps both series the same length
@@ -176,6 +176,15 @@ final class WeatherService
                 'wind_wave_direction' => $hourly['wind_wave_direction'][$index] ?? null,
                 'wind_wave_period' => $hourly['wind_wave_period'][$index] ?? null,
                 'sea_surface_temperature' => $hourly['sea_surface_temperature'][$index] ?? null,
+                // Astronomical/oceanographic sea level relative to mean sea
+                // level - i.e. the actual tide, not wave chop. Confirmed
+                // live: a real tidal North Sea point (Cuxhaven) returns a
+                // clean ~12.4h semi-diurnal curve swinging +-2m; the Baltic
+                // reference point this feature was built against shows only
+                // a small, non-tidal-shaped sea-level wobble (the Baltic is
+                // nearly tideless) - both are real, non-null data, just very
+                // different amplitudes depending on the coast.
+                'tide_height' => $hourly['sea_level_height_msl'][$index] ?? null,
             ];
         }
 
@@ -191,7 +200,7 @@ final class WeatherService
             'wave_height' => null, 'wave_direction' => null, 'wave_period' => null,
             'swell_wave_height' => null, 'swell_wave_direction' => null, 'swell_wave_period' => null,
             'wind_wave_height' => null, 'wind_wave_direction' => null, 'wind_wave_period' => null,
-            'sea_surface_temperature' => null,
+            'sea_surface_temperature' => null, 'tide_height' => null,
         ];
     }
 

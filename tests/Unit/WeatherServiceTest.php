@@ -50,6 +50,7 @@ final class WeatherServiceTest extends TestCase
                 'wind_wave_direction' => [225, 226],
                 'wind_wave_period' => [1.85, 1.90],
                 'sea_surface_temperature' => [17.5, 17.4],
+                'sea_level_height_msl' => [-0.21, -0.23],
             ],
         ]);
     }
@@ -79,6 +80,7 @@ final class WeatherServiceTest extends TestCase
         $this->assertSame(193, $first['wind_direction']);
         $this->assertSame(0.28, $first['wave_height']);
         $this->assertSame(17.5, $first['sea_surface_temperature']);
+        $this->assertSame(-0.21, $first['tide_height']);
     }
 
     public function testHasMarineDataIsFalseWhenEveryHourIsNullInland(): void
@@ -97,6 +99,7 @@ final class WeatherServiceTest extends TestCase
 
         $this->assertFalse($result['has_marine_data']);
         $this->assertNull($result['hourly'][0]['wave_height']);
+        $this->assertNull($result['hourly'][0]['tide_height']);
         $this->assertSame(15.7, $result['hourly'][0]['temperature']);
     }
 

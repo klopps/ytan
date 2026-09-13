@@ -378,6 +378,7 @@
       <symbol id="ic-gust" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h11a2.5 2.5 0 100-5M3 13h15a2.5 2.5 0 110 5M3 18h9"/></symbol>
       <symbol id="ic-arrow" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l5 9.5-5-2.6-5 2.6z"/><path d="M12 22V9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/></symbol>
       <symbol id="ic-wave" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 15c1.6 0 1.6-2 3.2-2s1.6 2 3.2 2 1.6-2 3.2-2 1.6 2 3.2 2 1.6-2 3.2-2 1.6 2 3.2 2M2 19.5c1.6 0 1.6-2 3.2-2s1.6 2 3.2 2 1.6-2 3.2-2 1.6 2 3.2 2 1.6-2 3.2-2 1.6 2 3.2 2"/></symbol>
+      <symbol id="ic-tide" viewBox="0 0 24 24"><path d="M15 3.3a5 5 0 106 6.1A6 6 0 0115 3.3z" fill="currentColor"/><path d="M2 18.5c1.6 0 1.6-2.2 3.2-2.2s1.6 2.2 3.2 2.2 1.6-2.2 3.2-2.2 1.6 2.2 3.2 2.2 1.6-2.2 3.2-2.2 1.6 2.2 3.2 2.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></symbol>
     </svg>
 
     <!-- EDIT ADDITIONAL TOOLBAR -------------------------------------->
