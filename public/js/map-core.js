@@ -140,7 +140,7 @@ let maxZoomService;
  * happens synchronously at 'touchstart', independent of whatever Maps' own
  * gesture recognizer does afterward.
  */
-const LONG_PRESS_DURATION_MS = 550;
+const LONG_PRESS_DURATION_MS = 1000;
 const LONG_PRESS_MOVE_TOLERANCE_PX = 10;
 const LONG_PRESS_HIT_TEST_TOLERANCE_PX = 20; // line width/area edge tolerance for findLongPressTarget()'s polyline/polygon checks
 const LONG_PRESS_TOUCH_MARGIN_PX = 14; // extra slack around a marker's actual on-screen icon box, for finger imprecision
@@ -151,6 +151,7 @@ let longPressTouchStartPos = null;
 let longPressCancelled = false; // module-level (not just a closure in initLongPressTouchTracking()) so shouldSuppressClick() can read it too
 let longPressPendingOverlay = null; // {handler, event} - set by findLongPressTarget() at 'touchstart'
 let longPressCandidates = []; // every {overlay, handler} registered via attachLongPressContextMenu(), for findLongPressTarget()
+let longPressFireTimer = null; // setTimeout id armed at 'touchstart', see initLongPressTouchTracking()
 let overlayProjection; // OverlayView set in initMap(), exposes getProjection() for pixel<->LatLng conversion
 
 /**
@@ -189,7 +190,8 @@ function showMapContextMenu(latLng) {
     for (let i = 0; i < mapContextMenuItems.length; i++) {
         content += '<div class="contextMenuItem" onclick="invokeMapContextMenuItem(' + i + ');"><i class="material-icons-round">' + mapContextMenuItems[i].icon + '</i>' + t(mapContextMenuItems[i].labelKey) + '</div>';
     }
-    content += '<div class="contextMenuItem" onclick="closeContextMenu();"><i class="material-icons-round">close</i>' + t('common.cancel') + '</div>';
+    // No extra "Cancel" row here - the InfoWindow's own native close button
+    // (top-right "x", not something this app draws itself) already closes it.
 
     contextMenu.setPosition(latLng);
     contextMenu.setContent(content);
@@ -371,6 +373,18 @@ function findLongPressTarget(clientX, clientY) {
  * paths are added below, independent of one another and of 'touchend', so
  * whichever one the real device actually takes still ends up resolving the
  * long-press.
+ *
+ * The primary path is now a plain setTimeout armed at 'touchstart'
+ * (longPressFireTimer) that fires the long-press itself, LONG_PRESS_DURATION_MS
+ * after the finger goes down, while it's still held - not on release. The
+ * user-visible requirement is that the context menu opens automatically once
+ * held long enough, without first having to lift the finger (previously it
+ * only ever resolved on 'touchend'/'touchcancel'/the native 'contextmenu'
+ * event, all of which need the touch to actually end first). The
+ * 'touchend'/'touchcancel'/'contextmenu' paths below stay as fallbacks for
+ * whichever fires the long-press before the timer gets there (e.g. the
+ * native gesture above) - each nulls longPressPendingOverlay once resolved,
+ * so a later path finding it already null is a no-op, never a double-fire.
  */
 function initLongPressTouchTracking() {
     const mapDiv = map.getDiv();
@@ -387,7 +401,28 @@ function initLongPressTouchTracking() {
     // shouldSuppressClick()) tracks "this is no longer a plain single-finger
     // touch, ignore it" for the whole gesture.
 
+    // Fires the long-press right now, while the finger may still be down -
+    // called both by the touchstart-armed timer (the normal case) and by the
+    // touchend/touchcancel/contextmenu fallback paths below.
+    function resolvePendingLongPress() {
+        if (longPressCancelled || !longPressPendingOverlay) {
+            return;
+        }
+        clearLongPressTimer();
+        const pending = longPressPendingOverlay;
+        longPressPendingOverlay = null;
+        fireLongPress(pending);
+    }
+
+    function clearLongPressTimer() {
+        if (longPressFireTimer !== null) {
+            clearTimeout(longPressFireTimer);
+            longPressFireTimer = null;
+        }
+    }
+
     mapDiv.addEventListener('touchstart', function (domEvent) {
+        clearLongPressTimer();
         if (domEvent.touches.length !== 1) {
             // a 2nd+ finger joined an already-tracked touch - no longer a
             // candidate long press
@@ -402,6 +437,9 @@ function initLongPressTouchTracking() {
         // never fire for a touch at all (see the big comment above). Hit-test
         // right now, synchronously, from the real touch coordinates instead.
         longPressPendingOverlay = findLongPressTarget(touch.clientX, touch.clientY);
+        // Fire the long-press itself once held long enough - don't wait for
+        // the finger to lift (see the function-level comment above).
+        longPressFireTimer = setTimeout(resolvePendingLongPress, LONG_PRESS_DURATION_MS);
     }, { passive: true });
 
     mapDiv.addEventListener('touchmove', function (domEvent) {
@@ -410,12 +448,14 @@ function initLongPressTouchTracking() {
         }
         if (domEvent.touches.length !== 1) {
             longPressCancelled = true;
+            clearLongPressTimer();
             return;
         }
         const touch = domEvent.touches[0];
         if (Math.abs(touch.clientX - longPressTouchStartPos.x) > LONG_PRESS_MOVE_TOLERANCE_PX ||
             Math.abs(touch.clientY - longPressTouchStartPos.y) > LONG_PRESS_MOVE_TOLERANCE_PX) {
             longPressCancelled = true;
+            clearLongPressTimer();
         }
     }, { passive: true });
 
@@ -424,6 +464,12 @@ function initLongPressTouchTracking() {
             // another finger is still down - not the real end of this touch yet
             return;
         }
+        // The finger lifted before the touchstart-armed timer got there (a
+        // press held just under LONG_PRESS_DURATION_MS, or a plain tap) -
+        // cancel the pending timer so it can't fire late after release, and
+        // fall back to the release-time duration check for whatever
+        // shouldn't have fired but the timer hadn't caught yet.
+        clearLongPressTimer();
         const duration = Date.now() - longPressTouchStartTime;
 
         // Small grace delay before the check, mostly harmless now that
@@ -433,9 +479,7 @@ function initLongPressTouchTracking() {
             if (longPressCancelled || duration < LONG_PRESS_DURATION_MS || !longPressPendingOverlay) {
                 return;
             }
-            const pending = longPressPendingOverlay;
-            longPressPendingOverlay = null;
-            fireLongPress(pending);
+            resolvePendingLongPress();
         }, 50);
     }
 
@@ -458,9 +502,7 @@ function initLongPressTouchTracking() {
             return;
         }
         domEvent.preventDefault();
-        const pending = longPressPendingOverlay;
-        longPressPendingOverlay = null;
-        fireLongPress(pending);
+        resolvePendingLongPress();
     }, true);
 }
 
