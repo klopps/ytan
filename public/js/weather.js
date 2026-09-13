@@ -376,7 +376,17 @@ function buildWeatherHourColumn(hour, hourDate, hasMarineData) {
     const windRow = document.createElement('div');
     windRow.className = 'r-wind';
     windRow.style.backgroundColor = windSpeedColor(hour.wind_speed);
-    windRow.innerHTML = '<svg style="transform:rotate(' + hour.wind_direction + 'deg)"><use href="#ic-arrow"/></svg>' + escapeHTML(formatWindSpeedValue(hour.wind_speed, settings.windUnit));
+    // Open-Meteo's wind_direction is the standard meteorological "from"
+    // bearing (0deg/360deg = wind blowing FROM the north) - our ic-arrow glyph
+    // points straight up at 0deg rotation, so rotating by the raw value
+    // would point the arrow AT the direction the wind comes from, not
+    // where it's actually going. +180deg flips it to a flow/"blowing
+    // toward" arrow instead, matching Windy's own arrows (verified live
+    // against windy.com for this exact coordinate/time: their glyph's own
+    // rest orientation points down, and they rotate by the raw value with
+    // no offset - mathematically the same flow bearing this +180deg
+    // produces from an up-pointing glyph).
+    windRow.innerHTML = '<svg style="transform:rotate(' + (hour.wind_direction + 180) + 'deg)"><use href="#ic-arrow"/></svg>' + escapeHTML(formatWindSpeedValue(hour.wind_speed, settings.windUnit));
     col.appendChild(windRow);
 
     const gustRow = document.createElement('div');
