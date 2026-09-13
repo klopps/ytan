@@ -43,6 +43,7 @@
     "app.detail.routes": "Routes",
     "app.detail.areas": "Areas",
     "app.detail.wsi": "Windshelter Indicators",
+    "app.detail.radar": "Rain radar",
     "app.settings.users": "Users",
     "app.settings.users_sub": "Manage accounts & permissions",
     "app.settings.google_search_requires_login": "Google search requires login",
@@ -332,5 +333,10 @@
     "weather.timeline.title_with_place": "Weather for {place} ({lat}, {lng})",
     "weather.timeline.loading": "Loading forecast…",
     "weather.timeline.failed": "Failed to load the forecast.",
-    "weather.timeline.osm_attribution": "Place name data © OpenStreetMap contributors"
+    "weather.timeline.osm_attribution": "Place name data © OpenStreetMap contributors",
+    "radar.play_aria_label": "Play rain radar",
+    "radar.pause_aria_label": "Pause rain radar",
+    "radar.time_now": "Now",
+    "radar.time_minutes_ago": "{min} min ago",
+    "radar.zoom_hint": "Zoom out further to see the rain radar"
 }
