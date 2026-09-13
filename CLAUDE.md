@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 YTAN is a web app for planning kayak touring trips (POIs, routes, tours, areas on a map). It's a from-scratch rebuild of an older app called PESR, structured so a future native mobile client can talk to the same backend. See `README.md` for the full "notable differences from PESR" list (REST API replacing a `service.php?cmd=...` RPC dispatcher, JWT bearer auth replacing PHP sessions, a path-traversal fix in `WsiRenderer`, etc.) and `docs/API.md` for the REST API reference.
 
+## Tracking work (todo.md)
+
+The repo-root `todo.md` is the running record of feature work and notable fixes on this project — every new feature and every larger change must be noted there automatically, without the user having to ask. It's split into two top-level sections: `# Offene Punkte` (open items, still pending) at the top, and `# Erledigt` (done) at the bottom — each item is its own `##` heading. A still-open request stays under `# Offene Punkte`; once it's done, move its heading down into `# Erledigt` (don't leave finished work under "Offene Punkte", and don't leave a stale open item sitting below a done one). A closed item's body follows the existing style: the original request struck through (`~~...~~`) followed by `Gelöst (YYYY-MM-DD): ...` with a substantive explanation of what was actually built/fixed — not just "done", enough detail that the *why* and *how* survive independently of git history.
+
 ## Commands
 
 ```bash
