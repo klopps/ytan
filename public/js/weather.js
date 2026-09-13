@@ -99,15 +99,20 @@ let lastWeatherTimelineData = null;
 // custom icon set of its own.
 let weatherLocationMarker = null;
 
+// Bumped on every open; a reverse-geocoding answer only updates the title
+// if it's still the one for the CURRENT request - otherwise a slow lookup
+// for a previous location could overwrite the title after the user has
+// already moved on to a new one.
+let weatherTimelineRequestId = 0;
+
 function openWeatherTimelineForLocation(latLng) {
     const lat = latLng.lat();
     const lng = latLng.lng();
+    const requestId = ++weatherTimelineRequestId;
 
-    document.getElementById('weatherTimelineTitle').textContent = t('weather.timeline.title', {
-        lat: lat.toFixed(4),
-        lng: lng.toFixed(4),
-    });
+    setWeatherTimelineTitle(lat, lng, null);
     document.getElementById('weatherTimelineMarineNotice').style.display = 'none';
+    document.getElementById('weatherTimelineAttribution').style.display = 'none';
     document.getElementById('weatherTimelineStrip').innerHTML =
         '<div class="weather-timeline-message">' + escapeHTML(t('weather.timeline.loading')) + '</div>';
     document.getElementById('weatherTimelinePanel').style.display = 'flex';
@@ -145,6 +150,33 @@ function openWeatherTimelineForLocation(latLng) {
             document.getElementById('weatherTimelineStrip').innerHTML =
                 '<div class="weather-timeline-message">' + escapeHTML(t('weather.timeline.failed')) + '</div>';
         });
+
+    // Independent of the weather fetch above - a slow/failed place-name
+    // lookup must never hold up or break the actual forecast. Silent on
+    // failure (no user-facing error), same philosophy as this file's other
+    // best-effort lookups (e.g. a failed Windy link would just be a dead
+    // link, not a shown error).
+    Ytan.get('/geocode/reverse?lat=' + lat + '&lng=' + lng)
+        .then((answer) => {
+            if (requestId !== weatherTimelineRequestId) {
+                return;
+            }
+            const placeName = answer.data.place_name;
+            setWeatherTimelineTitle(lat, lng, placeName);
+            document.getElementById('weatherTimelineAttribution').style.display = placeName ? 'block' : 'none';
+        })
+        .catch((err) => {
+            log('openWeatherTimelineForLocation() reverse geocoding failed', LOG_WARN, err);
+        });
+}
+
+function setWeatherTimelineTitle(lat, lng, placeName) {
+    const titleKey = placeName ? 'weather.timeline.title_with_place' : 'weather.timeline.title';
+    document.getElementById('weatherTimelineTitle').textContent = t(titleKey, {
+        place: placeName,
+        lat: lat.toFixed(4),
+        lng: lng.toFixed(4),
+    });
 }
 
 function closeWeatherTimeline() {

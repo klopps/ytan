@@ -11,4 +11,6 @@ Thumbs.db
 !/storage/tour-images/.gitkeep
 /storage/weather-cache/*
 !/storage/weather-cache/.gitkeep
+/storage/geocoding-cache/*
+!/storage/geocoding-cache/.gitkeep
 /.phpunit.cache/

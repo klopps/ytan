@@ -1847,6 +1847,27 @@ img.wsi {
   color: var(--color-text-faint);
 }
 
+/* Required attribution for reverse-geocoded place names (Nominatim/OSM's
+   ODbL license) - only shown once a place name actually came back and is
+   displayed in the title, since that's the moment OSM data is genuinely
+   on screen; a failed/empty lookup leaves the title as plain coordinates
+   and this stays hidden. Sits after .weather-timeline-strip (bottom of the
+   panel) rather than under the title, kept out of the strip's flex sizing
+   via flex-shrink:0 so it can never be squeezed by the hour cards above it. */
+.weather-timeline-attribution {
+  display: block;
+  flex-shrink: 0;
+  padding: 0 14px 6px;
+  text-align: center;
+  font-size: 9px;
+  color: var(--color-text-faint);
+  text-decoration: none;
+}
+
+.weather-timeline-attribution:hover {
+  text-decoration: underline;
+}
+
 .weather-timeline-strip {
   flex: 1;
   display: flex;

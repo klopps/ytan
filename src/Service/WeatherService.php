@@ -50,7 +50,7 @@ final class WeatherService
 
     public function __construct(
         private readonly string $cacheDir,
-        private readonly WeatherHttpClient $httpClient,
+        private readonly JsonHttpClient $httpClient,
     ) {
     }
 

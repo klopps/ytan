@@ -20,6 +20,7 @@ use Ytan\Domain\User\UserRepository;
 use Ytan\Exception\ApiException;
 use Ytan\Http\Controllers\AreaController;
 use Ytan\Http\Controllers\AuthController;
+use Ytan\Http\Controllers\GeocodingController;
 use Ytan\Http\Controllers\PoiController;
 use Ytan\Http\Controllers\RouteController;
 use Ytan\Http\Controllers\SettingsController;
@@ -32,10 +33,11 @@ use Ytan\Http\Middleware\AuthMiddleware;
 use Ytan\Http\Middleware\CorsMiddleware;
 use Ytan\Service\AuthService;
 use Ytan\Service\CaptchaService;
+use Ytan\Service\CurlJsonHttpClient;
+use Ytan\Service\GeocodingService;
 use Ytan\Service\MailService;
 use Ytan\Service\TourImageService;
 use Ytan\Service\TourNotificationService;
-use Ytan\Service\CurlWeatherHttpClient;
 use Ytan\Service\TranslationRepository;
 use Ytan\Service\TranslationUsageScanner;
 use Ytan\Service\Translator;
@@ -97,8 +99,12 @@ final class App
             new TranslationRepository($rootDir . '/resources/i18n'),
             new TranslationUsageScanner($rootDir)
         );
+        $jsonHttpClient = new CurlJsonHttpClient();
         $weatherController = new WeatherController(
-            new WeatherService($rootDir . '/storage/weather-cache', new CurlWeatherHttpClient())
+            new WeatherService($rootDir . '/storage/weather-cache', $jsonHttpClient)
+        );
+        $geocodingController = new GeocodingController(
+            new GeocodingService($rootDir . '/storage/geocoding-cache', $jsonHttpClient, $locale)
         );
 
         $app = AppFactory::create();
@@ -205,6 +211,7 @@ final class App
         $app->get('/api/v1/wsi/{code}', [$wsiController, 'show']);
 
         $app->get('/api/v1/weather', [$weatherController, 'show']);
+        $app->get('/api/v1/geocode/reverse', [$geocodingController, 'reverse']);
 
         $app->put('/api/v1/settings/google-search-requires-login', [$settingsController, 'updateGoogleSearchRequiresLogin']);
 

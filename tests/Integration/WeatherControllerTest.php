@@ -8,11 +8,11 @@ use Ytan\Exception\ApiException;
 use Ytan\Exception\ValidationException;
 use Ytan\Http\Controllers\WeatherController;
 use Ytan\Service\WeatherService;
-use Ytan\Tests\Fixtures\FakeWeatherHttpClient;
+use Ytan\Tests\Fixtures\FakeJsonHttpClient;
 
 /**
  * Covers WeatherController's validation and response shape. WeatherService
- * is wired to a FakeWeatherHttpClient throughout - no test here ever makes
+ * is wired to a FakeJsonHttpClient throughout - no test here ever makes
  * a real network call. No DB fixtures needed (WeatherService never touches
  * $this->pdo), but ControllerTestCase remains the right base for its
  * request()/response()/decode() helpers, per this app's existing
@@ -24,7 +24,7 @@ final class WeatherControllerTest extends ControllerTestCase
     private const MARINE_URL = 'https://marine-api.open-meteo.com/v1/marine';
 
     private string $cacheDir;
-    private FakeWeatherHttpClient $httpClient;
+    private FakeJsonHttpClient $httpClient;
     private WeatherController $controller;
 
     protected function setUp(): void
@@ -33,7 +33,7 @@ final class WeatherControllerTest extends ControllerTestCase
 
         $this->cacheDir = sys_get_temp_dir() . '/ytan-weather-controller-test-' . uniqid();
         mkdir($this->cacheDir);
-        $this->httpClient = new FakeWeatherHttpClient();
+        $this->httpClient = new FakeJsonHttpClient();
         $this->httpClient->setResponseFor(self::FORECAST_URL, [
             'hourly' => [
                 'time' => ['2026-09-12T00:00'],

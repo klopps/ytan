@@ -7,7 +7,7 @@ namespace Ytan\Tests\Unit;
 use PHPUnit\Framework\TestCase;
 use Ytan\Exception\ApiException;
 use Ytan\Service\WeatherService;
-use Ytan\Tests\Fixtures\FakeWeatherHttpClient;
+use Ytan\Tests\Fixtures\FakeJsonHttpClient;
 
 final class WeatherServiceTest extends TestCase
 {
@@ -15,14 +15,14 @@ final class WeatherServiceTest extends TestCase
     private const MARINE_URL = 'https://marine-api.open-meteo.com/v1/marine';
 
     private string $cacheDir;
-    private FakeWeatherHttpClient $httpClient;
+    private FakeJsonHttpClient $httpClient;
     private WeatherService $service;
 
     protected function setUp(): void
     {
         $this->cacheDir = sys_get_temp_dir() . '/ytan-weather-test-' . uniqid();
         mkdir($this->cacheDir);
-        $this->httpClient = new FakeWeatherHttpClient();
+        $this->httpClient = new FakeJsonHttpClient();
         $this->service = new WeatherService($this->cacheDir, $this->httpClient);
 
         $this->httpClient->setResponseFor(self::FORECAST_URL, [

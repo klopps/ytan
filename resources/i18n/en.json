@@ -326,6 +326,8 @@
     "weather.context_menu.item": "Weather data for this location",
     "weather.context_menu.windy_item": "Open on Windy",
     "weather.timeline.title": "Weather for {lat}, {lng}",
+    "weather.timeline.title_with_place": "Weather for {place} ({lat}, {lng})",
     "weather.timeline.loading": "Loading forecast…",
-    "weather.timeline.failed": "Failed to load the forecast."
+    "weather.timeline.failed": "Failed to load the forecast.",
+    "weather.timeline.osm_attribution": "Place name data © OpenStreetMap contributors"
 }

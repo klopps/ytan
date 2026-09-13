@@ -4,21 +4,25 @@ declare(strict_types=1);
 
 namespace Ytan\Tests\Fixtures;
 
-use Ytan\Service\WeatherHttpClient;
+use Ytan\Service\JsonHttpClient;
 
 /**
- * Test double for WeatherHttpClient - holds canned responses keyed by
- * which base URL was requested (forecast vs marine), and counts calls so
- * tests can assert cache-hit behavior (the fake was NOT called again).
- * Never makes a real network request.
+ * Test double for JsonHttpClient - holds canned responses keyed by which
+ * base URL was requested, and counts calls so tests can assert cache-hit
+ * behavior (the fake was NOT called again). Never makes a real network
+ * request. Shared between WeatherService and GeocodingService tests since
+ * both depend on the same generic interface.
  */
-final class FakeWeatherHttpClient implements WeatherHttpClient
+final class FakeJsonHttpClient implements JsonHttpClient
 {
     /** @var array<string, array<string, mixed>|null> */
     private array $responses = [];
 
     /** @var list<string> */
     public array $requestedUrls = [];
+
+    /** @var list<array<string, scalar>> parallel to $requestedUrls */
+    public array $requestedQueries = [];
 
     /**
      * @param array<string, mixed>|null $response null simulates a failed
@@ -32,6 +36,7 @@ final class FakeWeatherHttpClient implements WeatherHttpClient
     public function getJson(string $baseUrl, array $query): ?array
     {
         $this->requestedUrls[] = $baseUrl;
+        $this->requestedQueries[] = $query;
 
         return $this->responses[$baseUrl] ?? null;
     }

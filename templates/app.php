@@ -338,6 +338,7 @@
       </div>
       <div id="weatherTimelineMarineNotice" class="weather-timeline-marine-notice" style="display:none;"><?= htmlspecialchars($t('weather.marine.unavailable'), ENT_QUOTES) ?></div>
       <div id="weatherTimelineStrip" class="weather-timeline-strip"></div>
+      <a id="weatherTimelineAttribution" class="weather-timeline-attribution" style="display:none;" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener"><?= htmlspecialchars($t('weather.timeline.osm_attribution'), ENT_QUOTES) ?></a>
     </div>
 
     <!-- EDIT ADDITIONAL TOOLBAR -------------------------------------->

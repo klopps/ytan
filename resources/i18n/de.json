@@ -326,6 +326,8 @@
     "weather.context_menu.item": "Meteodaten für diesen Ort",
     "weather.context_menu.windy_item": "Auf Windy öffnen",
     "weather.timeline.title": "Wetter für {lat}, {lng}",
+    "weather.timeline.title_with_place": "Wetter für {place} ({lat}, {lng})",
     "weather.timeline.loading": "Vorhersage wird geladen…",
-    "weather.timeline.failed": "Laden der Vorhersage fehlgeschlagen."
+    "weather.timeline.failed": "Laden der Vorhersage fehlgeschlagen.",
+    "weather.timeline.osm_attribution": "Ortsdaten © OpenStreetMap-Mitwirkende"
 }
