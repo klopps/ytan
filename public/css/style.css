@@ -1945,6 +1945,10 @@ img.wsi {
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
+/* Height matches the SVG's own viewBox height 1:1 (see weather.js's
+   renderWeatherWeekChart()) - CSS height is what actually reserves
+   pixel space, the viewBox is just the coordinate system, so the two
+   drifting apart would squeeze/stretch the whole chart. */
 .weather-timeline-week-chart-svg {
   display: block;
   width: 100%;
@@ -2063,8 +2067,19 @@ img.wsi {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
+  /* Real space BETWEEN the sunrise/date/sunset groups (each group's own
+     icon+text stays tight - see .sun/.date below) - explicit request,
+     the date info needs to read as visually separate from the sun times
+     flanking it, not just another line in the same stack. */
+  gap: 5px;
   text-align: center;
+}
+
+.weather-timeline-day-divider-tile .date {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
 }
 
 .weather-timeline-day-divider-tile .dow {
@@ -2080,6 +2095,28 @@ img.wsi {
   font-size: 11px;
   font-weight: 700;
   color: var(--color-accent);
+}
+
+/* Sunrise (above .date) / sunset (below .date) icon+time for this date,
+   if Open-Meteo's daily block had it - deliberately smaller and fainter
+   than the day label itself, which stays the visually dominant part of
+   the tile. Icon sits at the tile's outer edge on both ends (see the
+   DOM order built in buildWeatherDayDividerTile()), so the two groups
+   mirror each other around the date. */
+.weather-timeline-day-divider-tile .sun {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  font-size: 6.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-faint);
+}
+
+.weather-timeline-day-divider-tile .sun svg {
+  width: 9px;
+  height: 9px;
 }
 
 .weather-timeline-hour-col {

@@ -364,6 +364,8 @@
     <svg width="0" height="0" style="position:absolute" aria-hidden="true">
       <symbol id="ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.6" fill="currentColor" stroke="none"/><path d="M12 2.5v2.4M12 19.1v2.4M4.2 4.2l1.7 1.7M18.1 18.1l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.2 19.8l1.7-1.7M18.1 5.9l1.7-1.7"/></symbol>
       <symbol id="ic-moon" viewBox="0 0 24 24" fill="currentColor"><path d="M14 3a9 9 0 108.9 10.4A7 7 0 0114 3z"/></symbol>
+      <symbol id="ic-sunrise" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 10V4"/><path d="M9 7l3-3 3 3"/><path d="M5 17a7 7 0 0114 0"/><path d="M2.5 17h19"/></symbol>
+      <symbol id="ic-sunset" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v6"/><path d="M9 7l3 3 3-3"/><path d="M5 17a7 7 0 0114 0"/><path d="M2.5 17h19"/></symbol>
       <symbol id="ic-cloud" viewBox="0 0 24 24" fill="currentColor"><path d="M7 18a5 5 0 01-.6-9.97A6 6 0 0118.3 9.1 4.5 4.5 0 0117.5 18H7z"/></symbol>
       <symbol id="ic-partly" viewBox="0 0 24 24"><circle cx="8.3" cy="8.3" r="3.6" fill="currentColor" opacity="0.85"/><path d="M9 19a4.6 4.6 0 01-.5-9.17A5.6 5.6 0 0119.2 10.3 4.1 4.1 0 0118.5 19H9z" fill="currentColor"/></symbol>
       <symbol id="ic-rain" viewBox="0 0 24 24"><path d="M6.6 14.3a4.4 4.4 0 01-.5-8.77A5.4 5.4 0 0116.9 6.3 3.9 3.9 0 0116.3 14H6.6z" fill="currentColor"/><path d="M8 16.5l-1.3 3M12.3 16.5L11 19.5M16.6 16.5l-1.3 3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>

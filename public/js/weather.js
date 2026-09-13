@@ -276,6 +276,9 @@ function renderWeatherTimeline(data, preserveScroll) {
     strip.innerHTML = '';
     rowLabels.innerHTML = weatherRowLabelsHTML(data.has_marine_data);
 
+    const dailyByDate = {};
+    (data.daily || []).forEach((day) => { dailyByDate[day.date] = day; });
+
     const now = new Date();
     let previousDateKey = null;
     let cumulativeLeft = 0;
@@ -288,7 +291,7 @@ function renderWeatherTimeline(data, preserveScroll) {
         const dateKey = hour.time.slice(0, 10);
 
         if (dateKey !== previousDateKey) {
-            const tile = buildWeatherDayDividerTile(hourDate);
+            const tile = buildWeatherDayDividerTile(hourDate, dailyByDate[dateKey]);
             strip.appendChild(tile);
             cumulativeLeft += WEATHER_DAY_DIVIDER_WIDTH + 2 * WEATHER_DAY_DIVIDER_MARGIN;
             previousDateKey = dateKey;
@@ -364,11 +367,35 @@ function weatherRowLabelsHTML(hasMarineData) {
     return html;
 }
 
-function buildWeatherDayDividerTile(date) {
+function weatherFormatTime(iso) {
+    if (!iso) {
+        return null;
+    }
+    const d = new Date(iso);
+    return pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+}
+
+/**
+ * @param {Date} date
+ * @param {{sunrise: ?string, sunset: ?string}} [daily] this date's entry
+ *   from data.daily (WeatherService), if any - sunrise sits above the
+ *   weekday, sunset below the day-of-month (explicit request: shown here
+ *   instead of on the temperature curve, where they were hard to notice).
+ */
+function buildWeatherDayDividerTile(date, daily) {
     const label = weatherDayLabel(date);
+    const sunrise = daily ? weatherFormatTime(daily.sunrise) : null;
+    const sunset = daily ? weatherFormatTime(daily.sunset) : null;
+
     const tile = document.createElement('div');
     tile.className = 'weather-timeline-day-divider-tile';
-    tile.innerHTML = '<span class="dow">' + escapeHTML(label.dow) + '</span><span class="dom">' + label.dom + '.</span>';
+    // Icon sits closest to the tile's own top/bottom edge on both ends
+    // (sunrise: icon then time; sunset: time then icon) so the two sun
+    // groups mirror each other around the date in the middle.
+    tile.innerHTML =
+        (sunrise ? '<div class="sun"><svg><use href="#ic-sunrise"/></svg>' + sunrise + '</div>' : '') +
+        '<div class="date"><span class="dow">' + escapeHTML(label.dow) + '</span><span class="dom">' + label.dom + '.</span></div>' +
+        (sunset ? '<div class="sun">' + sunset + '<svg><use href="#ic-sunset"/></svg></div>' : '');
     return tile;
 }
 

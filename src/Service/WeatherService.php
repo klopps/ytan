@@ -10,10 +10,13 @@ use Ytan\Exception\ApiException;
  * Fetches an hourly, 7-day weather + marine (wave/swell) forecast for a
  * coordinate from Open-Meteo (free, no API key - see open-meteo.com),
  * zipping both series together by timestamp and caching the combined
- * result on disk with a real TTL. Backs GET /api/v1/weather (shown
- * on-demand via the map's right-click/long-press "Weather data for this
- * location" context menu item - see public/js/weather.js), which renders
- * it as a horizontally scrollable hourly timeline.
+ * result on disk with a real TTL. Also fetches one sunrise/sunset pair
+ * per calendar day (Open-Meteo's `daily` block, same request as the
+ * hourly general forecast) for the week-chart's sunrise/sunset markers.
+ * Backs GET /api/v1/weather (shown on-demand via the map's right-click/
+ * long-press "Weather data for this location" context menu item - see
+ * public/js/weather.js), which renders it as a horizontally scrollable
+ * hourly timeline.
  *
  * A marine fetch failure (network error, non-200) is treated exactly the
  * same as Open-Meteo's own "every hour null" response for inland points -
@@ -30,6 +33,7 @@ final class WeatherService
     private const MARINE_URL = 'https://marine-api.open-meteo.com/v1/marine';
 
     private const GENERAL_HOURLY_VARS = 'temperature_2m,apparent_temperature,wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation,weather_code';
+    private const GENERAL_DAILY_VARS = 'sunrise,sunset';
     private const MARINE_HOURLY_VARS = 'wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,wind_wave_height,wind_wave_direction,wind_wave_period,sea_surface_temperature,sea_level_height_msl';
 
     // Open-Meteo's marine model caps hourly forecasts at 7 days - matching
@@ -59,7 +63,8 @@ final class WeatherService
      *     coordinates: array{lat: float, lng: float},
      *     fetched_at: string,
      *     has_marine_data: bool,
-     *     hourly: list<array<string, mixed>>
+     *     hourly: list<array<string, mixed>>,
+     *     daily: list<array{date: string, sunrise: ?string, sunset: ?string}>
      * }
      */
     public function getForecast(float $lat, float $lng): array
@@ -79,7 +84,7 @@ final class WeatherService
     }
 
     /**
-     * @return array{coordinates: array{lat: float, lng: float}, fetched_at: string, has_marine_data: bool, hourly: list<array<string, mixed>>}
+     * @return array{coordinates: array{lat: float, lng: float}, fetched_at: string, has_marine_data: bool, hourly: list<array<string, mixed>>, daily: list<array{date: string, sunrise: ?string, sunset: ?string}>}
      */
     private function fetchAndCombine(float $lat, float $lng): array
     {
@@ -89,7 +94,7 @@ final class WeatherService
         $hourly = [];
         $hasMarineData = false;
 
-        foreach ($general as $time => $entry) {
+        foreach ($general['hourly'] as $time => $entry) {
             $marineEntry = $marine[$time] ?? null;
             if ($marineEntry !== null && $marineEntry['wave_height'] !== null) {
                 $hasMarineData = true;
@@ -103,11 +108,13 @@ final class WeatherService
             'fetched_at' => gmdate('c'),
             'has_marine_data' => $hasMarineData,
             'hourly' => $hourly,
+            'daily' => $general['daily'],
         ];
     }
 
     /**
-     * @return array<string, array<string, mixed>> keyed by ISO time string
+     * @return array{hourly: array<string, array<string, mixed>>, daily: list<array{date: string, sunrise: ?string, sunset: ?string}>}
+     *         hourly keyed by ISO time string
      */
     private function fetchGeneralHourly(float $lat, float $lng): array
     {
@@ -115,6 +122,7 @@ final class WeatherService
             'latitude' => $lat,
             'longitude' => $lng,
             'hourly' => self::GENERAL_HOURLY_VARS,
+            'daily' => self::GENERAL_DAILY_VARS,
             'forecast_days' => self::FORECAST_DAYS,
             'timezone' => 'auto',
         ]);
@@ -137,7 +145,19 @@ final class WeatherService
             ];
         }
 
-        return $result;
+        $daily = $response['daily'] ?? null;
+        $dailyResult = [];
+        if (is_array($daily) && isset($daily['time']) && is_array($daily['time'])) {
+            foreach ($daily['time'] as $index => $date) {
+                $dailyResult[] = [
+                    'date' => $date,
+                    'sunrise' => $daily['sunrise'][$index] ?? null,
+                    'sunset' => $daily['sunset'][$index] ?? null,
+                ];
+            }
+        }
+
+        return ['hourly' => $result, 'daily' => $dailyResult];
     }
 
     /**

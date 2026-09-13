@@ -36,6 +36,11 @@ final class WeatherServiceTest extends TestCase
                 'precipitation' => [0.0, 0.0],
                 'weather_code' => [3, 2],
             ],
+            'daily' => [
+                'time' => ['2026-09-12'],
+                'sunrise' => ['2026-09-12T06:52'],
+                'sunset' => ['2026-09-12T19:48'],
+            ],
         ]);
         $this->httpClient->setResponseFor(self::MARINE_URL, [
             'hourly' => [
@@ -81,6 +86,27 @@ final class WeatherServiceTest extends TestCase
         $this->assertSame(0.28, $first['wave_height']);
         $this->assertSame(17.5, $first['sea_surface_temperature']);
         $this->assertSame(-0.21, $first['tide_height']);
+
+        $this->assertCount(1, $result['daily']);
+        $this->assertSame('2026-09-12', $result['daily'][0]['date']);
+        $this->assertSame('2026-09-12T06:52', $result['daily'][0]['sunrise']);
+        $this->assertSame('2026-09-12T19:48', $result['daily'][0]['sunset']);
+    }
+
+    public function testDailyIsAnEmptyListWhenTheResponseHasNoDailyBlock(): void
+    {
+        $this->httpClient->setResponseFor(self::FORECAST_URL, [
+            'hourly' => [
+                'time' => ['2026-09-12T00:00'],
+                'temperature_2m' => [15.7], 'apparent_temperature' => [14.9],
+                'wind_speed_10m' => [10.0], 'wind_gusts_10m' => [18.0], 'wind_direction_10m' => [193],
+                'precipitation' => [0.0], 'weather_code' => [3],
+            ],
+        ]);
+
+        $result = $this->service->getForecast(54.30, 10.15);
+
+        $this->assertSame([], $result['daily']);
     }
 
     public function testHasMarineDataIsFalseWhenEveryHourIsNullInland(): void
