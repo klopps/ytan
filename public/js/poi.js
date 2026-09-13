@@ -574,7 +574,16 @@ function removeAllPoiInfowWindows() {
 function showPoiContextMenu(event, i) {
     log('showPoiContextMenu(event, ' + i +')', LOG_DEBUG);
 
-    var content = '';
+    // Same handler the generic empty-map-point context menu uses
+    // (weather.js's openWeatherTimelineForLocation()) - available for
+    // every POI regardless of type/ownership, since weather data is
+    // public and isn't tied to editing rights. contextMenuLastLatLng
+    // (map-core.js) is the established way to hand a coordinate from
+    // here to an onclick string, which runs later in global scope and
+    // can't see this function's own `event` closure - same pattern
+    // route.js's showRouteContextMenu() already uses.
+    contextMenuLastLatLng = event.latLng;
+    var content = '<div class="contextMenuItem" onClick="poiContextMenuShowWeather();"><i class="material-icons-round">cloud</i>' + t('weather.context_menu.item') + '</div>';
 
     if (pois[i].poitype_id == 14) {
         log('show contextMenu(Sector Light Switch)', LOG_DEBUG);
@@ -611,6 +620,11 @@ function showPoiContextMenu(event, i) {
         contextMenu.setContent(content);
         contextMenu.open(map);
     }
+}
+
+function poiContextMenuShowWeather() {
+    closeContextMenu();
+    openWeatherTimelineForLocation(contextMenuLastLatLng);
 }
 
 function poiContextMenuSwitchSectorLight(i, sectorLightVisible) {
