@@ -131,6 +131,32 @@ function windSpeedToBeaufort(speedKmh) {
 }
 
 /**
+ * Refines a Beaufort number with a "-"/"+" suffix marking which third of
+ * that Bft level's own km/h range the speed falls into (e.g. "4-", "4",
+ * "4+") - Bft 0 (a single narrow calm range) and Bft 12 (open-ended, no
+ * upper bound to divide into thirds) are always shown plain.
+ */
+function formatBeaufort(speedKmh) {
+    const bft = windSpeedToBeaufort(speedKmh);
+    if (bft === 0 || bft === 12) {
+        return String(bft);
+    }
+
+    const lower = BEAUFORT_UPPER_BOUNDS_KMH[bft - 1];
+    const upper = BEAUFORT_UPPER_BOUNDS_KMH[bft];
+    const third = (upper - lower) / 3;
+    const posInRange = Math.min(Math.max(speedKmh - lower, 0), upper - lower);
+
+    if (posInRange < third) {
+        return bft + '-';
+    }
+    if (posInRange > 2 * third) {
+        return bft + '+';
+    }
+    return String(bft);
+}
+
+/**
  * Liefert einen formatierten String zur Darstellung einer Windgeschwindigkeit.
  *
  * @param {*} speedKmh Windgeschwindigkeit in km/h (Open-Meteo's unit)
@@ -140,7 +166,7 @@ function windSpeedToBeaufort(speedKmh) {
 function formatWindSpeed(speedKmh, unit = 'kmh') {
     switch (unit) {
         case 'bft':
-            return windSpeedToBeaufort(speedKmh) + ' Bft';
+            return formatBeaufort(speedKmh) + ' Bft';
         case 'ms':
             return (speedKmh / 3.6).toFixed(1) + ' m/s';
         case 'kn':

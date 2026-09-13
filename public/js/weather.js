@@ -122,6 +122,16 @@ function openWeatherTimelineForLocation(latLng) {
             map: map,
             title: t('weather.marker.title'),
             zIndex: ZINDEX_POI + 10, // above regular POI markers, so it's never hidden underneath one at the same spot
+            // Same 'cloud' glyph as the context-menu item, rendered via the
+            // vendored icon font as the pin's label instead of a plain dot -
+            // marks this specific pin as "the weather location", not just
+            // any location marker.
+            label: {
+                text: 'cloud',
+                fontFamily: 'Material Icons Round',
+                fontSize: '16px',
+                color: '#ffffff',
+            },
         });
     }
 
