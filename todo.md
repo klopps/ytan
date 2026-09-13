@@ -1,3 +1,17 @@
+## Wetter-Zeitleiste
+
+~~Gibt es frei verfügbare Wetterdaten, die wir einbinden könnten?~~ Gelöst (2026-09-13): **Open-Meteo** (open-meteo.com) als Datenquelle - kostenlos, kein API-Key, 10.000 Abrufe/Tag im nicht-kommerziellen Free-Tier, liefert sowohl allgemeines Wetter als auch Seegang/Wellen aus einer Quelle. Backend-Proxy mit Server-seitigem Cache (`src/Service/WeatherService.php`, `storage/weather-cache/`, 30-Minuten-TTL, Koordinaten auf 2 Nachkommastellen gerundet), `GET /api/v1/weather?lat=&lng=`, öffentlich ohne Login.
+
+Ursprünglich als automatisch nachladendes Widget geplant, auf expliziten Wunsch aber auf **rein bedarfsgesteuert** umgestellt: Rechtsklick (Desktop) bzw. Long-Press (Touch) auf einen leeren Kartenpunkt öffnet ein neues, **erweiterbares** Kartenkontextmenü (`map-core.js`: `registerMapContextMenuItem()`/`showMapContextMenu()`) mit dem Eintrag "Meteodaten für diesen Ort". Ausgewählt öffnet sich ein Bottom-Sheet mit einer horizontal scrollbaren Stundenliste über 7 Tage (Temperatur, Wind mit Richtungspfeil, Niederschlag, bei Küstenlage zusätzlich Wellenhöhe). Die Windgeschwindigkeit jeder Karte bekommt einen farbigen Balken exakt nach **Windys eigener Farbskala** (live aus `windy.com`s eigener App ausgelesen, nicht geschätzt). Ein zweiter Menüpunkt "Auf Windy öffnen" verlinkt direkt auf windy.com für denselben Ort. Ein Marker (rote Pin mit weißem Wolken-Symbol als Label) markiert währenddessen den Ort auf der Karte.
+
+Die Einbindung des neuen Kontextmenüs musste in die bestehende (in einer früheren Session aufwändig gefixte) Long-Press-Infrastruktur eingreifen (`findLongPressTarget()`/`fireLongPress()`) - Regressionstest gegen POI-/Route-/Area-Contextmenüs live durchgeführt, keine Regression.
+
+Windgeschwindigkeit ist zusätzlich in **Preferences** als eigene Einheit wählbar (Bft/m/s/km/h/kn, unabhängig von Metrisch/Nautisch), inkl. Beaufort-Verfeinerung mit "-"/"+"-Suffix je nach Position innerhalb der Bft-Stufe (z.B. "4-", "4", "4+"). Ein Layout-Bug (Wetterzeilen wurden auf kurzen Viewports vom Karten-`overflow:hidden` abgeschnitten) wurde gefunden und behoben.
+
+## Menü-Reihenfolge
+
+~~Ändere die Reihenfolge der Menüpunkte: POIs, Touren, Teilen, Profil, Einstellungen, Systemeinstellungen.~~ Gelöst (2026-09-13): Reihenfolge im Root-Menü entsprechend angepasst (`templates/app.php`).
+
 ## Profile Menü
 
 ~~Die Funktionen zum Benutzer, die bislang im Menü "Preferences" unterhalb des horizontalen Linie stehen, müssen in ein neues Menü "Profile". Das Icon und der Status der Benutzeranmeldung  von Preferences gehören dann zum Menüpunkt Profile. Der Menüpunkt Preferences benötigt ein neues Symbol/Icon.~~ Gelöst (2026-09-12): neuer Menüpunkt "Profile" mit dem account_circle-Icon und dem Anmeldestatus als Untertitel (bisher bei Preferences), öffnet einen eigenen Screen mit Login/Konto-Funktionen. "Preferences" zeigt jetzt nur noch Erscheinungsbild/Einheiten/Sprache und hat ein neues Icon (tune).
