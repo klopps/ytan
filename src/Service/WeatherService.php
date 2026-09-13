@@ -29,7 +29,7 @@ final class WeatherService
     private const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
     private const MARINE_URL = 'https://marine-api.open-meteo.com/v1/marine';
 
-    private const GENERAL_HOURLY_VARS = 'temperature_2m,wind_speed_10m,wind_direction_10m,precipitation,weather_code';
+    private const GENERAL_HOURLY_VARS = 'temperature_2m,apparent_temperature,wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation,weather_code';
     private const MARINE_HOURLY_VARS = 'wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,wind_wave_height,wind_wave_direction,wind_wave_period,sea_surface_temperature';
 
     // Open-Meteo's marine model caps hourly forecasts at 7 days - matching
@@ -128,7 +128,9 @@ final class WeatherService
         foreach ($hourly['time'] as $index => $time) {
             $result[$time] = [
                 'temperature' => $hourly['temperature_2m'][$index] ?? null,
+                'feels_like' => $hourly['apparent_temperature'][$index] ?? null,
                 'wind_speed' => $hourly['wind_speed_10m'][$index] ?? null,
+                'wind_gusts' => $hourly['wind_gusts_10m'][$index] ?? null,
                 'wind_direction' => $hourly['wind_direction_10m'][$index] ?? null,
                 'precipitation' => $hourly['precipitation'][$index] ?? null,
                 'weather_code' => $hourly['weather_code'][$index] ?? null,

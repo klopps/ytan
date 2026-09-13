@@ -157,6 +157,47 @@ function formatBeaufort(speedKmh) {
 }
 
 /**
+ * Liefert nur den Zahlenwert einer Windgeschwindigkeit in der gewuenschten
+ * Einheit, ohne Einheiten-Suffix - fuer sehr schmale Anzeigen (z.B. die
+ * farbigen Wind-/Boeen-Zellen der Wetter-Zeitleiste), wo die Einheit einmal
+ * fuer die ganze Zeile/Spalte angezeigt wird statt pro Zelle (siehe
+ * windUnitLabel()). formatWindSpeed() haengt dies nur noch mit der Einheit
+ * zusammen, damit die Rundungsregeln pro Einheit an einer Stelle bleiben.
+ *
+ * @param {*} speedKmh Windgeschwindigkeit in km/h (Open-Meteo's unit)
+ * @param string unit  Einheit 'bft'=Beaufort, 'ms'=m/s, 'kmh'=km/h, 'kn'=Knoten
+ * @returns string nur der formatierte Zahlenwert
+ */
+function formatWindSpeedValue(speedKmh, unit = 'kmh') {
+    switch (unit) {
+        case 'bft':
+            return formatBeaufort(speedKmh);
+        case 'ms':
+            return (speedKmh / 3.6).toFixed(1);
+        case 'kn':
+            return (speedKmh / 1.852).toFixed(1);
+        case 'kmh':
+        default:
+            return String(Math.round(speedKmh));
+    }
+}
+
+/**
+ * Kurzes, sprachunabhaengiges Einheiten-Kuerzel fuer eine Windeinheit - wie
+ * schon in formatWindSpeed() selbst, absichtlich nicht uebersetzt (Bft/km/h/
+ * kn/m/s sind international gebraeuchliche Abkuerzungen).
+ */
+function windUnitLabel(unit = 'kmh') {
+    switch (unit) {
+        case 'bft': return 'Bft';
+        case 'ms': return 'm/s';
+        case 'kn': return 'kn';
+        case 'kmh':
+        default: return 'km/h';
+    }
+}
+
+/**
  * Liefert einen formatierten String zur Darstellung einer Windgeschwindigkeit.
  *
  * @param {*} speedKmh Windgeschwindigkeit in km/h (Open-Meteo's unit)
@@ -164,17 +205,7 @@ function formatBeaufort(speedKmh) {
  * @returns string formatierte Windgeschwindigkeit mit Einheit
  */
 function formatWindSpeed(speedKmh, unit = 'kmh') {
-    switch (unit) {
-        case 'bft':
-            return formatBeaufort(speedKmh) + ' Bft';
-        case 'ms':
-            return (speedKmh / 3.6).toFixed(1) + ' m/s';
-        case 'kn':
-            return (speedKmh / 1.852).toFixed(1) + ' kn';
-        case 'kmh':
-        default:
-            return Math.round(speedKmh) + ' km/h';
-    }
+    return formatWindSpeedValue(speedKmh, unit) + ' ' + windUnitLabel(unit);
 }
 
 

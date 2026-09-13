@@ -26,6 +26,7 @@
   --color-danger-soft: #f8e8e7;
   --color-success: #2e7d32;
   --color-warning: #ed6c02;
+  --color-info: #2f6fb0;
   --color-active: #ff6060;
   --color-gdpr-bg: #afcfaf;
   --shadow-panel: 0 2px 6px rgba(0,0,0,0.3), 0 4px 15px -5px rgba(0,0,0,0.0);
@@ -62,6 +63,7 @@ a:focus-visible {
   --color-danger-soft: #3a2422;
   --color-success: #7dc283;
   --color-warning: #f3a35c;
+  --color-info: #7fb2e8;
   --color-active: #ff6060;
   --color-gdpr-bg: #2f4230;
   --shadow-panel: 0 2px 6px rgba(0,0,0,0.6), 0 4px 15px -5px rgba(0,0,0,0.0);
@@ -1803,7 +1805,11 @@ img.wsi {
   left: 0;
   right: 0;
   bottom: 0;
-  max-height: 42vh;
+  /* Taller than before (was 42vh) - the day-glance row and week chart
+     added above the hourly table need more headroom; the table itself
+     still scrolls internally (.weather-timeline-table-scroll) if the
+     viewport is short. */
+  max-height: 52vh;
   display: flex;
   flex-direction: column;
   background-color: var(--color-bg-panel);
@@ -1868,16 +1874,6 @@ img.wsi {
   text-decoration: underline;
 }
 
-.weather-timeline-strip {
-  flex: 1;
-  display: flex;
-  align-items: center; /* not stretch - a card must size to its own content (up to 4 rows), never be force-squeezed to the strip's available height and have its bottom row(s) silently clipped by the card's own overflow:hidden */
-  gap: 8px;
-  overflow-x: auto;
-  overflow-y: auto; /* safety net for a viewport too short even for one un-stretched card - scroll rather than clip/spill past the panel */
-  padding: 12px 14px;
-}
-
 .weather-timeline-message {
   color: var(--color-text-faint);
   font-size: 13px;
@@ -1885,75 +1881,305 @@ img.wsi {
   margin: auto;
 }
 
-.weather-timeline-day-divider {
+/* ---- 7-day glance row: one icon + daily high per day, right under the
+   header - see weather.js's renderWeatherDayGlance(). ---- */
+.weather-timeline-day-glance {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
   flex-shrink: 0;
-  width: 70px;
+  padding: 8px 10px 9px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.weather-timeline-day-glance-cell {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  text-align: center;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--color-text-secondary);
+  gap: 2px;
+  padding: 3px 2px;
+  border-radius: 8px;
+}
+
+.weather-timeline-day-glance-cell.is-today {
   background-color: var(--color-accent-soft);
-  border-radius: 10px;
-  padding: 8px 4px;
 }
 
-.weather-timeline-hour-card {
-  flex-shrink: 0;
-  width: 62px;
-  display: flex;
-  flex-direction: column;
-  border-radius: 10px;
-  overflow: hidden; /* clips the square-cornered wind band below to the card's own rounded corners */
-  background-color: var(--color-bg-subtle);
-}
-
-.weather-timeline-hour-card-current {
-  border: 2px solid var(--color-accent);
-}
-
-/* Solid block, not a thin accent line - deliberately prominent (see the
-   comment on windSpeedColor() in weather.js) so wind strength reads at a
-   glance while scrolling the strip, matching how present color is in
-   Windy's own map. */
-.weather-timeline-hour-wind-band {
-  height: 14px;
-  width: 100%;
-}
-
-.weather-timeline-hour-card-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 4px 8px 4px;
-}
-
-.weather-timeline-hour-time {
-  font-size: 11px;
+.weather-timeline-day-glance-cell .dow {
+  font-size: 9.5px;
   font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--color-text-faint);
+  text-transform: uppercase;
+}
+
+.weather-timeline-day-glance-cell svg {
+  width: 18px;
+  height: 18px;
+  color: var(--color-text-secondary);
+}
+
+.weather-timeline-day-glance-cell .hi {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+/* ---- Week-long temperature curve + wind-strength bar behind the day
+   table - see weather.js's renderWeatherWeekChart(). One continuous SVG,
+   not 7 separate mini-charts, so the week reads as a single shape. ---- */
+.weather-timeline-week-chart {
+  flex-shrink: 0;
+  padding: 8px 10px 10px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.weather-timeline-week-chart-svg {
+  display: block;
+  width: 100%;
+  height: 58px;
+  overflow: visible;
+}
+
+.weather-timeline-week-chart-today-band {
+  fill: var(--color-accent-soft);
+}
+
+.weather-timeline-week-chart-tick {
+  stroke: var(--color-border-subtle);
+  stroke-width: 1px;
+}
+
+.weather-timeline-week-chart-temp-fill {
+  fill: var(--color-accent);
+  opacity: 0.16;
+}
+
+.weather-timeline-week-chart-temp-line {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 2px;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/* ---- Compact hourly table: a sticky row-label column plus one
+   continuous horizontal row of hour columns / day-divider tiles (never
+   grouped into separate stacked day-blocks - see weather.js's
+   renderWeatherTimeline()). ---- */
+.weather-timeline-table-scroll {
+  flex: 1;
+  display: flex;
+  overflow-x: auto;
+  overflow-y: auto; /* safety net for a viewport too short even for the compact rows - scroll rather than clip/spill past the panel */
+  /* No horizontal padding here on purpose - see .weather-timeline-row-labels:
+     a scrolled hour column would otherwise peek out in that padding gap, in
+     front of the sticky label column's own left edge, since clipping
+     happens at this container's border box while a sticky child's "left:0"
+     is relative to the padding box - two different edges once this
+     container itself has horizontal padding. */
+  padding: 10px 0 6px;
+}
+
+.weather-timeline-row-labels {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-bg-panel);
+  padding-left: 14px;
+  padding-right: 8px;
+  margin-right: 6px;
+  border-right: 1px solid var(--color-border-subtle);
+}
+
+.weather-timeline-row-labels .rl {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--color-text-faint);
+  white-space: nowrap;
+}
+
+.weather-timeline-row-labels .rl svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
   color: var(--color-text-faint);
 }
 
-.weather-timeline-hour-row {
+.weather-timeline-row-labels .rl-unit {
+  font-weight: 500;
+  font-size: 8.5px;
+  opacity: 0.8;
+}
+
+.weather-timeline-strip {
+  position: relative; /* containing block for .weather-timeline-now-line */
+  display: flex;
+  flex: 0 0 auto;
+  padding-right: 14px;
+}
+
+.weather-timeline-day-divider-tile {
+  flex: 0 0 26px;
+  width: 26px;
+  margin: 0 2px;
+  border-radius: 7px;
+  background-color: var(--color-accent-soft);
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 1px;
+  text-align: center;
 }
 
-.weather-timeline-hour-row .material-icons-round {
-  font-size: 15px;
+.weather-timeline-day-divider-tile .dow {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--color-accent);
+  text-transform: uppercase;
+}
+
+.weather-timeline-day-divider-tile .dom {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
   color: var(--color-accent);
 }
 
-.weather-timeline-hour-row span {
-  font-size: 10.5px;
+.weather-timeline-hour-col {
+  flex: 0 0 26px;
+  width: 26px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Current-time indicator: a dashed line at the precise minute within its
+   hour column, scrolling together with the strip since it's positioned
+   relative to .weather-timeline-strip itself (see weather.js). */
+.weather-timeline-now-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-left: 1.5px dashed var(--color-accent);
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Row heights - identical values implied by .weather-timeline-row-labels
+   .rl above, so every row lines up between the sticky label column and
+   every hour column/day-divider-tile. */
+.weather-timeline-hour-col .r-time,
+.weather-timeline-row-labels .r-time { height: 20px; }
+.weather-timeline-hour-col .r-icon,
+.weather-timeline-row-labels .r-icon { height: 22px; }
+.weather-timeline-hour-col .r-temp,
+.weather-timeline-row-labels .r-temp { height: 30px; }
+.weather-timeline-hour-col .r-rain,
+.weather-timeline-row-labels .r-rain { height: 18px; }
+.weather-timeline-hour-col .r-wind,
+.weather-timeline-row-labels .r-wind { height: 22px; }
+.weather-timeline-hour-col .r-gust,
+.weather-timeline-row-labels .r-gust { height: 22px; }
+.weather-timeline-hour-col .r-wave,
+.weather-timeline-row-labels .r-wave { height: 18px; }
+
+.weather-timeline-hour-col .r-time,
+.weather-timeline-hour-col .r-rain,
+.weather-timeline-hour-col .r-wave {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+}
+
+.weather-timeline-hour-col .r-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.weather-timeline-hour-col .r-icon svg {
+  width: 14px;
+  height: 14px;
+  color: var(--color-text-secondary);
+}
+
+.weather-timeline-hour-col .r-rain.has-rain {
+  color: var(--color-info);
+  font-weight: 700;
+}
+
+.weather-timeline-hour-col .r-wave {
+  color: var(--color-text-faint);
+}
+
+.weather-timeline-hour-col .r-temp {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.weather-timeline-hour-col .r-temp .t-main {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
   color: var(--color-text);
-  white-space: nowrap;
+}
+
+.weather-timeline-hour-col .r-temp .t-feel {
+  font-size: 8.5px;
+  font-weight: 500;
+  color: var(--color-text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Wind/gust chips - background color always reflects the true km/h value
+   via windSpeedColor() regardless of the displayed unit (see
+   weather.js's buildWeatherHourColumn()); the number itself follows the
+   Preferences wind-unit setting, with the unit shown once per row in the
+   sticky label column (.rl-unit) rather than repeated in every cell. */
+.weather-timeline-hour-col .r-wind,
+.weather-timeline-hour-col .r-gust {
+  width: 22px;
+  margin: 1px 2px 0;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 9.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  text-shadow: 0 1px 1.5px rgba(0,0,0,0.35);
+}
+
+.weather-timeline-hour-col .r-wind svg {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3));
+}
+
+.weather-timeline-hour-col .r-gust {
+  opacity: 0.68;
 }
 
 /* Below this width the route-manager's handle/remove/add icons (15-21px,

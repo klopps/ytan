@@ -203,111 +203,271 @@ function refreshOpenWeatherTimelineWindUnit() {
     renderWeatherTimeline(lastWeatherTimelineData, /* preserveScroll */ true);
 }
 
+// Open-Meteo's weather_code follows WMO code table 4677. Mapped down to the
+// handful of pictograms this compact view actually draws (inline SVG, see
+// the <symbol> sprite in app.php - not the vendored icon font, which per
+// CLAUDE.md's own caveat can't be assumed to have sun/rain/snow glyphs).
+// isNight only swaps the two "no cloud at all" codes to a moon - every other
+// code already reads fine day or night without a dedicated night variant.
+function weatherConditionIcon(code, isNight) {
+    if (code === 0 || code === 1) {
+        return isNight ? 'ic-moon' : 'ic-sun';
+    }
+    if (code === 2) {
+        return 'ic-partly';
+    }
+    if (code === 3) {
+        return 'ic-cloud';
+    }
+    if (code === 45 || code === 48) {
+        return 'ic-fog';
+    }
+    if ([51, 53, 55, 56, 57].includes(code)) {
+        return 'ic-drizzle';
+    }
+    if ([61, 63, 65, 66, 67, 80, 81, 82].includes(code)) {
+        return 'ic-rain';
+    }
+    if ([71, 73, 75, 77, 85, 86].includes(code)) {
+        return 'ic-snow';
+    }
+    if ([95, 96, 99].includes(code)) {
+        return 'ic-storm';
+    }
+    return 'ic-cloud';
+}
+
+function weatherDayLabel(date) {
+    const dow = new Intl.DateTimeFormat(window.YTAN_LOCALE, { weekday: 'short' }).format(date);
+    return { dow: dow, dom: date.getDate() };
+}
+
+/**
+ * Splits the flat hourly[] list into per-calendar-day groups, in order -
+ * feeds the day-glance row, the inline day-divider tiles, and (indirectly,
+ * since it's just data.hourly split up) the week chart below them, so a
+ * day's boundary always lands in the same place across all three.
+ */
+function groupWeatherHourlyByDay(hourly) {
+    const days = [];
+    let current = null;
+    hourly.forEach((hour) => {
+        const dateKey = hour.time.slice(0, 10);
+        if (!current || current.dateKey !== dateKey) {
+            current = { dateKey: dateKey, date: new Date(hour.time.slice(0, 10) + 'T00:00'), hours: [] };
+            days.push(current);
+        }
+        current.hours.push(hour);
+    });
+    return days;
+}
+
 function renderWeatherTimeline(data, preserveScroll) {
     document.getElementById('weatherTimelineMarineNotice').style.display = data.has_marine_data ? 'none' : 'block';
 
+    const dayGroups = groupWeatherHourlyByDay(data.hourly);
+    renderWeatherDayGlance(dayGroups);
+    renderWeatherWeekChart(data.hourly, dayGroups.length);
+
     const strip = document.getElementById('weatherTimelineStrip');
-    const previousScrollLeft = strip.scrollLeft;
+    const rowLabels = document.getElementById('weatherTimelineRowLabels');
+    const tableScroll = document.getElementById('weatherTimelineTableScroll');
+    const previousScrollLeft = tableScroll.scrollLeft;
     strip.innerHTML = '';
+    rowLabels.innerHTML = weatherRowLabelsHTML(data.has_marine_data);
 
     const now = new Date();
     let previousDateKey = null;
-    let nowCard = null;
+    let cumulativeLeft = 0;
+    let prevHourLeft = 0, prevHourTime = null;
+    let nowLineLeft = null;
 
     data.hourly.forEach((hour) => {
         const hourDate = new Date(hour.time);
-        const dateKey = hour.time.slice(0, 10); // "YYYY-MM-DD"
+        const dateKey = hour.time.slice(0, 10);
 
         if (dateKey !== previousDateKey) {
-            strip.appendChild(buildDayDividerCard(hourDate));
+            const tile = buildWeatherDayDividerTile(hourDate);
+            strip.appendChild(tile);
+            cumulativeLeft += WEATHER_DAY_DIVIDER_WIDTH + 2 * WEATHER_DAY_DIVIDER_MARGIN;
             previousDateKey = dateKey;
         }
 
-        const card = buildHourCard(hour, hourDate, data.has_marine_data);
-        strip.appendChild(card);
-
-        // First hour that hasn't passed yet - used below to scroll the
-        // strip there on open, so the user isn't looking at today's
-        // already-past hours by default.
-        if (!nowCard && hourDate >= now) {
-            nowCard = card;
-            card.classList.add('weather-timeline-hour-card-current');
+        // The dashed "now" line sits between the last hour at/before now and
+        // the first hour after it, positioned by the actual elapsed fraction
+        // of that hour - not just snapped to whichever column is closest.
+        if (nowLineLeft === null && hourDate > now) {
+            if (prevHourTime) {
+                const fraction = (now - prevHourTime) / (hourDate - prevHourTime);
+                nowLineLeft = prevHourLeft + fraction * WEATHER_HOUR_COL_WIDTH;
+            } else {
+                nowLineLeft = 0; // "now" is before the very first hour in the data
+            }
         }
+
+        strip.appendChild(buildWeatherHourColumn(hour, hourDate, data.has_marine_data));
+
+        prevHourLeft = cumulativeLeft;
+        prevHourTime = hourDate;
+        cumulativeLeft += WEATHER_HOUR_COL_WIDTH;
     });
+
+    if (nowLineLeft === null) {
+        // "now" is after every hour in the data (right at the end of the
+        // 7-day window) - pin the line to the last column instead of
+        // leaving it unset.
+        nowLineLeft = prevHourLeft;
+    }
+
+    const nowLine = document.createElement('div');
+    nowLine.className = 'weather-timeline-now-line';
+    nowLine.style.left = nowLineLeft + 'px';
+    strip.appendChild(nowLine);
 
     if (preserveScroll) {
         // A wind-unit-only redraw shouldn't jump the user back to "now" if
         // they'd already scrolled further into the strip.
-        strip.scrollLeft = previousScrollLeft;
-    } else if (nowCard) {
-        // scrollIntoView with inline:'start' would also move the page/panel
-        // vertically in some browsers - restrict the scroll to the strip's
-        // own horizontal axis instead.
-        strip.scrollLeft = Math.max(0, nowCard.offsetLeft - 8);
+        tableScroll.scrollLeft = previousScrollLeft;
+    } else {
+        tableScroll.scrollLeft = Math.max(0, nowLineLeft - 40);
     }
 }
 
-function buildDayDividerCard(date) {
-    const div = document.createElement('div');
-    div.className = 'weather-timeline-day-divider';
-    div.textContent = new Intl.DateTimeFormat(window.YTAN_LOCALE, {
-        weekday: 'short',
-        day: 'numeric',
-        month: 'short',
-    }).format(date);
-    return div;
+const WEATHER_HOUR_COL_WIDTH = 26; // keep in sync with .weather-timeline-hour-col / .weather-timeline-day-divider-tile CSS width
+const WEATHER_DAY_DIVIDER_WIDTH = 26;
+const WEATHER_DAY_DIVIDER_MARGIN = 2;
+
+function weatherRowLabelsHTML(hasMarineData) {
+    const windUnit = windUnitLabel(settings.windUnit);
+    let html =
+        '<div class="rl r-time"><svg><use href="#ic-clock"/></svg>' + escapeHTML(t('weather.row.time')) + '</div>' +
+        '<div class="rl r-icon"></div>' +
+        '<div class="rl r-temp"><svg><use href="#ic-thermo"/></svg>' + escapeHTML(t('weather.row.temperature')) + '</div>' +
+        '<div class="rl r-rain"><svg><use href="#ic-drop"/></svg>' + escapeHTML(t('weather.row.precipitation')) + '</div>' +
+        '<div class="rl r-wind"><svg><use href="#ic-flag"/></svg>' + escapeHTML(t('weather.row.wind')) + ' <span class="rl-unit">' + escapeHTML(windUnit) + '</span></div>' +
+        '<div class="rl r-gust"><svg><use href="#ic-gust"/></svg>' + escapeHTML(t('weather.row.gusts')) + ' <span class="rl-unit">' + escapeHTML(windUnit) + '</span></div>';
+    if (hasMarineData) {
+        html += '<div class="rl r-wave"><svg><use href="#ic-wave"/></svg>' + escapeHTML(t('weather.row.wave')) + '</div>';
+    }
+    return html;
 }
 
-function buildHourCard(hour, hourDate, hasMarineData) {
-    const card = document.createElement('div');
-    card.className = 'weather-timeline-hour-card';
+function buildWeatherDayDividerTile(date) {
+    const label = weatherDayLabel(date);
+    const tile = document.createElement('div');
+    tile.className = 'weather-timeline-day-divider-tile';
+    tile.innerHTML = '<span class="dow">' + escapeHTML(label.dow) + '</span><span class="dom">' + label.dom + '.</span>';
+    return tile;
+}
 
-    // A solid, full-width color block rather than a thin accent line -
-    // needs to read at a glance while scrolling the strip (see
-    // windSpeedColor()'s own comment on where the color scale comes from).
-    const windBand = document.createElement('div');
-    windBand.className = 'weather-timeline-hour-wind-band';
-    windBand.style.backgroundColor = windSpeedColor(hour.wind_speed);
-    card.appendChild(windBand);
+function buildWeatherHourColumn(hour, hourDate, hasMarineData) {
+    const col = document.createElement('div');
+    col.className = 'weather-timeline-hour-col';
 
-    const content = document.createElement('div');
-    content.className = 'weather-timeline-hour-card-content';
+    const isNight = hourDate.getHours() >= 21 || hourDate.getHours() < 6;
+    const icon = weatherConditionIcon(hour.weather_code, isNight);
 
-    const time = document.createElement('div');
-    time.className = 'weather-timeline-hour-time';
-    time.textContent = hour.time.slice(11, 16); // "HH:MM"
-    content.appendChild(time);
+    col.innerHTML =
+        '<div class="r-time">' + hour.time.slice(11, 13) + '</div>' +
+        '<div class="r-icon" aria-hidden="true"><svg><use href="#' + icon + '"/></svg></div>' +
+        '<div class="r-temp"><span class="t-main">' + Math.round(hour.temperature) + '&deg;</span><span class="t-feel">' + Math.round(hour.feels_like) + '&deg;</span></div>' +
+        '<div class="r-rain' + (hour.precipitation > 0 ? ' has-rain' : '') + '">' + hour.precipitation.toFixed(1) + '</div>';
 
-    content.appendChild(buildHourRow('thermostat', t('weather.field.temperature_aria_label'), Math.round(hour.temperature) + '°C'));
+    const windRow = document.createElement('div');
+    windRow.className = 'r-wind';
+    windRow.style.backgroundColor = windSpeedColor(hour.wind_speed);
+    windRow.innerHTML = '<svg style="transform:rotate(' + hour.wind_direction + 'deg)"><use href="#ic-arrow"/></svg>' + escapeHTML(formatWindSpeedValue(hour.wind_speed, settings.windUnit));
+    col.appendChild(windRow);
 
-    const windRow = buildHourRow('navigation', t('weather.field.wind_aria_label'), formatWindSpeed(hour.wind_speed, settings.windUnit));
-    windRow.querySelector('.material-icons-round').style.transform = 'rotate(' + hour.wind_direction + 'deg)';
-    content.appendChild(windRow);
-
-    content.appendChild(buildHourRow('opacity', t('weather.field.precipitation_aria_label'), hour.precipitation.toFixed(1) + ' mm'));
+    const gustRow = document.createElement('div');
+    gustRow.className = 'r-gust';
+    gustRow.style.backgroundColor = windSpeedColor(hour.wind_gusts);
+    gustRow.textContent = formatWindSpeedValue(hour.wind_gusts, settings.windUnit);
+    col.appendChild(gustRow);
 
     if (hasMarineData && hour.wave_height !== null) {
-        content.appendChild(buildHourRow('waves', t('weather.field.wave_aria_label'), hour.wave_height.toFixed(2) + ' m'));
+        const waveRow = document.createElement('div');
+        waveRow.className = 'r-wave';
+        waveRow.textContent = hour.wave_height.toFixed(2);
+        col.appendChild(waveRow);
     }
 
-    card.appendChild(content);
-
-    return card;
+    return col;
 }
 
-function buildHourRow(icon, title, value) {
-    const row = document.createElement('div');
-    row.className = 'weather-timeline-hour-row';
+/**
+ * The 7-tile day-glance row right under the panel header - one icon and
+ * one daily high per calendar day covered by the forecast, so the whole
+ * week is visible before scrolling into the hourly detail below. The icon
+ * is the condition at the hour closest to local noon (a day's own hourly
+ * icons can vary hour to hour; midday is the usual single-icon convention
+ * other weather apps use for a whole-day summary).
+ */
+function renderWeatherDayGlance(dayGroups) {
+    const container = document.getElementById('weatherTimelineDayGlance');
+    container.innerHTML = '';
+    dayGroups.forEach((day, index) => {
+        const high = Math.round(Math.max.apply(null, day.hours.map((h) => h.temperature)));
+        const noonHour = day.hours.reduce((best, h) => {
+            const hod = new Date(h.time).getHours();
+            const bestHod = new Date(best.time).getHours();
+            return Math.abs(hod - 12) < Math.abs(bestHod - 12) ? h : best;
+        });
+        const icon = weatherConditionIcon(noonHour.weather_code, false);
+        const label = weatherDayLabel(day.date);
 
-    const iconEl = document.createElement('i');
-    iconEl.className = 'material-icons-round';
-    iconEl.title = title;
-    iconEl.textContent = icon;
-    row.appendChild(iconEl);
+        const cell = document.createElement('div');
+        cell.className = 'weather-timeline-day-glance-cell' + (index === 0 ? ' is-today' : '');
+        cell.innerHTML =
+            '<span class="dow">' + escapeHTML(label.dow) + ' ' + label.dom + '.</span>' +
+            '<svg aria-hidden="true"><use href="#' + icon + '"/></svg>' +
+            '<span class="hi">' + high + '&deg;</span>';
+        container.appendChild(cell);
+    });
+}
 
-    const valueEl = document.createElement('span');
-    valueEl.textContent = value;
-    row.appendChild(valueEl);
+/**
+ * Week-long temperature curve + wind-strength bar drawn behind the day
+ * table, one continuous SVG so the week reads as a single shape rather
+ * than 7 disconnected mini-charts (matches the reference the user shared).
+ * Built directly from the same hourly[] the detail strip below uses - no
+ * separate/approximated dataset, so the curve's peaks always agree with
+ * the daily highs shown in the day-glance row above it.
+ */
+function renderWeatherWeekChart(hourly, dayCount) {
+    const VB_W = dayCount * 100, VB_H = 60;
+    const CURVE_TOP = 5, CURVE_BOTTOM = 38, BAR_Y = 44, BAR_H = 12;
 
-    return row;
+    const temps = hourly.map((h) => h.temperature);
+    const tMin = Math.min.apply(null, temps), tMax = Math.max.apply(null, temps);
+    const tRange = Math.max(0.1, tMax - tMin); // guard against a flat week dividing by zero
+
+    const points = hourly.map((h, i) => {
+        const x = i / (hourly.length - 1) * VB_W;
+        const y = CURVE_BOTTOM - (h.temperature - tMin) / tRange * (CURVE_BOTTOM - CURVE_TOP);
+        return [x, y];
+    });
+    const lineD = points.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+    const fillD = lineD + ' L' + VB_W + ',' + CURVE_BOTTOM + ' L0,' + CURVE_BOTTOM + ' Z';
+
+    const stops = hourly.map((h, i) => {
+        const pct = (i / (hourly.length - 1) * 100).toFixed(1);
+        return '<stop offset="' + pct + '%" stop-color="' + windSpeedColor(h.wind_speed) + '"/>';
+    }).join('');
+
+    let ticks = '';
+    for (let day = 1; day < dayCount; day++) {
+        const tx = day * 100;
+        ticks += '<line class="weather-timeline-week-chart-tick" x1="' + tx + '" y1="2" x2="' + tx + '" y2="' + (BAR_Y + BAR_H) + '"/>';
+    }
+
+    const svg = document.getElementById('weatherTimelineWeekChart');
+    svg.setAttribute('viewBox', '0 0 ' + VB_W + ' ' + VB_H);
+    svg.innerHTML =
+        '<defs><linearGradient id="weatherWeekWindGrad" x1="0" y1="0" x2="1" y2="0">' + stops + '</linearGradient></defs>' +
+        '<rect class="weather-timeline-week-chart-today-band" x="0" y="0" width="100" height="' + VB_H + '"/>' +
+        ticks +
+        '<path class="weather-timeline-week-chart-temp-fill" d="' + fillD + '"/>' +
+        '<path class="weather-timeline-week-chart-temp-line" d="' + lineD + '"/>' +
+        '<rect x="0" y="' + BAR_Y + '" width="' + VB_W + '" height="' + BAR_H + '" rx="4" fill="url(#weatherWeekWindGrad)"/>';
 }

@@ -337,9 +337,48 @@
         <div class="weather-timeline-close" onclick="closeWeatherTimeline();" aria-label="<?= htmlspecialchars($t('weather.widget.close_aria_label'), ENT_QUOTES) ?>"><i class="material-icons-round">close</i></div>
       </div>
       <div id="weatherTimelineMarineNotice" class="weather-timeline-marine-notice" style="display:none;"><?= htmlspecialchars($t('weather.marine.unavailable'), ENT_QUOTES) ?></div>
-      <div id="weatherTimelineStrip" class="weather-timeline-strip"></div>
+
+      <!-- One icon + daily high per day covered by the forecast - built by
+           weather.js's renderWeatherDayGlance(), not static markup. -->
+      <div id="weatherTimelineDayGlance" class="weather-timeline-day-glance"></div>
+
+      <!-- Week-long temperature curve + wind-strength bar behind the day
+           table - renderWeatherWeekChart() fills the viewBox/content in. -->
+      <div class="weather-timeline-week-chart">
+        <svg id="weatherTimelineWeekChart" class="weather-timeline-week-chart-svg" viewBox="0 0 700 60" preserveAspectRatio="none"></svg>
+      </div>
+
+      <div class="weather-timeline-table-scroll" id="weatherTimelineTableScroll">
+        <div id="weatherTimelineRowLabels" class="weather-timeline-row-labels"></div>
+        <div id="weatherTimelineStrip" class="weather-timeline-strip"></div>
+      </div>
+
       <a id="weatherTimelineAttribution" class="weather-timeline-attribution" style="display:none;" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener"><?= htmlspecialchars($t('weather.timeline.osm_attribution'), ENT_QUOTES) ?></a>
     </div>
+
+    <!-- Inline SVG pictograms for the weather timeline (condition icons,
+         row-label icons) - not the vendored classic Material Icons Round
+         font, which per this file's own icon-font caveat can't be assumed
+         to have sun/cloud/rain/snow/etc glyphs. Referenced via <use> from
+         public/js/weather.js. -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+      <symbol id="ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.6" fill="currentColor" stroke="none"/><path d="M12 2.5v2.4M12 19.1v2.4M4.2 4.2l1.7 1.7M18.1 18.1l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.2 19.8l1.7-1.7M18.1 5.9l1.7-1.7"/></symbol>
+      <symbol id="ic-moon" viewBox="0 0 24 24" fill="currentColor"><path d="M14 3a9 9 0 108.9 10.4A7 7 0 0114 3z"/></symbol>
+      <symbol id="ic-cloud" viewBox="0 0 24 24" fill="currentColor"><path d="M7 18a5 5 0 01-.6-9.97A6 6 0 0118.3 9.1 4.5 4.5 0 0117.5 18H7z"/></symbol>
+      <symbol id="ic-partly" viewBox="0 0 24 24"><circle cx="8.3" cy="8.3" r="3.6" fill="currentColor" opacity="0.85"/><path d="M9 19a4.6 4.6 0 01-.5-9.17A5.6 5.6 0 0119.2 10.3 4.1 4.1 0 0118.5 19H9z" fill="currentColor"/></symbol>
+      <symbol id="ic-rain" viewBox="0 0 24 24"><path d="M6.6 14.3a4.4 4.4 0 01-.5-8.77A5.4 5.4 0 0116.9 6.3 3.9 3.9 0 0116.3 14H6.6z" fill="currentColor"/><path d="M8 16.5l-1.3 3M12.3 16.5L11 19.5M16.6 16.5l-1.3 3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+      <symbol id="ic-drizzle" viewBox="0 0 24 24"><path d="M6.6 13.3a4.1 4.1 0 01-.5-8.17A5 5 0 0116.4 5.3 3.6 3.6 0 0115.8 13H6.6z" fill="currentColor" opacity="0.9"/><path d="M9 16.2l-.8 2M13 16.2l-.8 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.75"/></symbol>
+      <symbol id="ic-snow" viewBox="0 0 24 24"><path d="M6.6 13.3a4.1 4.1 0 01-.5-8.17A5 5 0 0116.4 5.3 3.6 3.6 0 0115.8 13H6.6z" fill="currentColor" opacity="0.9"/><path d="M8.5 16.5v4M6.7 17.7l3.6 1.6M13.7 16.5v4M11.9 17.7l3.6 1.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+      <symbol id="ic-fog" viewBox="0 0 24 24"><path d="M7 14a4 4 0 01-.4-7.97A5 5 0 0116.8 7.1 3.6 3.6 0 0116.3 14H7z" fill="currentColor" opacity="0.85"/><path d="M5 17h14M6 20h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+      <symbol id="ic-storm" viewBox="0 0 24 24"><path d="M6.6 13a4 4 0 01-.5-7.97A5 5 0 0116.4 5 3.6 3.6 0 0115.9 13H6.6z" fill="currentColor"/><path d="M13 13l-3.4 5h2.6l-1.2 4L15 16h-2.6z" fill="currentColor"/></symbol>
+      <symbol id="ic-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2" stroke-linecap="round"/></symbol>
+      <symbol id="ic-thermo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14.5V5a2 2 0 10-4 0v9.5a4 4 0 104 0z"/></symbol>
+      <symbol id="ic-drop" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.2S5.5 10.8 5.5 15a6.5 6.5 0 0013 0c0-4.2-6.5-11.8-6.5-11.8z"/></symbol>
+      <symbol id="ic-flag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 21V4M6 4h12l-3.2 4L18 12H6"/></symbol>
+      <symbol id="ic-gust" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h11a2.5 2.5 0 100-5M3 13h15a2.5 2.5 0 110 5M3 18h9"/></symbol>
+      <symbol id="ic-arrow" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l5 9.5-5-2.6-5 2.6z"/><path d="M12 22V9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/></symbol>
+      <symbol id="ic-wave" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 15c1.6 0 1.6-2 3.2-2s1.6 2 3.2 2 1.6-2 3.2-2 1.6 2 3.2 2 1.6-2 3.2-2 1.6 2 3.2 2M2 19.5c1.6 0 1.6-2 3.2-2s1.6 2 3.2 2 1.6-2 3.2-2 1.6 2 3.2 2 1.6-2 3.2-2 1.6 2 3.2 2"/></symbol>
+    </svg>
 
     <!-- EDIT ADDITIONAL TOOLBAR -------------------------------------->
     <div id="secondToolbar">

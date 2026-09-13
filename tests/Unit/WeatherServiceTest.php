@@ -29,7 +29,9 @@ final class WeatherServiceTest extends TestCase
             'hourly' => [
                 'time' => ['2026-09-12T00:00', '2026-09-12T01:00'],
                 'temperature_2m' => [15.7, 15.2],
+                'apparent_temperature' => [14.9, 14.3],
                 'wind_speed_10m' => [10.0, 9.5],
+                'wind_gusts_10m' => [18.0, 16.5],
                 'wind_direction_10m' => [193, 190],
                 'precipitation' => [0.0, 0.0],
                 'weather_code' => [3, 2],
@@ -71,7 +73,9 @@ final class WeatherServiceTest extends TestCase
         $first = $result['hourly'][0];
         $this->assertSame('2026-09-12T00:00', $first['time']);
         $this->assertSame(15.7, $first['temperature']);
+        $this->assertSame(14.9, $first['feels_like']);
         $this->assertSame(10.0, $first['wind_speed']);
+        $this->assertSame(18.0, $first['wind_gusts']);
         $this->assertSame(193, $first['wind_direction']);
         $this->assertSame(0.28, $first['wave_height']);
         $this->assertSame(17.5, $first['sea_surface_temperature']);
