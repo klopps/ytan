@@ -458,8 +458,17 @@
         }
     }
 
+    // Called both from the "Track aufzeichnen" drawer row (drawer already
+    // open at that point, same as the plain navMenuGoTo() calls app.php uses
+    // for POIs/Preferences) and from #trackRecordingBadge on the main map
+    // (drawer closed). openMenu() - not toggleMenu() - is correct for both:
+    // it's idempotent if the drawer is already open, and actually opens it
+    // otherwise. toggleMenu() used to be here and broke the drawer-row case
+    // specifically: it saw the already-open drawer and called closeMenu()
+    // instead, which is what surfaced as "menu opens and immediately closes
+    // again" (todo.md).
     window.openTrackRecorderScreen = function () {
-        toggleMenu();
+        openMenu();
         navMenuGoTo('record');
         renderTrackRecorderScreen();
     };

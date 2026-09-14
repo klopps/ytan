@@ -4,6 +4,10 @@
 
 Wenn ich den Menüpunkt "Track aufzeichnen" wähle, wird das Menü geöffnet und sofort wieder geschlossen.
 
+## Verwalten der Benutzerberechtigungen
+
+Der Dialog zum bearbeiten von Benutzern führt auch die Rechte auf. Dort steht das Recht gefolgt von einer Checkbox. Diese Reihenfolge ist ungünstig. Links soll die Checkbox stehen, rechts davon die Beschreibung des Rechts.
+
 ## Aufzeichnungsdichte beim Tracking anpassen
 
 Die Aufzeichnungsdichte beim Tracking ist derzeit in drei Stufen von 10, 20 und 50 Metern wählbar. Das ist sehr feingranular. Besser wäre eine Auswahl von 20, 50 und 100 Metern.
