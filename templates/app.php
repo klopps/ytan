@@ -26,7 +26,6 @@
     <script src="./js/nav-menu.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/nav-menu.js') ?>"></script>
     <script src="./js/map-core.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/map-core.js') ?>"></script>
     <script src="./js/weather.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/weather.js') ?>"></script>
-    <script src="./js/radar.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/radar.js') ?>"></script>
     <script src="./js/poi.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/poi.js') ?>"></script>
     <script src="./js/route.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/route.js') ?>"></script>
     <script src="./js/area.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/area.js') ?>"></script>
@@ -169,7 +168,6 @@
           <label class="nav-toggle-row"><span class="nav-swatch" style="background:#60609f"></span><span class="nav-toggle-text"><?= $t('app.detail.routes') ?></span><input type="checkbox" id="detailroutes" name="detailroutes" class="nav-switch-input" onchange="toggleRoutes(this);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
           <label class="nav-toggle-row"><span class="nav-swatch" style="background:#8886c9"></span><span class="nav-toggle-text"><?= $t('app.detail.areas') ?></span><input type="checkbox" id="detailareas" name="detailareas" class="nav-switch-input" onchange="toggleAreas(this);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
           <label class="nav-toggle-row"><span class="nav-swatch" style="background:#9c99ad"></span><span class="nav-toggle-text"><?= $t('app.detail.wsi') ?></span><input type="checkbox" id="detailwsi" name="detailwsi" class="nav-switch-input" onchange="toggleWsiMarkers(this);"><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
-          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#4a94a9"></span><span class="nav-toggle-text"><?= $t('app.detail.radar') ?></span><input type="checkbox" id="detailradar" name="detailradar" class="nav-switch-input" onchange="toggleRadarLayer(this);"><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
           <div class="nav-divider"></div>
           <ul class="nav-menu-list">
             <li><button type="button" class="nav-menu-row" onclick="fitToPoiBounds(); closeMenu();"><i class="material-icons-round nav-menu-row-icon">fit_screen</i><span class="nav-menu-row-labels"><?= $t('app.pois.fit_all') ?></span></button></li>
@@ -319,21 +317,6 @@
          left-aligned rather than centered so it never crowds #editToolbar
          on the opposite corner - editToolbar stays fully usable while a
          tour is active, it's just a route filter, not an overlay. -->
-    <!-- RAIN RADAR CONTROLS - shown only while the "Regenradar" toggle
-         (detailradar, radar.js's toggleRadarLayer()) is on. Bottom-center,
-         so it never collides with #gotomylocation/#editToolbar (both
-         corner-anchored) or #tourModeBadge (top-left). -->
-    <div id="radarControls" class="radar-controls" style="display:none;">
-      <div id="radarPlayPauseBtn" class="radar-controls-playpause" onclick="toggleRadarPlayback();" aria-label="<?= htmlspecialchars($t('radar.play_aria_label'), ENT_QUOTES) ?>"><i class="material-icons-round" id="radarPlayPauseIcon">play_arrow</i></div>
-      <input type="range" id="radarFrameSlider" class="slider radar-controls-slider" min="0" max="0" value="0" oninput="onRadarFrameSliderInput(this);">
-      <span id="radarControlsTime" class="radar-controls-time"></span>
-      <!-- Shown instead of the play/scrub controls above while the map is
-           zoomed in past RADAR_MAX_ZOOM (radar.js) - RainViewer's free tiles
-           have no real data that close in. -->
-      <span id="radarZoomHint" class="radar-controls-hint" style="display:none;"></span>
-      <a class="radar-controls-attribution" href="https://www.rainviewer.com/" target="_blank" rel="noopener">RainViewer</a>
-    </div>
-
     <div id="tourModeBadge" class="tour-mode-badge" style="display:none;">
       <i class="material-icons-round tour-mode-badge-icon">explore</i>
       <div class="tour-mode-badge-text">

@@ -9,10 +9,29 @@
  * registry it defines), before poi.js - same slot poi.js/route.js/area.js
  * themselves occupy.
  *
- * Also registers a second, unrelated item in the same menu - "Open on
- * Windy" - a plain deep link to windy.com centered on the clicked point,
- * no backend/API involved (Windy needs no key for its own site, only for
- * its point-forecast API, which this doesn't use).
+ * Also registers two further, unrelated items in the same menu - "Open on
+ * Windy" and "Open rain radar on Windy" - plain deep links to windy.com
+ * centered on the clicked point, no backend/API involved (Windy needs no
+ * key for its own site, only for its point-forecast API, which this
+ * doesn't use).
+ *
+ * Two earlier approaches to a rain-radar feature were tried and dropped
+ * before this one:
+ * 1. Rendering RainViewer's radar tiles directly as a map overlay
+ *    (public/js/radar.js) - dropped because RainViewer's free tiles only
+ *    carry real data up to zoom 7 (confirmed both live via curl+md5sum and
+ *    in RainViewer's own API docs, "Maximum zoom level is 7"), far coarser
+ *    than this app's normal close-in kayak-touring zoom.
+ * 2. A deep link to RainViewer's own map viewer (rainviewer.com/map.html)
+ *    - dropped because that page auto-collapses its own zoom/play controls
+ *    behind a "Toggle map controls" icon whenever it's opened at a browser
+ *    width below 500px (confirmed live in RainViewer's own inline script:
+ *    `window.innerWidth<500`), i.e. on essentially every phone - an extra
+ *    tap was needed before the radar was even usable.
+ * A deep link to Windy's own radar view has neither problem: it opens with
+ * the radar overlay and its play controls immediately visible/usable at
+ * any width (confirmed live), and Windy has no equivalent close-zoom
+ * ceiling for this app's normal usage.
  */
 
 const WINDY_DEFAULT_ZOOM = 10;
@@ -78,12 +97,29 @@ function windSpeedColor(speedKmh) {
 function initWeatherWidget() {
     registerMapContextMenuItem('cloud', 'weather.context_menu.item', openWeatherTimelineForLocation);
     registerMapContextMenuItem('open_in_new', 'weather.context_menu.windy_item', openWindyForLocation);
+    registerMapContextMenuItem('radar', 'radar.context_menu.open_windy_radar_item', openWindyRadarForLocation);
 }
 
 function openWindyForLocation(latLng) {
     const lat = latLng.lat().toFixed(4);
     const lng = latLng.lng().toFixed(4);
     window.open('https://www.windy.com/?' + lat + ',' + lng + ',' + WINDY_DEFAULT_ZOOM, '_blank', 'noopener');
+}
+
+/**
+ * Deep link to Windy's own rain-radar view, centered on the clicked point
+ * at the map's actual current zoom (unlike openWindyForLocation() above,
+ * which always uses a fixed default zoom) - confirmed live (not guessed)
+ * that windy.com/?radar,<lat>,<lon>,<zoom> opens directly on the radar
+ * overlay, already centered/zoomed there, with its play controls usable
+ * immediately (no extra tap needed, unlike the RainViewer deep link this
+ * replaced - see the file-level comment above).
+ */
+function openWindyRadarForLocation(latLng) {
+    const lat = latLng.lat().toFixed(4);
+    const lng = latLng.lng().toFixed(4);
+    const zoom = Math.round(map.getZoom());
+    window.open('https://www.windy.com/?radar,' + lat + ',' + lng + ',' + zoom, '_blank', 'noopener');
 }
 
 // Kept so the strip can be redrawn (formatWindSpeed()/windSpeedColor()

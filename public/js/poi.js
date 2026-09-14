@@ -872,6 +872,32 @@ function initPoiEditWindow(i) {
 }
 
 /**
+ * Called once from map-core.js's initMap(). Registers this feature's
+ * "Create POI" item in the generic map context menu instead of map-core.js
+ * needing to know anything about POIs - see that file's own comment on
+ * registerMapContextMenuItem() for why (same pattern weather.js already
+ * uses for its own items).
+ */
+function initPoiMapContextMenu() {
+    registerMapContextMenuItem('add_location', 'poi.context_menu.create_item', mapContextMenuCreatePoi);
+}
+
+/**
+ * Handler for the "Create POI" map-context-menu item - starts POI creation
+ * directly at the right-clicked/long-pressed point (addPoi() below), unlike
+ * the toolbar's poiButton flow which needs a second click on the map to
+ * place it. Silently no-ops when logged out, same as editPoiBtnClick()'s
+ * existing guard for the toolbar button.
+ */
+function mapContextMenuCreatePoi(latLng) {
+    if (user.id === null) {
+        log('mapContextMenuCreatePoi: user not logged on', LOG_DEBUG);
+        return;
+    }
+    addPoi(latLng);
+}
+
+/**
  * Hinzufügen eine POIs
  *
  * @param pos {} latLng

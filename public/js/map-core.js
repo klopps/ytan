@@ -527,7 +527,6 @@ var settings = { // muss wegen JSON.stringify() ein Objekt sein
     detailroutes: true, // Routes
     detailareas: true,  // Areas
     detailwsi: false,  // Wind Shelter Indicators
-    detailradar: false, // Rain radar overlay (radar.js)
     maptype: "hybrid",
     center: null,
     zoom: null,
@@ -758,16 +757,7 @@ function initMap() {
     myPositionMarker.setVisible(false);
 
     initWeatherWidget(); // weather.js - registers its "Weather data for this location" map context menu item
-
-    // Unlike detailroutes/detailareas/detailwsi (applied implicitly wherever
-    // that data gets added to the map, e.g. poi.js:495's settings.detailwsi
-    // check), the radar layer isn't tied to any data-fetch step - loadSettings()
-    // above only restored the #detailradar checkbox's checked state, so a
-    // returning user with the layer previously enabled needs it explicitly
-    // re-engaged here now that `map` actually exists.
-    if (settings.detailradar) {
-        showRadarLayer();
-    }
+    initPoiMapContextMenu(); // poi.js - registers its "Create POI" map context menu item
 }
 
 function panToGeolocation() {

@@ -43,7 +43,6 @@
     "app.detail.routes": "Routes",
     "app.detail.areas": "Areas",
     "app.detail.wsi": "Windshelter Indicators",
-    "app.detail.radar": "Rain radar",
     "app.settings.users": "Users",
     "app.settings.users_sub": "Manage accounts & permissions",
     "app.settings.google_search_requires_login": "Google search requires login",
@@ -101,6 +100,7 @@
     "common.info": "Info",
     "poi.context.show_sector_light": "Show Sector Light",
     "poi.context.hide_sector_light": "Hide Sector Light",
+    "poi.context_menu.create_item": "Create POI",
     "poi.edit.name_label": "Name: *",
     "poi.edit.name_placeholder": "Enter name of POI ...",
     "poi.edit.name_title": "Enter at least 3 characters",
@@ -334,9 +334,5 @@
     "weather.timeline.loading": "Loading forecast…",
     "weather.timeline.failed": "Failed to load the forecast.",
     "weather.timeline.osm_attribution": "Place name data © OpenStreetMap contributors",
-    "radar.play_aria_label": "Play rain radar",
-    "radar.pause_aria_label": "Pause rain radar",
-    "radar.time_now": "Now",
-    "radar.time_minutes_ago": "{min} min ago",
-    "radar.zoom_hint": "Zoom out further to see the rain radar"
+    "radar.context_menu.open_windy_radar_item": "Open rain radar on Windy"
 }

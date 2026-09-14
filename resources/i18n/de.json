@@ -43,7 +43,6 @@
     "app.detail.routes": "Routen",
     "app.detail.areas": "Gebiete",
     "app.detail.wsi": "Windschatten-Indikatoren",
-    "app.detail.radar": "Regenradar",
     "app.settings.users": "Benutzer",
     "app.settings.users_sub": "Konten & Berechtigungen verwalten",
     "app.settings.google_search_requires_login": "Google-Suche erfordert Anmeldung",
@@ -101,6 +100,7 @@
     "common.info": "Info",
     "poi.context.show_sector_light": "Sektorleuchtfeuer anzeigen",
     "poi.context.hide_sector_light": "Sektorleuchtfeuer ausblenden",
+    "poi.context_menu.create_item": "POI erstellen",
     "poi.edit.name_label": "Name: *",
     "poi.edit.name_placeholder": "Name des POI eingeben ...",
     "poi.edit.name_title": "Mindestens 3 Zeichen eingeben",
@@ -334,9 +334,5 @@
     "weather.timeline.loading": "Vorhersage wird geladen…",
     "weather.timeline.failed": "Laden der Vorhersage fehlgeschlagen.",
     "weather.timeline.osm_attribution": "Ortsdaten © OpenStreetMap-Mitwirkende",
-    "radar.play_aria_label": "Regenradar abspielen",
-    "radar.pause_aria_label": "Regenradar pausieren",
-    "radar.time_now": "Jetzt",
-    "radar.time_minutes_ago": "vor {min} Min.",
-    "radar.zoom_hint": "Zum Anzeigen des Regenradars weiter herauszoomen"
+    "radar.context_menu.open_windy_radar_item": "Regenradar auf Windy öffnen"
 }

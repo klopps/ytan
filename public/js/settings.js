@@ -52,7 +52,6 @@ function saveSettings() {
     settings['detail15'] = document.getElementById('detail15').checked;
     settings['detail16'] = document.getElementById('detail16').checked;
     settings['detailwsi'] = document.getElementById('detailwsi').checked;
-    settings['detailradar'] = document.getElementById('detailradar').checked;
     settings['detailroutes'] = document.getElementById('detailroutes').checked;
     settings['detailareas'] = document.getElementById('detailareas').checked;
 
@@ -125,7 +124,6 @@ function loadSettings() {
         document.getElementById('detail15').checked = settings['detail15'];
         document.getElementById('detail16').checked = settings['detail16'];
         document.getElementById('detailwsi').checked = settings['detailwsi'];
-        document.getElementById('detailradar').checked = settings['detailradar'];
         document.getElementById('detailroutes').checked = settings['detailroutes'];
         document.getElementById('detailareas').checked = settings['detailareas'];
 
