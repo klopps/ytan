@@ -47,6 +47,9 @@ filtering by scope, and is never paginated (a tour's own route list is
 inherently small).
 
 Route body: `name, description, public, length, points (JSON-encoded array of {lat,lng}), color`.
+Optionally, for a GPS-recorded route (set at creation only - `PUT` ignores
+both, see `RouteRepository::update()`): `recorded_at` (datetime, UTC),
+`recording_duration_seconds` (int, total elapsed time including pauses).
 Area body: `name, description, public, points (JSON-encoded array of {lat,lng}), color, opacity, zindex`.
 
 ## Tours

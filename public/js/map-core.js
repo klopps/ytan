@@ -527,6 +527,7 @@ var settings = { // muss wegen JSON.stringify() ein Objekt sein
     detailroutes: true, // Routes
     detailareas: true,  // Areas
     detailwsi: false,  // Wind Shelter Indicators
+    trackDistanceFilter: 'balanced', // GPS track recording (native shell only, track-recorder.js)
     maptype: "hybrid",
     center: null,
     zoom: null,
@@ -758,6 +759,9 @@ function initMap() {
 
     initWeatherWidget(); // weather.js - registers its "Weather data for this location" map context menu item
     initPoiMapContextMenu(); // poi.js - registers its "Create POI" map context menu item
+    if (typeof initTrackRecorder === 'function') {
+        initTrackRecorder(); // track-recorder.js - no-op outside the native Capacitor shell
+    }
 }
 
 function panToGeolocation() {

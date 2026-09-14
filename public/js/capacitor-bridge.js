@@ -1,29 +1,20 @@
 /**
- * TEMPORARY proof-of-concept for the Capacitor Android shell's background
- * GPS capability - NOT the real route-recording feature (that's a separate,
- * later step, see todo.md "Capacitor-App-Hülle"). This file exists only to
- * prove that @capacitor-community/background-geolocation actually keeps
- * delivering location updates while the screen is locked/app backgrounded,
- * which is the entire reason this native shell exists (a plain web
- * page/PWA cannot do this reliably - see the "Regenradar"/GPS discussion in
- * todo.md's history).
- *
- * Loaded unconditionally in templates/app.php like every other script here,
- * but everything below is a no-op in a normal browser tab or an
- * installed-PWA context: `window.Capacitor` only exists inside the
+ * Thin wrapper around the Capacitor Android shell's background-geolocation
+ * plugin, used by public/js/track-recorder.js for the live GPS route
+ * recording feature. Everything below is a no-op in a normal browser tab
+ * or an installed-PWA context: `window.Capacitor` only exists inside the
  * Capacitor-wrapped Android app (injected by its native runtime), so this
  * has zero effect on the regular web app.
  *
- * Manual test, since there is no UI for this yet: open the app inside the
- * Capacitor Android shell, then from a WebView devtools console (or a
- * temporary button) call `capacitorBridgeStartTestWatch()`, lock the
- * screen/switch away for a few minutes, unlock and check the console/toast
- * history for location updates that arrived while backgrounded. Stop with
- * `capacitorBridgeStopTestWatch()`.
+ * Background delivery was proven reliable on real hardware this session -
+ * see todo.md "Capacitor-App-Hülle für Android" for the live-device proof
+ * (location updates kept arriving 6+ minutes after screen-lock/USB
+ * disconnect, past the plugin's documented 5-minute cutoff, confirming
+ * capacitor.config.json's android.useLegacyBridge:true actually fixes it).
  */
-(function () {
+const CapacitorBridge = (function () {
     if (!window.Capacitor || typeof window.Capacitor.isNativePlatform !== 'function' || !window.Capacitor.isNativePlatform()) {
-        return;
+        return { isAvailable: function () { return false; } };
     }
 
     // Capacitor's native Android runtime auto-registers every bundled native
@@ -35,7 +26,6 @@
     // is undefined there, but window.Capacitor.Plugins.BackgroundGeolocation
     // already exists).
     const BackgroundGeolocation = window.Capacitor.Plugins.BackgroundGeolocation;
-    let testWatcherId = null;
 
     /**
      * With android.useLegacyBridge:true (capacitor.config.json - required to
@@ -54,44 +44,36 @@
         }
     }
 
-    window.capacitorBridgeStartTestWatch = function () {
-        if (testWatcherId !== null) {
-            log('capacitorBridgeStartTestWatch(): already watching', LOG_INFO);
-            return;
-        }
+    /**
+     * @param {{distanceFilter: number, backgroundTitle: string, backgroundMessage: string}} options
+     * @param {function(?{latitude,longitude,accuracy,altitude,speed,time}, ?{message}): void} onLocation
+     * @param {function(string): void} onStarted called once with the watcher id, needed to stopLocationWatch() later
+     */
+    function startLocationWatch(options, onLocation, onStarted) {
         const result = BackgroundGeolocation.addWatcher(
             {
-                backgroundTitle: 'YTAN (Test)',
-                backgroundMessage: 'Testet Hintergrund-GPS - zum Beenden die App-Benachrichtigung antippen.',
+                backgroundTitle: options.backgroundTitle,
+                backgroundMessage: options.backgroundMessage,
                 requestPermissions: true,
                 stale: false,
-                distanceFilter: 20,
+                distanceFilter: options.distanceFilter,
             },
             function (location, error) {
-                if (error) {
-                    log('capacitor-bridge test watcher error', LOG_ERROR, error);
-                    showToast('Background-GPS-Testfehler: ' + error.message, 'error');
-                    return;
-                }
-                const msg = 'GPS-Update: ' + location.latitude.toFixed(5) + ', ' + location.longitude.toFixed(5) + ' (' + new Date(location.time).toLocaleTimeString() + ')';
-                log(msg, LOG_INFO, location);
-                showToast(msg, 'info');
+                onLocation(location, error);
             }
         );
-        resolveMaybePromise(result, function (id) {
-            testWatcherId = id;
-            log('capacitorBridgeStartTestWatch(): watcher started, id=' + id, LOG_INFO);
-        });
-    };
+        resolveMaybePromise(result, onStarted);
+    }
 
-    window.capacitorBridgeStopTestWatch = function () {
-        if (testWatcherId === null) {
-            return;
-        }
-        const stoppedId = testWatcherId;
-        testWatcherId = null;
-        resolveMaybePromise(BackgroundGeolocation.removeWatcher({ id: stoppedId }), function () {
-            log('capacitorBridgeStopTestWatch(): watcher removed, id=' + stoppedId, LOG_INFO);
+    function stopLocationWatch(id) {
+        return new Promise(function (resolve) {
+            resolveMaybePromise(BackgroundGeolocation.removeWatcher({ id: id }), resolve);
         });
+    }
+
+    return {
+        isAvailable: function () { return true; },
+        startLocationWatch: startLocationWatch,
+        stopLocationWatch: stopLocationWatch,
     };
 })();

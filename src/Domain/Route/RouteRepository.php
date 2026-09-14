@@ -89,8 +89,8 @@ final class RouteRepository
     public function create(int $userId, array $data): array
     {
         $stmt = $this->db->prepare(
-            'INSERT INTO route (user_id, name, description, public, length, points, color)
-             VALUES (?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO route (user_id, name, description, public, length, points, color, recorded_at, recording_duration_seconds)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $userId,
@@ -100,6 +100,8 @@ final class RouteRepository
             $data['length'] ?? null,
             $data['points'] ?? null,
             $data['color'] ?? '#BF409F',
+            $data['recorded_at'] ?? null,
+            $data['recording_duration_seconds'] ?? null,
         ]);
 
         return $this->findById((int) $this->db->lastInsertId());
@@ -109,6 +111,12 @@ final class RouteRepository
     {
         $this->findById($id); // 404s if missing
 
+        // recorded_at/recording_duration_seconds are deliberately NOT
+        // updatable here - they're write-once-at-creation facts about a
+        // GPS-recorded route (see RouteController/track-recorder.js), and
+        // saveRoute()'s edit form never resends them, so including them in
+        // this SET clause would silently null them out on every routine
+        // rename/re-describe of an already-recorded route.
         $stmt = $this->db->prepare(
             'UPDATE route SET name=?, description=?, public=?, length=?, points=?, color=? WHERE id=?'
         );

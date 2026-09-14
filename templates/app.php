@@ -29,6 +29,7 @@
     <script src="./js/weather.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/weather.js') ?>"></script>
     <script src="./js/poi.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/poi.js') ?>"></script>
     <script src="./js/route.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/route.js') ?>"></script>
+    <script src="./js/track-recorder.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/track-recorder.js') ?>"></script>
     <script src="./js/area.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/area.js') ?>"></script>
     <script src="./js/tour.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/tour.js') ?>"></script>
     <script src="./js/tour-admin.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/tour-admin.js') ?>"></script>
@@ -119,6 +120,10 @@
             <li><button type="button" class="nav-menu-row" onclick="shareMap();"><i class="material-icons-round nav-menu-row-icon">share</i><span class="nav-menu-row-labels"><?= $t('app.nav.share') ?></span></button></li>
             <li><button type="button" class="nav-menu-row" onclick="showUserWindow();"><i class="material-icons-round nav-menu-row-icon">account_circle</i><span class="nav-menu-row-labels"><?= $t('app.nav.profile') ?><span class="nav-menu-row-sub" id="profileRowSub"><?= $t('app.nav.not_signed_in') ?></span></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
             <li><button type="button" class="nav-menu-row" onclick="navMenuGoTo('preferences');"><i class="material-icons-round nav-menu-row-icon">tune</i><span class="nav-menu-row-labels"><?= $t('app.nav.preferences') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
+            <!-- Native Capacitor shell only - hidden by default, shown by
+                 track-recorder.js's initTrackRecorder() (no-op in a normal
+                 browser/PWA, matching capacitor-bridge.js's own guard). -->
+            <li id="trackRecorderMenuRow" style="display:none;"><button type="button" class="nav-menu-row" onclick="openTrackRecorderScreen();"><i class="material-icons-round nav-menu-row-icon">fiber_manual_record</i><span class="nav-menu-row-labels"><?= $t('app.nav.track_recorder') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
             <li id="userAdminMenuBtn" style="display:none;"><button type="button" class="nav-menu-row" onclick="navMenuGoTo('site-settings');"><i class="material-icons-round nav-menu-row-icon">settings</i><span class="nav-menu-row-labels"><?= $t('app.nav.site_settings') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
           </ul>
 
@@ -241,6 +246,19 @@
         </div>
       </div>
 
+      <!-- TRACK RECORDER - native Capacitor shell only (see
+           trackRecorderMenuRow above). Body content is entirely
+           JS-rendered by track-recorder.js's renderTrackRecorderScreen()
+           (idle/recording/paused states), same split-static-shell/dynamic-
+           body approach as e.g. the Tours panel. -->
+      <div class="nav-screen nav-screen-off-right" data-nav-screen="record">
+        <div class="nav-screen-header">
+          <button type="button" class="nav-back" onclick="navMenuBack();"><i class="material-icons-round">arrow_back</i></button>
+          <h3><?= $t('app.nav.track_recorder') ?></h3>
+        </div>
+        <div class="nav-screen-body" id="trackRecorderScreenBody"></div>
+      </div>
+
       <!-- PROFILE -->
       <div class="nav-screen nav-screen-off-right" data-nav-screen="profile">
         <div class="nav-screen-header">
@@ -325,6 +343,20 @@
         <span class="tour-mode-badge-sub"><?= $t('app.tour_mode.label') ?></span>
       </div>
       <div class="tour-mode-badge-close" onclick="exitTourMode();"><i class="material-icons-round">close</i></div>
+    </div>
+
+    <!-- TRACK RECORDING BADGE - native Capacitor shell only, shown while a
+         GPS route recording is active/paused (track-recorder.js). Stacked
+         below #tourModeBadge (top:112px vs its top:64px) so both can be
+         visible at once without colliding; tapping it reopens the
+         recording screen (no inline pause/stop here - those live in that
+         screen, this is a status-and-shortcut badge, not a full control). -->
+    <div id="trackRecordingBadge" class="track-recording-badge" style="display:none;" onclick="openTrackRecorderScreen();">
+      <i class="material-icons-round track-recording-badge-icon">fiber_manual_record</i>
+      <div class="tour-mode-badge-text">
+        <span id="trackRecordingBadgeStats" class="tour-mode-badge-name"></span>
+        <span id="trackRecordingBadgeStatus" class="tour-mode-badge-sub"></span>
+      </div>
     </div>
 
     <!-- WEATHER TIMELINE PANEL - opened on demand via the map's right-click/

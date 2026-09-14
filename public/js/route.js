@@ -2,6 +2,24 @@
  * Route creation, editing, rendering and distance labels.
  */
 
+// Set by track-recorder.js right before it hands a finished GPS recording
+// into this file's own showRouteEditWindow()/saveRoute() flow - see
+// saveRoute() below. Always null for a normal, manually-drawn route.
+let pendingRouteRecordingMeta = null;
+
+/**
+ * "3:24 h" / "48 min" - used by showRouteInfoWindow() for a GPS-recorded
+ * route's recording_duration_seconds.
+ */
+function formatRouteRecordingDuration(totalSeconds) {
+    var hours = Math.floor(totalSeconds / 3600);
+    var minutes = Math.round((totalSeconds % 3600) / 60);
+    if (hours > 0) {
+        return hours + ':' + (minutes < 10 ? '0' : '') + minutes + ' h';
+    }
+    return minutes + ' min';
+}
+
 function editRouteBtnClick(elementId) {
     var element = document.getElementById(elementId);
     var index = measureTool.index;
@@ -226,6 +244,16 @@ function saveRoute(i) {
         length: measureTool.length,
         points: JSON.stringify(points),
         color: document.getElementById('editRouteColor').value
+    }
+
+    // Set by track-recorder.js immediately before showRouteEditWindow(),
+    // only for a just-finished GPS recording - cleared unconditionally
+    // right after reading it so a later, unrelated manual edit never
+    // accidentally reuses stale recording metadata.
+    if (pendingRouteRecordingMeta !== null) {
+        routeData.recorded_at = pendingRouteRecordingMeta.recorded_at;
+        routeData.recording_duration_seconds = pendingRouteRecordingMeta.recording_duration_seconds;
+        pendingRouteRecordingMeta = null;
     }
 
     log('saveRoute(' + i + ')', LOG_INFO, routeData);
@@ -832,8 +860,16 @@ function showRouteInfoWindow(event, i) {
 
     var content =
         '<h3>' + routes[i]['name'] + '</h3>' +
-        '<div class="infoWindowElement">' + t('route.info.length', { length: length }) + '</div>' +
-        '<div class="infoWindowElement">' + marked.parse(routes[i]['description']) + '<div>';
+        '<div class="infoWindowElement">' + t('route.info.length', { length: length }) + '</div>';
+
+    if (routes[i]['recorded_at']) {
+        var recordedDate = new Date(routes[i]['recorded_at'].replace(' ', 'T'));
+        var recordedDateStr = recordedDate.toLocaleDateString(language);
+        var durationStr = formatRouteRecordingDuration(routes[i]['recording_duration_seconds']);
+        content += '<div class="infoWindowElement">' + t('route.info.recorded', { date: recordedDateStr, duration: durationStr }) + '</div>';
+    }
+
+    content += '<div class="infoWindowElement">' + marked.parse(routes[i]['description']) + '<div>';
 
     if (user.id !== null) {
         if (routes[i].user_id == user.id) {

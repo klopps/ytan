@@ -90,4 +90,57 @@ final class RouteRepositoryTest extends TestCase
         $this->assertCount(2, $result);
         $this->assertSame(2, $routes->countByUserWithPublic($owner));
     }
+
+    public function testCreateStoresRecordingMetadataWhenProvided(): void
+    {
+        $routes = new RouteRepository($this->pdo);
+        $userId = $this->createUser();
+
+        $route = $routes->create($userId, [
+            'name' => 'Morning Paddle',
+            'length' => 5000,
+            'points' => '[]',
+            'recorded_at' => '2026-09-14 08:00:00',
+            'recording_duration_seconds' => 5400,
+        ]);
+
+        $this->assertSame('2026-09-14 08:00:00', $route['recorded_at']);
+        $this->assertSame(5400, (int) $route['recording_duration_seconds']);
+    }
+
+    public function testCreateLeavesRecordingMetadataNullForManuallyDrawnRoutes(): void
+    {
+        $routes = new RouteRepository($this->pdo);
+        $userId = $this->createUser();
+
+        $route = $routes->create($userId, ['name' => 'Hand-drawn Route', 'points' => '[]']);
+
+        $this->assertNull($route['recorded_at']);
+        $this->assertNull($route['recording_duration_seconds']);
+    }
+
+    public function testUpdateNeverClearsExistingRecordingMetadata(): void
+    {
+        $routes = new RouteRepository($this->pdo);
+        $userId = $this->createUser();
+
+        $route = $routes->create($userId, [
+            'name' => 'Morning Paddle',
+            'points' => '[]',
+            'recorded_at' => '2026-09-14 08:00:00',
+            'recording_duration_seconds' => 5400,
+        ]);
+
+        // Simulate a routine rename via the normal edit form, which never
+        // sends recorded_at/recording_duration_seconds at all - update()
+        // must not null them out just because they're absent from $data.
+        $updated = $routes->update((int) $route['id'], [
+            'name' => 'Morning Paddle (renamed)',
+            'points' => '[]',
+        ]);
+
+        $this->assertSame('Morning Paddle (renamed)', $updated['name']);
+        $this->assertSame('2026-09-14 08:00:00', $updated['recorded_at']);
+        $this->assertSame(5400, (int) $updated['recording_duration_seconds']);
+    }
 }

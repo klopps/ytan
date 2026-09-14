@@ -1791,6 +1791,101 @@ img.wsi {
 }
 
 /**
+* Track recording badge (track-recorder.js) - native Capacitor shell only.
+* Same chrome as .tour-mode-badge, stacked directly below it (top:112px vs
+* top:64px) so both can show at once without overlapping. Whole badge is
+* the tap target (onclick in templates/app.php), no separate close button -
+* pause/stop live in the recording screen this reopens.
+*/
+.track-recording-badge {
+  position: absolute;
+  top: 112px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background-color: var(--color-bg-panel);
+  box-shadow: var(--shadow-panel);
+  border-radius: 15px;
+  padding: 8px 14px 8px 12px;
+  z-index: 5;
+  cursor: pointer;
+}
+
+.track-recording-badge-icon {
+  color: #E53935; /* recording = red, independent of the app's accent color, universally understood */
+  font-size: 14px;
+  animation: track-recording-pulse 1.6s ease-in-out infinite;
+}
+
+.track-recording-badge-paused .track-recording-badge-icon {
+  color: var(--color-text-faint);
+  animation: none;
+}
+
+@keyframes track-recording-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/**
+* Track recorder nav-drawer screen (track-recorder.js's renderIdleState()/
+* renderActiveState(), templates/app.php's #trackRecorderScreenBody).
+*/
+.track-recorder-explanation {
+  font-size: 12.5px;
+  color: var(--color-text-faint);
+  margin: 10px 0 16px;
+}
+
+.track-recorder-start-btn {
+  width: 100%;
+}
+
+.track-recorder-live-stats {
+  display: flex;
+  justify-content: space-between;
+  background-color: var(--color-bg-panel);
+  border-radius: 12px;
+  padding: 14px 10px;
+  margin-bottom: 16px;
+}
+
+.track-recorder-live-stats > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.track-recorder-live-value {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.track-recorder-live-label {
+  font-size: 10px;
+  color: var(--color-text-faint);
+}
+
+#trackRecorderScreenBody .button {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.button-danger {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+.button-danger:hover:enabled {
+  color: var(--color-on-accent);
+  background-color: var(--color-danger);
+}
+
+/**
 * Weather timeline panel (see weather.js) - a bottom sheet opened on
 * demand via the map's right-click/long-press context menu ("Weather data
 * for this location" - map-core.js's showMapContextMenu()), never shown
