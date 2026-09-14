@@ -1,0 +1,13 @@
+{
+  "appId": "org.pesr.ytan",
+  "appName": "YTAN",
+  "webDir": "public",
+  "server": {
+    "url": "https://test.pesr.org/",
+    "cleartext": false
+  },
+  "android": {
+    "allowMixedContent": false,
+    "useLegacyBridge": true
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "ytan-android",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Capacitor native-shell tooling for YTAN's Android app (loads the live https://test.pesr.org/ web app in a WebView; adds a background-geolocation plugin for reliable route recording). The PHP web app itself (public/, templates/, src/) has no build step and is unaffected by this - this package.json only exists for the android/ Capacitor project alongside it.",
+  "scripts": {
+    "cap:sync": "cap sync android"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/klopps/ytan.git"
+  },
+  "bugs": {
+    "url": "https://github.com/klopps/ytan/issues"
+  },
+  "homepage": "https://github.com/klopps/ytan#readme",
+  "dependencies": {
+    "@capacitor-community/background-geolocation": "^1.2.26",
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/core": "^8.5.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.2"
+  }
+}

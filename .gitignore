@@ -14,3 +14,17 @@ Thumbs.db
 /storage/geocoding-cache/*
 !/storage/geocoding-cache/.gitkeep
 /.phpunit.cache/
+
+# Capacitor Android native shell (android/ itself - manifest, Kotlin/Java
+# source, gradle config - IS committed; these are build outputs and
+# machine-specific local config, not the project source).
+/android/local.properties
+/android/**/build/
+/android/.gradle/
+/android/.idea/
+/android/*.iml
+/android/**/*.iml
+/android/captures/
+/android/.cxx/
+*.apk
+*.aab

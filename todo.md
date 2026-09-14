@@ -1,5 +1,28 @@
 # Offene Punkte
 
+## Automatisierte Oberflächen-Tests (2026-09-14)
+
+Aktuell gibt es **keine** automatisierte Testsuite für die Oberfläche (JS/Frontend) - nur PHPUnit (`tests/Unit/`, `tests/Integration/`) für das PHP-Backend, `composer test`. Keine Playwright-/Jest-/Cypress-Konfiguration im Repo. UI-Änderungen werden bisher ausschließlich manuell/ad-hoc per Browser-Tool geprüft (Mobile-first, siehe CLAUDE.md), nicht als wiederverwendbare, eingecheckte Testdateien. (Seit 2026-09-14 gibt es zwar ein `package.json` im Repo-Root - das ist aber für die Capacitor-App-Hülle, siehe unten, kein Test-Tooling.)
+
+Bei Bedarf: echte Playwright-Testsuite aufsetzen (`tests/e2e/` o.ä., eigenes `package.json`, `.spec.js`-Dateien, `npx playwright test`), die zentrale Abläufe (Login, POI/Route/Area anlegen, Kontextmenüs, Touren) automatisiert abdeckt. Noch nicht begonnen, nur als offener Punkt vorgemerkt.
+
+## Capacitor-App-Hülle für Android (2026-09-14)
+
+Anlass: verlässliche Hintergrund-GPS-Routenaufzeichnung ist mit einer reinen Web-App/PWA auf Android/iOS nicht zuverlässig möglich (Browser drosseln `watchPosition()` bei gesperrtem Bildschirm/App im Hintergrund) - einzige verlässliche Lösung ist eine native App-Hülle mit echter Betriebssystem-Hintergrund-Standort-Berechtigung. Details/Recherche siehe Projekt-Memory `project_capacitor_android_shell.md`.
+
+**Grundgerüst aufgesetzt** (neues `package.json`/`node_modules/` im Repo-Root, **zusätzlich** zur bestehenden PHP-App, die weiterhin ohne Build-Schritt auskommt):
+- `@capacitor/core`, `@capacitor/android`, `@capacitor/cli` installiert (v8.5.2).
+- `npx cap init` → App-ID `org.pesr.ytan`, `android/`-Projekt via `npx cap add android` erzeugt (Kotlin/Java-Quellcode + Manifest, eingecheckt; Build-Ordner/`local.properties` per `.gitignore` ausgeschlossen).
+- **Live-URL-Modell** (nicht gebündelt): `capacitor.config.json`s `server.url = "https://test.pesr.org/"` - die WebView zeigt die echte, deployte Seite. Begründung: `templates/app.php`s `$baseUrl`/`window.YTAN_API_BASE` wird serverseitig pro Request aus `$_SERVER['SCRIPT_NAME']` gerendert (`src/App.php`) - ein gebündelter Snapshot hätte das zur Build-Zeit eingefroren und wäre unter dem lokalen Capacitor-Ursprung falsch gewesen. Live-Laden braucht dafür keinerlei Code-Änderung.
+- Plugin: `@capacitor-community/background-geolocation` (MIT, kostenlos) - bewusst **nicht** die von Capawesome (taucht in Recherchen oft als "am besten gepflegt" auf, ist aber kostenpflichtig/nur per bezahltem Insiders-Abo installierbar).
+- **Wichtiger Fund direkt aus der Plugin-Doku** (nicht nur angenommen): `android.useLegacyBridge: true` muss in `capacitor.config.json` gesetzt sein, sonst stoppen Standort-Updates nach 5 Minuten im Hintergrund - genau das Kernproblem, das gelöst werden soll. Gesetzt und per `npx cap sync android` übernommen.
+- `AndroidManifest.xml` um `ACCESS_FINE_LOCATION`/`ACCESS_COARSE_LOCATION`/`ACCESS_BACKGROUND_LOCATION`/`POST_NOTIFICATIONS`/Foreground-Service-Berechtigungen ergänzt (die App-seitige `ACCESS_BACKGROUND_LOCATION`-Deklaration übernimmt das Plugin bewusst nicht automatisch, siehe eigene Doku - erfordert eine bewusste Entscheidung wegen Google-Play-Review-Pflicht).
+- Neue, klar als **vorläufig** markierte Datei `public/js/capacitor-bridge.js` (geladen in `templates/app.php` nach `toast.js`) - reiner Nachweis-Hook (`capacitorBridgeStartTestWatch()`/`...StopTestWatch()`, nur per Konsole/Devtools aufrufbar, keine UI), der beweisen soll, dass Positions-Updates wirklich bei gesperrtem Bildschirm ankommen. Ist ein no-op außerhalb der nativen Hülle (`window.Capacitor` existiert nur dort) - live im normalen Browser geprüft: keine Auswirkung, keine neuen Konsolenfehler.
+
+**Toolchain-Lücke geschlossen, erster Build erfolgreich (2026-09-14)**: Java 17 (Eclipse Temurin) und Android Studio (bringt SDK mit: `build-tools 36.0.0`, `platform android-37.0`) installiert. Dabei ein wichtiger, live verifizierter Korrektur-Fund: Java 17 reicht für das Android Gradle Plugin selbst, aber **Capacitor 8s eigene Android-Library verlangt JDK 21** (`sourceCompatibility JavaVersion.VERSION_21` direkt in `node_modules/@capacitor/android/capacitor/build.gradle` bestätigt) - mit Java 17 schlägt der Build mit "invalid source release: 21" fehl. Lösung ohne weitere Installation: Android Studio bringt sein eigenes eingebettetes JDK mit (aktuell Version 25, unter `Android Studio\jbr\`), das reicht aus und wurde als `JAVA_HOME` für den Gradle-Build verwendet. `android/local.properties` (maschinenspezifisch, nicht eingecheckt) mit `sdk.dir` auf das gefundene SDK gesetzt. Ergebnis: `gradlew assembleDebug` läuft komplett durch, `app-debug.apk` liegt unter `android/app/build/outputs/apk/debug/` (~9,1 MB).
+
+**Offen/blockiert**: Kein Android-Gerät angeschlossen (`adb devices` leer) - APK kann noch nicht auf einem echten Handy installiert/getestet werden. Nächster Schritt: Handy per USB verbinden (Entwickleroptionen/USB-Debugging aktivieren, siehe frühere Anleitung), APK installieren, Hintergrund-GPS-Nachweis (`capacitorBridgeStartTestWatch()`, Bildschirm sperren, Updates prüfen) tatsächlich durchführen. Die eigentliche Aufzeichnen-Funktion/UI ist bewusst noch nicht gebaut - das ist ein separater, späterer Schritt.
+
 ## Touren-Dokument
 
 Ausgabe eines PDF-Dokuments für eine Tour mit 
