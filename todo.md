@@ -1,9 +1,5 @@
 # Offene Punkte
 
-## Track aufzeichnen Menü nicht benutzbar
-
-Wenn ich den Menüpunkt "Track aufzeichnen" wähle, wird das Menü geöffnet und sofort wieder geschlossen.
-
 ## Verwalten der Benutzerberechtigungen
 
 Der Dialog zum bearbeiten von Benutzern führt auch die Rechte auf. Dort steht das Recht gefolgt von einer Checkbox. Diese Reihenfolge ist ungünstig. Links soll die Checkbox stehen, rechts davon die Beschreibung des Rechts.
@@ -62,6 +58,10 @@ Alle Dialoge/Bildschirme unter echter Mobile-Emulation (412×915) durchgetestet.
 
 
 # Erledigt
+
+## Track aufzeichnen Menü nicht benutzbar
+
+~~Wenn ich den Menüpunkt "Track aufzeichnen" wähle, wird das Menü geöffnet und sofort wieder geschlossen.~~ Gelöst (2026-09-14): `openTrackRecorderScreen()` (`track-recorder.js`) rief `toggleMenu()` statt `openMenu()` auf. Der Drawer-Eintrag "Track aufzeichnen" liegt selbst innerhalb der bereits geöffneten Drawer (wie "POIs"/"Preferences", die direkt `navMenuGoTo()` ohne jedes Menü-Umschalten aufrufen) - `toggleMenu()` sah die Drawer also schon offen und schloss sie stattdessen (`closeMenu()`), dazu kam der von `closeMenu()` verzögert (500ms) ausgelöste `navMenuReset()`, der den Screen-Stack kurz danach zusätzlich auf `root` zurückschnappen ließ. `openMenu()` ist für beide Aufrufer korrekt: von der Drawer-Zeile aus ist die Drawer schon offen (idempotent), von der Karten-Badge `#trackRecordingBadge` aus ist sie noch geschlossen und wird jetzt tatsächlich geöffnet. Live per Chrome-DevTools-Protokoll auf dem echten Gerät bestätigt: Drawer bleibt offen (`marginLeft: 0px`, auch 700ms nach dem alten Reset-Delay), aktiver Screen bleibt `record` mit gerendertem Inhalt statt auf `root` zurückzuspringen.
 
 ## Benutzerrecht für Routen-Aufzeichnungsdaten
 
