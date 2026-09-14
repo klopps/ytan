@@ -20,6 +20,10 @@
     "@capacitor/core": "^8.5.2"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^8.5.2"
+  },
+  "allowScripts": {
+    "sharp@0.32.6": true
   }
 }
