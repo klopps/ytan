@@ -37,12 +37,29 @@
     const BackgroundGeolocation = window.Capacitor.Plugins.BackgroundGeolocation;
     let testWatcherId = null;
 
+    /**
+     * With android.useLegacyBridge:true (capacitor.config.json - required to
+     * avoid the plugin's documented "updates stop after 5 minutes" bug),
+     * plugin calls do NOT reliably return a real Promise the way the
+     * plugin's own TypeScript definitions claim - confirmed live via Chrome
+     * DevTools: addWatcher() returned the watcher id as a plain synchronous
+     * string, not a thenable. Handles both shapes defensively rather than
+     * assuming either.
+     */
+    function resolveMaybePromise(value, onResolve) {
+        if (value && typeof value.then === 'function') {
+            value.then(onResolve);
+        } else {
+            onResolve(value);
+        }
+    }
+
     window.capacitorBridgeStartTestWatch = function () {
         if (testWatcherId !== null) {
             log('capacitorBridgeStartTestWatch(): already watching', LOG_INFO);
             return;
         }
-        BackgroundGeolocation.addWatcher(
+        const result = BackgroundGeolocation.addWatcher(
             {
                 backgroundTitle: 'YTAN (Test)',
                 backgroundMessage: 'Testet Hintergrund-GPS - zum Beenden die App-Benachrichtigung antippen.',
@@ -60,11 +77,10 @@
                 log(msg, LOG_INFO, location);
                 showToast(msg, 'info');
             }
-        ).then(function (id) {
+        );
+        resolveMaybePromise(result, function (id) {
             testWatcherId = id;
             log('capacitorBridgeStartTestWatch(): watcher started, id=' + id, LOG_INFO);
-        }).catch(function (err) {
-            log('capacitorBridgeStartTestWatch(): failed to start', LOG_ERROR, err);
         });
     };
 
@@ -72,9 +88,10 @@
         if (testWatcherId === null) {
             return;
         }
-        BackgroundGeolocation.removeWatcher({ id: testWatcherId }).then(function () {
-            log('capacitorBridgeStopTestWatch(): watcher removed, id=' + testWatcherId, LOG_INFO);
-            testWatcherId = null;
+        const stoppedId = testWatcherId;
+        testWatcherId = null;
+        resolveMaybePromise(BackgroundGeolocation.removeWatcher({ id: stoppedId }), function () {
+            log('capacitorBridgeStopTestWatch(): watcher removed, id=' + stoppedId, LOG_INFO);
         });
     };
 })();
