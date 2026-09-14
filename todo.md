@@ -44,6 +44,10 @@ Alle Dialoge/Bildschirme unter echter Mobile-Emulation (412×915) durchgetestet.
 
 # Erledigt
 
+## Standard-Genauigkeit beim Tracking (2026-09-14)
+
+~~Setze die Accuracy beim Tracking default auf "Battery saver".~~ Gelöst: Default-Distanzfilter für neue Aufzeichnungen von "Ausgewogen" (50m) auf "Akkusparend" (100m) geändert - `settings.trackDistanceFilter` (`map-core.js`) sowie die beiden Fallback-Werte in `track-recorder.js` (Vorauswahl beim Öffnen des Aufzeichnen-Bildschirms, Fallback falls kein Radio-Button markiert ist). Nutzer können weiterhin pro Aufzeichnung "Präzise"/"Ausgewogen" wählen, nur die Vorbelegung hat sich geändert.
+
 ## Menüreihenfolge (2026-09-14)
 
 ~~Der Menüpunkt "Track aufzeichnen" soll nach dem Menüpunkt "Touren" folgen.~~ Gelöst: In `templates/app.php`s Root-Menü liegt die (nur in der nativen Android-Hülle sichtbare) "Track aufzeichnen"-Zeile jetzt direkt nach "Touren" statt nach "Preferences" - neue Reihenfolge: POIs, Touren, Track aufzeichnen, Teilen, Profil, Preferences, Site Settings. Per gerendertem HTML geprüft.

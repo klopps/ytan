@@ -527,7 +527,7 @@ var settings = { // muss wegen JSON.stringify() ein Objekt sein
     detailroutes: true, // Routes
     detailareas: true,  // Areas
     detailwsi: false,  // Wind Shelter Indicators
-    trackDistanceFilter: 'balanced', // GPS track recording (native shell only, track-recorder.js)
+    trackDistanceFilter: 'battery', // GPS track recording (native shell only, track-recorder.js)
     maptype: "hybrid",
     center: null,
     zoom: null,

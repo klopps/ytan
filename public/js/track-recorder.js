@@ -499,7 +499,7 @@
         // settings.trackDistanceFilter is persisted via the normal
         // settings-cookie mechanism (settings.js) - trackRecorderStartClicked()
         // writes it, here it's just read back to pre-select the right option.
-        var preset = settings.trackDistanceFilter || 'balanced';
+        var preset = settings.trackDistanceFilter || 'battery';
         return '' +
             '<p class="nav-field-label">' + t('trackrecorder.distance_filter_label') + '</p>' +
             '<form name="trackfilter">' +
@@ -531,7 +531,7 @@
 
     window.trackRecorderStartClicked = function () {
         const checked = document.querySelector('input[name="trackfilterselector"]:checked');
-        const preset = checked ? checked.value : 'balanced';
+        const preset = checked ? checked.value : 'battery';
         settings.trackDistanceFilter = preset;
         saveSettings();
         startRecording(preset);
