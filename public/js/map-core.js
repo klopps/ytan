@@ -1304,6 +1304,7 @@ function initUser() {
         tour_publish: false,
         tour_manage: false,
         tour_copy: false,
+        route_view_recording: false,
         pending_email: null,
         pending_email_expires_at: null
     }

@@ -59,11 +59,12 @@ abstract class TestCase extends BaseTestCase
             'tour_publish' => 0,
             'tour_manage' => 0,
             'tour_copy' => 0,
+            'route_view_recording' => 0,
         ], $overrides);
 
         $stmt = $this->pdo->prepare(
-            'INSERT INTO user (username, email, firstname, lastname, is_admin, tour_create, tour_publish, tour_manage, tour_copy, password)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)'
+            'INSERT INTO user (username, email, firstname, lastname, is_admin, tour_create, tour_publish, tour_manage, tour_copy, route_view_recording, password)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)'
         );
         $stmt->execute([
             $data['username'],
@@ -75,6 +76,7 @@ abstract class TestCase extends BaseTestCase
             $data['tour_publish'],
             $data['tour_manage'],
             $data['tour_copy'],
+            $data['route_view_recording'],
         ]);
 
         return (int) $this->pdo->lastInsertId();
@@ -92,10 +94,12 @@ abstract class TestCase extends BaseTestCase
             'points' => '[]',
             'public' => 0,
             'color' => '#BF409F',
+            'recorded_at' => null,
+            'recording_duration_seconds' => null,
         ], $overrides);
 
         $stmt = $this->pdo->prepare(
-            'INSERT INTO route (user_id, name, description, length, points, public, color) VALUES (?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO route (user_id, name, description, length, points, public, color, recorded_at, recording_duration_seconds) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $userId,
@@ -105,6 +109,8 @@ abstract class TestCase extends BaseTestCase
             $data['points'],
             $data['public'],
             $data['color'],
+            $data['recorded_at'],
+            $data['recording_duration_seconds'],
         ]);
 
         return (int) $this->pdo->lastInsertId();
@@ -129,6 +135,7 @@ abstract class TestCase extends BaseTestCase
             'tour_publish' => false,
             'tour_manage' => false,
             'tour_copy' => false,
+            'route_view_recording' => false,
         ], $overrides);
     }
 }

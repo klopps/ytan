@@ -193,6 +193,7 @@ final class AuthService
             'tour_publish' => (bool) ($user['tour_publish'] ?? false),
             'tour_manage' => (bool) ($user['tour_manage'] ?? false),
             'tour_copy' => (bool) ($user['tour_copy'] ?? false),
+            'route_view_recording' => (bool) ($user['route_view_recording'] ?? false),
             'iat' => time(),
             'exp' => $expiresAt,
         ], $this->jwtSecret, 'HS256');

@@ -1,0 +1,2 @@
+ALTER TABLE user
+    ADD COLUMN route_view_recording TINYINT(1) UNSIGNED NOT NULL DEFAULT 0;

@@ -1,5 +1,14 @@
 # Offene Punkte
 
+## Track aufzeichnen Menü nicht benutzbar
+
+Wenn ich den Menüpunkt "Track aufzeichnen" wähle, wird das Menü geöffnet und sofort wieder geschlossen.
+
+## Aufzeichnungsdichte beim Tracking anpassen
+
+Die Aufzeichnungsdichte beim Tracking ist derzeit in drei Stufen von 10, 20 und 50 Metern wählbar. Das ist sehr feingranular. Besser wäre eine Auswahl von 20, 50 und 100 Metern.
+Nach eine Aufzeichnung soll die aufgezeichnete Route automatisch vereinfacht werden, so dass weniger Punkte gespeichert werden, ohne dass ein großer Verlust an Genauigkeit entsteht.
+
 ## Automatisierte Oberflächen-Tests (2026-09-14)
 
 Aktuell gibt es **keine** automatisierte Testsuite für die Oberfläche (JS/Frontend) - nur PHPUnit (`tests/Unit/`, `tests/Integration/`) für das PHP-Backend, `composer test`. Keine Playwright-/Jest-/Cypress-Konfiguration im Repo. UI-Änderungen werden bisher ausschließlich manuell/ad-hoc per Browser-Tool geprüft (Mobile-first, siehe CLAUDE.md), nicht als wiederverwendbare, eingecheckte Testdateien. (Seit 2026-09-14 gibt es zwar ein `package.json` im Repo-Root - das ist aber für die Capacitor-App-Hülle, siehe unten, kein Test-Tooling.)
@@ -49,6 +58,33 @@ Alle Dialoge/Bildschirme unter echter Mobile-Emulation (412×915) durchgetestet.
 
 
 # Erledigt
+
+## Benutzerrecht für Routen-Aufzeichnungsdaten
+
+~~Es muss ein neues Benutzerrecht eingeführt werden. Admins und Benutzer mit diesem Recht sehen nach einem doppelklick auf eine Route, wann diese von wem in welchem zeitraum (Start- und Endzeit/Datum) aufgezeichnet wurde. Benutzer ohne Admin-Rechte und ohne dieses Recht sehen diese Informationen nicht.~~ Gelöst (2026-09-14): Neues flaches Boolean-Recht `user.route_view_recording` (Migration 018), gleiche Konvention wie die Touren-Rechte, aber kein Touren-Recht - siehe CLAUDE.md-Abschnitt dazu. Server- **und** clientseitig durchgesetzt:
+
+- **Backend**: `RouteRepository::SELECT_WITH_RECORDER` (neuer `LEFT JOIN user` liefert `recorded_by_username`) auf allen 5 Lesefunktionen. `RouteController::redactRecordingInfo()` - neue, nicht-werfende `BaseController::hasRight()` (Gegenstück zu `assertTourRight()`) prüft admin/das Recht und `unset()`t `recorded_at`/`recording_duration_seconds`/`recorded_by_username` komplett statt sie nur auf `NULL` zu setzen, damit die Antwort selbst nicht verrät, ob überhaupt aufgezeichnet wurde. Gilt auf allen vier Antwort-Endpunkten (`index`/`show`/`create`/`update`) - auch für den Besitzer der eigenen soeben aufgezeichneten Route, ohne Ausnahme, exakt wie angefragt.
+- **Frontend**: `route.js`s bestehender `dblclick`-Listener auf der Routen-Polylinie (separat vom `click`-Listener, der nur die Distanz-Labels umschaltet) rief schon vorher `showRouteInfoWindow()` auf - kein neues Event-Wiring nötig, nur die Anzeige selbst wurde um dieselbe Rechteprüfung ergänzt (`user.is_admin || user.route_view_recording`) und zeigt jetzt zusätzlich Ersteller und Start-/Endzeit statt nur Datum+Dauer. Notwendig als zweite, clientseitige Absicherung: `saveRoute()` hält nach dem Speichern noch kurz die lokal gebauten Rohdaten im Speicher, bevor ein Server-Refresh sie ersetzen würde.
+- **Admin-Oberfläche**: neue Checkbox "Routen-Aufzeichnungsdaten einsehen" im Benutzer-Formular (`admin-user.js`, eigener "Weitere Berechtigungen"-Abschnitt, da kein Touren-Recht), plus Filter-Chip und Badge in der Benutzertabelle, exakt nach dem Muster der vier Touren-Rechte.
+- Dabei einen zweiten, unabhängigen Bug gefunden und gefixt: `UserController::index()`s Query-Parameter-Filterliste für die Admin-Tabelle war eine eigene, separat gepflegte Kopie der Rechte-Feldnamen (nicht dieselbe wie `UserRepository::RIGHT_COLUMNS`) - ohne den Fix wäre der neue Filter-Chip einfach stillschweigend wirkungslos gewesen (unbekannte Query-Parameter werden verworfen, nicht abgelehnt).
+
+8 neue PHPUnit-Tests (`RouteControllerRecordingInfoTest`, `UserControllerFilterTest`), volle Suite weiterhin grün (167 Tests). Noch nicht auf einem echten Gerät/im Browser mit echtem Admin-/Nicht-Admin-Login durchgespielt (siehe Hinweis im Chat) - nur die Backend-Logik ist per Test bewiesen, die reine Anzeige-Logik im Frontend folgt aber 1:1 dem bereits live verifizierten Muster aus "Live-GPS-Routenaufzeichnung" unten.
+
+## Live-GPS-Routenaufzeichnung
+
+~~Ja, mache das.~~ (Antwort auf die Frage, ob Akku-Optimierung in die künftige Aufzeichnen-Funktion mit eingeplant werden soll; danach: "Wenn eine Route aufgezeichnet wird, muss vermerkt werden, wann sie aufgezeichnet wurde und es müssen Informationen zur Dauer gespeichert werden.") Gelöst (2026-09-14): Neuer Drawer-Bildschirm "Track aufzeichnen" (nur in der nativen Android-Hülle sichtbar, siehe "Capacitor-App-Hülle für Android" unten) zeichnet den Standort per Hintergrund-GPS auf und speichert ihn über die bestehende Route-API - das fertige Tracking wird genau wie eine bereits gespeicherte Route zum Bearbeiten in `measureTool`/`showRouteEditWindow()` (`route.js`) eingespeist, keine parallele Speicherlogik. Details/Architektur/Fehlersuche siehe Projekt-Memory `project_track_recorder.md`.
+
+- **Akku**: Distanzfilter (der einzige Hebel, den das Plugin bietet) in der App wählbar - Präzise (15m) / Ausgewogen (20m) / Akkusparend (40m), als Segmented Control auf dem Aufzeichnen-Bildschirm, persistiert wie jede andere Einstellung.
+- **Aufzeichnungs-Zeitpunkt/-Dauer**: Backend-Erweiterung `route.recorded_at`/`route.recording_duration_seconds` (Migration 017, beide nullable, nur bei GPS-Aufzeichnungen gesetzt). `RouteRepository::update()` lässt diese Felder bewusst unangetastet, damit ein späteres Umbenennen einer aufgezeichneten Route sie nicht stillschweigend auf `NULL` zurücksetzt (das wäre sonst passiert, da `saveRoute()`s Bearbeiten-Formular diese Felder bei einer normalen Bearbeitung gar nicht mitschickt). Anzeige in der Routen-Infobox: "Aufgezeichnet am {Datum}, Dauer {Dauer}".
+- **IndexedDB-Puffer** (neu für dieses Projekt) hält die Aufzeichnung fest, damit sie einen App-Prozess-Kill im Hintergrund übersteht, inkl. Fortsetzen-Erkennung beim nächsten App-Start.
+- **Login-Lücke abgesichert**: `showRouteEditWindow()` verwirft beim Speichern-Versuch ohne Anmeldung die komplette `measureTool`-Sitzung (`cancelEditRoute()` → `measureTool.end()`) - ein eigener Login-Check in `track-recorder.js`, der VOR jedem Zugriff auf `measureTool` prüft, verhindert das gezielt; die Aufzeichnung bleibt bis zur Anmeldung in IndexedDB erhalten.
+- `capacitor-bridge.js` vom reinen Test-Hook zu einem wiederverwendbaren `CapacitorBridge`-Wrapper ausgebaut.
+
+**Kompletter End-zu-Ende-Test auf echtem Gerät durchgeführt** (nicht nur angenommen): Aufzeichnung gestartet, Bildschirm gesperrt und ~15 Minuten unterwegs (real per IndexedDB-Auslesen bestätigt: von 1 auf 7 echte GPS-Punkte angewachsen, letzter Punkt 6 Minuten nach Trennung - über die 5-Minuten-Grenze des Plugins hinweg), Stopp ohne Anmeldung korrekt abgefangen (Daten blieben erhalten), nach Anmeldung erneut ausgelöst, gespeichert, per Live-API-Abfrage bestätigt (`recorded_at: "2026-09-14 18:13:56"`, `recording_duration_seconds: 903`), Anzeige in der Infobox bestätigt ("Aufgezeichnet am 14.9.2026, Dauer 15 min").
+
+Dabei zwei echte, erst beim Live-Test aufgetretene Bugs gefunden und gefixt: (1) `recorded_at` wurde als ISO-8601-String geschickt, MySQL `DATETIME` lehnte das ab ("Incorrect datetime value") - neuer `toMysqlDatetime()`-Helfer wandelt vorher um. (2) Die lokale IndexedDB-Kopie wurde nach erfolgreichem Speichern nirgends gelöscht - neuer `window.onRecordedRouteSaved()`-Hook, von `saveRoute()` nach bestätigtem Speichern aufgerufen, räumt jetzt tatsächlich auf.
+
+Automatische Stillstandserkennung (GPS pausieren bei Nichtbewegung) ist mit dem aktuellen Plugin nicht möglich (kein Intervall-/Aktivitäts-Feld in dessen API) - bewusst nicht umgesetzt, bräuchte ein zusätzliches natives Bewegungserkennungs-Plugin; bei Bedarf ein eigener, späterer Punkt.
 
 ## Capacitor-App-Hülle für Android
 

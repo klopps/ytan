@@ -22,7 +22,7 @@ final class UserController extends BaseController
     ) {
     }
 
-    private const TOUR_RIGHT_FIELDS = ['is_admin', 'tour_create', 'tour_publish', 'tour_manage', 'tour_copy'];
+    private const RIGHT_FIELDS = ['is_admin', 'tour_create', 'tour_publish', 'tour_manage', 'tour_copy', 'route_view_recording'];
 
     public function index(Request $request, Response $response): Response
     {
@@ -30,7 +30,7 @@ final class UserController extends BaseController
 
         $params = $request->getQueryParams();
         $filters = [];
-        foreach (self::TOUR_RIGHT_FIELDS as $field) {
+        foreach (self::RIGHT_FIELDS as $field) {
             if (isset($params[$field])) {
                 $filters[$field] = $params[$field];
             }

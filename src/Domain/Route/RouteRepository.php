@@ -13,9 +13,21 @@ final class RouteRepository
     {
     }
 
+    /**
+     * Every read method below joins in the recording user's username as
+     * recorded_by_username - cheap (indexed FK), and needed so
+     * RouteController can show "recorded by <username>" to viewers with
+     * the route_view_recording right (it redacts this column, along with
+     * recorded_at/recording_duration_seconds, for everyone else). SELECT *
+     * would pull in unrelated/sensitive `user` columns (e.g. the password
+     * hash) once joined, so every query below explicitly lists route.*
+     * instead.
+     */
+    private const SELECT_WITH_RECORDER = 'SELECT route.*, user.username AS recorded_by_username FROM route LEFT JOIN user ON user.id = route.user_id';
+
     public function findPublic(?int $limit = null, int $offset = 0): array
     {
-        return $this->db->query('SELECT * FROM route WHERE public = 1 ORDER BY id' . $this->limitSuffix($limit, $offset))->fetchAll();
+        return $this->db->query(self::SELECT_WITH_RECORDER . ' WHERE route.public = 1 ORDER BY route.id' . $this->limitSuffix($limit, $offset))->fetchAll();
     }
 
     public function countPublic(): int
@@ -25,7 +37,7 @@ final class RouteRepository
 
     public function findByUser(int $userId, ?int $limit = null, int $offset = 0): array
     {
-        $stmt = $this->db->prepare('SELECT * FROM route WHERE user_id = ? ORDER BY id' . $this->limitSuffix($limit, $offset));
+        $stmt = $this->db->prepare(self::SELECT_WITH_RECORDER . ' WHERE route.user_id = ? ORDER BY route.id' . $this->limitSuffix($limit, $offset));
         $stmt->execute([$userId]);
 
         return $stmt->fetchAll();
@@ -41,7 +53,7 @@ final class RouteRepository
 
     public function findByUserWithPublic(int $userId, ?int $limit = null, int $offset = 0): array
     {
-        $stmt = $this->db->prepare('SELECT * FROM route WHERE user_id = ? OR public = 1 ORDER BY id' . $this->limitSuffix($limit, $offset));
+        $stmt = $this->db->prepare(self::SELECT_WITH_RECORDER . ' WHERE route.user_id = ? OR route.public = 1 ORDER BY route.id' . $this->limitSuffix($limit, $offset));
         $stmt->execute([$userId]);
 
         return $stmt->fetchAll();
@@ -63,8 +75,9 @@ final class RouteRepository
     public function findByTour(int $tourId): array
     {
         $stmt = $this->db->prepare(
-            'SELECT route.* FROM tour_route
+            'SELECT route.*, user.username AS recorded_by_username FROM tour_route
              LEFT JOIN route ON route.id = tour_route.route_id
+             LEFT JOIN user ON user.id = route.user_id
              WHERE tour_route.tour_id = ?
              ORDER BY tour_route.sort_order'
         );
@@ -75,7 +88,7 @@ final class RouteRepository
 
     public function findById(int $id): array
     {
-        $stmt = $this->db->prepare('SELECT * FROM route WHERE id = ?');
+        $stmt = $this->db->prepare(self::SELECT_WITH_RECORDER . ' WHERE route.id = ?');
         $stmt->execute([$id]);
         $route = $stmt->fetch();
 

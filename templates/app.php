@@ -452,6 +452,7 @@
           user.tour_publish = !!answer.data.tour_publish;
           user.tour_manage = !!answer.data.tour_manage;
           user.tour_copy = !!answer.data.tour_copy;
+          user.route_view_recording = !!answer.data.route_view_recording;
           user.pending_email = answer.data.pending_email;
           user.pending_email_expires_at = answer.data.pending_email_expires_at;
 

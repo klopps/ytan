@@ -870,11 +870,25 @@ function showRouteInfoWindow(event, i) {
         '<h3>' + routes[i]['name'] + '</h3>' +
         '<div class="infoWindowElement">' + t('route.info.length', { length: length }) + '</div>';
 
-    if (routes[i]['recorded_at']) {
-        var recordedDate = new Date(routes[i]['recorded_at'].replace(' ', 'T'));
-        var recordedDateStr = recordedDate.toLocaleDateString(language);
-        var durationStr = formatRouteRecordingDuration(routes[i]['recording_duration_seconds']);
-        content += '<div class="infoWindowElement">' + t('route.info.recorded', { date: recordedDateStr, duration: durationStr }) + '</div>';
+    // Recording metadata (when/by whom/how long) is only ever present on a
+    // GPS-recorded route (track-recorder.js) in the first place, but is
+    // ADDITIONALLY gated behind the route_view_recording right (or admin) -
+    // matches the same redaction RouteController already applies
+    // server-side, so this is a second, defense-in-depth check on the
+    // display layer, not the only one: routes[i] here can be the client's
+    // own optimistic just-saved object (see saveRoute()), which still has
+    // these fields locally even for a non-privileged user until the next
+    // server refresh, so the UI must not display them regardless.
+    if ((user.is_admin === true || user.route_view_recording === true) && routes[i]['recorded_at']) {
+        var dateTimeOpts = { dateStyle: 'medium', timeStyle: 'short' };
+        var startDate = new Date(routes[i]['recorded_at'].replace(' ', 'T'));
+        var endDate = new Date(startDate.getTime() + routes[i]['recording_duration_seconds'] * 1000);
+        content += '<div class="infoWindowElement">' + t('route.info.recorded', {
+            by: routes[i]['recorded_by_username'] || '?',
+            start: startDate.toLocaleString(language, dateTimeOpts),
+            end: endDate.toLocaleString(language, dateTimeOpts),
+            duration: formatRouteRecordingDuration(routes[i]['recording_duration_seconds']),
+        }) + '</div>';
     }
 
     content += '<div class="infoWindowElement">' + marked.parse(routes[i]['description']) + '<div>';

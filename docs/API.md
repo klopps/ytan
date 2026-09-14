@@ -50,6 +50,13 @@ Route body: `name, description, public, length, points (JSON-encoded array of {l
 Optionally, for a GPS-recorded route (set at creation only - `PUT` ignores
 both, see `RouteRepository::update()`): `recorded_at` (datetime, UTC),
 `recording_duration_seconds` (int, total elapsed time including pauses).
+A response also carries the joined `recorded_by_username` alongside those
+two fields when they're set. All three are only ever present in a response
+for a caller who is `is_admin` or has the `route_view_recording` right -
+every other caller (including the route's own owner and anonymous
+requests) gets the route with these three keys removed entirely rather
+than nulled, so the payload shape itself doesn't reveal whether a route
+was recorded (see `RouteController::redactRecordingInfo()`).
 Area body: `name, description, public, points (JSON-encoded array of {lat,lng}), color, opacity, zindex`.
 
 ## Tours
@@ -62,8 +69,8 @@ also takes `search` (matches name/description/creator username) and
 ## Users (admin only)
 
 `GET /users` - optional exact-match filters `is_admin`/`tour_create`/
-`tour_publish`/`tour_manage`/`tour_copy` (each `0` or `1`), plus the shared
-`limit`/`offset` from Pagination above.
+`tour_publish`/`tour_manage`/`tour_copy`/`route_view_recording` (each `0`
+or `1`), plus the shared `limit`/`offset` from Pagination above.
 
 ## WSI (wind shelter indicator)
 

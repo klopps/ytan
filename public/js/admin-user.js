@@ -16,12 +16,18 @@
  */
 
 const TOUR_RIGHT_FIELDS = ['tour_create', 'tour_publish', 'tour_manage', 'tour_copy'];
-// "Admin" is an app-wide right, so it's left bare; the other four are all
+// Rights that aren't about tours (currently just route_view_recording, the
+// right to see who recorded a GPS-tracked route and when - see
+// RouteController::redactRecordingInfo()) get their own bucket so the "Tour: "
+// label prefix stays accurate and the two groups can be shown under separate
+// headings in the form (tour_rights_label vs. other_rights_label).
+const OTHER_RIGHT_FIELDS = ['route_view_recording'];
+// "Admin" is an app-wide right, so it's left bare; the four tour_* fields are
 // specifically about tours and are labelled "Tour: ..." everywhere they're
 // shown (this table's badges, the filter panel below) so that's never
 // ambiguous - "Create"/"Publish"/"Manage"/"Copy" alone read as generic
 // permissions otherwise.
-const USER_RIGHT_LABELS = { is_admin: t('admin_user.right_admin'), tour_create: t('admin_user.right_tour_create'), tour_publish: t('admin_user.right_tour_publish'), tour_manage: t('admin_user.right_tour_manage'), tour_copy: t('admin_user.right_tour_copy') };
+const USER_RIGHT_LABELS = { is_admin: t('admin_user.right_admin'), tour_create: t('admin_user.right_tour_create'), tour_publish: t('admin_user.right_tour_publish'), tour_manage: t('admin_user.right_tour_manage'), tour_copy: t('admin_user.right_tour_copy'), route_view_recording: t('admin_user.right_route_view_recording') };
 const USER_ADMIN_NEW_BUTTON_HTML = '<div class="startbtn" onclick="showUserCreateForm();"><i class="material-icons-round">person_add</i>&nbsp;' + t('admin_user.new_user') + '</div>';
 let adminUserFilters = {}; // { is_admin: 1, tour_manage: 1, ... } - AND'ed together, see loadUserList()
 let adminUserFilterPanelOpen = false; // whether the collapsible "Filter by right" panel is expanded
@@ -115,7 +121,7 @@ function toggleUserFilterPanel() {
 }
 
 function userFilterPanelHtml() {
-    var fields = ['is_admin'].concat(TOUR_RIGHT_FIELDS);
+    var fields = ['is_admin'].concat(TOUR_RIGHT_FIELDS).concat(OTHER_RIGHT_FIELDS);
     var activeCount = Object.keys(adminUserFilters).length;
 
     var html = '<div class="admin-filter-toggle" onclick="toggleUserFilterPanel();">' +
@@ -242,6 +248,11 @@ function renderFilteredUserRows() {
                 badges += '<span class="admin-badge admin-badge-tour">' + USER_RIGHT_LABELS[TOUR_RIGHT_FIELDS[r]] + '</span>';
             }
         }
+        for (let r = 0; r < OTHER_RIGHT_FIELDS.length; r++) {
+            if (u[OTHER_RIGHT_FIELDS[r]]) {
+                badges += '<span class="admin-badge admin-badge-tour">' + USER_RIGHT_LABELS[OTHER_RIGHT_FIELDS[r]] + '</span>';
+            }
+        }
 
         html += '<tr>' +
             '<td data-label="' + t('admin_user.col_username') + '">' + escapeHTML(u.username) + '</td>' +
@@ -277,7 +288,7 @@ function adminUserPaginationHtml(totalMatches, totalPages) {
 }
 
 function userFormHtml(u) {
-    u = u || { id: null, username: '', email: '', firstname: '', lastname: '', is_admin: false, tour_create: false, tour_publish: false, tour_manage: false, tour_copy: false };
+    u = u || { id: null, username: '', email: '', firstname: '', lastname: '', is_admin: false, tour_create: false, tour_publish: false, tour_manage: false, tour_copy: false, route_view_recording: false };
 
     var saveCall = u.id === null ? 'saveNewUser()' : 'saveEditedUser(' + u.id + ')';
     var hint = u.id === null
@@ -324,6 +335,11 @@ function userFormHtml(u) {
             '<div class="adminFormLabel"><label for="userFormTourCopy">' + t('admin_user.tour_copy_label') + '</label></div>' +
             '<div class="adminFormField"><input id="userFormTourCopy" type="checkbox"' + (u.tour_copy ? ' checked' : '') + '><label for="userFormTourCopy"><span></span></label></div>' +
         '</div>' +
+        '<p class="nav-field-label">' + t('admin_user.other_rights_label') + '</p>' +
+        '<div class="adminFormRow">' +
+            '<div class="adminFormLabel"><label for="userFormRouteViewRecording">' + t('admin_user.route_view_recording_label') + '</label></div>' +
+            '<div class="adminFormField"><input id="userFormRouteViewRecording" type="checkbox"' + (u.route_view_recording ? ' checked' : '') + '><label for="userFormRouteViewRecording"><span></span></label></div>' +
+        '</div>' +
         '<div class="adminFormRow">' +
             '<div class="adminFormLabel">&nbsp;</div>' +
             '<div class="adminFormField">' +
@@ -362,6 +378,7 @@ function readUserForm() {
         tour_publish: document.getElementById('userFormTourPublish').checked,
         tour_manage: document.getElementById('userFormTourManage').checked,
         tour_copy: document.getElementById('userFormTourCopy').checked,
+        route_view_recording: document.getElementById('userFormRouteViewRecording').checked,
     };
 }
 

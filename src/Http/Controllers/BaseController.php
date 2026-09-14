@@ -51,6 +51,22 @@ abstract class BaseController
     }
 
     /**
+     * Non-throwing counterpart to assertTourRight() - true if the caller is
+     * an admin or has the named boolean right, false otherwise (including
+     * for an anonymous/logged-out caller, where $authUser is null). For
+     * gating what a response CONTAINS (e.g. redacting a field) rather than
+     * whether an action is allowed at all.
+     */
+    protected function hasRight(?array $authUser, string $right): bool
+    {
+        if ($authUser === null) {
+            return false;
+        }
+
+        return ($authUser['is_admin'] ?? false) || ($authUser[$right] ?? false);
+    }
+
+    /**
      * @return array{sub:int,username:string,is_admin:bool}
      */
     protected function requireAdmin(Request $request): array
