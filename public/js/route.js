@@ -249,7 +249,11 @@ function saveRoute(i) {
     // Set by track-recorder.js immediately before showRouteEditWindow(),
     // only for a just-finished GPS recording - cleared unconditionally
     // right after reading it so a later, unrelated manual edit never
-    // accidentally reuses stale recording metadata.
+    // accidentally reuses stale recording metadata. Snapshotted into
+    // wasRecordedRoute first so the success handler below still knows
+    // (after the variable itself is already cleared) whether to tell
+    // track-recorder.js to drop its local IndexedDB copy.
+    var wasRecordedRoute = pendingRouteRecordingMeta !== null;
     if (pendingRouteRecordingMeta !== null) {
         routeData.recorded_at = pendingRouteRecordingMeta.recorded_at;
         routeData.recording_duration_seconds = pendingRouteRecordingMeta.recording_duration_seconds;
@@ -264,6 +268,10 @@ function saveRoute(i) {
 
     request.then(answer => {
         log('saveRoute() success', LOG_INFO, answer);
+
+        if (wasRecordedRoute && typeof window.onRecordedRouteSaved === 'function') {
+            window.onRecordedRouteSaved();
+        }
 
         measureTool.end();
         routeData.points = JSON.parse(routeData.points);

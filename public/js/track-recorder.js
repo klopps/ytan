@@ -173,6 +173,14 @@
         return (n < 10 ? '0' : '') + n;
     }
 
+    /**
+     * ISO 8601 ("2026-09-14T18:13:56.158Z") -> MySQL DATETIME format
+     * ("2026-09-14 18:13:56"), UTC in both cases. See reviewRecordedTrack().
+     */
+    function toMysqlDatetime(isoString) {
+        return isoString.slice(0, 19).replace('T', ' ');
+    }
+
     // --- Recording state machine -----------------------------------------
 
     function registerWatcher() {
@@ -331,7 +339,11 @@
         const startedAtMs = new Date(meta.startedAt).getTime();
         const stoppedAtMs = new Date(meta.stoppedAt).getTime();
         pendingRouteRecordingMeta = {
-            recorded_at: meta.startedAt,
+            // MySQL's DATETIME column rejects a plain ISO 8601 string
+            // (e.g. "2026-09-14T18:13:56.158Z") - confirmed live via a
+            // real save attempt: "Incorrect datetime value" from
+            // RouteRepository::create(). Needs "YYYY-MM-DD HH:MM:SS".
+            recorded_at: toMysqlDatetime(meta.startedAt),
             recording_duration_seconds: Math.round((stoppedAtMs - startedAtMs) / 1000),
         };
 
@@ -513,6 +525,22 @@
     window.resumeRecording = resumeRecording;
     window.stopRecording = stopRecording;
     window.discardRecording = discardRecording;
+
+    /**
+     * Called by route.js's saveRoute() right after a successful POST
+     * /routes that included this module's recording metadata - only now,
+     * with the save actually confirmed, is it safe to drop the local
+     * IndexedDB copy. Re-reads the current meta rather than relying on any
+     * closure state, since this app only ever tracks one recording at a
+     * time - keeps this hook a single, self-contained statement.
+     */
+    window.onRecordedRouteSaved = function () {
+        getMeta().then(function (meta) {
+            if (meta) {
+                clearRecording(meta.recordingId);
+            }
+        });
+    };
 
     function initTrackRecorder() {
         const row = document.getElementById('trackRecorderMenuRow');
