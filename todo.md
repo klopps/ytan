@@ -1,11 +1,5 @@
 # Offene Punkte
 
-## Automatisierte Oberflächen-Tests (2026-09-14)
-
-Aktuell gibt es **keine** automatisierte Testsuite für die Oberfläche (JS/Frontend) - nur PHPUnit (`tests/Unit/`, `tests/Integration/`) für das PHP-Backend, `composer test`. Keine Playwright-/Jest-/Cypress-Konfiguration im Repo. UI-Änderungen werden bisher ausschließlich manuell/ad-hoc per Browser-Tool geprüft (Mobile-first, siehe CLAUDE.md), nicht als wiederverwendbare, eingecheckte Testdateien. (Seit 2026-09-14 gibt es zwar ein `package.json` im Repo-Root - das ist aber für die Capacitor-App-Hülle, siehe unten, kein Test-Tooling.)
-
-Bei Bedarf: echte Playwright-Testsuite aufsetzen (`tests/e2e/` o.ä., eigenes `package.json`, `.spec.js`-Dateien, `npx playwright test`), die zentrale Abläufe (Login, POI/Route/Area anlegen, Kontextmenüs, Touren) automatisiert abdeckt. Noch nicht begonnen, nur als offener Punkt vorgemerkt.
-
 ## Touren-Dokument
 
 Ausgabe eines PDF-Dokuments für eine Tour mit 
@@ -49,6 +43,20 @@ Alle Dialoge/Bildschirme unter echter Mobile-Emulation (412×915) durchgetestet.
 
 
 # Erledigt
+
+## Menüreihenfolge (2026-09-14)
+
+~~Der Menüpunkt "Track aufzeichnen" soll nach dem Menüpunkt "Touren" folgen.~~ Gelöst: In `templates/app.php`s Root-Menü liegt die (nur in der nativen Android-Hülle sichtbare) "Track aufzeichnen"-Zeile jetzt direkt nach "Touren" statt nach "Preferences" - neue Reihenfolge: POIs, Touren, Track aufzeichnen, Teilen, Profil, Preferences, Site Settings. Per gerendertem HTML geprüft.
+
+## Automatisierte Oberflächen-Tests (2026-09-14)
+
+~~Aktuell gibt es **keine** automatisierte Testsuite für die Oberfläche (JS/Frontend) - nur PHPUnit (`tests/Unit/`, `tests/Integration/`) für das PHP-Backend, `composer test`. [...] Bei Bedarf: echte Playwright-Testsuite aufsetzen (`tests/e2e/` o.ä., eigenes `package.json`, `.spec.js`-Dateien, `npx playwright test`), die zentrale Abläufe (Login, POI/Route/Area anlegen, Kontextmenüs, Touren) automatisiert abdeckt.~~ Gelöst (2026-09-14): eigenständiges Playwright-Projekt unter `tests/e2e/` (eigenes `package.json`/`node_modules`, getrennt vom Capacitor-`package.json` im Repo-Root), 9 Tests über 6 Spec-Dateien, decken genau die vier angefragten Abläufe ab (`login.spec.js`, `poi.spec.js`/`route.spec.js`/`area.spec.js`, `context-menu.spec.js`, `tours.spec.js`). Details/Fallstricke/Setup siehe CLAUDE.md-Abschnitt "Frontend end-to-end tests (Playwright)".
+
+- **Eigene `ytan_e2e`-Datenbank statt geteilter Nutzung von PHPUnits `ytan_test`**: erste Fassung teilte sich `ytan_test` mit PHPUnit - brach dadurch 12 PHPUnit-Tests (kollidierende Auto-Increment-IDs, durch liegengebliebene e2e-Zeilen verfälschte `count()`-Assertions). Jetzt eine komplett separate, beim ersten Lauf automatisch aus `ytan_test`s Struktur geklonte Datenbank (`tests/e2e/seed/reset-e2e-db.php`) - `composer test` bleibt davon unberührt, auch direkt nach einem e2e-Lauf verifiziert.
+- **DB-Isolation technisch nicht trivial**: ein Router-Wrapper (`tests/e2e/server/e2e-router.php`) um `public/index.php` erzwingt `$_ENV['DB_DATABASE'] = 'ytan_e2e'`, bevor `App::create()` läuft. Eine simple OS-Umgebungsvariable (`DB_DATABASE=ytan_e2e php -S ...`) hätte nicht funktioniert - empirisch geprüft: `Dotenv::createImmutable()->load()` füllt `$_ENV` aus der `.env`-Datei, sobald `$_ENV` selbst den Schlüssel noch nicht enthält, was auf dieser Maschine auch bei gesetzter OS-Variable zutrifft (`getenv()` sieht sie, `$_ENV` nicht).
+- **Echter, live gefundener Bug im Testcode selbst**: `map-core.js`s `fitToPoiBounds()` zentriert die Karte beim Laden ungefragt auf `GET /pois/bounds` - über die gesamte Datenbank hinweg, ohne Scope-Filter. Auf der gemeinsam genutzten `ytan_e2e`-Datenbank verschob das die Kartenmitte abhängig davon, was frühere Tests im selben Lauf bereits angelegt hatten, und ließ einen exakt-mittigen Kartenklick ins Leere statt auf die Karte selbst treffen. Behoben mit `fixtures.js`s `settleMapAt()` (setzt Center/Zoom zweimal, da `fitToPoiBounds()`s eigener Request auch verzögert nachträglich zuschlagen kann).
+- Zwei weitere reale Playwright/Maps-Fallstricke live gefunden und gefixt: (1) ein POI-Marker ohne explizites `icon.anchor` verankert an der Bildunterkante, nicht in der Bildmitte - ein Rechtsklick exakt auf die Marker-Koordinate trifft daher knapp daneben; (2) zwei schnell aufeinanderfolgende Kartenklicks können von Maps als Doppelklick (= Zoom) statt zwei Einzelklicks interpretiert werden - kleine Pause zwischen den Klicks behebt es.
+- Zweimal komplett grün durchlaufen lassen (nicht nur einmal) zur Stabilitätsprüfung, außerdem beide Male direkt danach `composer test` gegengeprüft.
 
 ## Layout Menüpunkt "Track aufzeichnen"
 

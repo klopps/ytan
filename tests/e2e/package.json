@@ -1,0 +1,14 @@
+{
+  "name": "ytan-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Playwright end-to-end tests for the YTAN frontend (login, POI/Route/Area creation, context menus, Tours). Separate from the repo-root package.json, which is Capacitor/Android tooling only - see CLAUDE.md's Testing section.",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0"
+  }
+}
