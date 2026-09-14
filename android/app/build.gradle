@@ -7,8 +7,11 @@ android {
         applicationId "org.pesr.ytan"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // versionCode follows major*10000 + minor*100 + patch, so later
+        // releases (0.5.1, 0.6.0, ...) always sort/increase correctly -
+        // Play Store requires a strictly increasing integer per upload.
+        versionCode 500
+        versionName "0.5.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
