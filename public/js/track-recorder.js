@@ -21,7 +21,11 @@
     // frequency (see capacitor-bridge.js/todo.md) - three user-chosen
     // presets rather than one fixed value, persisted like any other
     // preference (settings.js).
-    const TRACK_DISTANCE_FILTER_PRESETS = { precise: 15, balanced: 20, battery: 40 };
+    const TRACK_DISTANCE_FILTER_PRESETS = { precise: 20, balanced: 50, battery: 100 };
+    // Always applied to a finished recording (see simplifyTrackPoints()) -
+    // a few meters of tolerance drops redundant near-collinear points
+    // without a noticeable accuracy loss at kayak-touring scale.
+    const TRACK_SIMPLIFY_EPSILON_METERS = 3;
     const TRACK_SIMPLIFY_MAX_POINTS = 2000;
     const RECORDING_DB_NAME = 'ytan-track-recorder';
     const RECORDING_DB_VERSION = 1;
@@ -333,7 +337,7 @@
             return;
         }
 
-        const simplified = simplifyTrackPoints(points, TRACK_SIMPLIFY_MAX_POINTS);
+        const simplified = simplifyTrackPoints(points, TRACK_SIMPLIFY_EPSILON_METERS, TRACK_SIMPLIFY_MAX_POINTS);
         const latLngPoints = simplified.map(function (p) { return { lat: p.lat, lng: p.lng }; });
 
         const startedAtMs = new Date(meta.startedAt).getTime();
@@ -361,22 +365,26 @@
     }
 
     /**
-     * Douglas-Peucker downsampling, engaged only above a hard point-count
-     * cap so an unusually long/precise recording doesn't produce an
-     * unwieldy `points` payload - normal recordings pass through
-     * unchanged. Perpendicular distance is computed via a flat
-     * equirectangular approximation (fine at kayak-touring scale, no
-     * projection library needed).
+     * Douglas-Peucker downsampling, always applied to a finished recording
+     * (not just as a safety valve) - GPS noise and near-straight stretches
+     * produce far more points than a route actually needs, so a small
+     * epsilonMeters tolerance is run unconditionally to drop redundant
+     * points without a noticeable accuracy loss. maxPoints stays as a hard
+     * safety cap: if that first pass still leaves an unusually long/precise
+     * recording too large, epsilon is escalated further until it fits.
+     * Perpendicular distance is computed via a flat equirectangular
+     * approximation (fine at kayak-touring scale, no projection library
+     * needed).
      */
-    function simplifyTrackPoints(points, maxPoints) {
-        if (points.length <= maxPoints) {
+    function simplifyTrackPoints(points, epsilonMeters, maxPoints) {
+        if (points.length < 3) {
             return points;
         }
-        let epsilon = 5;
-        let simplified = points;
+        let epsilon = epsilonMeters;
+        let simplified = douglasPeucker(points, epsilon);
         for (let i = 0; i < 10 && simplified.length > maxPoints; i++) {
-            simplified = douglasPeucker(points, epsilon);
             epsilon *= 2;
+            simplified = douglasPeucker(points, epsilon);
         }
         return simplified;
     }

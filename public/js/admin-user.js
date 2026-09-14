@@ -314,31 +314,31 @@ function userFormHtml(u) {
             '<div class="adminFormLabel"><label for="userFormLastname">' + t('admin_user.lastname_label') + '</label></div>' +
             '<div class="adminFormField"><input id="userFormLastname" type="text" value="' + escapeHTML(u.lastname || '') + '"></div>' +
         '</div>' +
-        '<div class="adminFormRow">' +
-            '<div class="adminFormLabel"><label for="userFormIsAdmin">' + t('admin_user.admin_label') + '</label></div>' +
+        '<div class="adminFormRow adminFormRowCheckbox">' +
             '<div class="adminFormField"><input id="userFormIsAdmin" type="checkbox"' + (u.is_admin ? ' checked' : '') + '><label for="userFormIsAdmin"><span></span></label></div>' +
+            '<div class="adminFormLabel"><label for="userFormIsAdmin">' + t('admin_user.admin_label') + '</label></div>' +
         '</div>' +
         '<p class="nav-field-label">' + t('admin_user.tour_rights_label') + '</p>' +
-        '<div class="adminFormRow">' +
-            '<div class="adminFormLabel"><label for="userFormTourCreate">' + t('admin_user.tour_create_label') + '</label></div>' +
+        '<div class="adminFormRow adminFormRowCheckbox">' +
             '<div class="adminFormField"><input id="userFormTourCreate" type="checkbox"' + (u.tour_create ? ' checked' : '') + '><label for="userFormTourCreate"><span></span></label></div>' +
+            '<div class="adminFormLabel"><label for="userFormTourCreate">' + t('admin_user.tour_create_label') + '</label></div>' +
         '</div>' +
-        '<div class="adminFormRow">' +
-            '<div class="adminFormLabel"><label for="userFormTourPublish">' + t('admin_user.tour_publish_label') + '</label></div>' +
+        '<div class="adminFormRow adminFormRowCheckbox">' +
             '<div class="adminFormField"><input id="userFormTourPublish" type="checkbox"' + (u.tour_publish ? ' checked' : '') + '><label for="userFormTourPublish"><span></span></label></div>' +
+            '<div class="adminFormLabel"><label for="userFormTourPublish">' + t('admin_user.tour_publish_label') + '</label></div>' +
         '</div>' +
-        '<div class="adminFormRow">' +
-            '<div class="adminFormLabel"><label for="userFormTourManage">' + t('admin_user.tour_manage_label') + '</label></div>' +
+        '<div class="adminFormRow adminFormRowCheckbox">' +
             '<div class="adminFormField"><input id="userFormTourManage" type="checkbox"' + (u.tour_manage ? ' checked' : '') + '><label for="userFormTourManage"><span></span></label></div>' +
+            '<div class="adminFormLabel"><label for="userFormTourManage">' + t('admin_user.tour_manage_label') + '</label></div>' +
         '</div>' +
-        '<div class="adminFormRow">' +
-            '<div class="adminFormLabel"><label for="userFormTourCopy">' + t('admin_user.tour_copy_label') + '</label></div>' +
+        '<div class="adminFormRow adminFormRowCheckbox">' +
             '<div class="adminFormField"><input id="userFormTourCopy" type="checkbox"' + (u.tour_copy ? ' checked' : '') + '><label for="userFormTourCopy"><span></span></label></div>' +
+            '<div class="adminFormLabel"><label for="userFormTourCopy">' + t('admin_user.tour_copy_label') + '</label></div>' +
         '</div>' +
         '<p class="nav-field-label">' + t('admin_user.other_rights_label') + '</p>' +
-        '<div class="adminFormRow">' +
-            '<div class="adminFormLabel"><label for="userFormRouteViewRecording">' + t('admin_user.route_view_recording_label') + '</label></div>' +
+        '<div class="adminFormRow adminFormRowCheckbox">' +
             '<div class="adminFormField"><input id="userFormRouteViewRecording" type="checkbox"' + (u.route_view_recording ? ' checked' : '') + '><label for="userFormRouteViewRecording"><span></span></label></div>' +
+            '<div class="adminFormLabel"><label for="userFormRouteViewRecording">' + t('admin_user.route_view_recording_label') + '</label></div>' +
         '</div>' +
         '<div class="adminFormRow">' +
             '<div class="adminFormLabel">&nbsp;</div>' +

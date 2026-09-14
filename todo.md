@@ -1,13 +1,10 @@
 # Offene Punkte
 
-## Verwalten der Benutzerberechtigungen
+## Layout Menüpunkt "Track aufzeichnen"
 
-Der Dialog zum bearbeiten von Benutzern führt auch die Rechte auf. Dort steht das Recht gefolgt von einer Checkbox. Diese Reihenfolge ist ungünstig. Links soll die Checkbox stehen, rechts davon die Beschreibung des Rechts.
-
-## Aufzeichnungsdichte beim Tracking anpassen
-
-Die Aufzeichnungsdichte beim Tracking ist derzeit in drei Stufen von 10, 20 und 50 Metern wählbar. Das ist sehr feingranular. Besser wäre eine Auswahl von 20, 50 und 100 Metern.
-Nach eine Aufzeichnung soll die aufgezeichnete Route automatisch vereinfacht werden, so dass weniger Punkte gespeichert werden, ohne dass ein großer Verlust an Genauigkeit entsteht.
+Im Menüpunkt Track aufzeichnen muss
+1. in der Genauigkeitsauswahl der Abstand unter der Bezeichnung dargestellt werden, also z. B. bei "Präzise / 20 m".
+2. Der folgende Text und Button mit einem Abstand zum Rand dargestellt werden.
 
 ## Automatisierte Oberflächen-Tests (2026-09-14)
 
@@ -58,6 +55,16 @@ Alle Dialoge/Bildschirme unter echter Mobile-Emulation (412×915) durchgetestet.
 
 
 # Erledigt
+
+## Verwalten der Benutzerberechtigungen
+
+~~Der Dialog zum bearbeiten von Benutzern führt auch die Rechte auf. Dort steht das Recht gefolgt von einer Checkbox. Diese Reihenfolge ist ungünstig. Links soll die Checkbox stehen, rechts davon die Beschreibung des Rechts.~~ Gelöst (2026-09-14): für alle Rechte-Checkbox-Zeilen im Benutzer-Formular (`admin-user.js`: is_admin + die vier Touren-Rechte + `route_view_recording`) HTML-Reihenfolge getauscht (Checkbox zuerst, Beschreibung danach) und eine neue CSS-Modifier-Klasse `adminFormRowCheckbox` ergänzt (`style.css`), die die feste 110px-Breite/den flexiblen Bereich zwischen `adminFormLabel`/`adminFormField` für diese Zeilen vertauscht - die restlichen Formularzeilen (Username/E-Mail/Name, reine Texteingaben) sind unverändert.
+
+## Aufzeichnungsdichte beim Tracking anpassen
+
+~~Die Aufzeichnungsdichte beim Tracking ist derzeit in drei Stufen von 10, 20 und 50 Metern wählbar. Das ist sehr feingranular. Besser wäre eine Auswahl von 20, 50 und 100 Metern. Nach eine Aufzeichnung soll die aufgezeichnete Route automatisch vereinfacht werden, so dass weniger Punkte gespeichert werden, ohne dass ein großer Verlust an Genauigkeit entsteht.~~ Gelöst (2026-09-14):
+- `TRACK_DISTANCE_FILTER_PRESETS` (`track-recorder.js`) von 15/20/40m auf **20/50/100m** geändert (Präzise/Ausgewogen/Akkusparend) - die Preset-Namen/-Keys selbst bleiben unverändert, nur die dahinterliegenden Meterwerte.
+- `simplifyTrackPoints()` wandte Douglas-Peucker-Vereinfachung bisher nur als Notbremse oberhalb von 2000 Punkten an (`TRACK_SIMPLIFY_MAX_POINTS`). Läuft jetzt **immer** nach einer Aufzeichnung mit einer kleinen festen Toleranz (`TRACK_SIMPLIFY_EPSILON_METERS = 3`), bevor die Route in `measureTool`/`showRouteEditWindow()` übergeben wird - reduziert die gespeicherte Punktzahl spürbar (überflüssige, fast kollineare GPS-Punkte fallen weg), ohne im Kajaktour-Maßstab sichtbaren Genauigkeitsverlust. Die 2000-Punkte-Grenze bleibt als Notbremse für ungewöhnlich lange/präzise Aufzeichnungen erhalten (Epsilon wird dann weiter erhöht, bis die Grenze eingehalten wird).
 
 ## Track aufzeichnen Menü nicht benutzbar
 

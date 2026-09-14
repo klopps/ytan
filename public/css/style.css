@@ -1038,6 +1038,17 @@ img.wsi {
   overflow: hidden;
 }
 
+.admin-user-form .adminFormRowCheckbox .adminFormField {
+  flex: 0 0 32px;
+  width: 32px;
+  overflow: visible;
+}
+
+.admin-user-form .adminFormRowCheckbox .adminFormLabel {
+  flex: 1;
+  width: auto;
+}
+
 .admin-user-form .hint {
   font-size: 11px;
   color: var(--color-text-faint);
