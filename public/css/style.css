@@ -1846,11 +1846,18 @@ img.wsi {
 .track-recorder-explanation {
   font-size: 12.5px;
   color: var(--color-text-faint);
-  margin: 10px 0 16px;
+  margin: 10px 16px 16px;
 }
 
-.track-recorder-start-btn {
-  width: 100%;
+/* Distance-filter presets (renderIdleState()) show the actual meter
+   value under the preset name (e.g. "Präzise" / "20 m") so the effect
+   of each choice is visible without leaving the screen. */
+.nav-segmented-sublabel {
+  display: block;
+  font-size: 10px;
+  font-weight: 500;
+  opacity: 0.75;
+  margin-top: 1px;
 }
 
 .track-recorder-live-stats {
@@ -1882,8 +1889,8 @@ img.wsi {
 }
 
 #trackRecorderScreenBody .button {
-  width: 100%;
-  margin-bottom: 10px;
+  width: calc(100% - 32px);
+  margin: 0 16px 10px;
 }
 
 .button-danger {

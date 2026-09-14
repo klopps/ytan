@@ -503,10 +503,10 @@
         return '' +
             '<p class="nav-field-label">' + t('trackrecorder.distance_filter_label') + '</p>' +
             '<form name="trackfilter">' +
-                '<div class="nav-segmented">' +
-                    '<input type="radio" id="trackfilter1" name="trackfilterselector" value="precise"' + (preset === 'precise' ? ' checked' : '') + '><label for="trackfilter1">' + t('trackrecorder.filter_precise') + '</label>' +
-                    '<input type="radio" id="trackfilter2" name="trackfilterselector" value="balanced"' + (preset === 'balanced' ? ' checked' : '') + '><label for="trackfilter2">' + t('trackrecorder.filter_balanced') + '</label>' +
-                    '<input type="radio" id="trackfilter3" name="trackfilterselector" value="battery"' + (preset === 'battery' ? ' checked' : '') + '><label for="trackfilter3">' + t('trackrecorder.filter_battery') + '</label>' +
+                '<div class="nav-segmented nav-segmented-track-filter">' +
+                    '<input type="radio" id="trackfilter1" name="trackfilterselector" value="precise"' + (preset === 'precise' ? ' checked' : '') + '><label for="trackfilter1">' + t('trackrecorder.filter_precise') + '<span class="nav-segmented-sublabel">' + TRACK_DISTANCE_FILTER_PRESETS.precise + ' m</span></label>' +
+                    '<input type="radio" id="trackfilter2" name="trackfilterselector" value="balanced"' + (preset === 'balanced' ? ' checked' : '') + '><label for="trackfilter2">' + t('trackrecorder.filter_balanced') + '<span class="nav-segmented-sublabel">' + TRACK_DISTANCE_FILTER_PRESETS.balanced + ' m</span></label>' +
+                    '<input type="radio" id="trackfilter3" name="trackfilterselector" value="battery"' + (preset === 'battery' ? ' checked' : '') + '><label for="trackfilter3">' + t('trackrecorder.filter_battery') + '<span class="nav-segmented-sublabel">' + TRACK_DISTANCE_FILTER_PRESETS.battery + ' m</span></label>' +
                 '</div>' +
             '</form>' +
             '<p class="track-recorder-explanation">' + t('trackrecorder.idle_explanation') + '</p>' +

@@ -1,11 +1,5 @@
 # Offene Punkte
 
-## Layout Menüpunkt "Track aufzeichnen"
-
-Im Menüpunkt Track aufzeichnen muss
-1. in der Genauigkeitsauswahl der Abstand unter der Bezeichnung dargestellt werden, also z. B. bei "Präzise / 20 m".
-2. Der folgende Text und Button mit einem Abstand zum Rand dargestellt werden.
-
 ## Automatisierte Oberflächen-Tests (2026-09-14)
 
 Aktuell gibt es **keine** automatisierte Testsuite für die Oberfläche (JS/Frontend) - nur PHPUnit (`tests/Unit/`, `tests/Integration/`) für das PHP-Backend, `composer test`. Keine Playwright-/Jest-/Cypress-Konfiguration im Repo. UI-Änderungen werden bisher ausschließlich manuell/ad-hoc per Browser-Tool geprüft (Mobile-first, siehe CLAUDE.md), nicht als wiederverwendbare, eingecheckte Testdateien. (Seit 2026-09-14 gibt es zwar ein `package.json` im Repo-Root - das ist aber für die Capacitor-App-Hülle, siehe unten, kein Test-Tooling.)
@@ -55,6 +49,12 @@ Alle Dialoge/Bildschirme unter echter Mobile-Emulation (412×915) durchgetestet.
 
 
 # Erledigt
+
+## Layout Menüpunkt "Track aufzeichnen"
+
+~~Im Menüpunkt Track aufzeichnen muss 1. in der Genauigkeitsauswahl der Abstand unter der Bezeichnung dargestellt werden, also z. B. bei "Präzise / 20 m". 2. Der folgende Text und Button mit einem Abstand zum Rand dargestellt werden.~~ Gelöst (2026-09-14):
+1. Jeder der drei Genauigkeits-Optionen (`renderIdleState()`, `track-recorder.js`) zeigt jetzt zusätzlich den tatsächlichen Meterwert (`TRACK_DISTANCE_FILTER_PRESETS`) als kleine, blasse zweite Zeile unter dem Namen, z.B. "Präzise" / "20 m" - neue `.nav-segmented-sublabel`-Klasse (`style.css`), nur für diese Segmented-Control verwendet.
+2. Erklärungstext und Start-Button (`.track-recorder-explanation`, `#trackRecorderScreenBody .button` - letzteres deckt auch Pause/Fortsetzen/Stopp/Verwerfen im Aufzeichnen-Zustand mit ab) liefen bisher bis an den Bildschirmrand, da `.nav-screen-body` selbst kein horizontales Padding hat (wie schon `.nav-field-label`/`.nav-segmented` es einzeln brauchen). Jetzt mit demselben 16px-Rand links/rechts wie die übrigen Elemente dieses Screens.
 
 ## Verwalten der Benutzerberechtigungen
 
