@@ -103,4 +103,46 @@ final class PoiRepositoryTest extends TestCase
         $this->assertCount(1, $this->pois->findAll(1, 0));
         $this->assertSame(2, $this->pois->countAll());
     }
+
+    public function testAddImageAssignsIncrementingSortOrderAndGetImagesReturnsThemInOrder(): void
+    {
+        $userId = $this->createUser();
+        $poi = $this->createPoi($userId);
+        $poiId = (int) $poi['id'];
+
+        $this->pois->addImage($poiId, 'first.jpg', 'image/jpeg', 111);
+        $images = $this->pois->addImage($poiId, 'second.jpg', 'image/jpeg', 222);
+
+        $this->assertSame(2, $this->pois->countImages($poiId));
+        $this->assertSame(['first.jpg', 'second.jpg'], array_column($images, 'filename'));
+        $this->assertSame([0, 1], array_map('intval', array_column($images, 'sort_order')));
+    }
+
+    public function testFindImageIsScopedToItsOwnPoi(): void
+    {
+        $userId = $this->createUser();
+        $poiA = $this->createPoi($userId);
+        $poiB = $this->createPoi($userId);
+        $images = $this->pois->addImage((int) $poiA['id'], 'a.jpg', 'image/jpeg', 100);
+        $imageId = (int) $images[0]['id'];
+
+        $this->assertNotNull($this->pois->findImage((int) $poiA['id'], $imageId));
+        $this->assertNull($this->pois->findImage((int) $poiB['id'], $imageId), 'an image must not be findable through a different poi_id');
+    }
+
+    public function testRemoveImageDeletesOnlyTheGivenRow(): void
+    {
+        $userId = $this->createUser();
+        $poi = $this->createPoi($userId);
+        $poiId = (int) $poi['id'];
+        $images = $this->pois->addImage($poiId, 'keep.jpg', 'image/jpeg', 100);
+        $images = $this->pois->addImage($poiId, 'remove.jpg', 'image/jpeg', 200);
+        $toRemove = (int) $images[1]['id'];
+
+        $this->pois->removeImage($poiId, $toRemove);
+
+        $remaining = $this->pois->getImages($poiId);
+        $this->assertCount(1, $remaining);
+        $this->assertSame('keep.jpg', $remaining[0]['filename']);
+    }
 }

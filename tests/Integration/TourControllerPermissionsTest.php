@@ -7,7 +7,7 @@ namespace Ytan\Tests\Integration;
 use Ytan\Domain\Tour\TourRepository;
 use Ytan\Exception\ForbiddenException;
 use Ytan\Http\Controllers\TourController;
-use Ytan\Service\TourImageService;
+use Ytan\Service\ImageStorageService;
 
 /**
  * Covers TourController's private assertCanManageTour()/assertCanPublishTour()
@@ -24,7 +24,7 @@ final class TourControllerPermissionsTest extends ControllerTestCase
     {
         parent::setUp();
         $this->tours = new TourRepository($this->pdo);
-        $this->controller = new TourController($this->tours, new TourImageService(sys_get_temp_dir() . '/ytan-test-images'));
+        $this->controller = new TourController($this->tours, new ImageStorageService(sys_get_temp_dir() . '/ytan-test-images'));
     }
 
     public function testCreateSucceedsWithTourCreateRight(): void

@@ -35,8 +35,8 @@ use Ytan\Service\AuthService;
 use Ytan\Service\CaptchaService;
 use Ytan\Service\CurlJsonHttpClient;
 use Ytan\Service\GeocodingService;
+use Ytan\Service\ImageStorageService;
 use Ytan\Service\MailService;
-use Ytan\Service\TourImageService;
 use Ytan\Service\TourNotificationService;
 use Ytan\Service\TranslationRepository;
 use Ytan\Service\TranslationUsageScanner;
@@ -82,14 +82,19 @@ final class App
             $mailService,
             $appUrl
         );
-        $poiController = new PoiController(new PoiRepository($pdo));
         $tourRepository = new TourRepository($pdo);
         $captchaService = new CaptchaService($_ENV['JWT_SECRET'] ?? 'insecure-dev-secret');
         $tourNotificationService = new TourNotificationService($userRepository, $mailService, $appUrl);
-        $tourImageService = new TourImageService($rootDir . '/storage/tour-images');
-        $routeController = new RouteController(new RouteRepository($pdo), $tourRepository, $captchaService, $tourNotificationService);
+        // One ImageStorageService instance per entity type - the class
+        // itself is entity-agnostic, only the storage subdirectory differs.
+        $tourImageService = new ImageStorageService($rootDir . '/storage/tour-images');
+        $poiImageService = new ImageStorageService($rootDir . '/storage/poi-images');
+        $routeImageService = new ImageStorageService($rootDir . '/storage/route-images');
+        $areaImageService = new ImageStorageService($rootDir . '/storage/area-images');
+        $poiController = new PoiController(new PoiRepository($pdo), $poiImageService);
+        $routeController = new RouteController(new RouteRepository($pdo), $tourRepository, $captchaService, $tourNotificationService, $routeImageService);
         $tourController = new TourController($tourRepository, $tourImageService);
-        $areaController = new AreaController(new AreaRepository($pdo));
+        $areaController = new AreaController(new AreaRepository($pdo), $areaImageService);
         $authController = new AuthController($authService, $userRepository, $mailService, $appUrl);
         $userController = new UserController($userRepository, $mailService, $authService, $appUrl);
         $wsiController = new WsiController(new WsiRenderer($rootDir . '/public/images/wsi'));
@@ -172,12 +177,20 @@ final class App
         $app->post('/api/v1/pois', [$poiController, 'create']);
         $app->put('/api/v1/pois/{id}', [$poiController, 'update']);
         $app->delete('/api/v1/pois/{id}', [$poiController, 'delete']);
+        $app->post('/api/v1/pois/{id}/images', [$poiController, 'uploadImage']);
+        $app->get('/api/v1/pois/{id}/images', [$poiController, 'listImages']);
+        $app->get('/api/v1/pois/{id}/images/{imageId}', [$poiController, 'showImage']);
+        $app->delete('/api/v1/pois/{id}/images/{imageId}', [$poiController, 'deleteImage']);
 
         $app->get('/api/v1/routes', [$routeController, 'index']);
         $app->get('/api/v1/routes/{id}', [$routeController, 'show']);
         $app->post('/api/v1/routes', [$routeController, 'create']);
         $app->put('/api/v1/routes/{id}', [$routeController, 'update']);
         $app->delete('/api/v1/routes/{id}', [$routeController, 'delete']);
+        $app->post('/api/v1/routes/{id}/images', [$routeController, 'uploadImage']);
+        $app->get('/api/v1/routes/{id}/images', [$routeController, 'listImages']);
+        $app->get('/api/v1/routes/{id}/images/{imageId}', [$routeController, 'showImage']);
+        $app->delete('/api/v1/routes/{id}/images/{imageId}', [$routeController, 'deleteImage']);
 
         $app->get('/api/v1/tours', [$tourController, 'index']);
         $app->get('/api/v1/tours/{id}', [$tourController, 'show']);
@@ -199,6 +212,10 @@ final class App
         $app->post('/api/v1/areas', [$areaController, 'create']);
         $app->put('/api/v1/areas/{id}', [$areaController, 'update']);
         $app->delete('/api/v1/areas/{id}', [$areaController, 'delete']);
+        $app->post('/api/v1/areas/{id}/images', [$areaController, 'uploadImage']);
+        $app->get('/api/v1/areas/{id}/images', [$areaController, 'listImages']);
+        $app->get('/api/v1/areas/{id}/images/{imageId}', [$areaController, 'showImage']);
+        $app->delete('/api/v1/areas/{id}/images/{imageId}', [$areaController, 'deleteImage']);
 
         $app->get('/api/v1/users', [$userController, 'index']);
         $app->get('/api/v1/users/{id}', [$userController, 'show']);

@@ -10,13 +10,17 @@ use Ytan\Domain\Tour\TourRepository;
 use Ytan\Exception\ForbiddenException;
 use Ytan\Exception\NotFoundException;
 use Ytan\Exception\ValidationException;
-use Ytan\Service\TourImageService;
+use Ytan\Service\ImageStorageService;
 
 final class TourController extends BaseController
 {
+    // Mirrored client-side by TOUR_PHOTO_MAX_COUNT (public/js/config.js) -
+    // kept in sync manually, there being no shared config layer between PHP and JS.
+    private const MAX_IMAGES_PER_TOUR = 9;
+
     public function __construct(
         private readonly TourRepository $tours,
-        private readonly TourImageService $images,
+        private readonly ImageStorageService $images,
     ) {
     }
 
@@ -194,8 +198,8 @@ final class TourController extends BaseController
         $tour = $this->tours->findById($tourId);
         $this->assertCanManageTour($auth, $tour);
 
-        if ($this->tours->countImages($tourId) >= 8) {
-            throw new ValidationException('This tour already has the maximum of 8 photos.');
+        if ($this->tours->countImages($tourId) >= self::MAX_IMAGES_PER_TOUR) {
+            throw new ValidationException('This tour already has the maximum of ' . self::MAX_IMAGES_PER_TOUR . ' photos.');
         }
 
         $file = $request->getUploadedFiles()['image'] ?? null;

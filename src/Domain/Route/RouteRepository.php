@@ -151,4 +151,48 @@ final class RouteRepository
         $this->findById($id); // 404s if missing
         $this->db->prepare('DELETE FROM route WHERE id = ?')->execute([$id]);
     }
+
+    /* ---------------------------------------------------------- Images */
+
+    public function getImages(int $routeId): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT id, filename, sort_order, mime_type, size_bytes, uploaded_at FROM route_image WHERE route_id = ? ORDER BY sort_order'
+        );
+        $stmt->execute([$routeId]);
+        return $stmt->fetchAll();
+    }
+
+    public function findImage(int $routeId, int $imageId): ?array
+    {
+        $stmt = $this->db->prepare('SELECT * FROM route_image WHERE id = ? AND route_id = ?');
+        $stmt->execute([$imageId, $routeId]);
+        $row = $stmt->fetch();
+        return $row === false ? null : $row;
+    }
+
+    public function countImages(int $routeId): int
+    {
+        $stmt = $this->db->prepare('SELECT COUNT(*) FROM route_image WHERE route_id = ?');
+        $stmt->execute([$routeId]);
+        return (int) $stmt->fetchColumn();
+    }
+
+    public function addImage(int $routeId, string $filename, string $mimeType, int $sizeBytes): array
+    {
+        $stmt = $this->db->prepare('SELECT COALESCE(MAX(sort_order), -1) + 1 FROM route_image WHERE route_id = ?');
+        $stmt->execute([$routeId]);
+        $nextOrder = (int) $stmt->fetchColumn();
+
+        $this->db->prepare(
+            'INSERT INTO route_image (route_id, filename, sort_order, mime_type, size_bytes, uploaded_at) VALUES (?, ?, ?, ?, ?, NOW())'
+        )->execute([$routeId, $filename, $nextOrder, $mimeType, $sizeBytes]);
+
+        return $this->getImages($routeId);
+    }
+
+    public function removeImage(int $routeId, int $imageId): void
+    {
+        $this->db->prepare('DELETE FROM route_image WHERE id = ? AND route_id = ?')->execute([$imageId, $routeId]);
+    }
 }

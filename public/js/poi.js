@@ -836,6 +836,22 @@ function initPoiEditWindow(i) {
         '</div>'+
     '</div>';
 
+    // Photos: only for an already-existing POI (needs an id first, same
+    // rule tour-admin.js's photo grid follows for tours) - initPhotoUpload()
+    // kicks off a background fetch of the POI's existing photos, so the
+    // grid below starts empty and repaints once that resolves (see
+    // photo-upload.js's doc comment for why POI edit windows can't just
+    // wait on that fetch before opening, the way tour-admin.js's edit form
+    // does).
+    if ((i !== null) && (typeof i !== 'undefined')) {
+        initPhotoUpload('pois', poi.id, POI_PHOTO_MAX_COUNT);
+        content +=
+            '<div class="infoWindowElement">' +
+                '<label>' + t('poi.edit.photos_label') + '</label>' +
+                '<div id="' + PHOTO_UPLOAD_CONTAINER_ID + '">' + photoUploadGridHtml() + '</div>' +
+            '</div>';
+    }
+
     if (user.is_admin === true) {
         content +=
         '<div class="infoWindowElement">' +
@@ -1310,6 +1326,13 @@ function savePoi(i) {
 
     request.then(answer => {
         log('savePoi() success', LOG_INFO, answer);
+
+        // Purely array/network-based (no DOM dependency), so this still
+        // completes correctly even though closePoiEditWindow() below closes
+        // the edit window synchronously, before this .then() ever runs.
+        if (id !== null) {
+            applyPendingPhotoUploadChanges('pois', id);
+        }
 
         var index;
         if (i === null) {

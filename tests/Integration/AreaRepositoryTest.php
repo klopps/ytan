@@ -82,4 +82,46 @@ final class AreaRepositoryTest extends TestCase
         $this->assertCount(2, $result);
         $this->assertSame(2, $this->areas->countByUserWithPublic($owner));
     }
+
+    public function testAddImageAssignsIncrementingSortOrderAndGetImagesReturnsThemInOrder(): void
+    {
+        $userId = $this->createUser();
+        $area = $this->createArea($userId);
+        $areaId = (int) $area['id'];
+
+        $this->areas->addImage($areaId, 'first.jpg', 'image/jpeg', 111);
+        $images = $this->areas->addImage($areaId, 'second.jpg', 'image/jpeg', 222);
+
+        $this->assertSame(2, $this->areas->countImages($areaId));
+        $this->assertSame(['first.jpg', 'second.jpg'], array_column($images, 'filename'));
+        $this->assertSame([0, 1], array_map('intval', array_column($images, 'sort_order')));
+    }
+
+    public function testFindImageIsScopedToItsOwnArea(): void
+    {
+        $userId = $this->createUser();
+        $areaA = $this->createArea($userId);
+        $areaB = $this->createArea($userId);
+        $images = $this->areas->addImage((int) $areaA['id'], 'a.jpg', 'image/jpeg', 100);
+        $imageId = (int) $images[0]['id'];
+
+        $this->assertNotNull($this->areas->findImage((int) $areaA['id'], $imageId));
+        $this->assertNull($this->areas->findImage((int) $areaB['id'], $imageId), 'an image must not be findable through a different area_id');
+    }
+
+    public function testRemoveImageDeletesOnlyTheGivenRow(): void
+    {
+        $userId = $this->createUser();
+        $area = $this->createArea($userId);
+        $areaId = (int) $area['id'];
+        $this->areas->addImage($areaId, 'keep.jpg', 'image/jpeg', 100);
+        $images = $this->areas->addImage($areaId, 'remove.jpg', 'image/jpeg', 200);
+        $toRemove = (int) $images[1]['id'];
+
+        $this->areas->removeImage($areaId, $toRemove);
+
+        $remaining = $this->areas->getImages($areaId);
+        $this->assertCount(1, $remaining);
+        $this->assertSame('keep.jpg', $remaining[0]['filename']);
+    }
 }

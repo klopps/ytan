@@ -11,6 +11,7 @@ use Ytan\Exception\CaptchaRequiredException;
 use Ytan\Exception\NotFoundException;
 use Ytan\Http\Controllers\RouteController;
 use Ytan\Service\CaptchaService;
+use Ytan\Service\ImageStorageService;
 use Ytan\Service\MailService;
 use Ytan\Service\TourNotificationService;
 
@@ -42,7 +43,7 @@ final class RouteControllerCaptchaTest extends ControllerTestCase
             new MailService('unreachable.invalid', 587, '', '', 'from@example.test', '', 'YTAN Test'),
             'http://localhost'
         );
-        $this->controller = new RouteController($this->routes, $this->tours, $this->captcha, $notifications);
+        $this->controller = new RouteController($this->routes, $this->tours, $this->captcha, $notifications, new ImageStorageService(sys_get_temp_dir() . '/ytan-test-images'));
     }
 
     public function testDeletingARouteInNoTourSucceedsImmediately(): void

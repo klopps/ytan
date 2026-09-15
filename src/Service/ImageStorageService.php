@@ -9,16 +9,21 @@ use Psr\Http\Message\UploadedFileInterface;
 use Ytan\Exception\ValidationException;
 
 /**
- * Reads/writes tour photo files on disk, outside the public webroot -
- * unlike WsiRenderer's cache (public/images/wsi, fine since WSI icons are
- * unowned/non-sensitive), tour photos can belong to a private tour and
- * must not be reachable via a guessable static URL. TourController serves
- * them back through GET /tours/{id}/images/{imageId} after a visibility
+ * Reads/writes an entity's photo files on disk, outside the public webroot -
+ * a photo can belong to a private tour/POI/route/area and must not be
+ * reachable via a guessable static URL. The owning controller serves them
+ * back through its own GET .../images/{imageId} endpoint after a visibility
  * check instead. Filenames are always server-generated random hex (never
  * taken from the client), so there's no path-traversal surface the way a
  * client-supplied filename would create.
+ *
+ * Entity-agnostic by design (nothing here is Tour/POI/Route/Area-specific
+ * beyond the caller-supplied $entityId and $storageDir) - one instance per
+ * entity type is constructed in App.php, each pointed at its own storage
+ * subdirectory (storage/tour-images, storage/poi-images, storage/
+ * route-images, storage/area-images), rather than one class per entity.
  */
-final class TourImageService
+final class ImageStorageService
 {
     private const ALLOWED_MIME = [
         'image/jpeg' => 'jpg',
@@ -35,7 +40,7 @@ final class TourImageService
     /**
      * @return array{filename:string, mime_type:string, size_bytes:int}
      */
-    public function store(int $tourId, UploadedFileInterface $file): array
+    public function store(int $entityId, UploadedFileInterface $file): array
     {
         if ($file->getError() !== UPLOAD_ERR_OK) {
             throw new ValidationException('Upload failed.');
@@ -55,7 +60,7 @@ final class TourImageService
         }
 
         $filename = bin2hex(random_bytes(16)) . '.' . self::ALLOWED_MIME[$mime];
-        $dir = $this->tourDir($tourId);
+        $dir = $this->entityDir($entityId);
         if (!is_dir($dir)) {
             mkdir($dir, 0775, true);
         }
@@ -67,9 +72,9 @@ final class TourImageService
     /**
      * @return array{path:string, contents:string}|null
      */
-    public function read(int $tourId, string $filename): ?array
+    public function read(int $entityId, string $filename): ?array
     {
-        $path = $this->tourDir($tourId) . '/' . $filename;
+        $path = $this->entityDir($entityId) . '/' . $filename;
         if (!is_file($path)) {
             return null;
         }
@@ -77,16 +82,16 @@ final class TourImageService
         return ['path' => $path, 'contents' => (string) file_get_contents($path)];
     }
 
-    public function delete(int $tourId, string $filename): void
+    public function delete(int $entityId, string $filename): void
     {
-        $path = $this->tourDir($tourId) . '/' . $filename;
+        $path = $this->entityDir($entityId) . '/' . $filename;
         if (is_file($path)) {
             unlink($path);
         }
     }
 
-    private function tourDir(int $tourId): string
+    private function entityDir(int $entityId): string
     {
-        return rtrim($this->storageDir, '/\\') . '/' . $tourId;
+        return rtrim($this->storageDir, '/\\') . '/' . $entityId;
     }
 }

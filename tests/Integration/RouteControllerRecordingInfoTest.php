@@ -9,6 +9,7 @@ use Ytan\Domain\Tour\TourRepository;
 use Ytan\Domain\User\UserRepository;
 use Ytan\Http\Controllers\RouteController;
 use Ytan\Service\CaptchaService;
+use Ytan\Service\ImageStorageService;
 use Ytan\Service\MailService;
 use Ytan\Service\TourNotificationService;
 
@@ -31,7 +32,8 @@ final class RouteControllerRecordingInfoTest extends ControllerTestCase
             new RouteRepository($this->pdo),
             new TourRepository($this->pdo),
             new CaptchaService('unit-test-secret'),
-            $notifications
+            $notifications,
+            new ImageStorageService(sys_get_temp_dir() . '/ytan-test-images')
         );
     }
 

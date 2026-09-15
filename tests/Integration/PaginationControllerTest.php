@@ -17,7 +17,7 @@ use Ytan\Http\Controllers\UserController;
 use Ytan\Service\AuthService;
 use Ytan\Service\CaptchaService;
 use Ytan\Service\MailService;
-use Ytan\Service\TourImageService;
+use Ytan\Service\ImageStorageService;
 use Ytan\Service\TourNotificationService;
 
 /**
@@ -38,7 +38,7 @@ final class PaginationControllerTest extends ControllerTestCase
     {
         $this->pdo->exec("INSERT INTO poitype (id, name) VALUES (2, 'Test Type')");
         $pois = new PoiRepository($this->pdo);
-        $controller = new PoiController($pois);
+        $controller = new PoiController($pois, new ImageStorageService(sys_get_temp_dir() . '/ytan-test-images'));
         $userId = $this->createUser();
         foreach (range(1, 3) as $i) {
             $pois->create($userId, ['poitype_id' => 2, 'name' => "Poi $i", 'latitude' => 54.0, 'longitude' => 10.0, 'public' => 1]);
@@ -54,7 +54,7 @@ final class PaginationControllerTest extends ControllerTestCase
     {
         $this->pdo->exec("INSERT INTO poitype (id, name) VALUES (2, 'Test Type')");
         $pois = new PoiRepository($this->pdo);
-        $controller = new PoiController($pois);
+        $controller = new PoiController($pois, new ImageStorageService(sys_get_temp_dir() . '/ytan-test-images'));
         $userId = $this->createUser();
         foreach (range(1, 3) as $i) {
             $pois->create($userId, ['poitype_id' => 2, 'name' => "Poi $i", 'latitude' => 54.0, 'longitude' => 10.0, 'public' => 1]);
@@ -74,7 +74,7 @@ final class PaginationControllerTest extends ControllerTestCase
         $routes = new RouteRepository($this->pdo);
         $tours = new TourRepository($this->pdo);
         $notifications = new TourNotificationService(new UserRepository($this->pdo), $this->mailService(), 'http://localhost');
-        $controller = new RouteController($routes, $tours, new CaptchaService('unit-test-secret'), $notifications);
+        $controller = new RouteController($routes, $tours, new CaptchaService('unit-test-secret'), $notifications, new ImageStorageService(sys_get_temp_dir() . '/ytan-test-images'));
         $userId = $this->createUser();
         $this->createRoute($userId, ['public' => 1]);
         $this->createRoute($userId, ['public' => 1]);
@@ -94,7 +94,7 @@ final class PaginationControllerTest extends ControllerTestCase
         $routes = new RouteRepository($this->pdo);
         $tours = new TourRepository($this->pdo);
         $notifications = new TourNotificationService(new UserRepository($this->pdo), $this->mailService(), 'http://localhost');
-        $controller = new RouteController($routes, $tours, new CaptchaService('unit-test-secret'), $notifications);
+        $controller = new RouteController($routes, $tours, new CaptchaService('unit-test-secret'), $notifications, new ImageStorageService(sys_get_temp_dir() . '/ytan-test-images'));
         $userId = $this->createUser();
         $tour = $tours->create($userId, ['name' => 'T']);
         $route = $this->createRoute($userId);
@@ -112,7 +112,7 @@ final class PaginationControllerTest extends ControllerTestCase
     public function testAreaIndexWithLimitReportsTotalInMeta(): void
     {
         $areas = new AreaRepository($this->pdo);
-        $controller = new AreaController($areas);
+        $controller = new AreaController($areas, new ImageStorageService(sys_get_temp_dir() . '/ytan-test-images'));
         $userId = $this->createUser();
         $areas->create($userId, ['name' => 'A1', 'public' => 1]);
         $areas->create($userId, ['name' => 'A2', 'public' => 1]);
@@ -148,7 +148,7 @@ final class PaginationControllerTest extends ControllerTestCase
     public function testTourIndexWithLimitReportsTotalInMeta(): void
     {
         $tours = new TourRepository($this->pdo);
-        $controller = new TourController($tours, new TourImageService(sys_get_temp_dir() . '/ytan-test-images'));
+        $controller = new TourController($tours, new ImageStorageService(sys_get_temp_dir() . '/ytan-test-images'));
         $userId = $this->createUser();
         $tours->create($userId, ['name' => 'Alpha']);
         $tours->create($userId, ['name' => 'Beta']);
@@ -166,7 +166,7 @@ final class PaginationControllerTest extends ControllerTestCase
     public function testLimitIsClampedToTheConfiguredMaximum(): void
     {
         $areas = new AreaRepository($this->pdo);
-        $controller = new AreaController($areas);
+        $controller = new AreaController($areas, new ImageStorageService(sys_get_temp_dir() . '/ytan-test-images'));
         $userId = $this->createUser();
         $areas->create($userId, ['name' => 'A1', 'public' => 1]);
 

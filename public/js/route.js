@@ -96,6 +96,19 @@ function showRouteEditWindow(i, latLng) {
             '</div>' +
         '</div>';
 
+    // Photos: only for an already-existing route (needs an id first, same
+    // rule tour-admin.js's photo grid follows for tours) - see poi.js's
+    // initPoiEditWindow() for the identical pattern and photo-upload.js's
+    // doc comment for why the grid starts empty and repaints shortly after.
+    if ((i !== null) && (typeof i !== 'undefined')) {
+        initPhotoUpload('routes', route.id, ROUTE_PHOTO_MAX_COUNT);
+        content +=
+            '<div class="infoWindowElement">' +
+                '<label>' + t('route.edit.photos_label') + '</label>' +
+                '<div id="' + PHOTO_UPLOAD_CONTAINER_ID + '">' + photoUploadGridHtml() + '</div>' +
+            '</div>';
+    }
+
     if (((i !== null) && (typeof i !== 'undefined')) && ((routes[i].user_id == user.id) || (user.is_admin === true))) {
         content +=
         '<div class="infoWindowElement">' +
@@ -268,6 +281,12 @@ function saveRoute(i) {
 
     request.then(answer => {
         log('saveRoute() success', LOG_INFO, answer);
+
+        // Purely array/network-based (no DOM dependency), so this still
+        // completes correctly even after the edit window has closed.
+        if (id !== null) {
+            applyPendingPhotoUploadChanges('routes', id);
+        }
 
         if (wasRecordedRoute && typeof window.onRecordedRouteSaved === 'function') {
             window.onRecordedRouteSaved();

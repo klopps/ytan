@@ -9,6 +9,12 @@ Thumbs.db
 /.playwright-mcp/
 /storage/tour-images/*
 !/storage/tour-images/.gitkeep
+/storage/poi-images/*
+!/storage/poi-images/.gitkeep
+/storage/route-images/*
+!/storage/route-images/.gitkeep
+/storage/area-images/*
+!/storage/area-images/.gitkeep
 /storage/weather-cache/*
 !/storage/weather-cache/.gitkeep
 /storage/geocoding-cache/*

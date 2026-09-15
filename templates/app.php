@@ -22,6 +22,7 @@
     <script src="./js/settings.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/settings.js') ?>"></script>
     <script src="./js/ui.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/ui.js') ?>"></script>
     <script src="./js/toast.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/toast.js') ?>"></script>
+    <script src="./js/photo-upload.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/photo-upload.js') ?>"></script>
     <script src="./js/capacitor-bridge.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/capacitor-bridge.js') ?>"></script>
     <script src="./js/confirm-dialog.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/confirm-dialog.js') ?>"></script>
     <script src="./js/nav-menu.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/nav-menu.js') ?>"></script>

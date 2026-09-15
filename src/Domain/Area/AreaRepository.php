@@ -119,4 +119,48 @@ final class AreaRepository
         $this->findById($id); // 404s if missing
         $this->db->prepare('DELETE FROM area WHERE id = ?')->execute([$id]);
     }
+
+    /* ---------------------------------------------------------- Images */
+
+    public function getImages(int $areaId): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT id, filename, sort_order, mime_type, size_bytes, uploaded_at FROM area_image WHERE area_id = ? ORDER BY sort_order'
+        );
+        $stmt->execute([$areaId]);
+        return $stmt->fetchAll();
+    }
+
+    public function findImage(int $areaId, int $imageId): ?array
+    {
+        $stmt = $this->db->prepare('SELECT * FROM area_image WHERE id = ? AND area_id = ?');
+        $stmt->execute([$imageId, $areaId]);
+        $row = $stmt->fetch();
+        return $row === false ? null : $row;
+    }
+
+    public function countImages(int $areaId): int
+    {
+        $stmt = $this->db->prepare('SELECT COUNT(*) FROM area_image WHERE area_id = ?');
+        $stmt->execute([$areaId]);
+        return (int) $stmt->fetchColumn();
+    }
+
+    public function addImage(int $areaId, string $filename, string $mimeType, int $sizeBytes): array
+    {
+        $stmt = $this->db->prepare('SELECT COALESCE(MAX(sort_order), -1) + 1 FROM area_image WHERE area_id = ?');
+        $stmt->execute([$areaId]);
+        $nextOrder = (int) $stmt->fetchColumn();
+
+        $this->db->prepare(
+            'INSERT INTO area_image (area_id, filename, sort_order, mime_type, size_bytes, uploaded_at) VALUES (?, ?, ?, ?, ?, NOW())'
+        )->execute([$areaId, $filename, $nextOrder, $mimeType, $sizeBytes]);
+
+        return $this->getImages($areaId);
+    }
+
+    public function removeImage(int $areaId, int $imageId): void
+    {
+        $this->db->prepare('DELETE FROM area_image WHERE id = ? AND area_id = ?')->execute([$imageId, $areaId]);
+    }
 }

@@ -94,6 +94,19 @@ function showAreaEditWindow(i, latLng) {
         '</div>'
         ;
 
+    // Photos: only for an already-existing area (needs an id first, same
+    // rule tour-admin.js's photo grid follows for tours) - see poi.js's
+    // initPoiEditWindow() for the identical pattern and photo-upload.js's
+    // doc comment for why the grid starts empty and repaints shortly after.
+    if ((i !== null) && (typeof i !== 'undefined')) {
+        initPhotoUpload('areas', area.id, AREA_PHOTO_MAX_COUNT);
+        content +=
+            '<div class="infoWindowElement">' +
+                '<label>' + t('area.edit.photos_label') + '</label>' +
+                '<div id="' + PHOTO_UPLOAD_CONTAINER_ID + '">' + photoUploadGridHtml() + '</div>' +
+            '</div>';
+    }
+
     if (user.is_admin === true) {
         content +=
         '<div class="infoWindowElement">' +
@@ -258,6 +271,12 @@ function saveArea(i) {
 
     request.then(answer => {
         log('saveArea() success', LOG_INFO, answer);
+
+        // Purely array/network-based (no DOM dependency), so this still
+        // completes correctly even after the edit window has closed.
+        if (id !== null) {
+            applyPendingPhotoUploadChanges('areas', id);
+        }
 
         measureTool.end();
         areaData.points = JSON.parse(areaData.points);

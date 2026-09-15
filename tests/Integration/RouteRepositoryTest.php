@@ -143,4 +143,47 @@ final class RouteRepositoryTest extends TestCase
         $this->assertSame('2026-09-14 08:00:00', $updated['recorded_at']);
         $this->assertSame(5400, (int) $updated['recording_duration_seconds']);
     }
+
+    public function testAddImageAssignsIncrementingSortOrderAndGetImagesReturnsThemInOrder(): void
+    {
+        $routes = new RouteRepository($this->pdo);
+        $userId = $this->createUser();
+        $routeId = $this->createRoute($userId);
+
+        $routes->addImage($routeId, 'first.jpg', 'image/jpeg', 111);
+        $images = $routes->addImage($routeId, 'second.jpg', 'image/jpeg', 222);
+
+        $this->assertSame(2, $routes->countImages($routeId));
+        $this->assertSame(['first.jpg', 'second.jpg'], array_column($images, 'filename'));
+        $this->assertSame([0, 1], array_map('intval', array_column($images, 'sort_order')));
+    }
+
+    public function testFindImageIsScopedToItsOwnRoute(): void
+    {
+        $routes = new RouteRepository($this->pdo);
+        $userId = $this->createUser();
+        $routeA = $this->createRoute($userId);
+        $routeB = $this->createRoute($userId);
+        $images = $routes->addImage($routeA, 'a.jpg', 'image/jpeg', 100);
+        $imageId = (int) $images[0]['id'];
+
+        $this->assertNotNull($routes->findImage($routeA, $imageId));
+        $this->assertNull($routes->findImage($routeB, $imageId), 'an image must not be findable through a different route_id');
+    }
+
+    public function testRemoveImageDeletesOnlyTheGivenRow(): void
+    {
+        $routes = new RouteRepository($this->pdo);
+        $userId = $this->createUser();
+        $routeId = $this->createRoute($userId);
+        $routes->addImage($routeId, 'keep.jpg', 'image/jpeg', 100);
+        $images = $routes->addImage($routeId, 'remove.jpg', 'image/jpeg', 200);
+        $toRemove = (int) $images[1]['id'];
+
+        $routes->removeImage($routeId, $toRemove);
+
+        $remaining = $routes->getImages($routeId);
+        $this->assertCount(1, $remaining);
+        $this->assertSame('keep.jpg', $remaining[0]['filename']);
+    }
 }

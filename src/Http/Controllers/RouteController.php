@@ -9,16 +9,25 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 use Ytan\Domain\Route\RouteRepository;
 use Ytan\Domain\Tour\TourRepository;
 use Ytan\Exception\CaptchaRequiredException;
+use Ytan\Exception\ForbiddenException;
+use Ytan\Exception\NotFoundException;
+use Ytan\Exception\ValidationException;
 use Ytan\Service\CaptchaService;
+use Ytan\Service\ImageStorageService;
 use Ytan\Service\TourNotificationService;
 
 final class RouteController extends BaseController
 {
+    // Mirrored client-side by ROUTE_PHOTO_MAX_COUNT (public/js/config.js) -
+    // kept in sync manually, there being no shared config layer between PHP and JS.
+    private const MAX_IMAGES_PER_ROUTE = 5;
+
     public function __construct(
         private readonly RouteRepository $routes,
         private readonly TourRepository $tours,
         private readonly CaptchaService $captcha,
         private readonly TourNotificationService $notifications,
+        private readonly ImageStorageService $images,
     ) {
     }
 
@@ -169,5 +178,94 @@ final class RouteController extends BaseController
         }
 
         return $route;
+    }
+
+    public function uploadImage(Request $request, Response $response, array $args): Response
+    {
+        $auth = $this->requireAuthUser($request);
+        $routeId = (int) $args['id'];
+        $route = $this->routes->findById($routeId);
+        $this->assertOwnerOrAdmin($auth, (int) $route['user_id']);
+
+        if ($this->routes->countImages($routeId) >= self::MAX_IMAGES_PER_ROUTE) {
+            throw new ValidationException('This route already has the maximum of ' . self::MAX_IMAGES_PER_ROUTE . ' photos.');
+        }
+
+        $file = $request->getUploadedFiles()['image'] ?? null;
+        if ($file === null) {
+            throw new ValidationException('No image uploaded.');
+        }
+
+        $stored = $this->images->store($routeId, $file);
+        $images = $this->routes->addImage($routeId, $stored['filename'], $stored['mime_type'], $stored['size_bytes']);
+
+        return $this->json($response, ['data' => $images], 201);
+    }
+
+    public function listImages(Request $request, Response $response, array $args): Response
+    {
+        $routeId = (int) $args['id'];
+        $route = $this->routes->findById($routeId);
+        $this->assertCanViewImages($request, $route);
+
+        return $this->json($response, ['data' => $this->routes->getImages($routeId)]);
+    }
+
+    public function deleteImage(Request $request, Response $response, array $args): Response
+    {
+        $auth = $this->requireAuthUser($request);
+        $routeId = (int) $args['id'];
+        $route = $this->routes->findById($routeId);
+        $this->assertOwnerOrAdmin($auth, (int) $route['user_id']);
+
+        $image = $this->routes->findImage($routeId, (int) $args['imageId']);
+        if ($image === null) {
+            throw new NotFoundException('Image not found.');
+        }
+
+        $this->images->delete($routeId, $image['filename']);
+        $this->routes->removeImage($routeId, (int) $args['imageId']);
+
+        return $this->json($response, ['data' => $this->routes->getImages($routeId)]);
+    }
+
+    public function showImage(Request $request, Response $response, array $args): Response
+    {
+        $routeId = (int) $args['id'];
+        $route = $this->routes->findById($routeId);
+        $this->assertCanViewImages($request, $route);
+
+        $image = $this->routes->findImage($routeId, (int) $args['imageId']);
+        if ($image === null) {
+            throw new NotFoundException('Image not found.');
+        }
+
+        $file = $this->images->read($routeId, $image['filename']);
+        if ($file === null) {
+            throw new NotFoundException('Image not found.');
+        }
+
+        $response->getBody()->write($file['contents']);
+
+        return $response->withHeader('Content-Type', $image['mime_type']);
+    }
+
+    /**
+     * A public route's photos are visible to anyone (incl. anonymous
+     * visitors); a private route's photos only to its owner or an admin -
+     * same shape as TourController::showImage()'s $canView check.
+     */
+    private function assertCanViewImages(Request $request, array $route): void
+    {
+        $auth = $request->getAttribute('auth');
+
+        $canView = (int) $route['public'] === 1
+            || ($auth !== null && (
+                (int) $auth['sub'] === (int) $route['user_id']
+                || ($auth['is_admin'] ?? false)
+            ));
+        if (!$canView) {
+            throw new ForbiddenException();
+        }
     }
 }

@@ -212,4 +212,48 @@ final class PoiRepository
             ]);
         }
     }
+
+    /* ---------------------------------------------------------- Images */
+
+    public function getImages(int $poiId): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT id, filename, sort_order, mime_type, size_bytes, uploaded_at FROM poi_image WHERE poi_id = ? ORDER BY sort_order'
+        );
+        $stmt->execute([$poiId]);
+        return $stmt->fetchAll();
+    }
+
+    public function findImage(int $poiId, int $imageId): ?array
+    {
+        $stmt = $this->db->prepare('SELECT * FROM poi_image WHERE id = ? AND poi_id = ?');
+        $stmt->execute([$imageId, $poiId]);
+        $row = $stmt->fetch();
+        return $row === false ? null : $row;
+    }
+
+    public function countImages(int $poiId): int
+    {
+        $stmt = $this->db->prepare('SELECT COUNT(*) FROM poi_image WHERE poi_id = ?');
+        $stmt->execute([$poiId]);
+        return (int) $stmt->fetchColumn();
+    }
+
+    public function addImage(int $poiId, string $filename, string $mimeType, int $sizeBytes): array
+    {
+        $stmt = $this->db->prepare('SELECT COALESCE(MAX(sort_order), -1) + 1 FROM poi_image WHERE poi_id = ?');
+        $stmt->execute([$poiId]);
+        $nextOrder = (int) $stmt->fetchColumn();
+
+        $this->db->prepare(
+            'INSERT INTO poi_image (poi_id, filename, sort_order, mime_type, size_bytes, uploaded_at) VALUES (?, ?, ?, ?, ?, NOW())'
+        )->execute([$poiId, $filename, $nextOrder, $mimeType, $sizeBytes]);
+
+        return $this->getImages($poiId);
+    }
+
+    public function removeImage(int $poiId, int $imageId): void
+    {
+        $this->db->prepare('DELETE FROM poi_image WHERE id = ? AND poi_id = ?')->execute([$imageId, $poiId]);
+    }
 }

@@ -7,11 +7,21 @@ namespace Ytan\Http\Controllers;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Ytan\Domain\Area\AreaRepository;
+use Ytan\Exception\ForbiddenException;
+use Ytan\Exception\NotFoundException;
+use Ytan\Exception\ValidationException;
+use Ytan\Service\ImageStorageService;
 
 final class AreaController extends BaseController
 {
-    public function __construct(private readonly AreaRepository $areas)
-    {
+    // Mirrored client-side by AREA_PHOTO_MAX_COUNT (public/js/config.js) -
+    // kept in sync manually, there being no shared config layer between PHP and JS.
+    private const MAX_IMAGES_PER_AREA = 5;
+
+    public function __construct(
+        private readonly AreaRepository $areas,
+        private readonly ImageStorageService $images,
+    ) {
     }
 
     public function index(Request $request, Response $response): Response
@@ -75,5 +85,94 @@ final class AreaController extends BaseController
         $this->areas->delete($id);
 
         return $this->json($response, ['data' => ['id' => $id]]);
+    }
+
+    public function uploadImage(Request $request, Response $response, array $args): Response
+    {
+        $auth = $this->requireAuthUser($request);
+        $areaId = (int) $args['id'];
+        $area = $this->areas->findById($areaId);
+        $this->assertOwnerOrAdmin($auth, (int) $area['user_id']);
+
+        if ($this->areas->countImages($areaId) >= self::MAX_IMAGES_PER_AREA) {
+            throw new ValidationException('This area already has the maximum of ' . self::MAX_IMAGES_PER_AREA . ' photos.');
+        }
+
+        $file = $request->getUploadedFiles()['image'] ?? null;
+        if ($file === null) {
+            throw new ValidationException('No image uploaded.');
+        }
+
+        $stored = $this->images->store($areaId, $file);
+        $images = $this->areas->addImage($areaId, $stored['filename'], $stored['mime_type'], $stored['size_bytes']);
+
+        return $this->json($response, ['data' => $images], 201);
+    }
+
+    public function listImages(Request $request, Response $response, array $args): Response
+    {
+        $areaId = (int) $args['id'];
+        $area = $this->areas->findById($areaId);
+        $this->assertCanViewImages($request, $area);
+
+        return $this->json($response, ['data' => $this->areas->getImages($areaId)]);
+    }
+
+    public function deleteImage(Request $request, Response $response, array $args): Response
+    {
+        $auth = $this->requireAuthUser($request);
+        $areaId = (int) $args['id'];
+        $area = $this->areas->findById($areaId);
+        $this->assertOwnerOrAdmin($auth, (int) $area['user_id']);
+
+        $image = $this->areas->findImage($areaId, (int) $args['imageId']);
+        if ($image === null) {
+            throw new NotFoundException('Image not found.');
+        }
+
+        $this->images->delete($areaId, $image['filename']);
+        $this->areas->removeImage($areaId, (int) $args['imageId']);
+
+        return $this->json($response, ['data' => $this->areas->getImages($areaId)]);
+    }
+
+    public function showImage(Request $request, Response $response, array $args): Response
+    {
+        $areaId = (int) $args['id'];
+        $area = $this->areas->findById($areaId);
+        $this->assertCanViewImages($request, $area);
+
+        $image = $this->areas->findImage($areaId, (int) $args['imageId']);
+        if ($image === null) {
+            throw new NotFoundException('Image not found.');
+        }
+
+        $file = $this->images->read($areaId, $image['filename']);
+        if ($file === null) {
+            throw new NotFoundException('Image not found.');
+        }
+
+        $response->getBody()->write($file['contents']);
+
+        return $response->withHeader('Content-Type', $image['mime_type']);
+    }
+
+    /**
+     * A public area's photos are visible to anyone (incl. anonymous
+     * visitors); a private area's photos only to its owner or an admin -
+     * same shape as TourController::showImage()'s $canView check.
+     */
+    private function assertCanViewImages(Request $request, array $area): void
+    {
+        $auth = $request->getAttribute('auth');
+
+        $canView = (int) $area['public'] === 1
+            || ($auth !== null && (
+                (int) $auth['sub'] === (int) $area['user_id']
+                || ($auth['is_admin'] ?? false)
+            ));
+        if (!$canView) {
+            throw new ForbiddenException();
+        }
     }
 }
