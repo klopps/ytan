@@ -354,4 +354,35 @@ final class TourRepositoryTest extends TestCase
 
         $this->assertSame(1, $this->tours->countSearch('mine', $owner, ['search' => 'Alpha']));
     }
+
+    /**
+     * The image-count cap (TourController::MAX_IMAGES_PER_TOUR, mirrored
+     * client-side by TOUR_PHOTO_MAX_COUNT in config.js) is enforced only in
+     * the controller, on new uploads - TourRepository::addImage() itself has
+     * no cap, and update() never touches tour_image at all. A tour that
+     * already has more images than the currently configured maximum (e.g.
+     * after that constant was lowered) must therefore never lose any of them
+     * through an unrelated edit/save - this test makes that guarantee
+     * explicit and regression-proof, since it previously only held "by
+     * architecture" rather than by an actual assertion anywhere.
+     */
+    public function testUpdateNeverDropsImagesEvenWhenOverTheConfiguredMax(): void
+    {
+        $userId = $this->createUser();
+        $tour = $this->tours->create($userId, ['name' => 'Over The Limit']);
+        $tourId = (int) $tour['id'];
+
+        // One more than TourController::MAX_IMAGES_PER_TOUR (9) - simulates
+        // a tour that already had more images before the cap was lowered, or
+        // was seeded some other way that bypassed the controller's check.
+        for ($i = 0; $i < 10; $i++) {
+            $this->tours->addImage($tourId, "photo-$i.jpg", 'image/jpeg', 12345);
+        }
+        $this->assertSame(10, $this->tours->countImages($tourId));
+
+        $this->tours->update($tourId, ['name' => 'Renamed', 'description' => 'New desc']);
+
+        $this->assertSame(10, $this->tours->countImages($tourId), 'update() must not have dropped any images');
+        $this->assertCount(10, $this->tours->getImages($tourId));
+    }
 }

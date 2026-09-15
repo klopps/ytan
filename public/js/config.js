@@ -10,6 +10,41 @@ const LOG_DEBUG = 3;
 const ZINDEX_ROUTE = 10;
 const ZINDEX_POI = 20;
 
+// Photo upload size/compression tuning - shared by tour-admin.js's
+// stageTourFormPhoto()/compressTourPhoto() (tours) and photo-upload.js's
+// stagePhotoUpload()/compressPhotoUpload() (POIs/routes/areas). Must match
+// the backend's own independent limit (ImageStorageService::MAX_BYTES,
+// src/Service/ImageStorageService.php - one instance per entity type, same
+// 5 MB cap for all of them) so a client-side "compressed enough" result is
+// never rejected server-side anyway.
+const TOUR_PHOTO_MAX_BYTES = 5 * 1024 * 1024;
+// Longest side a re-encoded photo is scaled down to before compression is
+// even attempted - generous for a gallery/lightbox view, but keeps a huge
+// (e.g. 12000px) source image from needing many quality-reduction rounds to
+// reach TOUR_PHOTO_MAX_BYTES.
+const TOUR_PHOTO_MAX_DIMENSION_PX = 2560;
+// JPEG quality steps tried in order until the result fits under
+// TOUR_PHOTO_MAX_BYTES - if even the lowest still doesn't fit (very large/
+// busy source image), the canvas itself is halved and the same steps are
+// retried, up to TOUR_PHOTO_MAX_DOWNSCALE_ROUNDS times.
+const TOUR_PHOTO_QUALITY_STEPS = [0.92, 0.85, 0.75, 0.65, 0.55, 0.45, 0.35];
+const TOUR_PHOTO_MAX_DOWNSCALE_ROUNDS = 3;
+
+// Max photos per entity - each mirrors that entity's own controller
+// constant (TourController::MAX_IMAGES_PER_TOUR, PoiController::
+// MAX_IMAGES_PER_POI, RouteController::MAX_IMAGES_PER_ROUTE,
+// AreaController::MAX_IMAGES_PER_AREA), kept in sync manually, there being
+// no shared config layer between PHP and JS. An entity that already has
+// more images than this (e.g. after lowering the value) never loses any of
+// them: the count only gates new uploads (each controller's uploadImage()
+// count check), nothing ever re-validates or purges existing rows against
+// it. POI/Route/Area default lower than Tour's - they're edited in a
+// ~280-320px-wide Google Maps InfoWindow, not a full-screen panel.
+const TOUR_PHOTO_MAX_COUNT = 9;
+const POI_PHOTO_MAX_COUNT = 5;
+const ROUTE_PHOTO_MAX_COUNT = 5;
+const AREA_PHOTO_MAX_COUNT = 5;
+
 // Tuning for smoothRoutePoints() (helper.js) - the centripetal Catmull-Rom
 // curve drawn for a route's display Polyline when settings.smoothRoutes is
 // on. Purely a display detail, never affects routes[i].points itself. All

@@ -42,6 +42,7 @@ let tourFormTourId = null; // the tour id the open form is editing, or null whil
 let tourFormPendingRouteId = null; // set by route.js's "+ New tour…" shortcut - the route to add once the new tour is saved
 let tourFormPendingPhotoUploads = []; // File objects added but not yet uploaded - applied only when Save is clicked
 let tourFormPendingPhotoRemovals = []; // ids of existing images marked for removal but not yet deleted - applied only when Save is clicked
+let tourFormProcessingPhotoCount = 0; // oversized photos currently running through compressTourPhoto() - rendered as spinner tiles until each resolves
 let tourRouteManagerOriginalIds = []; // route ids/order as loaded, to diff against on Save; the manager itself edits tourRouteManagerInTour locally only
 let tourRouteManagerTourName = ''; // the tour being edited - the header alone just says "Edit Routes", so this is shown right below it
 let tourRouteManagerCandidatePage = 1; // 1-indexed - pagination for the "Add more routes" candidate list below
@@ -430,6 +431,7 @@ function showTourCreateForm(pendingRouteId = null) {
     tourFormPendingRouteId = pendingRouteId;
     tourFormPendingPhotoUploads = [];
     tourFormPendingPhotoRemovals = [];
+    tourFormProcessingPhotoCount = 0;
     document.getElementById('touradminmenu-body').innerHTML = tourFormHtml(null);
 }
 
@@ -445,6 +447,7 @@ function showTourEditForm(id) {
         tourFormTourId = id;
         tourFormPendingPhotoUploads = [];
         tourFormPendingPhotoRemovals = [];
+        tourFormProcessingPhotoCount = 0;
         document.getElementById('touradminmenu-body').innerHTML = tourFormHtml(answer.data);
         loadTourImagesInto(document.getElementById('touradminmenu-body'));
     }).catch(err => showToast(t('tour_admin.loading_tour_failed', { error: err.message }), 'error'));
@@ -538,10 +541,20 @@ function removeTourFormTag(index) {
 }
 
 /* --- Photos (edit form only - a tour needs an id first) --- */
+// TOUR_PHOTO_MAX_COUNT lives in config.js, alongside the other tour-photo
+// tuning constants (TOUR_PHOTO_MAX_BYTES etc.) - purely a UX nicety so the
+// "add" tile disappears and stageTourFormPhoto() can stop early instead of
+// staging photos the server would reject anyway (mirrors the backend's own
+// independent cap, TourController::MAX_IMAGES_PER_TOUR).
+
+function tourFormPhotoTotalCount() {
+    var visibleImages = tourFormImages.filter(img => !tourFormPendingPhotoRemovals.includes(img.id));
+    return visibleImages.length + tourFormPendingPhotoUploads.length + tourFormProcessingPhotoCount;
+}
 
 function tourFormPhotosInnerHtml() {
     var visibleImages = tourFormImages.filter(img => !tourFormPendingPhotoRemovals.includes(img.id));
-    var totalCount = visibleImages.length + tourFormPendingPhotoUploads.length;
+    var totalCount = tourFormPhotoTotalCount();
 
     var html = '<div class="tour-photo-grid" id="tourFormPhotoGrid">';
     for (let i = 0; i < visibleImages.length; i++) {
@@ -560,12 +573,22 @@ function tourFormPhotosInnerHtml() {
             '<div class="tour-photo-remove" onclick="removePendingTourFormPhoto(' + i + ');"><i class="material-icons-round">close</i></div>' +
             '</div>';
     }
-    if (totalCount < 8) {
+    // Placeholder tiles for photos currently running through
+    // compressTourPhoto() (see stageTourFormPhoto()) - a spinner stands in
+    // where the preview will appear once compression resolves, rather than
+    // a toast the user could miss if a large photo takes a while.
+    for (let i = 0; i < tourFormProcessingPhotoCount; i++) {
+        html += '<div class="tour-photo-tile tour-photo-processing" title="' + t('tour_admin.photo_compressing') + '">' +
+            '<i class="material-icons-round tour-photo-spinner">autorenew</i>' +
+            '<span class="tour-photo-processing-label">' + t('tour_admin.photo_compressing') + '</span>' +
+            '</div>';
+    }
+    if (totalCount < TOUR_PHOTO_MAX_COUNT) {
         html += '<div class="tour-photo-tile tour-photo-add" onclick="document.getElementById(\'tourFormPhotoInput\').click();">' +
             '<i class="material-icons-round">add</i></div>';
     }
     html += '</div>' +
-        '<input type="file" id="tourFormPhotoInput" accept="image/jpeg,image/png,image/webp" style="display:none;" onchange="stageTourFormPhoto(event);">' +
+        '<input type="file" id="tourFormPhotoInput" accept="image/jpeg,image/png,image/webp" multiple style="display:none;" onchange="stageTourFormPhoto(event);">' +
         '<p class="hint tour-photo-hint">' + t('tour_admin.photos_hint') + '</p>';
 
     return html;
@@ -577,25 +600,134 @@ function refreshTourFormPhotos() {
 }
 
 /**
- * Stages a photo locally (preview only, via a blob: URL) instead of
- * uploading it immediately - the actual POST happens in
+ * Stages one or more photos locally (preview only, via blob: URLs) instead
+ * of uploading them immediately - the actual POST happens in
  * applyPendingTourPhotoChanges(), only once the form's Save button is
  * clicked, matching the explicit-save behaviour of the rest of this form.
+ * The file input has `multiple` set, so a single pick can hand this several
+ * files at once (event.target.files is a FileList, not just one File).
+ *
+ * A file already at/under TOUR_PHOTO_MAX_BYTES is staged and rendered right
+ * away - only an oversized one goes through compressTourPhoto() first, so a
+ * perfectly fine small PNG never gets needlessly re-encoded to JPEG, and
+ * never has to wait behind a slower, larger photo in the same batch.
+ * tourFormProcessingPhotoCount tracks how many are still compressing so
+ * tourFormPhotosInnerHtml() can render a spinner tile per photo in
+ * progress; several oversized files compress concurrently, each with its
+ * own spinner tile, rather than one after another. Compression can outlive
+ * the form it was started from (user picks a huge photo, then navigates
+ * away before it finishes) - myToken mirrors the guard every other async
+ * render in this file already uses (see tourAdminRenderToken's own doc
+ * comment) so a late result is silently discarded instead of touching a
+ * DOM/state that now belongs to a different view.
  */
 function stageTourFormPhoto(event) {
-    var file = event.target.files[0];
-    if (!file) {
-        return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-        showToast(t('tour_admin.photo_too_large'), 'error');
-        event.target.value = '';
+    var files = Array.prototype.slice.call(event.target.files);
+    event.target.value = ''; // clear either way, so picking the same file(s) again still fires onchange
+    if (files.length === 0) {
         return;
     }
 
-    tourFormPendingPhotoUploads.push(file);
+    var remainingSlots = TOUR_PHOTO_MAX_COUNT - tourFormPhotoTotalCount();
+    if (files.length > remainingSlots) {
+        showToast(t('tour_admin.photo_limit_reached', { max: TOUR_PHOTO_MAX_COUNT }), 'warning');
+        files = files.slice(0, Math.max(0, remainingSlots));
+    }
+    if (files.length === 0) {
+        return;
+    }
+
+    var immediate = files.filter(file => file.size <= TOUR_PHOTO_MAX_BYTES);
+    var oversized = files.filter(file => file.size > TOUR_PHOTO_MAX_BYTES);
+
+    immediate.forEach(file => tourFormPendingPhotoUploads.push(file));
+
+    if (oversized.length === 0) {
+        refreshTourFormPhotos();
+        return;
+    }
+
+    var myToken = tourAdminRenderToken;
+    tourFormProcessingPhotoCount += oversized.length;
     refreshTourFormPhotos();
-    event.target.value = '';
+
+    Promise.all(oversized.map(function (file) {
+        return compressTourPhoto(file).catch(function (err) {
+            log('compressTourPhoto() failed', LOG_ERROR, err);
+            return null;
+        });
+    })).then(function (results) {
+        if (myToken !== tourAdminRenderToken) {
+            return;
+        }
+
+        var failureCount = 0;
+        results.forEach(function (result) {
+            if (result === null || result.size > TOUR_PHOTO_MAX_BYTES) {
+                failureCount++;
+                return;
+            }
+            tourFormPendingPhotoUploads.push(result);
+        });
+        tourFormProcessingPhotoCount -= oversized.length;
+        refreshTourFormPhotos();
+        if (failureCount > 0) {
+            showToast(t('tour_admin.photo_too_large'), 'error');
+        }
+    });
+}
+
+/**
+ * Re-encodes an oversized photo as JPEG, scaling down and/or lowering
+ * quality until it fits under TOUR_PHOTO_MAX_BYTES (or the lowest quality/
+ * smallest size this is willing to try is reached - callers still check
+ * the returned Blob's own .size, this never throws just for "still too
+ * big"). Always outputs JPEG regardless of the source format (PNG has no
+ * lossy "quality" to reduce via canvas.toBlob() the way JPEG does, so
+ * shrinking a large PNG at all requires converting it) - fine for tour
+ * photos, which are real photographs rather than graphics needing
+ * transparency.
+ *
+ * @param {File} file
+ * @returns {Promise<File>}
+ */
+function compressTourPhoto(file) {
+    return createImageBitmap(file).then(function (bitmap) {
+        return compressBitmapRound(bitmap, TOUR_PHOTO_MAX_DIMENSION_PX, 0);
+    }).then(function (blob) {
+        var baseName = file.name ? file.name.replace(/\.[^.]+$/, '') : 'photo';
+        return new File([blob], baseName + '.jpg', { type: 'image/jpeg' });
+    });
+}
+
+function compressBitmapRound(bitmap, maxDimension, round) {
+    var scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+    var canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+    return tryQualitySteps(canvas, 0).then(function (blob) {
+        if (blob.size <= TOUR_PHOTO_MAX_BYTES || round >= TOUR_PHOTO_MAX_DOWNSCALE_ROUNDS) {
+            bitmap.close();
+            return blob;
+        }
+        // Still too big even at the lowest quality step - halve the target
+        // dimension and try the whole quality ladder again from the top.
+        return compressBitmapRound(bitmap, Math.round(maxDimension / 2), round + 1);
+    });
+}
+
+function tryQualitySteps(canvas, stepIndex) {
+    var quality = TOUR_PHOTO_QUALITY_STEPS[Math.min(stepIndex, TOUR_PHOTO_QUALITY_STEPS.length - 1)];
+    return new Promise(function (resolve) {
+        canvas.toBlob(resolve, 'image/jpeg', quality);
+    }).then(function (blob) {
+        if (blob.size <= TOUR_PHOTO_MAX_BYTES || stepIndex >= TOUR_PHOTO_QUALITY_STEPS.length - 1) {
+            return blob;
+        }
+        return tryQualitySteps(canvas, stepIndex + 1);
+    });
 }
 
 function removePendingTourFormPhoto(index) {
