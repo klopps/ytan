@@ -468,8 +468,38 @@
             return;
         }
         const elapsedSeconds = Math.round((Date.now() - new Date(liveMeta.startedAt).getTime()) / 1000);
-        document.getElementById('trackRecordingBadgeStats').textContent =
-            formatDuration(elapsedSeconds) + ' · ' + (liveDistanceMeters / 1000).toFixed(1) + ' km';
+        document.getElementById('trackRecordingBadgeDuration').textContent = formatDuration(elapsedSeconds);
+        document.getElementById('trackRecordingBadgeDistance').textContent = (liveDistanceMeters / 1000).toFixed(1) + ' km';
+        positionRecordingBadge();
+    }
+
+    // #trackRecordingBadge normally sits at the same top offset as
+    // #tourModeBadge (its default `top` in style.css) - the two are just
+    // alternative "status pill under the search bar" badges and usually
+    // only one shows at a time. Tour Mode is just a route filter though
+    // (see tour.js), not an overlay, so a recording can still be running
+    // while it's active - if #tourModeBadge is ALSO visible right now, this
+    // one is pushed below its actual rendered height instead, the same
+    // live-measurement approach showSecondToolbar() (ui.js) uses for
+    // #secondToolbar's offset from #editToolbar, rather than a second
+    // hardcoded top value that would silently drift if #tourModeBadge's own
+    // height/padding/font-size ever changes. Called every tick (every 1s
+    // while the badge is shown) so a Tour Mode toggle mid-recording is
+    // picked up within a second, not just at the moment the badge first
+    // appears.
+    function positionRecordingBadge() {
+        const badge = document.getElementById('trackRecordingBadge');
+        const tourBadge = document.getElementById('tourModeBadge');
+        if (!badge.offsetParent) {
+            return;
+        }
+        if (tourBadge && getComputedStyle(tourBadge).display !== 'none') {
+            const parentRect = badge.offsetParent.getBoundingClientRect();
+            const tourBadgeRect = tourBadge.getBoundingClientRect();
+            badge.style.top = (tourBadgeRect.bottom - parentRect.top + 8) + 'px';
+        } else {
+            badge.style.top = ''; // falls back to the default top in style.css
+        }
     }
 
     function hideRecordingBadge() {
@@ -589,7 +619,10 @@
                 '</div>' +
             '</form>' +
             '<p class="track-recorder-explanation">' + t('trackrecorder.idle_explanation') + '</p>' +
-            '<button type="button" class="button track-recorder-start-btn" onclick="trackRecorderStartClicked();">' + t('trackrecorder.start_button') + '</button>';
+            // Same nav-btn-primary treatment as "Tour-Modus aktivieren"
+            // (tour-admin.js) - just a different icon (fiber_manual_record,
+            // matching the recording badge's own icon) instead of explore.
+            '<button type="button" class="nav-btn-primary" onclick="trackRecorderStartClicked();"><i class="material-icons-round">fiber_manual_record</i>&nbsp;' + t('trackrecorder.start_button') + '</button>';
     }
 
     function renderActiveState() {

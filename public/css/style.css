@@ -1765,6 +1765,13 @@ img.wsi {
   display: flex;
   flex-direction: column;
   line-height: 1.2;
+  /* Only actually does anything inside .track-recording-badge - that one
+     has a fixed width (see its own comment) so there's real free space to
+     grow into, letting .track-recording-badge-stats's space-between reach
+     the badge's full width; .tour-mode-badge is auto-width/content-sized,
+     so flex-grow has nothing to distribute there and this is a no-op. */
+  flex: 1;
+  min-width: 0;
 }
 
 .tour-mode-badge-name {
@@ -1803,18 +1810,29 @@ img.wsi {
 
 /**
 * Track recording badge (track-recorder.js) - native Capacitor shell only.
-* Same chrome as .tour-mode-badge, stacked directly below it (top:112px vs
-* top:64px) so both can show at once without overlapping. Whole badge is
-* the press-and-hold target (initTrackRecordingBadgePressHold() in
-* track-recorder.js, 2s hold, no need to lift the finger first), no
-* separate close button - pause/stop live in the recording screen this
-* reopens. user-select/touch-callout disabled so a 2s hold doesn't trigger
+* Same chrome as .tour-mode-badge, same default top:64px too - only one of
+* the two normally shows at a time, so by default this one isn't pushed
+* down any further than it needs to be (more of the map stays visible in
+* one contiguous piece below it). If Tour Mode happens to be active at the
+* same time, track-recorder.js's positionRecordingBadge() overrides this
+* `top` inline, stacking it below #tourModeBadge's actual live height
+* instead - see that function's comment. Fixed `width` (not just
+* min/max-width) so the pill doesn't visibly resize every second as the
+* duration/distance digits change - sized to fit worst-case content
+* ("00:00:00 · 999.0 km", measured ~194px rendered) with a little slack,
+* not to some round number. Whole badge is the press-and-hold target
+* (initTrackRecordingBadgePressHold() in track-recorder.js, hold duration
+* TRACK_BADGE_HOLD_MS, no need to lift the finger first), no separate close
+* button - pause/stop live in the recording screen this reopens.
+* user-select/touch-callout disabled so a multi-second hold doesn't trigger
 * text selection or iOS's text-selection callout instead of the hold.
 */
 .track-recording-badge {
   position: absolute;
-  top: 112px;
+  top: 64px;
   left: 16px;
+  width: 200px;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: 9px;
@@ -1833,6 +1851,29 @@ img.wsi {
   color: #E53935; /* recording = red, independent of the app's accent color, universally understood */
   font-size: 14px;
   animation: track-recording-pulse 1.6s ease-in-out infinite;
+}
+
+/**
+* Duration/distance row (#trackRecordingBadgeStats) - two separate spans
+* (#trackRecordingBadgeDuration/-Distance, filled in by tickBadge() in
+* track-recorder.js) in a space-between row instead of one combined
+* "HH:MM:SS · X.X km" text node, so duration reads left-aligned and
+* distance right-aligned within the badge's fixed width rather than both
+* drifting together in the middle. Same typography .tour-mode-badge-name
+* uses elsewhere (kept as a separate rule here since this element is a flex
+* row, not a single nowrap/ellipsis span). tabular-nums keeps each digit's
+* width constant so the row doesn't subtly shift as seconds/decimals tick
+* over, on top of the badge's own fixed width already keeping its edges
+* stationary.
+*/
+.track-recording-badge-stats {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
 }
 
 .track-recording-badge-paused .track-recording-badge-icon {

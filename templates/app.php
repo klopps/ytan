@@ -346,18 +346,23 @@
     </div>
 
     <!-- TRACK RECORDING BADGE - native Capacitor shell only, shown while a
-         GPS route recording is active/paused (track-recorder.js). Stacked
-         below #tourModeBadge (top:112px vs its top:64px) so both can be
-         visible at once without colliding; press-and-hold for 2s reopens
-         the recording screen (no inline pause/stop here - those live in
-         that screen, this is a status-and-shortcut badge, not a full
-         control) - the hold itself is wired up in track-recorder.js's
+         GPS route recording is active/paused (track-recorder.js). Same
+         default top offset as #tourModeBadge (only one of the two normally
+         shows at once); if Tour Mode is ALSO active, track-recorder.js's
+         positionRecordingBadge() moves this one below #tourModeBadge's live
+         height instead, so they never overlap. Press-and-hold reopens the
+         recording screen (no inline pause/stop here - those live in that
+         screen, this is a status-and-shortcut badge, not a full control) -
+         the hold itself is wired up in track-recorder.js's
          initTrackRecordingBadgePressHold(), not a plain onclick here, so a
          passing tap on the way to the map doesn't reopen it by accident. -->
     <div id="trackRecordingBadge" class="track-recording-badge" style="display:none;">
       <i class="material-icons-round track-recording-badge-icon">fiber_manual_record</i>
       <div class="tour-mode-badge-text">
-        <span id="trackRecordingBadgeStats" class="tour-mode-badge-name"></span>
+        <div id="trackRecordingBadgeStats" class="track-recording-badge-stats">
+          <span id="trackRecordingBadgeDuration"></span>
+          <span id="trackRecordingBadgeDistance"></span>
+        </div>
         <span id="trackRecordingBadgeStatus" class="tour-mode-badge-sub"></span>
       </div>
     </div>
