@@ -1049,10 +1049,22 @@ img.wsi {
   width: auto;
 }
 
+.admin-user-form .adminFormRowPhotos {
+  align-items: flex-start;
+}
+
 .admin-user-form .hint {
   font-size: 11px;
   color: var(--color-text-faint);
   margin: -8px 0 12px 0;
+}
+
+/* .hint's own -8px top margin tightens the gap after a single-line input -
+   right after the multi-row photo grid it instead pulled the hint text up
+   into/behind the grid's bottom tile. Same bottom spacing, but a small
+   positive top margin instead of a negative one. */
+.admin-user-form .hint.tour-photo-hint {
+  margin: 8px 0 12px 0;
 }
 
 .admin-user-form input[type="text"],

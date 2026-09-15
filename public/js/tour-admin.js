@@ -473,7 +473,14 @@ function tourFormHtml(tour) {
         '</div>';
 
     if (tour.id !== null) {
-        html += '<div class="adminFormRow">' +
+        // adminFormRowPhotos: the shared .adminFormRow centers its label
+        // vertically against the field (align-items:center) - fine for the
+        // other rows here (single-line inputs), but not for this one, whose
+        // field is a multi-row photo grid + hint text; overridden to
+        // top-align "Photos:" with the grid instead, same as Name/
+        // Description/Tags already read as aligned with the top of their
+        // own fields.
+        html += '<div class="adminFormRow adminFormRowPhotos">' +
             '<div class="adminFormLabel">' + t('tour_admin.photos_label') + '</div>' +
             '<div class="adminFormField" id="tourFormPhotosWrap">' + tourFormPhotosInnerHtml() + '</div>' +
         '</div>';
@@ -559,7 +566,7 @@ function tourFormPhotosInnerHtml() {
     }
     html += '</div>' +
         '<input type="file" id="tourFormPhotoInput" accept="image/jpeg,image/png,image/webp" style="display:none;" onchange="stageTourFormPhoto(event);">' +
-        '<p class="hint">' + t('tour_admin.photos_hint') + '</p>';
+        '<p class="hint tour-photo-hint">' + t('tour_admin.photos_hint') + '</p>';
 
     return html;
 }
