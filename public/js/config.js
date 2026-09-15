@@ -10,6 +10,31 @@ const LOG_DEBUG = 3;
 const ZINDEX_ROUTE = 10;
 const ZINDEX_POI = 20;
 
+// Tuning for smoothRoutePoints() (helper.js) - the centripetal Catmull-Rom
+// curve drawn for a route's display Polyline when settings.smoothRoutes is
+// on. Purely a display detail, never affects routes[i].points itself. All
+// three are read as defaults by smoothRoutePoints()'s own parameters, so
+// changing a value here takes effect everywhere without touching route.js.
+//
+// - SEGMENTS_PER_POINT: how many interpolated points are inserted between
+//   each pair of original vertices. Higher = smoother-looking curve, more
+//   points on the map (cheap at the ~100-point route sizes this app sees -
+//   see track-recorder.js's TRACK_SIMPLIFY_MAX_POINTS).
+// - ALPHA: the spline's knot-parametrization exponent. 0.5 (centripetal) is
+//   the standard safe default - avoids the loops/cusps a uniform spline
+//   (alpha 0) produces on the unevenly-spaced points routes actually have.
+//   1 (chordal) hugs the original straight segments more tightly, 0 curves
+//   more aggressively but risks self-intersecting loops on sharp corners.
+// - MAX_DEVIATION_METERS: caps how far the curve may bulge away from the
+//   straight line between two original vertices (Infinity = no cap, the
+//   default this feature shipped with). Lower it to keep sharp corners
+//   closer to their real straight-line path - useful on a narrow waterway,
+//   where an uncapped curve could visually bulge across a riverbank on a
+//   tight bend even though the underlying route data never left the water.
+const ROUTE_SMOOTHING_SEGMENTS_PER_POINT = 20;
+const ROUTE_SMOOTHING_ALPHA = 0.5;
+const ROUTE_SMOOTHING_MAX_DEVIATION_METERS = 15; // Default: Infinity
+
 // Page-size choices offered by the admin panels' "rows per page" dropdowns
 // (admin-user.js's user table, tour-admin.js's My/Public Tours sections),
 // and which one is selected by default whenever a panel is (re)opened.

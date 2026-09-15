@@ -236,6 +236,13 @@
               <input type="radio" id="windunit4" name="windunitselector" onclick="editWindUnit(this)" value="kn"><label for="windunit4"><?= $t('app.wind_unit.kn') ?></label>
             </div>
           </form>
+          <p class="nav-field-label"><?= $t('app.preferences.route_smoothing') ?></p>
+          <form name="routesmoothing">
+            <div class="nav-segmented">
+              <input type="radio" id="routesmoothing1" name="routesmoothingselector" onclick="editRouteSmoothing(this)" value="smooth" checked><label for="routesmoothing1"><?= $t('app.route_smoothing.smooth') ?></label>
+              <input type="radio" id="routesmoothing2" name="routesmoothingselector" onclick="editRouteSmoothing(this)" value="straight"><label for="routesmoothing2"><?= $t('app.route_smoothing.straight') ?></label>
+            </div>
+          </form>
           <p class="nav-field-label"><?= $t('app.preferences.language') ?></p>
           <form name="language">
             <div class="nav-segmented">

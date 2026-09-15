@@ -533,7 +533,8 @@ var settings = { // muss wegen JSON.stringify() ein Objekt sein
     zoom: null,
     unit: METRIC,
     theme: THEME_LIGHT,
-    windUnit: WIND_UNIT_KMH
+    windUnit: WIND_UNIT_KMH,
+    smoothRoutes: true // Routen mit abgerundeten statt eckigen Segmenten darstellen (Bearbeitungsmodus bleibt immer exakt)
 };
 
 let language = window.navigator.userLanguage || window.navigator.language;
@@ -1163,6 +1164,14 @@ function editUnit(element) {
     }
     renewVisibleRouteLabels();
     updateUnitExample();
+    saveSettings();
+}
+
+function editRouteSmoothing(element) {
+    if (['smooth', 'straight'].includes(element.value)) {
+        settings.smoothRoutes = (element.value === 'smooth');
+    }
+    redrawRoutes();
     saveSettings();
 }
 

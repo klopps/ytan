@@ -89,6 +89,10 @@ function saveSettings() {
         settings['windUnit'] = WIND_UNIT_KMH;
     }
 
+    settings['routesmoothing1'] = document.getElementById('routesmoothing1').checked;
+    settings['routesmoothing2'] = document.getElementById('routesmoothing2').checked;
+    settings['smoothRoutes'] = settings['routesmoothing1'] ? true : false;
+
     settings['theme'] = [THEME_LIGHT, THEME_DARK].includes(settings['theme']) ? settings['theme'] : THEME_LIGHT;
 
     settings['zoom'] = map.getZoom();
@@ -144,6 +148,14 @@ function loadSettings() {
         // leaving the whole segmented control looking unselected.
         if (!settings['windunit1'] && !settings['windunit2'] && !settings['windunit3'] && !settings['windunit4']) {
             document.getElementById('windunit3').checked = true;
+        }
+
+        document.getElementById('routesmoothing1').checked = settings['routesmoothing1'];
+        document.getElementById('routesmoothing2').checked = settings['routesmoothing2'];
+        // Alter Cookie ohne dieses Feld - Default geglättet (wie routesmoothing1s
+        // eigener checked-Default im Markup), gleiches Fallback-Muster wie windunit3.
+        if (!settings['routesmoothing1'] && !settings['routesmoothing2']) {
+            document.getElementById('routesmoothing1').checked = true;
         }
 
         if (settings['theme'] === THEME_DARK) {

@@ -215,6 +215,121 @@ function getMiddleCoordinate(p1, p2) {
 }
 
 
+/**
+ * Glättet einen Streckenzug (z.B. routes[i].points) mit einer zentripetalen
+ * Catmull-Rom-Spline. Anders als eine uniforme Catmull-Rom-Spline (alpha=0)
+ * erzeugt das bei ungleichmäßig verteilten Punkten (der Normalfall bei
+ * gezeichneten/aufgezeichneten Routen) keine Schlaufen/Spitzen an kurzen
+ * Segmenten neben langen. Die Kurve verläuft exakt durch jeden Original-
+ * punkt - nur die Krümmung dazwischen wird interpoliert, es entsteht kein
+ * neuer, vom Original abweichender Wegverlauf, es sei denn maxDeviationMeters
+ * schneidet die Kurve näher an die Gerade heran (siehe dort).
+ *
+ * Rein für die Darstellung gedacht (Polyline-`path`) - NIE auf
+ * routes[i].points selbst anwenden, das Array wird für Distanzberechnung,
+ * Labels und das Editieren (measureTool) exakt gebraucht.
+ *
+ * Alle drei Parameter sind über die gleichnamigen ROUTE_SMOOTHING_*-
+ * Konstanten in config.js voreingestellt, sodass eine Anpassung dort
+ * reicht, ohne route.js anzufassen.
+ *
+ * @param {Array<{lat:number,lng:number}>} points Rohe Stützpunkte
+ * @param {number} [segmentsPerPoint] Anzahl interpolierter Punkte je Originalsegment
+ * @param {number} [alpha] Knoten-Parametrisierung der Spline (0=uniform, 0.5=zentripetal, 1=chordal)
+ * @param {number} [maxDeviationMeters] Maximaler Abstand eines hinzugefügten Punkts von der Geraden zwischen den beiden echten Nachbar-Stützpunkten, in Metern (Infinity = unbegrenzt)
+ * @returns {Array<{lat:number,lng:number}>} neues, geglättetes Array (Original bleibt unverändert)
+ */
+function smoothRoutePoints(
+    points,
+    segmentsPerPoint = ROUTE_SMOOTHING_SEGMENTS_PER_POINT,
+    alpha = ROUTE_SMOOTHING_ALPHA,
+    maxDeviationMeters = ROUTE_SMOOTHING_MAX_DEVIATION_METERS
+) {
+    var deduped = [];
+    for (var i = 0; i < points.length; i++) {
+        var last = deduped[deduped.length - 1];
+        if (!last || last.lat !== points[i].lat || last.lng !== points[i].lng) {
+            deduped.push(points[i]);
+        }
+    }
+    if (deduped.length < 3) {
+        return deduped.slice();
+    }
+
+    // Gespiegelte Phantom-Endpunkte (2*p0 - p1), NICHT einfach dupliziert -
+    // sonst flacht die Tangente an den Enden ab (die Kurve würde dort
+    // "zögern" statt natürlich weiterzulaufen).
+    var phantomStart = mirrorPoint(deduped[0], deduped[1]);
+    var phantomEnd = mirrorPoint(deduped[deduped.length - 1], deduped[deduped.length - 2]);
+    var extended = [phantomStart].concat(deduped, [phantomEnd]);
+
+    var smoothed = [];
+    for (var i = 0; i < extended.length - 3; i++) {
+        var p0 = extended[i], p1 = extended[i + 1], p2 = extended[i + 2], p3 = extended[i + 3];
+
+        var t0 = 0;
+        var t1 = t0 + Math.pow(getDistance(p0, p1), alpha);
+        var t2 = t1 + Math.pow(getDistance(p1, p2), alpha);
+        var t3 = t2 + Math.pow(getDistance(p2, p3), alpha);
+
+        for (var s = 0; s < segmentsPerPoint; s++) {
+            var t = t1 + (t2 - t1) * (s / segmentsPerPoint);
+            var curvePoint = catmullRomInterpolate(p0, p1, p2, p3, t0, t1, t2, t3, t);
+            if (isFinite(maxDeviationMeters)) {
+                // p1/p2 sind hier die beiden echten Nachbar-Stützpunkte (nicht
+                // die Phantompunkte) - lerpPoint(p1, p2, t1, t2, t) ist also
+                // die Position auf der direkten Geraden zwischen ihnen, an
+                // derselben Stelle t wie curvePoint auf der Kurve.
+                var straightPoint = lerpPoint(p1, p2, t1, t2, t);
+                curvePoint = clampDeviation(curvePoint, straightPoint, maxDeviationMeters);
+            }
+            smoothed.push(curvePoint);
+        }
+    }
+    smoothed.push(deduped[deduped.length - 1]); // exakter letzter Punkt, nicht approximiert
+
+    return smoothed;
+}
+
+function mirrorPoint(p, neighbor) {
+    return { lat: 2 * p.lat - neighbor.lat, lng: 2 * p.lng - neighbor.lng };
+}
+
+// Zieht curvePoint so weit in Richtung straightPoint zurück, dass er
+// höchstens maxMeters von ihr entfernt ist - sanftes Kappen statt eines
+// harten Sprungs zurück auf die Gerade, da nur der Teil oberhalb der
+// Grenze abgeschnitten wird. Wird nur aufgerufen, wenn maxDeviationMeters
+// endlich ist (Infinity/Default = kein Aufruf, kein Zusatzaufwand).
+function clampDeviation(curvePoint, straightPoint, maxMeters) {
+    var deviation = getDistance(curvePoint, straightPoint);
+    if (deviation <= maxMeters) {
+        return curvePoint;
+    }
+    return lerpPoint(straightPoint, curvePoint, 0, deviation, maxMeters);
+}
+
+// Centripetal-Catmull-Rom-Auswertung an Parameter t über wiederholte lineare
+// Interpolation (De-Casteljau-artig) statt der geschlossenen Matrixform -
+// gleiches Ergebnis, aber ohne Division durch (t3-t0)/(t2-t1)-Sonderfälle,
+// da lerpPoint() Start==Ende bereits selbst abfängt.
+function catmullRomInterpolate(p0, p1, p2, p3, t0, t1, t2, t3, t) {
+    var a1 = lerpPoint(p0, p1, t0, t1, t);
+    var a2 = lerpPoint(p1, p2, t1, t2, t);
+    var a3 = lerpPoint(p2, p3, t2, t3, t);
+    var b1 = lerpPoint(a1, a2, t0, t2, t);
+    var b2 = lerpPoint(a2, a3, t1, t3, t);
+    return lerpPoint(b1, b2, t1, t2, t);
+}
+
+function lerpPoint(p, q, tStart, tEnd, t) {
+    var ratio = (tEnd === tStart) ? 0 : (t - tStart) / (tEnd - tStart);
+    return {
+        lat: p.lat + (q.lat - p.lat) * ratio,
+        lng: p.lng + (q.lng - p.lng) * ratio
+    };
+}
+
+
 function angleFromCoordinates(p1, p2) {
     var dLng = (p2.lng - p1.lng);
     var y = Math.sin(dLng) * Math.cos(p2.lat);

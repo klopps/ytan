@@ -681,13 +681,46 @@ function createRoutes() {
 }
 
 /**
+ * Baut alle Routen-Polylinien neu auf (z.B. nach Änderung der "Routen
+ * glätten"-Einstellung), ohne routes[]/Labels anzufassen oder neu vom
+ * Server zu laden - anders als deleteRoutes(), das für einen kompletten
+ * Reload gedacht ist. Alte Polylinien werden zuerst exakt wie in
+ * deleteRoutes() abgeräumt (Listener + setMap(null)), damit keine
+ * Duplikate auf der Karte hängen bleiben. Falls gerade eine Route
+ * bearbeitet wird (measureTool.index), bleibt deren fertige Polylinie
+ * weiterhin versteckt - sonst würde createRoute()'s eigenes
+ * showRoute()-am-Ende sie unter/über dem aktiven Bearbeiten-Overlay wieder
+ * sichtbar machen (editRoute()/routeContextMenuEditInfo() verstecken sie
+ * ja bewusst per hideRoute(), bevor measureTool startet).
+ */
+function redrawRoutes() {
+    for (let i = 0; i < routePaths.length; i++) {
+        if (typeof routePaths[i] !== 'undefined') {
+            google.maps.event.clearInstanceListeners(routePaths[i].routePathLine);
+            google.maps.event.clearInstanceListeners(routePaths[i].routePathBackground);
+            routePaths[i].routePathLine.setMap(null);
+            routePaths[i].routePathBackground.setMap(null);
+        }
+    }
+    routePaths = [];
+    createRoutes();
+    if (measureTool.index !== null) {
+        hideRoute(measureTool.index);
+    }
+}
+
+/**
  * Erzeugt das Polygon für eine Route
  *
  * @param {integer} i Index im Array routes[]
  */
 function createRoute(i) {
     if (typeof routes[i] !== 'undefined') {
-        var path = routes[i].points;
+        // routes[i].points itself is never touched here - smoothRoutePoints()
+        // returns a new array purely for the Polyline's display path. Every
+        // other consumer of routes[i].points (distance labels, bounds fit,
+        // measureTool editing) keeps reading the exact original vertices.
+        var path = settings.smoothRoutes ? smoothRoutePoints(routes[i].points) : routes[i].points;
 
         var routePathBackground = new google.maps.Polyline({
             id: routes[i].id,
