@@ -645,6 +645,13 @@ function renderWeatherWeekChart(hourly, dayCount) {
     const lineD = points.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
     const fillD = lineD + ' L' + VB_W + ',' + CURVE_BOTTOM + ' L0,' + CURVE_BOTTOM + ' Z';
 
+    // 0°C reference: clamped into the curve's vertical band so the gradient
+    // stop below is always valid, even for an all-above/all-below-zero week
+    // (the dashed line itself is only drawn when the week actually straddles it).
+    const zeroY = Math.min(CURVE_BOTTOM, Math.max(CURVE_TOP, CURVE_BOTTOM - (0 - tMin) / tRange * (CURVE_BOTTOM - CURVE_TOP)));
+    const showZeroLine = tMin < 0 && tMax > 0;
+    const zeroFrac = ((zeroY - CURVE_TOP) / (CURVE_BOTTOM - CURVE_TOP) * 100).toFixed(1);
+
     const stops = hourly.map((h, i) => {
         const pct = (i / (hourly.length - 1) * 100).toFixed(1);
         return '<stop offset="' + pct + '%" stop-color="' + windSpeedColor(h.wind_speed) + '"/>';
@@ -659,10 +666,19 @@ function renderWeatherWeekChart(hourly, dayCount) {
     const svg = document.getElementById('weatherTimelineWeekChart');
     svg.setAttribute('viewBox', '0 0 ' + VB_W + ' ' + VB_H);
     svg.innerHTML =
-        '<defs><linearGradient id="weatherWeekWindGrad" x1="0" y1="0" x2="1" y2="0">' + stops + '</linearGradient></defs>' +
+        '<defs>' +
+            '<linearGradient id="weatherWeekWindGrad" x1="0" y1="0" x2="1" y2="0">' + stops + '</linearGradient>' +
+            '<linearGradient id="weatherWeekTempGrad" x1="0" y1="0" x2="0" y2="1">' +
+                '<stop offset="0%" class="weather-timeline-week-chart-temp-fill-warm"/>' +
+                '<stop offset="' + zeroFrac + '%" class="weather-timeline-week-chart-temp-fill-warm"/>' +
+                '<stop offset="' + zeroFrac + '%" class="weather-timeline-week-chart-temp-fill-cold"/>' +
+                '<stop offset="100%" class="weather-timeline-week-chart-temp-fill-cold"/>' +
+            '</linearGradient>' +
+        '</defs>' +
         '<rect class="weather-timeline-week-chart-today-band" x="0" y="0" width="100" height="' + VB_H + '"/>' +
         ticks +
-        '<path class="weather-timeline-week-chart-temp-fill" d="' + fillD + '"/>' +
+        '<path class="weather-timeline-week-chart-temp-fill" d="' + fillD + '" fill="url(#weatherWeekTempGrad)"/>' +
         '<path class="weather-timeline-week-chart-temp-line" d="' + lineD + '"/>' +
+        (showZeroLine ? '<line class="weather-timeline-week-chart-zero-line" x1="0" y1="' + zeroY.toFixed(1) + '" x2="' + VB_W + '" y2="' + zeroY.toFixed(1) + '"/>' : '') +
         '<rect x="0" y="' + BAR_Y + '" width="' + VB_W + '" height="' + BAR_H + '" rx="4" fill="url(#weatherWeekWindGrad)"/>';
 }

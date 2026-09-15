@@ -2079,8 +2079,18 @@ img.wsi {
 }
 
 .weather-timeline-week-chart-temp-fill {
-  fill: var(--color-accent);
+  /* fill itself comes from the #weatherWeekTempGrad gradient (set as a
+     presentation attribute in weather.js) so it can split into a warmer
+     tone above 0°C and a bluer one below it - only opacity lives here. */
   opacity: 0.16;
+}
+
+.weather-timeline-week-chart-temp-fill-warm {
+  stop-color: var(--color-accent);
+}
+
+.weather-timeline-week-chart-temp-fill-cold {
+  stop-color: var(--color-info);
 }
 
 .weather-timeline-week-chart-temp-line {
@@ -2089,6 +2099,13 @@ img.wsi {
   stroke-width: 2px;
   stroke-linejoin: round;
   stroke-linecap: round;
+}
+
+.weather-timeline-week-chart-zero-line {
+  stroke: var(--color-info);
+  stroke-width: 1px;
+  stroke-dasharray: 3 3;
+  opacity: 0.7;
 }
 
 /* ---- Compact hourly table: a sticky row-label column plus one
