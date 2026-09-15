@@ -31,7 +31,7 @@ const ZINDEX_POI = 20;
 //   closer to their real straight-line path - useful on a narrow waterway,
 //   where an uncapped curve could visually bulge across a riverbank on a
 //   tight bend even though the underlying route data never left the water.
-const ROUTE_SMOOTHING_SEGMENTS_PER_POINT = 20;
+const ROUTE_SMOOTHING_SEGMENTS_PER_POINT = 15;
 const ROUTE_SMOOTHING_ALPHA = 0.5;
 const ROUTE_SMOOTHING_MAX_DEVIATION_METERS = 15; // Default: Infinity
 

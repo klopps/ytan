@@ -217,6 +217,23 @@ function attachLongPressContextMenu(overlay, handler) {
 }
 
 /**
+ * Removes an overlay attached via attachLongPressContextMenu() above, once
+ * it's torn down (route/area redraw or delete) - without this,
+ * longPressCandidates only ever grows: findLongPressTarget()'s own
+ * overlay.getMap() check silently skips a detached overlay's entry forever
+ * instead of erroring, so a leak here doesn't crash anything, it just makes
+ * every future touchstart's hit-test loop (findLongPressTarget()) scan more
+ * and more dead entries the longer a session runs and the more often routes
+ * get redrawn (e.g. route.js's redrawRoutes(), called every time the "Routen
+ * glätten" preference is toggled).
+ */
+function detachLongPressCandidate(overlay) {
+    longPressCandidates = longPressCandidates.filter(function (candidate) {
+        return candidate.overlay !== overlay;
+    });
+}
+
+/**
  * Runs a long-press's resolution - either a specific overlay's handler
  * (POI/route/area), or, when findLongPressTarget() hit nothing, the
  * generic map-level context menu (showMapContextMenu() above) at the

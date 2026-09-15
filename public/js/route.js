@@ -382,6 +382,8 @@ async function removeRoute(i) {
     google.maps.event.clearInstanceListeners(routePaths[i].routePathBackground);
     routePaths[i].routePathLine.setMap(null);
     routePaths[i].routePathBackground.setMap(null);
+    detachLongPressCandidate(routePaths[i].routeHitTestLine);
+    routePaths[i].routeHitTestLine.setMap(null);
     delete routePaths[i];
     delete routes[i];
 
@@ -412,6 +414,8 @@ function deleteRoutes() {
             google.maps.event.clearInstanceListeners(routePaths[i].routePathBackground);
             routePaths[i].routePathLine.setMap(null);
             routePaths[i].routePathBackground.setMap(null);
+            detachLongPressCandidate(routePaths[i].routeHitTestLine);
+            routePaths[i].routeHitTestLine.setMap(null);
         }
     }
     for (let i = 0; i < routes.length; i++) {
@@ -497,6 +501,11 @@ function showRoute(i) {
     if (typeof routes[i] !== 'undefined') {
         routePaths[i].routePathBackground.setMap(map);
         routePaths[i].routePathLine.setMap(map);
+        // Kept in sync with the two lines above - a route that isn't
+        // currently shown shouldn't be long-press-context-menu-able either
+        // (findLongPressTarget() skips a candidate whose overlay.getMap()
+        // is falsy).
+        routePaths[i].routeHitTestLine.setMap(map);
     }
 }
 
@@ -669,6 +678,7 @@ function hideRoute(i) {
     if (typeof routes[i] !== 'undefined') {
         routePaths[i].routePathBackground.setMap();
         routePaths[i].routePathLine.setMap();
+        routePaths[i].routeHitTestLine.setMap();
     }
 }
 
@@ -700,6 +710,8 @@ function redrawRoutes() {
             google.maps.event.clearInstanceListeners(routePaths[i].routePathBackground);
             routePaths[i].routePathLine.setMap(null);
             routePaths[i].routePathBackground.setMap(null);
+            detachLongPressCandidate(routePaths[i].routeHitTestLine);
+            routePaths[i].routeHitTestLine.setMap(null);
         }
     }
     routePaths = [];
@@ -786,16 +798,44 @@ function createRoute(i) {
 
         // Fallback for touch devices where the browser doesn't translate a
         // long-press into the 'contextmenu' event above (map-core.js).
-        attachLongPressContextMenu(routePathLine, function(event) {
-            showRouteContextMenu.call(routePathLine, event, i);
+        //
+        // Registers a separate, invisible Polyline built from the RAW
+        // (never smoothed) points instead of routePathLine/routePathBackground
+        // themselves - findLongPressTarget() runs google.maps.geometry.poly.
+        // isLocationOnEdge() against every registered candidate on EVERY
+        // 'touchstart' anywhere on the map (i.e. the start of every pan/
+        // scroll gesture, not just a deliberate long-press), so registering
+        // the smoothed display path here would multiply that per-touch cost
+        // by segmentsPerPoint for every route on screen - confirmed as the
+        // cause of noticeable scroll stutter in the native Capacitor shell
+        // once "Routen glätten" was turned on (todo.md). isLocationOnEdge()'s
+        // ~20px tolerance is already far coarser than any curve-vs-straight-
+        // line difference, so hit-testing against the raw points is exactly
+        // as accurate for this purpose while staying at the original (small)
+        // point count regardless of the smoothing setting. visible:false
+        // keeps it out of rendering entirely (no GPU cost) while still
+        // satisfying isLocationOnEdge()'s own overlay.getMap() check;
+        // clickable:false keeps it out of Maps' native click/dblclick/
+        // contextmenu handling too - it only exists for this registry.
+        // Not attached to the map here (no `map:` option) - showRoute()/
+        // hideRoute() attach/detach it together with the two visible
+        // polylines below, so a route that's currently hidden (mid-edit, or
+        // settings.detailroutes off) is correctly excluded from
+        // findLongPressTarget()'s overlay.getMap() check too, same as
+        // before this hit-test line existed at all.
+        var routeHitTestLine = new google.maps.Polyline({
+            path: routes[i].points,
+            visible: false,
+            clickable: false
         });
-        attachLongPressContextMenu(routePathBackground, function(event) {
-            showRouteContextMenu.call(routePathBackground, event, i);
+        attachLongPressContextMenu(routeHitTestLine, function(event) {
+            showRouteContextMenu(event, i);
         });
 
         routePaths[i] = {
             routePathLine: routePathLine,
-            routePathBackground: routePathBackground
+            routePathBackground: routePathBackground,
+            routeHitTestLine: routeHitTestLine
         };
 
         if (settings.detailroutes) {
