@@ -2910,10 +2910,150 @@ p.LighthouseCharacteristic {
   width: calc(100% - 6px);
   border: 1px solid var(--color-border);
   border-radius: 2px;
+  background-color: var(--color-bg-panel);
+  color: var(--color-text);
 }
 
 #editPoiWSIContainer {
   display: block;
+}
+
+.wsi-editor-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 6px;
+}
+
+.wsi-editor-btn .material-icons-round {
+  font-size: 14px;
+}
+
+/**
+* WSI editor modal (openWsiEditorModal() in poi.js) - same overlay shell as
+* confirm-dialog.js's .confirm-dialog-overlay/.confirm-dialog-actions,
+* reused directly rather than duplicated; only the dialog box itself gets
+* its own class since its content (title + dial + legend + instructions)
+* differs from the plain icon+message confirm dialog.
+*/
+.wsi-modal {
+  background-color: var(--color-bg-panel);
+  border-radius: 16px;
+  box-shadow: var(--shadow-soft);
+  padding: 24px 20px;
+  width: 280px;
+  max-width: 90vw;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.wsi-modal-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--color-text);
+  margin-bottom: 4px;
+}
+
+/**
+* Graphical WSI (Wind Shelter Indicator) dial - see poi.js's
+* renderWsiDialPaths()/wsiDialSectorClick(). One <svg viewBox="0 0 220 220">
+* with 16 donut-ring wedges (.wsi-sector, cycling 0/1/2 on click) plus 16
+* invisible, larger pie-shaped hit-test paths underneath (.wsi-hit) for a
+* bigger effective tap target than the visible ring alone would give -
+* see poi.js for the exact geometry/reasoning. Colors deliberately reuse
+* existing tokens rather than inventing WSI-specific ones: --color-border
+* for "partial" (still a real, if not maximal, dark/light contrast against
+* the panel in both themes) and --color-accent for "full" (the app's own
+* "this is active/selected" color, strongest contrast) - --color-accent-soft
+* was considered and rejected, it sits too close to --color-bg-panel in
+* both themes to read as a distinct middle state.
+*/
+.wsi-dial {
+  display: block;
+  width: 100%;
+  max-width: 220px;
+  margin: 4px auto 8px;
+  overflow: visible;
+}
+
+.wsi-hit {
+  fill: transparent;
+  cursor: pointer;
+}
+
+.wsi-sector {
+  stroke: var(--color-border-subtle);
+  stroke-width: 1px;
+  pointer-events: none; /* clicks are handled by the larger .wsi-hit path underneath, not this visible ring itself */
+}
+
+.wsi-sector-0 {
+  fill: none;
+}
+
+.wsi-sector-1 {
+  fill: var(--color-border);
+}
+
+.wsi-sector-2 {
+  fill: var(--color-accent);
+}
+
+.wsi-instructions {
+  margin: 2px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
+
+/* Only the modal's copy (sitting between the legend above and Cancel/Apply
+   below) needs extra breathing room on both sides - the inline copy in the
+   main form sits directly under the field label with no legend above it,
+   where the same gaps would just be wasted space. */
+.wsi-modal .wsi-instructions {
+  margin-top: 10px;
+  margin-bottom: 16px;
+}
+
+.wsi-legend {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  column-gap: 10px;
+  row-gap: 3px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+.wsi-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.wsi-legend-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border-subtle);
+}
+
+.wsi-legend-0 {
+  background: transparent;
+}
+
+.wsi-legend-1 {
+  background: var(--color-border);
+}
+
+.wsi-legend-2 {
+  background: var(--color-accent);
 }
 
 #editPoiLighthouseCharacteristic {

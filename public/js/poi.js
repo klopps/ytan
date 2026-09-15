@@ -813,12 +813,12 @@ function initPoiEditWindow(i) {
             '</div>' +
         '</div>' +
         '<div id="editPoiWSIContainer" class="infoWindowElement"' + styleWsi +'>' +
-            '<div class="leftCol">' +
+            '<div class="infoWindowElement">' +
                 '<label for="editPoiWSI">' + t('poi.edit.wsi_label') + '</label>' +
+                '<p class="wsi-instructions">' + t('poi.edit.wsi_text_instructions') + '</p>' +
             '</div>' +
-            '<div class="rightCol">' +
-                '<input id="editPoiWSI" type="text" maxlength="16" oninput="validatePoiEditForm();" placeholder="0011222222221100" title="' + t('poi.edit.wsi_title') + '" value="' + poi.direction + '">' +
-            '</div>' +
+            '<input id="editPoiWSI" type="text" maxlength="16" oninput="validatePoiEditForm();" placeholder="0011222222221100" title="' + t('poi.edit.wsi_title') + '" value="' + poi.direction + '">' +
+            '<button type="button" class="button wsi-editor-btn" onclick="openWsiEditorModal();"><i class="material-icons-round">explore</i>' + t('poi.edit.wsi_editor_button') + '</button>' +
         '</div>' +
         '<div id="editPoiLighthouseContainer" class="infoWindowElement"' + styleLighthouse +'>' +
             '<div class="leftCol">' +
@@ -869,6 +869,229 @@ function initPoiEditWindow(i) {
         document.getElementById('poiCoordinates').innerHTML = '<i class="material-icons-round">navigation</i>' + pos.lat().toFixed(6) + ', ' + pos.lng().toFixed(6);
         document.getElementById('poiCoordinatesDMS').innerHTML = '<i class="material-icons-round">navigation</i>' + decimalLatLngToDMS(pos.lat(),pos.lng());
     });
+}
+
+// --- WSI (Wind Shelter Indicator) graphical dial editor ---------------------
+//
+// Replaces hand-typing a 16-char 0/1/2 string with a clickable 16-sector
+// compass dial (index 0 = North, clockwise, 22.5°/sector - matches
+// WsiRenderer.php's server-side rendering exactly, see that file for the
+// same -90°-offset angle convention and the 0=exposed/1=partial/2=sheltered
+// semantics). #editPoiWSI itself stays a real, always-present
+// <input type="text"> (just hidden by default) - it remains the single
+// source of truth validatePoiEditForm()/savePoi() already read/write
+// unchanged; this dial only ever reads/writes that same element's .value,
+// never introduces a parallel state.
+
+const WSI_SECTOR_COUNT = 16;
+const WSI_DIAL_CENTER = 110;
+const WSI_DIAL_INNER_RADIUS = 46;
+const WSI_DIAL_OUTER_RADIUS = 96;
+// Deliberately larger than WSI_DIAL_OUTER_RADIUS - the invisible hit-test
+// sectors (wsiDescribeHitSector()) reach all the way in to the center point
+// instead of just covering the visible ring, since a thin 16-way ring alone
+// gives too small a touch target (see wsiDescribeHitSector()'s own comment).
+const WSI_DIAL_HIT_RADIUS = 100;
+
+/**
+ * Same -90°-offset convention as WsiRenderer::polarToCartesian() (PHP) -
+ * angle 0 points north/up, increasing angle goes clockwise on screen.
+ */
+function wsiPolarToCartesian(cx, cy, r, angleDeg) {
+    var angleRad = (angleDeg - 90) * Math.PI / 180;
+    return { x: cx + r * Math.cos(angleRad), y: cy + r * Math.sin(angleRad) };
+}
+
+/**
+ * SVG path for one donut-shaped (annular) sector between two radii/angles.
+ * The two arcs' sweep-flags are NOT interchangeable: the outer arc is drawn
+ * forward (angle1->angle2, clockwise on screen) so it needs sweep-flag=1;
+ * the inner arc is the return leg (angle2->angle1, i.e. backwards) so it
+ * needs sweep-flag=0. Swapping them silently produces a self-intersecting
+ * bowtie instead of a clean wedge. large-arc-flag is always 0 - a single
+ * 22.5° sector is always the minor arc.
+ */
+function wsiDescribeAnnularSector(cx, cy, rInner, rOuter, angle1, angle2) {
+    var outerStart = wsiPolarToCartesian(cx, cy, rOuter, angle1);
+    var outerEnd = wsiPolarToCartesian(cx, cy, rOuter, angle2);
+    var innerStart = wsiPolarToCartesian(cx, cy, rInner, angle1);
+    var innerEnd = wsiPolarToCartesian(cx, cy, rInner, angle2);
+    return 'M ' + innerStart.x + ' ' + innerStart.y +
+        ' L ' + outerStart.x + ' ' + outerStart.y +
+        ' A ' + rOuter + ' ' + rOuter + ' 0 0 1 ' + outerEnd.x + ' ' + outerEnd.y +
+        ' L ' + innerEnd.x + ' ' + innerEnd.y +
+        ' A ' + rInner + ' ' + rInner + ' 0 0 0 ' + innerStart.x + ' ' + innerStart.y +
+        ' Z';
+}
+
+/**
+ * SVG path for a sector's full pie-shaped (center-to-r) hit-test area -
+ * deliberately larger/simpler than the visible donut ring so the effective
+ * tap target's tightest dimension is the arc length at WSI_DIAL_HIT_RADIUS
+ * (~39px) rather than the much narrower one the visible ring's own inner
+ * edge alone would give (~18px at WSI_DIAL_INNER_RADIUS) - with a 16-way
+ * split, that difference is the gap between "usually taps the right sector"
+ * and "frequently taps the neighbor". Routing every hit path through the
+ * same center point also means there's no rounding-error hairline gap
+ * between neighboring sectors the way 16 independently-computed inner-ring
+ * edges could in theory leave.
+ */
+function wsiDescribeHitSector(cx, cy, r, angle1, angle2) {
+    var start = wsiPolarToCartesian(cx, cy, r, angle1);
+    var end = wsiPolarToCartesian(cx, cy, r, angle2);
+    return 'M ' + cx + ' ' + cy +
+        ' L ' + start.x + ' ' + start.y +
+        ' A ' + r + ' ' + r + ' 0 0 1 ' + end.x + ' ' + end.y +
+        ' Z';
+}
+
+/**
+ * Builds the 32 <path> elements (16 invisible hit-test sectors, painted
+ * first so they never cover the visible ring, + 16 visible donut-ring
+ * wedges) for the given 16-char WSI code. Falls back to an all-"0" dial for
+ * anything that doesn't match the same ^[012]{16}$ the rest of the app
+ * already validates against - a brand-new POI's poi.direction is '', a POI
+ * without a windshelter row is null, and #editPoiWSI (always a real,
+ * user-editable text field now - see openWsiEditorModal()) can hold a
+ * temporarily-invalid value while the user is mid-edit. Purely a rendering
+ * helper - never writes back into #editPoiWSI itself, so an in-progress
+ * invalid text value is never silently overwritten.
+ */
+function renderWsiDialPaths(code) {
+    if (!/^[012]{16}$/.test(code)) {
+        code = '0'.repeat(WSI_SECTOR_COUNT);
+    }
+    var svg = '';
+    for (var i = 0; i < WSI_SECTOR_COUNT; i++) {
+        var angle1 = i * (360 / WSI_SECTOR_COUNT);
+        var angle2 = (i + 1) * (360 / WSI_SECTOR_COUNT);
+        var value = code.charAt(i);
+        svg += '<path class="wsi-hit" d="' + wsiDescribeHitSector(WSI_DIAL_CENTER, WSI_DIAL_CENTER, WSI_DIAL_HIT_RADIUS, angle1, angle2) + '" onclick="wsiDialSectorClick(' + i + ');"></path>';
+        svg += '<path id="wsiSector' + i + '" class="wsi-sector wsi-sector-' + value + '" d="' + wsiDescribeAnnularSector(WSI_DIAL_CENTER, WSI_DIAL_CENTER, WSI_DIAL_INNER_RADIUS, WSI_DIAL_OUTER_RADIUS, angle1, angle2) + '"></path>';
+    }
+    return svg;
+}
+
+// Set while the WSI editor modal (openWsiEditorModal() below) is open;
+// null otherwise. wsiDialSectorClick() mutates this working copy instead of
+// #editPoiWSI.value directly, so Cancel/Escape/backdrop-click can discard
+// whatever was clicked without touching the real field - only "Apply"
+// commits it. The modal's dial is rebuilt fresh from #editPoiWSI's current
+// value every time it opens, so it always starts in sync with the text
+// field (including any manual edit made there since the modal last closed).
+let wsiModalWorkingCode = null;
+
+/**
+ * Cycles one sector 0->1->2->0 in wsiModalWorkingCode and updates just that
+ * one <path>'s class in the open modal - only ever called from inside it
+ * (the click handlers renderWsiDialPaths() embeds), so a no-op guard
+ * against wsiModalWorkingCode being null covers the (should be impossible)
+ * case of a stray call with no modal open.
+ */
+function wsiDialSectorClick(index) {
+    if (wsiModalWorkingCode === null) {
+        return;
+    }
+    var next = (parseInt(wsiModalWorkingCode.charAt(index), 10) + 1) % 3;
+    wsiModalWorkingCode = wsiModalWorkingCode.substring(0, index) + next + wsiModalWorkingCode.substring(index + 1);
+
+    var sector = document.getElementById('wsiSector' + index);
+    if (sector) {
+        sector.setAttribute('class', 'wsi-sector wsi-sector-' + next);
+    }
+}
+
+/**
+ * Opens the graphical WSI dial as a modal overlay (same overlay/dialog
+ * shell showConfirmDialog()/showCaptchaDialog() use in confirm-dialog.js -
+ * built via document.createElement rather than an HTML string, since this
+ * needs live DOM node references for its own click handlers, and appended
+ * to document.body so it sits above the POI edit InfoWindow, which has far
+ * less width to work with than a centered full-viewport modal needs for a
+ * comfortable 16-sector dial). #editPoiWSI (the always-visible text field)
+ * is only written to if the user taps "Apply" - Cancel, Escape, or clicking
+ * the backdrop all discard wsiModalWorkingCode instead.
+ */
+function openWsiEditorModal() {
+    var input = document.getElementById('editPoiWSI');
+    wsiModalWorkingCode = /^[012]{16}$/.test(input.value) ? input.value : '0'.repeat(WSI_SECTOR_COUNT);
+
+    var overlay = document.createElement('div');
+    overlay.className = 'confirm-dialog-overlay';
+
+    var modal = document.createElement('div');
+    modal.className = 'wsi-modal';
+
+    var title = document.createElement('div');
+    title.className = 'wsi-modal-title';
+    title.textContent = t('poi.edit.wsi_editor_title');
+
+    var dialWrapper = document.createElement('div');
+    dialWrapper.innerHTML = '<svg viewBox="0 0 220 220" class="wsi-dial">' + renderWsiDialPaths(wsiModalWorkingCode) + '</svg>';
+    var dial = dialWrapper.firstElementChild;
+
+    var legend = document.createElement('div');
+    legend.className = 'wsi-legend';
+    legend.innerHTML =
+        '<span class="wsi-legend-item"><span class="wsi-legend-swatch wsi-legend-0"></span>' + t('poi.edit.wsi_legend_0') + '</span>' +
+        '<span class="wsi-legend-item"><span class="wsi-legend-swatch wsi-legend-1"></span>' + t('poi.edit.wsi_legend_1') + '</span>' +
+        '<span class="wsi-legend-item"><span class="wsi-legend-swatch wsi-legend-2"></span>' + t('poi.edit.wsi_legend_2') + '</span>';
+
+    var instructions = document.createElement('p');
+    instructions.className = 'wsi-instructions';
+    instructions.textContent = t('poi.edit.wsi_instructions');
+
+    var actions = document.createElement('div');
+    actions.className = 'confirm-dialog-actions';
+
+    var cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'button';
+    cancelBtn.textContent = t('common.cancel');
+
+    var applyBtn = document.createElement('button');
+    applyBtn.type = 'button';
+    applyBtn.className = 'startbtn';
+    applyBtn.textContent = t('poi.edit.wsi_editor_apply');
+
+    function close() {
+        document.removeEventListener('keydown', onKeydown);
+        overlay.remove();
+        wsiModalWorkingCode = null;
+    }
+
+    function apply() {
+        input.value = wsiModalWorkingCode;
+        validatePoiEditForm();
+        close();
+    }
+
+    function onKeydown(event) {
+        if (event.key === 'Escape') {
+            close();
+        }
+    }
+
+    cancelBtn.addEventListener('click', close);
+    applyBtn.addEventListener('click', apply);
+    overlay.addEventListener('click', function (event) {
+        if (event.target === overlay) {
+            close();
+        }
+    });
+
+    actions.appendChild(cancelBtn);
+    actions.appendChild(applyBtn);
+
+    modal.appendChild(title);
+    modal.appendChild(dial);
+    modal.appendChild(legend);
+    modal.appendChild(instructions);
+    modal.appendChild(actions);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    document.addEventListener('keydown', onKeydown);
 }
 
 /**

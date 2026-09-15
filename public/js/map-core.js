@@ -620,7 +620,20 @@ function injectAdditionalScripts() {
 
 function initMap() {
     infoWindow = new google.maps.InfoWindow();
-    poiEditWindow = new google.maps.InfoWindow();
+    // maxWidth: every field in this form sizes itself with a CSS percentage
+    // (width: calc(100% - 6px) etc.), never an absolute pixel value - none
+    // of them alone can anchor the bubble to a sane width, they only ever
+    // constrain themselves relative to whatever width Maps already decided
+    // on. Normally that's harmless (Maps' own natural-width measurement
+    // settles on something reasonable), but any single unconstrained text
+    // node that doesn't wrap (e.g. poi.js's WSI instructions paragraph -
+    // "0 = exposed, 1 = partially sheltered, ..." - a whole sentence with no
+    // width of its own) can report its full, un-wrapped line width as its
+    // preferred size, and once anything reports itself that wide, Maps
+    // sizes the ENTIRE bubble - every other field included - to match. This
+    // caps the bubble itself, which is what actually forces that kind of
+    // content to wrap instead of stretching the whole form.
+    poiEditWindow = new google.maps.InfoWindow({ maxWidth: 280 });
     routeEditWindow = new google.maps.InfoWindow();
     areaEditWindow = new google.maps.InfoWindow();
     routeInfoWindow = new google.maps.InfoWindow();
