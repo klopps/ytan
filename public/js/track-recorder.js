@@ -35,6 +35,12 @@
     const RECORDING_DB_NAME = 'ytan-track-recorder';
     const RECORDING_DB_VERSION = 1;
     const CURRENT_META_ID = 'current'; // this app only ever has one recording in progress at a time
+    // #trackRecordingBadge sits directly on the map, right where a user's
+    // thumb naturally lands while panning/zooming near it - a plain tap
+    // would reopen the recording screen far too easily. 2s press-and-hold
+    // (see initTrackRecordingBadgePressHold()) makes that deliberate.
+    const TRACK_BADGE_HOLD_MS = 2000;
+    const TRACK_BADGE_HOLD_MOVE_TOLERANCE_PX = 10;
 
     let db = null;
     let watcherId = null;
@@ -43,6 +49,8 @@
     let liveDistanceMeters = 0;
     let lastPoint = null;
     let badgeTickTimer = null;
+    let badgeHoldTimer = null;
+    let badgeHoldStartPos = null;
 
     // --- IndexedDB buffer -----------------------------------------------
 
@@ -472,6 +480,58 @@
         }
     }
 
+    // One-time setup (called from initTrackRecorder()) for the badge's
+    // press-and-hold: pointerdown arms a plain TRACK_BADGE_HOLD_MS timer
+    // that fires openTrackRecorderScreen() itself, while the finger/pointer
+    // may still be down - not on release, per the "lifting the finger
+    // shouldn't be necessary" requirement. pointerup/-cancel/-leave (finger
+    // lifted or dragged off the badge before the timer fired - e.g. a plain
+    // tap, or the start of a map pan/zoom that began on the badge) and
+    // pointermove past a small tolerance (the gesture turned into a drag,
+    // not a hold) both cancel the pending timer so it can't fire late.
+    // Pointer Events (not separate touch/mouse listeners) already used the
+    // same way for tour-admin.js's route drag-reorder - unifies touch/mouse
+    // without map-core.js's Maps-specific long-press fallbacks, which this
+    // plain DOM badge (outside Maps' own event capture) doesn't need.
+    function initTrackRecordingBadgePressHold() {
+        const badge = document.getElementById('trackRecordingBadge');
+        if (!badge) {
+            return;
+        }
+
+        function clearHoldTimer() {
+            if (badgeHoldTimer !== null) {
+                clearTimeout(badgeHoldTimer);
+                badgeHoldTimer = null;
+            }
+            badgeHoldStartPos = null;
+        }
+
+        badge.addEventListener('pointerdown', function (event) {
+            clearHoldTimer();
+            badgeHoldStartPos = { x: event.clientX, y: event.clientY };
+            badgeHoldTimer = setTimeout(function () {
+                badgeHoldTimer = null;
+                badgeHoldStartPos = null;
+                openTrackRecorderScreen();
+            }, TRACK_BADGE_HOLD_MS);
+        });
+
+        badge.addEventListener('pointermove', function (event) {
+            if (!badgeHoldStartPos) {
+                return;
+            }
+            if (Math.abs(event.clientX - badgeHoldStartPos.x) > TRACK_BADGE_HOLD_MOVE_TOLERANCE_PX ||
+                Math.abs(event.clientY - badgeHoldStartPos.y) > TRACK_BADGE_HOLD_MOVE_TOLERANCE_PX) {
+                clearHoldTimer();
+            }
+        });
+
+        badge.addEventListener('pointerup', clearHoldTimer);
+        badge.addEventListener('pointercancel', clearHoldTimer);
+        badge.addEventListener('pointerleave', clearHoldTimer);
+    }
+
     // Called both from the "Track aufzeichnen" drawer row (drawer already
     // open at that point, same as the plain navMenuGoTo() calls app.php uses
     // for POIs/Preferences) and from #trackRecordingBadge on the main map
@@ -570,6 +630,7 @@
         if (row) {
             row.style.display = '';
         }
+        initTrackRecordingBadgePressHold();
         loadInProgressRecording();
     }
 

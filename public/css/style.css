@@ -1805,8 +1805,11 @@ img.wsi {
 * Track recording badge (track-recorder.js) - native Capacitor shell only.
 * Same chrome as .tour-mode-badge, stacked directly below it (top:112px vs
 * top:64px) so both can show at once without overlapping. Whole badge is
-* the tap target (onclick in templates/app.php), no separate close button -
-* pause/stop live in the recording screen this reopens.
+* the press-and-hold target (initTrackRecordingBadgePressHold() in
+* track-recorder.js, 2s hold, no need to lift the finger first), no
+* separate close button - pause/stop live in the recording screen this
+* reopens. user-select/touch-callout disabled so a 2s hold doesn't trigger
+* text selection or iOS's text-selection callout instead of the hold.
 */
 .track-recording-badge {
   position: absolute;
@@ -1821,6 +1824,9 @@ img.wsi {
   padding: 8px 14px 8px 12px;
   z-index: 5;
   cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .track-recording-badge-icon {
