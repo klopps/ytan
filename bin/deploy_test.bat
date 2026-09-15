@@ -14,6 +14,18 @@ REM on top of what's already there. That also means files removed locally
 REM are NOT removed from the remote - this is a simple "copy newer files
 REM over", not a mirror.
 REM
+REM Only what the PHP app actually needs at runtime is uploaded. Everything
+REM below is local dev/build-only tooling and is excluded (see the --exclude
+REM list): android/ (the whole native Capacitor Android Studio project),
+REM node_modules/ + package.json/package-lock.json + capacitor.config.json
+REM (root-level npm/Capacitor tooling, unrelated to the PHP app's own
+REM composer dependencies), assets/ (Capacitor app icon/splash source
+REM images), tests/ (PHPUnit + the self-contained Playwright e2e project,
+REM including ITS OWN node_modules/), docs/, .githooks/, .phpunit.cache/,
+REM .playwright-mcp/ (Claude/Playwright MCP tool scratch output - gitignored
+REM but not tar-ignored, so it would otherwise ship whatever happens to be
+REM sitting in the working tree at deploy time).
+REM
 REM Usage: bin\deploy.bat
 REM Override any of these by setting the env var before running, e.g.:
 REM   set REMOTE_PHP=php8.1
@@ -62,13 +74,24 @@ if not defined REMOTE_PHP set "REMOTE_PHP=php"
 set "ROOT_DIR=%~dp0.."
 set "BUILD_DIR=%TEMP%\ytan-deploy-%RANDOM%%RANDOM%"
 
-echo ==^> Packaging working tree (excluding .git, .env, vendor, .claude, wsi cache)
+echo ==^> Packaging working tree (excluding dev/build-only files - see comment above)
 mkdir "%BUILD_DIR%" || goto :error
 tar -C "%ROOT_DIR%" ^
     --exclude=".git" ^
     --exclude=".env" ^
     --exclude=".claude" ^
+    --exclude=".githooks" ^
+    --exclude=".phpunit.cache" ^
+    --exclude=".playwright-mcp" ^
     --exclude="vendor" ^
+    --exclude="node_modules" ^
+    --exclude="android" ^
+    --exclude="assets" ^
+    --exclude="docs" ^
+    --exclude="tests" ^
+    --exclude="capacitor.config.json" ^
+    --exclude="package.json" ^
+    --exclude="package-lock.json" ^
     --exclude="public/images/wsi/*.svg" ^
     -cf - . | tar -C "%BUILD_DIR%" -xf -
 if errorlevel 1 goto :error
