@@ -37,9 +37,9 @@
     const CURRENT_META_ID = 'current'; // this app only ever has one recording in progress at a time
     // #trackRecordingBadge sits directly on the map, right where a user's
     // thumb naturally lands while panning/zooming near it - a plain tap
-    // would reopen the recording screen far too easily. 2s press-and-hold
+    // would reopen the recording screen far too easily. 3s press-and-hold
     // (see initTrackRecordingBadgePressHold()) makes that deliberate.
-    const TRACK_BADGE_HOLD_MS = 2000;
+    const TRACK_BADGE_HOLD_MS = 3000;
     const TRACK_BADGE_HOLD_MOVE_TOLERANCE_PX = 10;
 
     let db = null;
