@@ -23,10 +23,15 @@
     // preference (settings.js).
     const TRACK_DISTANCE_FILTER_PRESETS = { precise: 20, balanced: 50, battery: 100 };
     // Always applied to a finished recording (see simplifyTrackPoints()) -
-    // a few meters of tolerance drops redundant near-collinear points
-    // without a noticeable accuracy loss at kayak-touring scale.
+    // starts with a few meters of tolerance to drop redundant
+    // near-collinear points, then escalates until the point count fits
+    // under TRACK_SIMPLIFY_MAX_POINTS - for a real multi-hour kayak day
+    // tour, that escalation is normally what actually determines the
+    // final point count, not the starting epsilon (a whole day's paddle
+    // needs at most ~100 points to look right on the map; the 3m starting
+    // value only matters for very short recordings).
     const TRACK_SIMPLIFY_EPSILON_METERS = 3;
-    const TRACK_SIMPLIFY_MAX_POINTS = 2000;
+    const TRACK_SIMPLIFY_MAX_POINTS = 100;
     const RECORDING_DB_NAME = 'ytan-track-recorder';
     const RECORDING_DB_VERSION = 1;
     const CURRENT_META_ID = 'current'; // this app only ever has one recording in progress at a time
@@ -368,13 +373,14 @@
      * Douglas-Peucker downsampling, always applied to a finished recording
      * (not just as a safety valve) - GPS noise and near-straight stretches
      * produce far more points than a route actually needs, so a small
-     * epsilonMeters tolerance is run unconditionally to drop redundant
-     * points without a noticeable accuracy loss. maxPoints stays as a hard
-     * safety cap: if that first pass still leaves an unusually long/precise
-     * recording too large, epsilon is escalated further until it fits.
-     * Perpendicular distance is computed via a flat equirectangular
-     * approximation (fine at kayak-touring scale, no projection library
-     * needed).
+     * epsilonMeters tolerance is run first to drop redundant points
+     * without a noticeable accuracy loss. maxPoints is a hard cap on top
+     * of that - a full kayak day tour only needs on the order of 100
+     * points to look right on the map, so for any real multi-hour
+     * recording it's normally THIS escalation loop (not the starting
+     * epsilon) that ends up determining the final point count. Perpendicular
+     * distance is computed via a flat equirectangular approximation (fine
+     * at kayak-touring scale, no projection library needed).
      */
     function simplifyTrackPoints(points, epsilonMeters, maxPoints) {
         if (points.length < 3) {
