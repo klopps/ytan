@@ -484,15 +484,18 @@
     // press-and-hold: pointerdown arms a plain TRACK_BADGE_HOLD_MS timer
     // that fires openTrackRecorderScreen() itself, while the finger/pointer
     // may still be down - not on release, per the "lifting the finger
-    // shouldn't be necessary" requirement. pointerup/-cancel/-leave (finger
-    // lifted or dragged off the badge before the timer fired - e.g. a plain
-    // tap, or the start of a map pan/zoom that began on the badge) and
-    // pointermove past a small tolerance (the gesture turned into a drag,
-    // not a hold) both cancel the pending timer so it can't fire late.
-    // Pointer Events (not separate touch/mouse listeners) already used the
-    // same way for tour-admin.js's route drag-reorder - unifies touch/mouse
-    // without map-core.js's Maps-specific long-press fallbacks, which this
-    // plain DOM badge (outside Maps' own event capture) doesn't need.
+    // shouldn't be necessary" requirement. pointermove past a small
+    // tolerance (the gesture turned into a drag, e.g. a map pan/zoom that
+    // happened to start on the badge) cancels the pending timer silently.
+    // A pointerup that still finds the timer pending, on the other hand, is
+    // a plain tap - too short to have been a deliberate hold - so it shows
+    // a one-off toast hinting at the hold instead of just doing nothing;
+    // pointercancel/-leave stay silent (finger dragged off/gesture aborted,
+    // not a "did nothing happen?" tap). Pointer Events (not separate
+    // touch/mouse listeners) already used the same way for tour-admin.js's
+    // route drag-reorder - unifies touch/mouse without map-core.js's
+    // Maps-specific long-press fallbacks, which this plain DOM badge
+    // (outside Maps' own event capture) doesn't need.
     function initTrackRecordingBadgePressHold() {
         const badge = document.getElementById('trackRecordingBadge');
         if (!badge) {
@@ -527,7 +530,17 @@
             }
         });
 
-        badge.addEventListener('pointerup', clearHoldTimer);
+        badge.addEventListener('pointerup', function () {
+            // badgeHoldTimer is still pending here exactly for a plain tap -
+            // released before the hold fired, and never dragged past
+            // TRACK_BADGE_HOLD_MOVE_TOLERANCE_PX (a drag/pan starting on the
+            // badge already nulled it out via pointermove above, so that
+            // case falls through without the hint).
+            if (badgeHoldTimer !== null) {
+                showToast(t('trackrecorder.badge_hold_hint'), 'info');
+            }
+            clearHoldTimer();
+        });
         badge.addEventListener('pointercancel', clearHoldTimer);
         badge.addEventListener('pointerleave', clearHoldTimer);
     }

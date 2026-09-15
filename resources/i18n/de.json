@@ -361,5 +361,6 @@
     "trackrecorder.stop_button": "Stopp & überprüfen",
     "trackrecorder.discard_button": "Verwerfen",
     "trackrecorder.badge_recording": "Aufzeichnung läuft",
-    "trackrecorder.badge_paused": "Pausiert"
+    "trackrecorder.badge_paused": "Pausiert",
+    "trackrecorder.badge_hold_hint": "Zum Öffnen des Tracking-Menüs gedrückt halten"
 }

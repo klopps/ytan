@@ -361,5 +361,6 @@
     "trackrecorder.stop_button": "Stop & review",
     "trackrecorder.discard_button": "Discard",
     "trackrecorder.badge_recording": "Recording",
-    "trackrecorder.badge_paused": "Paused"
+    "trackrecorder.badge_paused": "Paused",
+    "trackrecorder.badge_hold_hint": "Press and hold to open the tracking menu"
 }
