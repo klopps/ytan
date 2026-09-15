@@ -1,13 +1,5 @@
 # Offene Punkte
 
-## Umlaute in E-Mails werden nicht korrekt dargestellt
-
-Wenn vom Systeme versendete E-Mails Umlaute und ähnlliche Zeichen enthalten, werden diese nicht korrekt dargestellt.
-
-## Informationen zu möglichen Gewittern in Wetterdaten
-
-Es ist nicht klar, ob in den Wetterdaten auch Informationen zu Gewittern vorhanden sein können und falls ja, ob diese entsprechend visualisiert werden. 
-
 ## Touren-Dokument
 
 Ausgabe eines PDF-Dokuments für eine Tour mit 
@@ -314,3 +306,27 @@ Ergänzt (2026-09-15): ~~Jetzt noch den Abstand zwischen Legende und Erklärung 
 Neue Funktion `keepPoiEditWindowInView()` (`poi.js`), aufgerufen am Ende von `changePoiType()`: liest die aktuelle Position der InfoWindow-Bubble (`.gm-style-iw-c`, `getBoundingClientRect()` - durch die vorausgegangene `style.display`-Änderung erzwingt der Browser hier ein synchrones Reflow, kein `setTimeout` nötig) und pannt die Karte per `map.panBy(0, top - POI_EDIT_WINDOW_TOP_MARGIN_PX)` nach unten, falls der obere Rand die neue Konstante `POI_EDIT_WINDOW_TOP_MARGIN_PX` (64px, passend zum bereits an mehreren Stellen der App verwendeten "unter der Suchleiste"-Abstand, z.B. `#tourModeBadge`) unterschreitet - `panBy` mit *negativem* y verschiebt den Karten-Mittelpunkt nach oben, was den sichtbaren Inhalt (Marker samt InfoWindow) nach unten schiebt, nicht umgekehrt. No-op, wenn bereits genug Platz da ist oder gar kein InfoWindow offen ist.
 
 Per Playwright verifiziert: POI absichtlich nahe an den oberen Bildschirmrand gepannt, dann auf "Camp" umgeschaltet - Bubble-Oberkante lag vorher bei -159px (weit außerhalb), landet nach der (von Google sanft animierten) Korrektur exakt bei ~64px. Auch im normalen, zentrierten Fall (POI mittig platziert) korrigiert die Karte minimal nach, sobald der wachsende Bereich das knapp nötig macht - erklärt, warum der Fehler laut Nutzer "oft", nicht nur in Extremfällen auftrat. PHPUnit (167) und E2E-Suite (9) grün.
+
+## Umlaute in E-Mails werden nicht korrekt dargestellt (2026-09-16)
+
+~~Wenn vom Systeme versendete E-Mails Umlaute und ähnlliche Zeichen enthalten, werden diese nicht korrekt dargestellt. Das scheint eine Encoding-Problematik zu sein.~~ Gelöst: `MailService::send()` (`src/Service/MailService.php`) baute PHPMailer bisher ohne jede `CharSet`/`Encoding`-Angabe - PHPMailer defaultet dabei auf `iso-8859-1`/`8bit` (per `vendor/phpmailer/phpmailer/src/PHPMailer.php` gegengeprüft: `public $CharSet = self::CHARSET_ISO88591;`). Sämtliche Inhalte der App (PHP-Quelltext, DB, Übersetzungen, und vor allem die per String-Interpolation eingesetzten Nutzerwerte wie Tour-/Routen-/Nutzernamen) sind aber UTF-8 - jedes Zeichen außerhalb von ASCII (deutsche Umlaute/ß insbesondere) wurde dadurch mit dem falschen Charset deklariert und im Mail-Client entsprechend falsch dargestellt.
+
+Behoben mit zwei Zeilen: `$mail->CharSet = PHPMailer::CHARSET_UTF8;` und `$mail->Encoding = PHPMailer::ENCODING_QUOTED_PRINTABLE;` (Quoted-Printable statt Base64, da PHPMailers eigene Doku genau das für überwiegend-ASCII-Inhalte mit vereinzelten Mehrbyte-Zeichen empfiehlt - genau das Profil dieser App-E-Mails - und dabei im Gegensatz zu Base64 auch als Rohtext noch lesbar bleibt). Dafür `send()` in ein `buildMailer()` (baut & konfiguriert PHPMailer, sendet aber nicht) + einen abschließenden `->send()`-Aufruf aufgeteilt, rein um es testbar zu machen: `MailService` ist `final` (keine Testsubklasse möglich) und ein echter SMTP-Verbindungsversuch im Test wäre nicht praktikabel - `buildMailer()` bleibt `private`, ein neuer Test ruft es per `ReflectionMethod` auf und nutzt PHPMailers eigene `preSend()`/`getSentMIMEMessage()` (bauen die MIME-Nachricht nur im Speicher, ohne Netzwerkzugriff - der eigentliche Versand passiert separat in `postSend()`) um die fertig kodierte Nachricht zu inspizieren, ohne einen echten Mailserver zu brauchen.
+
+Neuer Test `tests/Unit/MailServiceEncodingTest.php` (2 Tests): bestätigt `CharSet === PHPMailer::CHARSET_UTF8`, und dass eine Betreffzeile mit "Ändert" sowie ein Body mit "Über"/"Straße" korrekt als `=C3=84ndert`/`=C3=9Cber`/`Stra=C3=9Fe` (Quoted-Printable-kodierte UTF-8-Bytes) in der rohen MIME-Nachricht erscheinen, inklusive `charset=utf-8` im Content-Type-Header - beide Werte beim ersten Lauf direkt an der echten PHPMailer-Ausgabe verifiziert, nicht nur angenommen. PHPUnit (169 Tests, vorher 167) grün.
+
+## Meldung von composer zu Version (2026-09-16)
+
+~~Beim Ausführen von deploy_test.bat erscheint folgende Meldung: "Composer could not detect the root package (klopps/ytan) version, defaulting to '1.0.0'. See https://getcomposer.org/root-version"~~ Gelöst: Composer ermittelt die Version des Root-Packages normalerweise aus Git-Tags/-Branch (`.git`-Verzeichnis) oder einem expliziten `version`-Feld in `composer.json` - da `deploy.bat`/`deploy_test.bat` `.git` bewusst aus dem hochgeladenen Paket ausschließen (siehe deren eigene `--exclude`-Liste), findet Composer beim `composer install` im Build-Verzeichnis keine Versionsinfo und fällt mit dieser Meldung auf `1.0.0` zurück - rein kosmetisch, ohne echte Auswirkung (die App hat ihre eigene, davon unabhängige Versionsanzeige über die generierte `VERSION`-Datei, und niemand hängt als Composer-Paket von diesem `"type": "project"`-Root ab).
+
+Behoben mit explizitem `"version": "1.0.0"` in `composer.json` (Zeile nach `"type"`) - macht genau den Wert explizit, auf den Composer ohnehin implizit zurückgefallen wäre, nur ohne die Warnung. Dabei `composer.lock` per `composer update --lock` neu geschrieben (aktualisiert nur den `content-hash`, der composer.json referenziert - lässt aber keine einzige Paketversion anfassen, mit `git diff composer.lock` bestätigt: einziger geänderter Wert ist der Hash selbst).
+
+Per lokalem Nachbau des Deploy-Szenarios verifiziert (composer.json/lock in ein `.git`-loses Verzeichnis kopiert, `composer install --no-dev` dort ausgeführt): Meldung vorher reproduziert, nach der Änderung verschwunden. PHPUnit (169 Tests) weiterhin grün.
+
+Nebenbei bemerkt (nicht behoben, da außerhalb dieser Anfrage): `composer audit` zeigt eine bereits vorbestehende, niedrig eingestufte Sicherheitswarnung für `firebase/php-jwt` (CVE-2025-45769, "weak encryption", betrifft Versionen <7.0.0 - aktuell installiert: 6.11.1 laut `composer.json`s `^6.10`-Constraint). Ein Upgrade auf 7.x wäre ein Major-Versionssprung mit möglichen Breaking Changes und sollte bei Bedarf als eigener Punkt behandelt werden.
+
+## Informationen zu möglichen Gewittern in Wetterdaten (2026-09-16)
+
+~~Es ist nicht klar, ob in den Wetterdaten auch Informationen zu Gewittern vorhanden sein können und falls ja, ob diese entsprechend visualisiert werden.~~ Geprüft: Ja zu beidem, war bereits korrekt umgesetzt - kein Codeänderung nötig. `WeatherService::GENERAL_HOURLY_VARS` (`src/Service/WeatherService.php`) fragt bei Open-Meteo explizit `weather_code` ab (WMO-Codetabelle 4677) und reicht ihn pro Stunde durch. `weatherConditionIcon()` (`public/js/weather.js`) mappt die Gewitter-spezifischen Codes `95`/`96`/`99` ("Thunderstorm: slight/moderate", "... with slight hail", "... with heavy hail") explizit auf ein eigenes `ic-storm`-Icon (Wolke mit Blitz, `templates/app.php`s SVG-Sprite) statt sie wie andere Codes in einen generischen Cloud/Rain-Eimer fallen zu lassen - genutzt sowohl in der stündlichen Detailzeile als auch in der Tages-Übersichtszeile (beide rufen dieselbe Funktion).
+
+Live per Playwright verifiziert: echte Wetterdaten für Cuxhaven geladen, drei Stunden im Client auf `weather_code` 95/96/99 gepatcht und neu gerendert - alle drei referenzieren korrekt `#ic-storm` (per DOM-Check), und das Icon rendert tatsächlich sichtbar als Blitz-Symbol (per vergrößertem Screenshot bestätigt, nicht nur als fehlerhafte/leere SVG-Referenz). Keine Änderung an Code oder Tests nötig, da nichts defekt war - Punkt dient hier nur der Dokumentation der Prüfung.

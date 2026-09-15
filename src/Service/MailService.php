@@ -89,7 +89,32 @@ final class MailService
 
     private function send(string $toEmail, string $subject, string $bodyText): void
     {
+        $this->buildMailer($toEmail, $subject, $bodyText)->send();
+    }
+
+    /**
+     * Builds and configures the PHPMailer instance but never calls send()
+     * itself - split out from send() purely so a test can inspect the
+     * composed message (via PHPMailer's own preSend()/getSentMIMEMessage(),
+     * which never touch the network) without needing a real SMTP server.
+     *
+     * PHPMailer defaults CharSet to iso-8859-1 and Encoding to 8bit -
+     * everything this app sends (subjects/bodies built from PHP string
+     * literals, translated text, and user-supplied values like tour/route/
+     * user names) is UTF-8, so left at the default, any non-ASCII character
+     * (German umlauts/ß in particular) was declared as the wrong charset
+     * and rendered incorrectly in the recipient's mail client. CharSet is
+     * set explicitly to UTF-8; Encoding to quoted-printable, which PHPMailer's
+     * own docs recommend pairing with UTF-8 for content that's mostly plain
+     * ASCII with occasional multi-byte characters (this app's emails, e.g.
+     * "the route <RouteNameWithUmlaut> was changed") - it stays readable
+     * even opened as raw source, unlike base64.
+     */
+    private function buildMailer(string $toEmail, string $subject, string $bodyText): PHPMailer
+    {
         $mail = new PHPMailer(true);
+        $mail->CharSet = PHPMailer::CHARSET_UTF8;
+        $mail->Encoding = PHPMailer::ENCODING_QUOTED_PRINTABLE;
         $mail->isSMTP();
         $mail->Host = $this->host;
         $mail->Port = $this->port;
@@ -105,6 +130,6 @@ final class MailService
         $mail->Subject = $subject;
         $mail->Body = $bodyText;
 
-        $mail->send();
+        return $mail;
     }
 }
