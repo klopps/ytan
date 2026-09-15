@@ -2,6 +2,7 @@
     "name": "klopps/ytan",
     "description": "YTAN - Kayak touring planner (web API + web app)",
     "type": "project",
+    "version": "1.0.0",
     "license": "MIT",
     "require": {
         "php": ">=8.1",
