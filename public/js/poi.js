@@ -1385,6 +1385,41 @@ function changePoiType(event) {
     }
 
     poiMarker.setIcon("markers/poi_" + event.target.value + "_" + ICONSET + ".png")
+
+    // Showing/hiding the WSI or Lighthouse section just now can make the
+    // InfoWindow noticeably taller - it grows upward from its fixed anchor
+    // at the marker (the normal InfoWindow layout: content sits above the
+    // tail pointing at the marker), which can push its own top edge off the
+    // top of the screen. Google only auto-pans the map to fit an InfoWindow
+    // once, at open() time, based on whatever height it had then - it never
+    // re-checks after content changes later, so this has to be done by hand.
+    keepPoiEditWindowInView();
+}
+
+// How far below the viewport's top edge the InfoWindow must stay - clears
+// the fixed hamburger/search-bar row (#sidemenu-toggle/.map-search-wrapper,
+// top:16px + 40px tall) plus a little breathing room, matching the top:64px
+// several other fixed map overlays already use for the same reason (e.g.
+// #tourModeBadge).
+const POI_EDIT_WINDOW_TOP_MARGIN_PX = 64;
+
+/**
+ * Pans the map down (map.panBy with a NEGATIVE y - panBy shifts the map's
+ * center, so a negative y moves the center up, which is what makes
+ * on-screen content, the marker and its InfoWindow included, shift DOWN)
+ * just far enough that the currently-open POI edit InfoWindow's top edge
+ * clears POI_EDIT_WINDOW_TOP_MARGIN_PX. No-ops if it's already far enough
+ * down, or if it's not open at all (.gm-style-iw-c not found).
+ */
+function keepPoiEditWindowInView() {
+    var bubble = document.querySelector('.gm-style-iw-c');
+    if (!bubble) {
+        return;
+    }
+    var top = bubble.getBoundingClientRect().top;
+    if (top < POI_EDIT_WINDOW_TOP_MARGIN_PX) {
+        map.panBy(0, top - POI_EDIT_WINDOW_TOP_MARGIN_PX);
+    }
 }
 
 
