@@ -51,6 +51,13 @@
     let badgeTickTimer = null;
     let badgeHoldTimer = null;
     let badgeHoldStartPos = null;
+    // Last result of CapacitorBridge.checkLocationPermissionStatus(), used
+    // only to render the idle-screen warning banner proactively - see
+    // refreshPermissionStatus(). The authoritative check that actually
+    // gates startRecording() re-queries live in trackRecorderStartClicked()
+    // rather than trusting this cache, since it can be stale (e.g. the user
+    // granted a permission in Settings and came straight back).
+    let lastPermissionStatus = null;
 
     // --- IndexedDB buffer -----------------------------------------------
 
@@ -197,6 +204,63 @@
     function toMysqlDatetime(isoString) {
         return isoString.slice(0, 19).replace('T', ' ');
     }
+
+    // --- Permission check --------------------------------------------------
+
+    /**
+     * Re-queries the native permission/settings state and caches it in
+     * lastPermissionStatus for renderPermissionWarning(), then re-renders
+     * so an already-open idle screen picks up the result. Called when the
+     * screen is opened and again whenever the app comes back to the
+     * foreground while it's still showing (see the visibilitychange
+     * listener in initTrackRecorder()) - covers the "tapped 'Open
+     * Settings', granted the permission, came straight back" round trip
+     * without needing to re-open the screen.
+     */
+    function refreshPermissionStatus() {
+        if (!CapacitorBridge.checkLocationPermissionStatus) {
+            return;
+        }
+        CapacitorBridge.checkLocationPermissionStatus().then(function (status) {
+            lastPermissionStatus = status;
+            renderTrackRecorderScreen();
+        });
+    }
+
+    function renderPermissionWarning() {
+        if (!lastPermissionStatus || lastPermissionStatus.allGranted) {
+            return '';
+        }
+        const missing = [];
+        if (!lastPermissionStatus.foregroundLocation) {
+            missing.push(t('trackrecorder.permission_missing_foreground'));
+        }
+        // Only worth mentioning "always allow" once foreground itself is
+        // granted - otherwise the foreground message above already covers it.
+        if (lastPermissionStatus.foregroundLocation && !lastPermissionStatus.backgroundLocation) {
+            missing.push(t('trackrecorder.permission_missing_background'));
+        }
+        if (!lastPermissionStatus.notifications) {
+            missing.push(t('trackrecorder.permission_missing_notifications'));
+        }
+        if (!lastPermissionStatus.locationServicesEnabled) {
+            missing.push(t('trackrecorder.permission_missing_location_services'));
+        }
+        return '' +
+            '<div class="track-recorder-permission-warning">' +
+                '<p class="track-recorder-permission-warning-title"><i class="material-icons-round">warning</i>' + t('trackrecorder.permission_warning_title') + '</p>' +
+                '<ul>' + missing.map(function (m) { return '<li>' + m + '</li>'; }).join('') + '</ul>' +
+                '<p class="track-recorder-permission-warning-hint">' + t('trackrecorder.permission_open_settings_hint') + '</p>' +
+                '<button type="button" class="nav-btn-secondary" onclick="openTrackRecorderSettings();"><i class="material-icons-round">settings</i>&nbsp;' + t('trackrecorder.permission_open_settings_button') + '</button>' +
+            '</div>';
+    }
+
+    window.openTrackRecorderSettings = function () {
+        if (!CapacitorBridge.openAppSettings) {
+            return;
+        }
+        CapacitorBridge.openAppSettings();
+    };
 
     // --- Recording state machine -----------------------------------------
 
@@ -588,6 +652,7 @@
         openMenu();
         navMenuGoTo('record');
         renderTrackRecorderScreen();
+        refreshPermissionStatus();
     };
 
     // --- UI: drawer screen ---------------------------------------------
@@ -610,6 +675,7 @@
         // writes it, here it's just read back to pre-select the right option.
         var preset = settings.trackDistanceFilter || 'battery';
         return '' +
+            renderPermissionWarning() +
             '<p class="nav-field-label">' + t('trackrecorder.distance_filter_label') + '</p>' +
             '<form name="trackfilter">' +
                 '<div class="nav-segmented nav-segmented-track-filter">' +
@@ -646,7 +712,24 @@
         const preset = checked ? checked.value : 'battery';
         settings.trackDistanceFilter = preset;
         saveSettings();
-        startRecording(preset);
+
+        if (!CapacitorBridge.checkLocationPermissionStatus) {
+            startRecording(preset);
+            return;
+        }
+        // Re-checked live rather than trusting lastPermissionStatus - it may
+        // be stale (e.g. the idle screen was left open while the user went
+        // to Settings and came back without triggering a visibilitychange
+        // the listener caught in time).
+        CapacitorBridge.checkLocationPermissionStatus().then(function (status) {
+            lastPermissionStatus = status;
+            if (status && !status.allGranted) {
+                showToast(t('trackrecorder.permission_blocked_toast'), 'warning');
+                renderTrackRecorderScreen();
+                return;
+            }
+            startRecording(preset);
+        });
     };
 
     // Exposed for the onclick="" handlers in renderActiveState() above.
@@ -671,12 +754,29 @@
         });
     };
 
+    // Covers "tapped Open Settings, granted the permission, pressed back" -
+    // the WebView isn't destroyed by that round trip, so the idle screen
+    // (if still the active nav screen) can just be silently refreshed
+    // rather than making the user close and reopen it to see it update.
+    function initPermissionStatusRefreshOnResume() {
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState !== 'visible') {
+                return;
+            }
+            const recordScreen = navMenuScreenEl('record');
+            if (recordScreen && recordScreen.classList.contains('nav-screen-active')) {
+                refreshPermissionStatus();
+            }
+        });
+    }
+
     function initTrackRecorder() {
         const row = document.getElementById('trackRecorderMenuRow');
         if (row) {
             row.style.display = '';
         }
         initTrackRecordingBadgePressHold();
+        initPermissionStatusRefreshOnResume();
         loadInProgressRecording();
     }
 

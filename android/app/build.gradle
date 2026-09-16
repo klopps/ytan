@@ -1,5 +1,16 @@
 apply plugin: 'com.android.application'
 
+// Release-signing credentials live outside the repo (android/keystore.
+// properties, gitignored - see .gitignore's comment; the actual .keystore
+// file sits in ~/.android/, further still). Loaded lazily so a debug-only
+// build (no keystore.properties yet) doesn't fail - only assembleRelease
+// actually needs signingConfigs.release to be populated.
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "org.pesr.ytan"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -19,10 +30,21 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
     }
 }

@@ -1933,6 +1933,53 @@ img.wsi {
   margin: 10px 16px 16px;
 }
 
+/* Permission warning banner (renderPermissionWarning()), shown above the
+   start button whenever CapacitorBridge.checkLocationPermissionStatus()
+   reports something missing. */
+.track-recorder-permission-warning {
+  margin: 10px 16px 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-warning);
+  border-radius: 10px;
+  background: var(--color-bg-subtle);
+}
+
+.track-recorder-permission-warning-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--color-warning);
+}
+
+.track-recorder-permission-warning-title .material-icons-round {
+  font-size: 18px;
+}
+
+.track-recorder-permission-warning ul {
+  margin: 0 0 8px;
+  padding-left: 20px;
+  font-size: 12.5px;
+  color: var(--color-text);
+}
+
+.track-recorder-permission-warning-hint {
+  font-size: 11.5px;
+  color: var(--color-text-faint);
+  margin: 0 0 10px;
+}
+
+.track-recorder-permission-warning .nav-btn-secondary {
+  width: 100%;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
 /* Distance-filter presets (renderIdleState()) show the actual meter
    value under the preset name (e.g. "Präzise" / "20 m") so the effect
    of each choice is visible without leaving the screen. */

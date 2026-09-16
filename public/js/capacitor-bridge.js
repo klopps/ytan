@@ -26,6 +26,11 @@ const CapacitorBridge = (function () {
     // is undefined there, but window.Capacitor.Plugins.BackgroundGeolocation
     // already exists).
     const BackgroundGeolocation = window.Capacitor.Plugins.BackgroundGeolocation;
+    // App-local plugin (android/app/src/main/java/org/pesr/ytan/
+    // LocationPermissionsPlugin.java), not an npm package - may be absent
+    // if a build predates this feature (nothing to auto-sync it in), so
+    // every use below guards on it rather than assuming it exists.
+    const LocationPermissions = window.Capacitor.Plugins.LocationPermissions;
 
     /**
      * With android.useLegacyBridge:true (capacitor.config.json - required to
@@ -71,9 +76,35 @@ const CapacitorBridge = (function () {
         });
     }
 
+    /**
+     * @returns {Promise<?{foregroundLocation, backgroundLocation, notifications, locationServicesEnabled, allGranted}>}
+     * Resolves null (rather than rejecting) both when the plugin is absent
+     * and when the native call itself fails - callers should treat null as
+     * "can't tell" and fail open, not block recording on a broken check.
+     */
+    function checkLocationPermissionStatus() {
+        if (!LocationPermissions) {
+            return Promise.resolve(null);
+        }
+        return Promise.resolve(LocationPermissions.checkStatus()).catch(function (err) {
+            log('checkLocationPermissionStatus() failed', LOG_ERROR, err);
+            return null;
+        });
+    }
+
+    // Opens Android's "App info" settings screen for this app - exposed by
+    // @capacitor-community/background-geolocation itself (its Java source's
+    // openSettings() PluginMethod), reused here rather than duplicating it
+    // in LocationPermissionsPlugin.
+    function openAppSettings() {
+        return Promise.resolve(BackgroundGeolocation.openSettings());
+    }
+
     return {
         isAvailable: function () { return true; },
         startLocationWatch: startLocationWatch,
         stopLocationWatch: stopLocationWatch,
+        checkLocationPermissionStatus: checkLocationPermissionStatus,
+        openAppSettings: openAppSettings,
     };
 })();

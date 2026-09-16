@@ -1,5 +1,7 @@
 # Offene Punkte
 
+Im User-Editor müssen die einzelnen Rechte je eine Beschreibung erhalten, so dass man besser versteht, was sich dahinter verbirgt.
+
 ## Touren-Dokument
 
 Ausgabe eines PDF-Dokuments für eine Tour mit 
@@ -46,6 +48,10 @@ Alle Dialoge/Bildschirme unter echter Mobile-Emulation (412×915) durchgetestet.
 
 
 # Erledigt
+
+## Berechtigungsprüfung vor Track-Aufzeichnung (2026-09-16)
+
+~~Für eine korrekte Funktion von "Record Track" benötigt die App bestimmte Berechtigungen in Android. Kann die App testen, ob diese Rechte gesetzt sind, wenn man einen Track aufzeichnen will, ggf. warnen und eine Anleitung zum Setzen der Berechtigungen zeigen, evtl. sogar einen Button anbieten, damit sich das nötige Einstellungsmenü in Android öffnet?~~ Gelöst (2026-09-16): `@capacitor-community/background-geolocation`s `addWatcher()` prüft/fordert selbst nur die Vordergrund-Standortberechtigung (`ACCESS_FINE_LOCATION`/`ACCESS_COARSE_LOCATION`) an - `ACCESS_BACKGROUND_LOCATION` ("Immer erlauben", ab Android 10 eine eigene, separat zu erteilende Berechtigung) und `POST_NOTIFICATIONS` (ab Android 13, ohne die die Pflicht-Benachrichtigung für den Hintergrunddienst nicht angezeigt werden kann und der Dienst von vielen OEM-Systemen beendet wird) werden vom Plugin gar nicht geprüft - ein Nutzer, der nur "Nur während der Nutzung der App" erlaubt, kam bisher unbemerkt durch `addWatcher()` und die Aufzeichnung brach erst beim Sperren des Bildschirms lautlos ab. Neues app-eigenes (kein npm-Paket) Capacitor-Plugin `LocationPermissionsPlugin.java` (`android/app/src/main/java/org/pesr/ytan/`, in `MainActivity.onCreate()` vor `super.onCreate()` registriert) fragt den echten Android-Berechtigungs-/Einstellungsstatus direkt ab (`ContextCompat.checkSelfPermission()` für die drei Berechtigungen, `LocationManager.isLocationEnabled()` für GPS an/aus) und liefert `{foregroundLocation, backgroundLocation, notifications, locationServicesEnabled, allGranted}`. `capacitor-bridge.js` exponiert das als `checkLocationPermissionStatus()` (liefert `null` statt eines Fehlers, wenn das Plugin fehlt oder der native Call scheitert - "kann nicht geprüft werden" blockiert die Aufzeichnung nicht) sowie `openAppSettings()` (nutzt das bereits vorhandene `openSettings()` des background-geolocation-Plugins, das Androids "App-Info"-Einstellungsseite öffnet - kein eigener Intent nötig). `track-recorder.js`: der Aufzeichnen-Bildschirm zeigt im Leerlaufzustand proaktiv ein Warnbanner (`renderPermissionWarning()`) mit den konkret fehlenden Berechtigungen als Liste, einer kurzen Anleitung und einem "Einstellungen öffnen"-Button, sobald der (asynchrone) Check beim Öffnen des Bildschirms zurückkommt; ein `visibilitychange`-Listener aktualisiert den Status automatisch, wenn die App aus den Android-Einstellungen zurückkommt, während der Bildschirm noch offen ist. `trackRecorderStartClicked()` fragt den Status zusätzlich unmittelbar vor dem eigentlichen Start noch einmal live ab (nicht nur den zwischengespeicherten Banner-Stand) und blockiert den Start mit einem Warn-Toast, falls noch etwas fehlt. Java-Kompilierung lokal per `gradlew :app:compileDebugJavaWithJavac` verifiziert (BUILD SUCCESSFUL); echter Geräte-/Berechtigungsdialog-Test (Berechtigung entziehen → Warnung sehen → Einstellungen öffnen → Berechtigung erteilen → automatische Aktualisierung) steht noch aus, da dafür ein reales Android-Gerät nötig ist.
 
 ## Standard-Genauigkeit beim Tracking (2026-09-14)
 

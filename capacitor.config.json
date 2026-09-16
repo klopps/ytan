@@ -3,7 +3,7 @@
   "appName": "YTAN",
   "webDir": "public",
   "server": {
-    "url": "https://test.pesr.org/",
+    "url": "https://ytan.pesr.org/",
     "cleartext": false
   },
   "android": {

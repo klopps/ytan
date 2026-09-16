@@ -443,5 +443,13 @@
     "trackrecorder.discard_button": "Discard",
     "trackrecorder.badge_recording": "Recording",
     "trackrecorder.badge_paused": "Paused",
-    "trackrecorder.badge_hold_hint": "Press and hold to open the tracking menu"
+    "trackrecorder.badge_hold_hint": "Press and hold to open the tracking menu",
+    "trackrecorder.permission_warning_title": "Permissions required",
+    "trackrecorder.permission_missing_foreground": "Location access is not allowed",
+    "trackrecorder.permission_missing_background": "Location access is only allowed \"While using the app\" - recording with the screen locked needs \"Allow all the time\"",
+    "trackrecorder.permission_missing_notifications": "Notifications are not allowed - without them Android may stop the background recording early",
+    "trackrecorder.permission_missing_location_services": "Location services (GPS) are turned off on this device",
+    "trackrecorder.permission_open_settings_hint": "Opens the app settings. Under \"Permissions\" → \"Location\" choose \"Allow all the time\" and enable notifications.",
+    "trackrecorder.permission_open_settings_button": "Open settings",
+    "trackrecorder.permission_blocked_toast": "Please grant the required permissions first."
 }

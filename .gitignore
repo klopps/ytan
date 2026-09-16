@@ -25,6 +25,10 @@ Thumbs.db
 # source, gradle config - IS committed; these are build outputs and
 # machine-specific local config, not the project source).
 /android/local.properties
+# Release-signing secrets - the keystore itself lives outside the repo
+# entirely (~/.android/), this file just holds its path + passwords for
+# Gradle to read (android/app/build.gradle's signingConfigs.release).
+/android/keystore.properties
 /android/**/build/
 /android/.gradle/
 /android/.idea/

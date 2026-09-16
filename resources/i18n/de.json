@@ -443,5 +443,13 @@
     "trackrecorder.discard_button": "Verwerfen",
     "trackrecorder.badge_recording": "Aufzeichnung läuft",
     "trackrecorder.badge_paused": "Pausiert",
-    "trackrecorder.badge_hold_hint": "Zum Öffnen des Tracking-Menüs gedrückt halten"
+    "trackrecorder.badge_hold_hint": "Zum Öffnen des Tracking-Menüs gedrückt halten",
+    "trackrecorder.permission_warning_title": "Berechtigungen erforderlich",
+    "trackrecorder.permission_missing_foreground": "Standortzugriff ist nicht erlaubt",
+    "trackrecorder.permission_missing_background": "Standortzugriff ist nur „Während der Nutzung der App\" erlaubt – für Aufzeichnung bei gesperrtem Bildschirm wird „Immer erlauben\" benötigt",
+    "trackrecorder.permission_missing_notifications": "Benachrichtigungen sind nicht erlaubt – ohne sie kann Android die Aufzeichnung im Hintergrund vorzeitig beenden",
+    "trackrecorder.permission_missing_location_services": "Die Standortdienste (GPS) sind auf dem Gerät deaktiviert",
+    "trackrecorder.permission_open_settings_hint": "Öffnet die App-Einstellungen. Unter „Berechtigungen\" → „Standort\" bitte „Immer erlauben\" wählen und Benachrichtigungen aktivieren.",
+    "trackrecorder.permission_open_settings_button": "Einstellungen öffnen",
+    "trackrecorder.permission_blocked_toast": "Bitte zuerst die nötigen Berechtigungen erteilen."
 }
