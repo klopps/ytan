@@ -124,4 +124,21 @@ final class AreaRepositoryTest extends TestCase
         $this->assertCount(1, $remaining);
         $this->assertSame('keep.jpg', $remaining[0]['filename']);
     }
+
+    public function testGetAllImagesReturnsRowsAcrossEveryArea(): void
+    {
+        $userId = $this->createUser();
+        $areaA = $this->createArea($userId);
+        $areaB = $this->createArea($userId);
+        $this->areas->addImage((int) $areaA['id'], 'a.jpg', 'image/jpeg', 100);
+        $this->areas->addImage((int) $areaB['id'], 'b.jpg', 'image/jpeg', 200);
+
+        $all = $this->areas->getAllImages();
+
+        $this->assertCount(2, $all);
+        $filenames = array_column($all, 'filename');
+        sort($filenames);
+        $this->assertSame(['a.jpg', 'b.jpg'], $filenames);
+        $this->assertArrayHasKey('entity_id', $all[0]);
+    }
 }

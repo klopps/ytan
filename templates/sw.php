@@ -60,8 +60,8 @@ const NAVIGATION_FALLBACK_URL = <?= json_encode($navigationFallbackUrl) ?>;
 // PRECACHE_URLS - JS/CSS/fonts/icons/manifest) are safe to serve cache-first
 // forever: a content change always produces a new URL for them, so a stale
 // cache entry can never linger. Dynamic, PHP-rendered HTML pages (/about,
-// /legal/*, /set-password, /forgot-password, /confirm-email, /translate,
-// ...) carry no such versioning and their content depends on the request's
+// /legal/*, /set-password, /forgot-password, /confirm-email, /admin,
+// /admin/translate, ...) carry no such versioning and their content depends on the request's
 // cookies (e.g. the UI language) - caching one of those the same way means
 // whichever version was fetched first gets stuck being served forever, with
 // no way for it to ever refresh (confirmed: switching the UI language then

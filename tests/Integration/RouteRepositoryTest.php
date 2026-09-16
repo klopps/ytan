@@ -186,4 +186,22 @@ final class RouteRepositoryTest extends TestCase
         $this->assertCount(1, $remaining);
         $this->assertSame('keep.jpg', $remaining[0]['filename']);
     }
+
+    public function testGetAllImagesReturnsRowsAcrossEveryRoute(): void
+    {
+        $routes = new RouteRepository($this->pdo);
+        $userId = $this->createUser();
+        $routeA = $this->createRoute($userId);
+        $routeB = $this->createRoute($userId);
+        $routes->addImage($routeA, 'a.jpg', 'image/jpeg', 100);
+        $routes->addImage($routeB, 'b.jpg', 'image/jpeg', 200);
+
+        $all = $routes->getAllImages();
+
+        $this->assertCount(2, $all);
+        $filenames = array_column($all, 'filename');
+        sort($filenames);
+        $this->assertSame(['a.jpg', 'b.jpg'], $filenames);
+        $this->assertArrayHasKey('entity_id', $all[0]);
+    }
 }

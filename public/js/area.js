@@ -105,6 +105,11 @@ function showAreaEditWindow(i, latLng) {
                 '<label>' + t('area.edit.photos_label') + '</label>' +
                 '<div id="' + PHOTO_UPLOAD_CONTAINER_ID + '">' + photoUploadGridHtml() + '</div>' +
             '</div>';
+    } else {
+        // No photo section shown for a brand-new area (needs an id first) -
+        // reset rather than leave a previous area's still-running
+        // compression able to block this unrelated create form's Save.
+        resetPhotoUpload();
     }
 
     if (user.is_admin === true) {
@@ -237,6 +242,13 @@ function saveArea(i) {
     }
 
     if (user.id === null) {
+        return false;
+    }
+    // A photo still being compressed (see stagePhotoUpload()) isn't staged
+    // for upload yet - saving now would end the edit without ever
+    // uploading it.
+    if (photoUploadIsProcessing()) {
+        showToast(t('photo_upload.still_processing'), 'warning');
         return false;
     }
 

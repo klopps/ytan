@@ -82,6 +82,10 @@ final class AreaController extends BaseController
         $id = (int) $args['id'];
         $existing = $this->areas->findById($id);
         $this->assertOwnerOrAdmin($auth, (int) $existing['user_id']);
+
+        foreach ($this->areas->getImages($id) as $image) {
+            $this->images->delete($id, $image['filename']);
+        }
         $this->areas->delete($id);
 
         return $this->json($response, ['data' => ['id' => $id]]);

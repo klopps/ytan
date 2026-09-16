@@ -12,6 +12,7 @@
 var state = {
     locales: { en: {}, de: {} },
     usage: {},
+    placeholders: {}, // key -> list of variable names its call site(s) pass, e.g. "about.p1" -> ["app"]
     dirtyKeys: {}, // key -> true
 };
 
@@ -87,6 +88,7 @@ async function loadTranslations() {
         var answer = await Ytan.get('/translations');
         state.locales = answer.data.locales;
         state.usage = answer.data.usage;
+        state.placeholders = answer.data.placeholders;
         state.dirtyKeys = {};
         updateDirtyCount();
         renderEditor();
@@ -176,6 +178,14 @@ function buildKeyRow(key) {
     keyName.className = 'keyName';
     keyName.textContent = key;
     row.appendChild(keyName);
+
+    var placeholderNames = state.placeholders[key] || [];
+    if (placeholderNames.length > 0) {
+        var availableVars = document.createElement('div');
+        availableVars.className = 'availableVars';
+        availableVars.textContent = 'Variables: ' + placeholderNames.map(function (p) { return '{' + p + '}'; }).join(', ');
+        row.appendChild(availableVars);
+    }
 
     var fields = document.createElement('div');
     fields.className = 'fields';

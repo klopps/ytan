@@ -61,6 +61,7 @@
         #toolbar h1 { font-size: 15px; margin: 0; font-family: var(--font-display); white-space: nowrap; }
         #searchInput {
             flex: 1;
+            min-width: 0;
             border: 1px solid var(--color-border);
             border-radius: 6px;
             padding: 7px 10px;
@@ -69,6 +70,24 @@
         }
         #dirtyCount { font-size: 12px; color: var(--color-warning); min-width: 90px; text-align: right; }
         #saveAllBtn:disabled { opacity: 0.5; cursor: default; }
+
+        /* At narrow widths the toolbar's four items (title, filter,
+           dirty-count, save) no longer fit on one line even with
+           #searchInput free to shrink to 0 - the row was silently
+           overflowing past the viewport's right edge, and html.standalone-
+           page's own overflow:hidden clipped whatever fell off (dirtyCount/
+           saveAllBtn), not just squeeze them. Wrapping into two rows here
+           keeps every control visible and reachable instead of relying on
+           shrink-to-fit: title+count+save (the controls that must always be
+           reachable) stay on row one via `order`, the filter field - fine
+           to be full-width on its own line - wraps to row two. */
+        @media (max-width: 600px) {
+            #toolbar { flex-wrap: wrap; row-gap: 8px; }
+            #toolbar h1 { order: 1; }
+            #dirtyCount { order: 2; min-width: 0; }
+            #saveAllBtn { order: 3; }
+            #searchInput { order: 4; flex-basis: 100%; }
+        }
 
         #panes {
             flex: 1;
@@ -115,6 +134,12 @@
             color: var(--color-text-secondary);
             margin-bottom: 6px;
             word-break: break-all;
+        }
+        .keyRow .availableVars {
+            font-size: 11px;
+            font-family: monospace;
+            color: var(--color-accent);
+            margin-bottom: 8px;
         }
         .keyRow .fields { display: flex; gap: 10px; flex-wrap: wrap; }
         .keyRow .fieldCol { flex: 1; min-width: 220px; }

@@ -107,4 +107,76 @@ final class TranslationUsageScannerTest extends TestCase
 
         $this->assertArrayNotHasKey('unused.key', $usage);
     }
+
+    public function testScanPlaceholdersFindsAJsObjectLiteralVarName(): void
+    {
+        file_put_contents($this->rootDir . '/public/js/fake.js', "t('about.p1', { app: appName });\n");
+
+        $placeholders = (new TranslationUsageScanner($this->rootDir))->scanPlaceholders();
+
+        $this->assertSame(['app'], $placeholders['about.p1']);
+    }
+
+    public function testScanPlaceholdersFindsAPhpArrayLiteralVarName(): void
+    {
+        file_put_contents($this->rootDir . '/templates/fake.php', "<?= \$t('about.p1', ['app' => \$appName]) ?>\n");
+
+        $placeholders = (new TranslationUsageScanner($this->rootDir))->scanPlaceholders();
+
+        $this->assertSame(['app'], $placeholders['about.p1']);
+    }
+
+    public function testScanPlaceholdersHandlesMultipleVarsSortedAlphabetically(): void
+    {
+        file_put_contents($this->rootDir . '/public/js/fake.js', "t('route.info.recorded', { by: x, start: y, end: z });\n");
+
+        $placeholders = (new TranslationUsageScanner($this->rootDir))->scanPlaceholders();
+
+        $this->assertSame(['by', 'end', 'start'], $placeholders['route.info.recorded']);
+    }
+
+    public function testScanPlaceholdersHandlesAVarsObjectSpanningMultipleLines(): void
+    {
+        file_put_contents(
+            $this->rootDir . '/public/js/fake.js',
+            "t('route.info.recorded', {\n    by: x,\n    start: y,\n    end: z,\n});\n"
+        );
+
+        $placeholders = (new TranslationUsageScanner($this->rootDir))->scanPlaceholders();
+
+        $this->assertSame(['by', 'end', 'start'], $placeholders['route.info.recorded']);
+    }
+
+    public function testScanPlaceholdersDeduplicatesAcrossMultipleCallSites(): void
+    {
+        file_put_contents($this->rootDir . '/public/js/fake.js', "t('common.save_failed', { error: err1 });\n");
+        file_put_contents($this->rootDir . '/templates/fake.php', "<?= \$t('common.save_failed', ['error' => \$err2]) ?>\n");
+
+        $placeholders = (new TranslationUsageScanner($this->rootDir))->scanPlaceholders();
+
+        $this->assertSame(['error'], $placeholders['common.save_failed']);
+    }
+
+    public function testScanPlaceholdersDoesNotMistakeATernaryForAnObjectKey(): void
+    {
+        file_put_contents($this->rootDir . '/public/js/fake.js', "t('some.key', { label: cond ? a : b });\n");
+
+        $placeholders = (new TranslationUsageScanner($this->rootDir))->scanPlaceholders();
+
+        $this->assertSame(['label'], $placeholders['some.key']);
+    }
+
+    public function testScanPlaceholdersOmitsAKeyWithNoVarsArgument(): void
+    {
+        file_put_contents($this->rootDir . '/public/js/fake.js', "t('common.cancel');\n");
+
+        $placeholders = (new TranslationUsageScanner($this->rootDir))->scanPlaceholders();
+
+        // Same convention as scan() itself (see
+        // testAKeyWithNoUsagesIsSimplyAbsentFromTheIndex above) - "no
+        // placeholders found" is an absent key, not an empty array;
+        // TranslationController::index() is what turns that into a `[]` in
+        // the API response for every key, found or not.
+        $this->assertArrayNotHasKey('common.cancel', $placeholders);
+    }
 }

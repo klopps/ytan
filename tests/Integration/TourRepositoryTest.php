@@ -385,4 +385,21 @@ final class TourRepositoryTest extends TestCase
         $this->assertSame(10, $this->tours->countImages($tourId), 'update() must not have dropped any images');
         $this->assertCount(10, $this->tours->getImages($tourId));
     }
+
+    public function testGetAllImagesReturnsRowsAcrossEveryTour(): void
+    {
+        $userId = $this->createUser();
+        $tourA = $this->tours->create($userId, ['name' => 'A']);
+        $tourB = $this->tours->create($userId, ['name' => 'B']);
+        $this->tours->addImage((int) $tourA['id'], 'a.jpg', 'image/jpeg', 100);
+        $this->tours->addImage((int) $tourB['id'], 'b.jpg', 'image/jpeg', 200);
+
+        $all = $this->tours->getAllImages();
+
+        $this->assertCount(2, $all);
+        $filenames = array_column($all, 'filename');
+        sort($filenames);
+        $this->assertSame(['a.jpg', 'b.jpg'], $filenames);
+        $this->assertArrayHasKey('entity_id', $all[0]);
+    }
 }

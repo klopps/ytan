@@ -131,6 +131,18 @@ final class AreaRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Every area_image row across every area, for
+     * ImageReconciliationService's admin cleanup tool - unlike getImages(),
+     * not scoped to one area.
+     *
+     * @return list<array{id:int, entity_id:int, filename:string, size_bytes:int}>
+     */
+    public function getAllImages(): array
+    {
+        return $this->db->query('SELECT id, area_id AS entity_id, filename, size_bytes FROM area_image')->fetchAll();
+    }
+
     public function findImage(int $areaId, int $imageId): ?array
     {
         $stmt = $this->db->prepare('SELECT * FROM area_image WHERE id = ? AND area_id = ?');

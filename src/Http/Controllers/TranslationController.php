@@ -35,19 +35,23 @@ final class TranslationController extends BaseController
         $en = $this->translations->load('en');
         $de = $this->translations->load('de');
         $usageForFoundKeys = $this->scanner->scan();
+        $placeholdersForFoundKeys = $this->scanner->scanPlaceholders();
 
         // Every key from either locale gets a usage entry, even an empty
         // one - "used nowhere" is a real, useful state for a translator to
         // see (a candidate for deletion), not something to just omit.
         $allKeys = array_unique(array_merge(array_keys($en), array_keys($de)));
         $usage = [];
+        $placeholders = [];
         foreach ($allKeys as $key) {
             $usage[$key] = $usageForFoundKeys[$key] ?? [];
+            $placeholders[$key] = $placeholdersForFoundKeys[$key] ?? [];
         }
 
         return $this->json($response, ['data' => [
             'locales' => ['en' => $en, 'de' => $de],
             'usage' => $usage,
+            'placeholders' => $placeholders,
         ]]);
     }
 

@@ -376,6 +376,18 @@ final class TourRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Every tour_image row across every tour, for
+     * ImageReconciliationService's admin cleanup tool - unlike getImages(),
+     * not scoped to one tour.
+     *
+     * @return list<array{id:int, entity_id:int, filename:string, size_bytes:int}>
+     */
+    public function getAllImages(): array
+    {
+        return $this->db->query('SELECT id, tour_id AS entity_id, filename, size_bytes FROM tour_image')->fetchAll();
+    }
+
     public function findImage(int $tourId, int $imageId): ?array
     {
         $stmt = $this->db->prepare('SELECT * FROM tour_image WHERE id = ? AND tour_id = ?');

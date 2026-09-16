@@ -147,6 +147,9 @@ final class RouteController extends BaseController
 
         $wasPublic = (bool) $existing['public'];
 
+        foreach ($this->routes->getImages($id) as $image) {
+            $this->images->delete($id, $image['filename']);
+        }
         $this->routes->delete($id);
 
         foreach ($affectedTours as $tour) {

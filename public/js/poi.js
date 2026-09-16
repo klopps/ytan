@@ -850,6 +850,11 @@ function initPoiEditWindow(i) {
                 '<label>' + t('poi.edit.photos_label') + '</label>' +
                 '<div id="' + PHOTO_UPLOAD_CONTAINER_ID + '">' + photoUploadGridHtml() + '</div>' +
             '</div>';
+    } else {
+        // No photo section shown for a brand-new POI (needs an id first) -
+        // reset rather than leave a previous POI's still-running
+        // compression able to block this unrelated create form's Save.
+        resetPhotoUpload();
     }
 
     if (user.is_admin === true) {
@@ -1280,6 +1285,13 @@ function validatePoiEditForm() {
  */
 function savePoi(i) {
     if (!(validatePoiEditForm() == true)) {
+        return false;
+    }
+    // A photo still being compressed (see stagePhotoUpload()) isn't staged
+    // for upload yet - saving now would close the window (see
+    // closePoiEditWindow() below) without ever uploading it.
+    if (photoUploadIsProcessing()) {
+        showToast(t('photo_upload.still_processing'), 'warning');
         return false;
     }
 

@@ -18,6 +18,7 @@ use Ytan\Domain\Settings\SettingsRepository;
 use Ytan\Domain\Tour\TourRepository;
 use Ytan\Domain\User\UserRepository;
 use Ytan\Exception\ApiException;
+use Ytan\Http\Controllers\AdminController;
 use Ytan\Http\Controllers\AreaController;
 use Ytan\Http\Controllers\AuthController;
 use Ytan\Http\Controllers\GeocodingController;
@@ -35,6 +36,7 @@ use Ytan\Service\AuthService;
 use Ytan\Service\CaptchaService;
 use Ytan\Service\CurlJsonHttpClient;
 use Ytan\Service\GeocodingService;
+use Ytan\Service\ImageReconciliationService;
 use Ytan\Service\ImageStorageService;
 use Ytan\Service\MailService;
 use Ytan\Service\TourNotificationService;
@@ -91,10 +93,19 @@ final class App
         $poiImageService = new ImageStorageService($rootDir . '/storage/poi-images');
         $routeImageService = new ImageStorageService($rootDir . '/storage/route-images');
         $areaImageService = new ImageStorageService($rootDir . '/storage/area-images');
-        $poiController = new PoiController(new PoiRepository($pdo), $poiImageService);
-        $routeController = new RouteController(new RouteRepository($pdo), $tourRepository, $captchaService, $tourNotificationService, $routeImageService);
+        $poiRepository = new PoiRepository($pdo);
+        $routeRepository = new RouteRepository($pdo);
+        $areaRepository = new AreaRepository($pdo);
+        $poiController = new PoiController($poiRepository, $poiImageService);
+        $routeController = new RouteController($routeRepository, $tourRepository, $captchaService, $tourNotificationService, $routeImageService);
         $tourController = new TourController($tourRepository, $tourImageService);
-        $areaController = new AreaController(new AreaRepository($pdo), $areaImageService);
+        $areaController = new AreaController($areaRepository, $areaImageService);
+        $adminController = new AdminController(new ImageReconciliationService([
+            'tour' => ['repository' => $tourRepository, 'images' => $tourImageService],
+            'poi' => ['repository' => $poiRepository, 'images' => $poiImageService],
+            'route' => ['repository' => $routeRepository, 'images' => $routeImageService],
+            'area' => ['repository' => $areaRepository, 'images' => $areaImageService],
+        ]));
         $authController = new AuthController($authService, $userRepository, $mailService, $appUrl);
         $userController = new UserController($userRepository, $mailService, $authService, $appUrl);
         $wsiController = new WsiController(new WsiRenderer($rootDir . '/public/images/wsi'));
@@ -309,6 +320,24 @@ final class App
             return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
         });
 
+        // Standalone admin tools menu (templates/admin.php, public/js/
+        // admin.js) - same self-contained login-gate pattern as the
+        // translation editor below (own login form, checks GET /auth/me's
+        // is_admin client-side; never part of the main SPA's script chain).
+        // Always registered, unlike the translate tool's extra opt-in flag
+        // below - this page itself has no risky capability of its own, it
+        // only links to tools that carry their own gating/flags. New admin
+        // tools should be added as their own route + menu entry here, not
+        // as a growing pile of unrelated features crammed into one page.
+        $app->get('/admin', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl) {
+            ob_start();
+            $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
+            require $rootDir . '/templates/admin.php';
+            $res->getBody()->write(ob_get_clean());
+
+            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
+        });
+
         // Dev-only translation editor (templates/translate.php,
         // public/js/translate.js) - writes directly to
         // resources/i18n/{en,de}.json, which every page injects into a
@@ -319,8 +348,9 @@ final class App
         // off entirely unless explicitly enabled, so a deployed production
         // site is unreachable here even with a compromised admin token
         // (JWTs are valid for 10 years by default - see JWT_TTL_SECONDS).
+        // Reachable via the /admin menu above, hence the nested path.
         if (($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true') {
-            $app->get('/translate', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl) {
+            $app->get('/admin/translate', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl) {
                 ob_start();
                 require $rootDir . '/templates/translate.php';
                 $res->getBody()->write(ob_get_clean());
@@ -331,6 +361,22 @@ final class App
             $app->get('/api/v1/translations', [$translationController, 'index']);
             $app->put('/api/v1/translations', [$translationController, 'update']);
         }
+
+        // Admin tool: finds photo files/DB rows left behind by a bug or a
+        // failed request (AdminController, ImageReconciliationService) -
+        // reachable via the /admin menu above. No opt-in flag needed (see
+        // AdminController's own doc comment): unlike the translate tool,
+        // this action by construction only ever touches already-orphaned
+        // files/rows, so the standard requireAdmin() gate is enough.
+        $app->get('/admin/image-cleanup', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl) {
+            ob_start();
+            require $rootDir . '/templates/admin-image-cleanup.php';
+            $res->getBody()->write(ob_get_clean());
+
+            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
+        });
+        $app->get('/api/v1/admin/image-orphans', [$adminController, 'scanImageOrphans']);
+        $app->post('/api/v1/admin/image-orphans/delete', [$adminController, 'deleteImageOrphans']);
 
         return $app;
     }

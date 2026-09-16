@@ -224,6 +224,18 @@ final class PoiRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Every poi_image row across every POI, for
+     * ImageReconciliationService's admin cleanup tool - unlike getImages(),
+     * not scoped to one POI.
+     *
+     * @return list<array{id:int, entity_id:int, filename:string, size_bytes:int}>
+     */
+    public function getAllImages(): array
+    {
+        return $this->db->query('SELECT id, poi_id AS entity_id, filename, size_bytes FROM poi_image')->fetchAll();
+    }
+
     public function findImage(int $poiId, int $imageId): ?array
     {
         $stmt = $this->db->prepare('SELECT * FROM poi_image WHERE id = ? AND poi_id = ?');

@@ -80,6 +80,22 @@ final class TranslationControllerTest extends ControllerTestCase
         $this->assertSame([['file' => 'public/js/fake.js', 'line' => 1]], $decoded['data']['usage']['greeting']);
     }
 
+    public function testIndexReturnsPlaceholderVariableNamesPerKey(): void
+    {
+        file_put_contents($this->resourcesDir . '/en.json', json_encode(['greeting' => 'Hello', 'welcome' => 'Welcome, {name}!']));
+        file_put_contents($this->resourcesDir . '/de.json', json_encode(['greeting' => 'Hallo', 'welcome' => 'Willkommen, {name}!']));
+        file_put_contents($this->rootDir . '/public/js/fake.js', "t('greeting');\nt('welcome', { name: user.name });\n");
+
+        $response = $this->controller->index(
+            $this->request('GET', '/api/v1/translations', $this->authPayload(1, ['is_admin' => true])),
+            $this->response()
+        );
+
+        $decoded = $this->decode($response);
+        $this->assertSame(['name'], $decoded['data']['placeholders']['welcome']);
+        $this->assertSame([], $decoded['data']['placeholders']['greeting'], 'a key called with no vars argument still gets a [] entry, not a missing one - see TranslationController::index()');
+    }
+
     public function testIndexRejectsANonAdmin(): void
     {
         $this->expectException(ForbiddenException::class);

@@ -145,4 +145,21 @@ final class PoiRepositoryTest extends TestCase
         $this->assertCount(1, $remaining);
         $this->assertSame('keep.jpg', $remaining[0]['filename']);
     }
+
+    public function testGetAllImagesReturnsRowsAcrossEveryPoi(): void
+    {
+        $userId = $this->createUser();
+        $poiA = $this->createPoi($userId);
+        $poiB = $this->createPoi($userId);
+        $this->pois->addImage((int) $poiA['id'], 'a.jpg', 'image/jpeg', 100);
+        $this->pois->addImage((int) $poiB['id'], 'b.jpg', 'image/jpeg', 200);
+
+        $all = $this->pois->getAllImages();
+
+        $this->assertCount(2, $all);
+        $filenames = array_column($all, 'filename');
+        sort($filenames);
+        $this->assertSame(['a.jpg', 'b.jpg'], $filenames);
+        $this->assertArrayHasKey('entity_id', $all[0]);
+    }
 }

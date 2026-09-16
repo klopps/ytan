@@ -107,6 +107,11 @@ function showRouteEditWindow(i, latLng) {
                 '<label>' + t('route.edit.photos_label') + '</label>' +
                 '<div id="' + PHOTO_UPLOAD_CONTAINER_ID + '">' + photoUploadGridHtml() + '</div>' +
             '</div>';
+    } else {
+        // No photo section shown for a brand-new route (needs an id first) -
+        // reset rather than leave a previous route's still-running
+        // compression able to block this unrelated create form's Save.
+        resetPhotoUpload();
     }
 
     if (((i !== null) && (typeof i !== 'undefined')) && ((routes[i].user_id == user.id) || (user.is_admin === true))) {
@@ -223,6 +228,13 @@ function saveRoute(i) {
     }
 
     if (user.id === null) {
+        return false;
+    }
+    // A photo still being compressed (see stagePhotoUpload()) isn't staged
+    // for upload yet - saving now would end the edit without ever
+    // uploading it.
+    if (photoUploadIsProcessing()) {
+        showToast(t('photo_upload.still_processing'), 'warning');
         return false;
     }
 

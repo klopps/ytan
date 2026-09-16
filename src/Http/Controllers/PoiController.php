@@ -93,6 +93,10 @@ final class PoiController extends BaseController
         $id = (int) $args['id'];
         $existing = $this->pois->findById($id);
         $this->assertOwnerOrAdmin($auth, (int) $existing['user_id']);
+
+        foreach ($this->pois->getImages($id) as $image) {
+            $this->images->delete($id, $image['filename']);
+        }
         $this->pois->delete($id);
 
         return $this->json($response, ['data' => ['id' => $id]]);

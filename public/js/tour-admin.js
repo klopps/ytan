@@ -787,6 +787,14 @@ function saveEditedTour(id) {
         showToast(t('tour_admin.name_too_short'), 'error');
         return;
     }
+    // A photo still being compressed (see stageTourFormPhoto()) isn't in
+    // tourFormPendingPhotoUploads yet, so saving now would silently ship
+    // without it - block instead of leaving the panel on a detail view
+    // that never got the photo the user just added.
+    if (tourFormProcessingPhotoCount > 0) {
+        showToast(t('tour_admin.photos_still_processing'), 'warning');
+        return;
+    }
     document.getElementById('tourFormSaveBtn').disabled = true;
 
     Ytan.put('/tours/' + id, readTourForm())

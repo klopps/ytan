@@ -69,6 +69,39 @@ function photoUploadTotalCount() {
     return visibleImages.length + photoUploadPendingUploads.length + photoUploadProcessingCount;
 }
 
+/**
+ * True while one or more photos are still running through
+ * compressPhotoUpload() - a caller's Save handler must check this and
+ * refuse to proceed while it's true (see stagePhotoUpload()'s doc comment):
+ * a still-compressing photo isn't in photoUploadPendingUploads yet, so
+ * saving now would close the edit window without ever uploading it.
+ */
+function photoUploadIsProcessing() {
+    return photoUploadProcessingCount > 0;
+}
+
+/**
+ * Resets the widget to an empty, inactive state - call when opening a
+ * create form (no id yet, so no photo section is shown at all) instead of
+ * initPhotoUpload(). Without this, a compression still running for a
+ * previously edited entity (its edit window closed/cancelled before
+ * finishing) would leave photoUploadProcessingCount stuck above zero and
+ * incorrectly block Save on this unrelated new-entity form too - bumping
+ * photoUploadRenderToken here also makes that abandoned compression's own
+ * result a no-op once it does resolve (same staleness guard
+ * stagePhotoUpload() already uses for a closed edit window).
+ */
+function resetPhotoUpload() {
+    ++photoUploadRenderToken;
+    photoUploadEntityType = null;
+    photoUploadEntityId = null;
+    photoUploadMaxCount = 0;
+    photoUploadExistingImages = [];
+    photoUploadPendingUploads = [];
+    photoUploadPendingRemovals = [];
+    photoUploadProcessingCount = 0;
+}
+
 function photoUploadGridHtml() {
     var visibleImages = photoUploadExistingImages.filter(img => !photoUploadPendingRemovals.includes(img.id));
     var totalCount = photoUploadTotalCount();

@@ -163,6 +163,18 @@ final class RouteRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Every route_image row across every route, for
+     * ImageReconciliationService's admin cleanup tool - unlike getImages(),
+     * not scoped to one route.
+     *
+     * @return list<array{id:int, entity_id:int, filename:string, size_bytes:int}>
+     */
+    public function getAllImages(): array
+    {
+        return $this->db->query('SELECT id, route_id AS entity_id, filename, size_bytes FROM route_image')->fetchAll();
+    }
+
     public function findImage(int $routeId, int $imageId): ?array
     {
         $stmt = $this->db->prepare('SELECT * FROM route_image WHERE id = ? AND route_id = ?');

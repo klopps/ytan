@@ -90,6 +90,48 @@ final class ImageStorageService
         }
     }
 
+    /**
+     * Lists every file actually on disk under this storage directory, for
+     * ImageReconciliationService to compare against the DB rows a
+     * repository's getAllImages() returns - entityDir()'s own naming
+     * convention (one subdirectory per entity id) is exactly what's walked
+     * here, so this stays valid even if that convention's storage root
+     * changes later.
+     *
+     * @return list<array{entity_id:int, filename:string, size_bytes:int}>
+     */
+    public function listStoredFiles(): array
+    {
+        $files = [];
+        if (!is_dir($this->storageDir)) {
+            return $files;
+        }
+
+        foreach (scandir($this->storageDir) ?: [] as $entityDirName) {
+            if ($entityDirName === '.' || $entityDirName === '..' || !ctype_digit($entityDirName)) {
+                continue;
+            }
+            $dir = $this->storageDir . '/' . $entityDirName;
+            if (!is_dir($dir)) {
+                continue;
+            }
+
+            foreach (scandir($dir) ?: [] as $filename) {
+                $path = $dir . '/' . $filename;
+                if (!is_file($path)) {
+                    continue;
+                }
+                $files[] = [
+                    'entity_id' => (int) $entityDirName,
+                    'filename' => $filename,
+                    'size_bytes' => (int) filesize($path),
+                ];
+            }
+        }
+
+        return $files;
+    }
+
     private function entityDir(int $entityId): string
     {
         return rtrim($this->storageDir, '/\\') . '/' . $entityId;
