@@ -51,7 +51,18 @@
             width: 95%;
             margin: 60px auto;
         }
-        #adminMenu h1 { font-size: 18px; font-family: var(--font-display); margin: 0 0 16px; }
+        .adminMenuHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+        #adminMenu h1 { font-size: 18px; font-family: var(--font-display); margin: 0; }
+        .adminBackLink {
+            font-size: 12px;
+            color: var(--color-text-secondary);
+            text-decoration: none;
+            border: 1px solid var(--color-border-subtle);
+            border-radius: 8px;
+            padding: 6px 10px;
+            white-space: nowrap;
+        }
+        .adminBackLink:hover { border-color: var(--color-accent); color: var(--color-text); }
         .adminMenuList { display: flex; flex-direction: column; gap: 10px; }
         .adminMenuItem {
             display: block;
@@ -66,6 +77,12 @@
         .adminMenuItem .adminMenuItemTitle { font-weight: 700; font-size: 14px; }
         .adminMenuItem .adminMenuItemDescription { font-size: 12px; color: var(--color-text-secondary); margin-top: 2px; }
         #adminMenuEmpty { color: var(--color-text-faint); font-size: 13px; }
+        .adminSectionTitle { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-secondary); margin: 24px 0 10px; }
+        .adminSettingsCard {
+            background: var(--color-bg-panel);
+            border: 1px solid var(--color-border-subtle);
+            border-radius: 10px;
+        }
     </style>
 </head>
 <body>
@@ -84,8 +101,15 @@
     </div>
 
     <div id="adminMenu" hidden>
-        <h1>Admin</h1>
+        <div class="adminMenuHeader">
+            <h1>Admin</h1>
+            <a class="adminBackLink" href="<?= $baseUrl ?>/">&larr; Back to YTAN</a>
+        </div>
         <div class="adminMenuList">
+            <a class="adminMenuItem" href="<?= $baseUrl ?>/admin/users">
+                <div class="adminMenuItemTitle">Users</div>
+                <div class="adminMenuItemDescription">Manage accounts &amp; permissions</div>
+            </a>
             <a class="adminMenuItem" href="<?= $baseUrl ?>/admin/image-cleanup">
                 <div class="adminMenuItemTitle">Image cleanup</div>
                 <div class="adminMenuItemDescription">Find and remove orphaned photo files/DB rows</div>
@@ -96,6 +120,15 @@
                 <div class="adminMenuItemDescription">Edit the app's EN/DE translation strings</div>
             </a>
             <?php endif; ?>
+        </div>
+
+        <p class="adminSectionTitle">Settings</p>
+        <div class="adminSettingsCard">
+            <label class="nav-toggle-row">
+                <span class="nav-toggle-text">Google search requires login</span>
+                <input type="checkbox" id="settingGoogleSearchRequiresLogin" class="nav-switch-input" <?= $googleSearchRequiresLogin ? 'checked' : '' ?>>
+                <span class="nav-switch-track"><span class="nav-switch-thumb"></span></span>
+            </label>
         </div>
     </div>
 

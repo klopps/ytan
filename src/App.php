@@ -329,10 +329,28 @@ final class App
         // only links to tools that carry their own gating/flags. New admin
         // tools should be added as their own route + menu entry here, not
         // as a growing pile of unrelated features crammed into one page.
-        $app->get('/admin', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl) {
+        $app->get('/admin', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $settingsRepository) {
             ob_start();
             $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
+            $googleSearchRequiresLogin = $settingsRepository->googleSearchRequiresLogin();
             require $rootDir . '/templates/admin.php';
+            $res->getBody()->write(ob_get_clean());
+
+            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
+        });
+
+        // User management, moved out of the main SPA's drawer
+        // (templates/admin-users.php, public/js/admin-users.js) - loads a
+        // slim version of the main app (i18n/toast/confirm-dialog, but no
+        // map/POIs/routes/areas/tours) directly into the existing,
+        // unchanged admin-user.js panel. No opt-in flag needed (same
+        // reasoning as /admin itself) - the /api/v1/users* endpoints are
+        // already independently admin-gated server-side.
+        $app->get('/admin/users', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
+            ob_start();
+            $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
+            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
+            require $rootDir . '/templates/admin-users.php';
             $res->getBody()->write(ob_get_clean());
 
             return $res->withHeader('Content-Type', 'text/html; charset=utf-8');

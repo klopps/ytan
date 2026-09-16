@@ -197,12 +197,12 @@ function cancelPendingEmailChange() {
 }
 
 /**
- * Shows/hides the sidemenu's "Site Settings" entry based on the current
- * user's is_admin flag. Called after login, logout, and the boot-time
- * /auth/me revalidation.
+ * Shows/hides the sidemenu's "Administration" entry (links to /admin) based
+ * on the current user's is_admin flag. Called after login, logout, and the
+ * boot-time /auth/me revalidation.
  */
 function updateAdminMenuVisibility() {
-    document.getElementById('userAdminMenuBtn').style.display = user.is_admin ? '' : 'none';
+    document.getElementById('adminMenuBtn').style.display = user.is_admin ? '' : 'none';
 }
 
 /**

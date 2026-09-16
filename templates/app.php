@@ -35,7 +35,8 @@
     <script src="./js/tour.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/tour.js') ?>"></script>
     <script src="./js/tour-admin.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/tour-admin.js') ?>"></script>
     <script src="./js/user.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/user.js') ?>"></script>
-    <script src="./js/admin-user.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/admin-user.js') ?>"></script>
+    <!-- admin-user.js moved to /admin/users (templates/admin-users.php) -
+         no longer part of the main SPA's script chain. -->
 
     <link rel="stylesheet" type="text/css" href="./css/style.css?v=<?= \Ytan\App::assetVersion($rootDir, '/css/style.css') ?>" />
     <link rel="stylesheet" type="text/css" href="./css/fonts.css?v=<?= \Ytan\App::assetVersion($rootDir, '/css/fonts.css') ?>" />
@@ -125,7 +126,7 @@
             <li><button type="button" class="nav-menu-row" onclick="shareMap();"><i class="material-icons-round nav-menu-row-icon">share</i><span class="nav-menu-row-labels"><?= $t('app.nav.share') ?></span></button></li>
             <li><button type="button" class="nav-menu-row" onclick="showUserWindow();"><i class="material-icons-round nav-menu-row-icon">account_circle</i><span class="nav-menu-row-labels"><?= $t('app.nav.profile') ?><span class="nav-menu-row-sub" id="profileRowSub"><?= $t('app.nav.not_signed_in') ?></span></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
             <li><button type="button" class="nav-menu-row" onclick="navMenuGoTo('preferences');"><i class="material-icons-round nav-menu-row-icon">tune</i><span class="nav-menu-row-labels"><?= $t('app.nav.preferences') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
-            <li id="userAdminMenuBtn" style="display:none;"><button type="button" class="nav-menu-row" onclick="navMenuGoTo('site-settings');"><i class="material-icons-round nav-menu-row-icon">settings</i><span class="nav-menu-row-labels"><?= $t('app.nav.site_settings') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
+            <li id="adminMenuBtn" style="display:none;"><button type="button" class="nav-menu-row" onclick="window.location.href='<?= $baseUrl ?>/admin';"><i class="material-icons-round nav-menu-row-icon">settings</i><span class="nav-menu-row-labels"><?= $t('app.nav.administration') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
           </ul>
 
           <div class="nav-divider"></div>
@@ -179,24 +180,6 @@
           <ul class="nav-menu-list">
             <li><button type="button" class="nav-menu-row" onclick="fitToPoiBounds(); closeMenu();"><i class="material-icons-round nav-menu-row-icon">fit_screen</i><span class="nav-menu-row-labels"><?= $t('app.pois.fit_all') ?></span></button></li>
           </ul>
-        </div>
-      </div>
-
-      <!-- SITE SETTINGS (admin only) -->
-      <div class="nav-screen nav-screen-off-right" data-nav-screen="site-settings">
-        <div class="nav-screen-header">
-          <button type="button" class="nav-back" onclick="navMenuBack();"><i class="material-icons-round">arrow_back</i></button>
-          <h3><?= $t('app.nav.site_settings') ?></h3>
-        </div>
-        <div class="nav-screen-body">
-          <ul class="nav-menu-list">
-            <li><button type="button" class="nav-menu-row" onclick="openUserAdminMenu();"><i class="material-icons-round nav-menu-row-icon">admin_panel_settings</i><span class="nav-menu-row-labels"><?= $t('app.settings.users') ?><span class="nav-menu-row-sub"><?= $t('app.settings.users_sub') ?></span></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
-          </ul>
-          <label class="nav-toggle-row">
-            <span class="nav-toggle-text"><?= $t('app.settings.google_search_requires_login') ?></span>
-            <input type="checkbox" id="settingGoogleSearchRequiresLogin" class="nav-switch-input" onclick="toggleGoogleSearchRequiresLogin(this)" <?= $googleSearchRequiresLogin ? 'checked' : '' ?>>
-            <span class="nav-switch-track"><span class="nav-switch-thumb"></span></span>
-          </label>
         </div>
       </div>
 
@@ -310,19 +293,8 @@
       </div>
     </div>
 
-    <!-- USER ADMIN MENU (admin only) ----------------------------------->
-    <div id="useradminmenu" class="cookiemenu">
-      <div class="cm_content cm_content-compact">
-        <div class="cm-panel-header" id="useradminmenu-header">
-          <button type="button" class="nav-back" id="useradminmenu-back" style="display:none;"><i class="material-icons-round">arrow_back</i></button>
-          <h2 id="useradminmenu-title" class="cm-panel-title"><?= $t('app.settings.users') ?></h2>
-          <div id="useradminmenu-action"></div>
-        </div>
-        <div id="useradminmenu-form"></div>
-        <div id="useradminmenu-list"></div>
-        <div class="panel-logo"></div>
-      </div>
-    </div>
+    <!-- User admin menu moved to /admin/users (templates/admin-users.php) -
+         no longer part of the main SPA. -->
 
     <!-- TOUR ADMIN MENU (browse/search tours, view details, manage a
          tour's own metadata and route membership) ----------------------->

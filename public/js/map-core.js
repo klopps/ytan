@@ -7,8 +7,9 @@
 const ICONSET = 'mapicons'; // [google, mapicons]
 const METRIC = 'metric';
 const NAUTICAL = 'nautical';
-const THEME_LIGHT = 'light';
-const THEME_DARK = 'dark';
+// THEME_LIGHT/THEME_DARK live in settings.js, not here - applyStoredTheme()/
+// loadSettings() need them and settings.js loads on map-less pages
+// (templates/admin-users.php) too, unlike this file.
 const WIND_UNIT_BFT = 'bft';
 const WIND_UNIT_MS = 'ms';
 const WIND_UNIT_KMH = 'kmh';
@@ -1323,28 +1324,5 @@ function shareMap() {
     } else {
         copyTextToClipboard(mapUrl);
         showToast(t('map.link_copied'), 'success');
-    }
-}
-
-/**
- * Liefert ein leeres User-Objekt zurück.
- *
- * @returns user object
- */
-function initUser() {
-    return {
-        id: null,
-        username: '',
-        email: '',
-        firstname: '',
-        lastname: '',
-        is_admin: false,
-        tour_create: false,
-        tour_publish: false,
-        tour_manage: false,
-        tour_copy: false,
-        route_view_recording: false,
-        pending_email: null,
-        pending_email_expires_at: null
     }
 }

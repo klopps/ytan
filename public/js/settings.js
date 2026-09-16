@@ -2,6 +2,12 @@
  * Cookie handling, persisted map settings, session timeout and logging.
  */
 
+// Moved here from map-core.js so applyStoredTheme()/loadSettings() work on
+// map-less pages (templates/admin-users.php) that load this file but not
+// map-core.js - map-core.js still uses them too, it just loads later.
+const THEME_LIGHT = 'light';
+const THEME_DARK = 'dark';
+
 function setCookie(cname, cvalue, exdays) {
     var d = new Date();
     d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
