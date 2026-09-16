@@ -1,0 +1,20 @@
+/**
+ * Small overrides on top of stock AdminLTE/Bootstrap for the /admin area -
+ * deliberately minimal, see templates/partials/admin-shell-header.php's
+ * doc comment for why this area keeps AdminLTE's own default look rather
+ * than reskinning onto YTAN's main-app design tokens.
+ */
+
+.admin-login-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    box-sizing: border-box;
+}
+
+.admin-login-card {
+    width: 100%;
+    max-width: 360px;
+}

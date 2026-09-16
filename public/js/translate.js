@@ -1,12 +1,12 @@
 /**
- * Logic for the standalone /translate dev tool (templates/translate.php).
- * Loaded only there - never added to app.php's SPA script chain. Talks to
- * the admin-only GET/PUT /api/v1/translations endpoints
- * (TranslationController) via the same api-client.js the SPA uses, but is
- * otherwise fully self-contained: its own login flow (not user.js's
- * loginUser(), which depends on SPA-only globals this page never loads),
- * its own tiny render logic, no i18n.js (the tool's own chrome isn't
- * translated - it edits the translations, it doesn't consume them).
+ * Logic for the /admin/translate dev tool (templates/translate.php) - the
+ * i18n editor. Talks to the admin-only GET/PUT /api/v1/translations
+ * endpoints (TranslationController). Login-gate handled by admin-auth.js
+ * like every other admin page (this used to keep its own separate copy of
+ * that logic - consolidated once this page's chrome was rebuilt on
+ * AdminLTE anyway, see todo.md). Its own chrome IS translated now (unlike
+ * before), but the editor's dynamic content - the translation strings
+ * themselves - obviously isn't run through t() a second time.
  */
 
 var state = {
@@ -22,67 +22,10 @@ function escapeHtml(value) {
     return div.innerHTML;
 }
 
-/* ---------------------------------------------------------------- Auth */
-
-async function checkAuthAndInit() {
-    var token = localStorage.getItem('ytan_token');
-    if (!token) {
-        showLogin();
-        return;
-    }
-
-    try {
-        var me = await Ytan.get('/auth/me');
-        if (!me.data.is_admin) {
-            showLogin('Signed in, but this account is not an admin.');
-            return;
-        }
-        showTool();
-        await loadTranslations();
-    } catch (err) {
-        showLogin();
-    }
-}
-
-function showLogin(message) {
-    document.getElementById('loginBox').hidden = false;
-    document.getElementById('toolbar').hidden = true;
-    document.getElementById('panes').hidden = true;
-    if (message) {
-        document.getElementById('loginMessage').textContent = message;
-    }
-}
-
-function showTool() {
-    document.getElementById('loginBox').hidden = true;
-    document.getElementById('toolbar').hidden = false;
-    document.getElementById('panes').hidden = false;
-}
-
-async function submitLogin() {
-    var username = document.getElementById('loginUsername').value;
-    var password = document.getElementById('loginPassword').value;
-    var message = document.getElementById('loginMessage');
-    message.textContent = '';
-
-    try {
-        var answer = await Ytan.post('/auth/login', { username: username, password: password });
-        if (!answer.user.is_admin) {
-            message.textContent = 'Signed in, but this account is not an admin.';
-            return;
-        }
-        Ytan.setToken(answer.token);
-        showTool();
-        await loadTranslations();
-    } catch (err) {
-        message.textContent = err.message;
-    }
-}
-
 /* ------------------------------------------------------------ Loading */
 
 async function loadTranslations() {
-    document.getElementById('editorPane').innerHTML = '<div id="emptyState">Loading…</div>';
+    document.getElementById('editorPane').innerHTML = '<div id="emptyState" class="text-center text-secondary p-5">' + t('admin.translate.loading') + '</div>';
 
     try {
         var answer = await Ytan.get('/translations');
@@ -94,7 +37,7 @@ async function loadTranslations() {
         renderEditor();
     } catch (err) {
         document.getElementById('editorPane').innerHTML =
-            '<div id="emptyState">Failed to load translations: ' + escapeHtml(err.message) + '</div>';
+            '<div id="emptyState" class="text-center text-danger p-5">' + t('admin.translate.load_failed', { error: err.message }) + '</div>';
     }
 }
 
@@ -111,7 +54,7 @@ function renderEditor() {
 
     var allKeys = Object.keys(state.usage).sort();
     if (allKeys.length === 0) {
-        container.innerHTML = '<div id="emptyState">No translation keys found.</div>';
+        container.innerHTML = '<div id="emptyState" class="text-center text-secondary p-5">' + t('admin.translate.no_keys') + '</div>';
         return;
     }
 
@@ -135,10 +78,12 @@ function renderEditor() {
         anyVisible = true;
 
         var details = document.createElement('details');
-        details.className = 'namespaceGroup';
+        details.className = 'mb-3';
         details.open = query !== '';
 
         var summary = document.createElement('summary');
+        summary.className = 'fw-bold text-primary py-1';
+        summary.style.cursor = 'pointer';
         summary.textContent = ns + ' (' + keysInGroup.length + ')';
         details.appendChild(summary);
 
@@ -150,7 +95,7 @@ function renderEditor() {
     });
 
     if (!anyVisible) {
-        container.innerHTML = '<div id="emptyState">No keys match your filter.</div>';
+        container.innerHTML = '<div id="emptyState" class="text-center text-secondary p-5">' + t('admin.translate.no_keys_match') + '</div>';
     }
 }
 
@@ -168,27 +113,27 @@ function matchesFilter(key, query) {
 
 function buildKeyRow(key) {
     var row = document.createElement('div');
-    row.className = 'keyRow';
+    row.className = 'card card-body mb-2';
     row.dataset.key = key;
     if (state.dirtyKeys[key]) {
-        row.classList.add('dirty');
+        row.classList.add('border-warning');
     }
 
     var keyName = document.createElement('div');
-    keyName.className = 'keyName';
+    keyName.className = 'font-monospace small text-secondary mb-1 text-break';
     keyName.textContent = key;
     row.appendChild(keyName);
 
     var placeholderNames = state.placeholders[key] || [];
     if (placeholderNames.length > 0) {
         var availableVars = document.createElement('div');
-        availableVars.className = 'availableVars';
-        availableVars.textContent = 'Variables: ' + placeholderNames.map(function (p) { return '{' + p + '}'; }).join(', ');
+        availableVars.className = 'font-monospace small text-primary mb-2';
+        availableVars.textContent = t('admin.translate.variables_prefix') + ' ' + placeholderNames.map(function (p) { return '{' + p + '}'; }).join(', ');
         row.appendChild(availableVars);
     }
 
     var fields = document.createElement('div');
-    fields.className = 'fields';
+    fields.className = 'd-flex gap-3 flex-wrap';
     fields.appendChild(buildFieldCol(key, 'en', 'EN'));
     fields.appendChild(buildFieldCol(key, 'de', 'DE'));
     row.appendChild(fields);
@@ -196,18 +141,18 @@ function buildKeyRow(key) {
     var usageEntries = state.usage[key] || [];
     var usage = document.createElement('div');
     if (usageEntries.length === 0) {
-        usage.className = 'usage unused';
-        usage.textContent = 'Not referenced anywhere - candidate for removal.';
+        usage.className = 'small text-warning mt-2';
+        usage.textContent = t('admin.translate.not_referenced');
     } else {
-        usage.className = 'usage';
-        usage.textContent = 'Used in: ' + usageEntries.map(function (u) {
+        usage.className = 'small text-secondary mt-2';
+        usage.textContent = t('admin.translate.used_in_prefix') + ' ' + usageEntries.map(function (u) {
             return u.file + ':' + u.line;
         }).join(', ');
     }
     row.appendChild(usage);
 
     var warning = document.createElement('div');
-    warning.className = 'placeholderWarning';
+    warning.className = 'small text-warning mt-1';
     warning.hidden = true;
     row.appendChild(warning);
     updatePlaceholderWarning(key, warning);
@@ -217,20 +162,23 @@ function buildKeyRow(key) {
 
 function buildFieldCol(key, locale, label) {
     var col = document.createElement('div');
-    col.className = 'fieldCol';
+    col.className = 'flex-fill';
+    col.style.minWidth = '220px';
 
     var labelEl = document.createElement('label');
+    labelEl.className = 'form-label small text-secondary mb-1';
     labelEl.textContent = label;
     col.appendChild(labelEl);
 
     var textarea = document.createElement('textarea');
+    textarea.className = 'form-control form-control-sm';
     textarea.rows = 2;
     textarea.value = state.locales[locale][key] || '';
     textarea.addEventListener('input', function () {
         state.locales[locale][key] = textarea.value;
         state.dirtyKeys[key] = true;
-        textarea.closest('.keyRow').classList.add('dirty');
-        updatePlaceholderWarning(key, textarea.closest('.keyRow').querySelector('.placeholderWarning'));
+        textarea.closest('.card').classList.add('border-warning');
+        updatePlaceholderWarning(key, textarea.closest('.card').querySelector('.text-warning.mt-1'));
         updateDirtyCount();
     });
     col.appendChild(textarea);
@@ -259,10 +207,10 @@ function updatePlaceholderWarning(key, warningEl) {
 
     var parts = [];
     if (missingFromDe.length > 0) {
-        parts.push('DE missing: ' + missingFromDe.map(function (p) { return '{' + p + '}'; }).join(', '));
+        parts.push(t('admin.translate.missing_de') + ' ' + missingFromDe.map(function (p) { return '{' + p + '}'; }).join(', '));
     }
     if (missingFromEn.length > 0) {
-        parts.push('EN missing: ' + missingFromEn.map(function (p) { return '{' + p + '}'; }).join(', '));
+        parts.push(t('admin.translate.missing_en') + ' ' + missingFromEn.map(function (p) { return '{' + p + '}'; }).join(', '));
     }
     warningEl.textContent = parts.join(' — ');
     warningEl.hidden = false;
@@ -274,7 +222,7 @@ function applyFilter() {
 
 function updateDirtyCount() {
     var count = Object.keys(state.dirtyKeys).length;
-    document.getElementById('dirtyCount').textContent = count > 0 ? count + ' unsaved' : '';
+    document.getElementById('dirtyCount').textContent = count > 0 ? t('admin.translate.unsaved_count', { count: count }) : '';
     document.getElementById('saveAllBtn').disabled = count === 0;
 }
 
@@ -292,22 +240,22 @@ async function saveAll(force) {
         });
         state.dirtyKeys = {};
         updateDirtyCount();
-        document.querySelectorAll('.keyRow.dirty').forEach(function (el) { el.classList.remove('dirty'); });
+        document.querySelectorAll('.card.border-warning').forEach(function (el) { el.classList.remove('border-warning'); });
         reloadPreview();
+        showAdminToast(t('common.saved'), 'success');
     } catch (err) {
         if (err.data && err.data.code === 'translation.key_mismatch') {
-            var onlyEn = (err.data.only_in_en || []).join(', ') || '(none)';
-            var onlyDe = (err.data.only_in_de || []).join(', ') || '(none)';
+            var onlyEn = (err.data.only_in_en || []).join(', ') || t('admin.translate.none');
+            var onlyDe = (err.data.only_in_de || []).join(', ') || t('admin.translate.none');
             var proceed = window.confirm(
-                'Key sets differ between EN and DE.\n\nOnly in EN: ' + onlyEn + '\nOnly in DE: ' + onlyDe +
-                '\n\nSave anyway? (missing keys will simply not exist in that locale)'
+                t('admin.translate.key_mismatch_message', { only_en: onlyEn, only_de: onlyDe })
             );
             if (proceed) {
                 await saveAll(true);
                 return;
             }
         } else {
-            window.alert('Save failed: ' + err.message);
+            showAdminToast(t('admin.translate.save_failed', { error: err.message }), 'error');
         }
     } finally {
         updateDirtyCount();
@@ -319,4 +267,4 @@ function reloadPreview() {
     iframe.src = iframe.src;
 }
 
-checkAuthAndInit();
+initAdminAuth({ contentId: 'adminAppWrapper', onReady: loadTranslations });

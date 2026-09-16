@@ -58,6 +58,23 @@ final class TourRepository
     }
 
     /**
+     * Unscoped totals for the admin dashboard - deliberately raw SQL
+     * rather than countSearch('all', null), which pulls in the JOIN user
+     * + filter-building machinery for no reason when only a plain count is
+     * needed (same reasoning as Poi/Route/AreaRepository's own countAll()/
+     * countPublic()).
+     */
+    public function countAll(): int
+    {
+        return (int) $this->db->query('SELECT COUNT(*) FROM tour')->fetchColumn();
+    }
+
+    public function countPublic(): int
+    {
+        return (int) $this->db->query('SELECT COUNT(*) FROM tour WHERE public = 1')->fetchColumn();
+    }
+
+    /**
      * @param array{search?:string,min_length?:int,max_length?:int} $filters
      * @return array{0: string[], 1: array<int,mixed>}
      */

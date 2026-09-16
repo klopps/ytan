@@ -1,18 +1,13 @@
 /**
  * Admin-only user management panel (list / create / edit / delete users,
- * plus per-user password actions).
- *
- * A full-screen slide-in panel (the .cookiemenu pattern also used by the
- * cookie/legal menus, see ui.js: openCookieMenu/openLegalMenu) rather than
- * a nested nav-menu.js drawer screen - the account table needs more width
- * than the ~320px drawer can offer. Triggered from the "Site Settings"
- * drawer screen (nav-menu.js), which is closed first for a clean transition.
- * New users get no password field in the create form - they always set
- * their own password through the emailed invite link (see
- * UserController::create() on the backend, which sends that email on
- * POST /api/v1/users). Admins can still set a password directly for an
- * existing user (setUserPasswordRow) or trigger the same reset email a
- * "Forgot password?" request would send (sendResetEmailRow).
+ * plus per-user password actions). Lives on the standalone /admin/users
+ * page (templates/admin-users.php) inside the shared AdminLTE shell - not
+ * part of the main SPA. New users get no password field in the create
+ * form - they always set their own password through the emailed invite
+ * link (see UserController::create() on the backend, which sends that
+ * email on POST /api/v1/users). Admins can still set a password directly
+ * for an existing user (setUserPasswordRow) or trigger the same reset
+ * email a "Forgot password?" request would send (sendResetEmailRow).
  */
 
 const TOUR_RIGHT_FIELDS = ['tour_create', 'tour_publish', 'tour_manage', 'tour_copy'];
@@ -28,7 +23,7 @@ const OTHER_RIGHT_FIELDS = ['route_view_recording'];
 // ambiguous - "Create"/"Publish"/"Manage"/"Copy" alone read as generic
 // permissions otherwise.
 const USER_RIGHT_LABELS = { is_admin: t('admin_user.right_admin'), tour_create: t('admin_user.right_tour_create'), tour_publish: t('admin_user.right_tour_publish'), tour_manage: t('admin_user.right_tour_manage'), tour_copy: t('admin_user.right_tour_copy'), route_view_recording: t('admin_user.right_route_view_recording') };
-const USER_ADMIN_NEW_BUTTON_HTML = '<div class="startbtn" onclick="showUserCreateForm();"><i class="material-icons-round">person_add</i>&nbsp;' + t('admin_user.new_user') + '</div>';
+const USER_ADMIN_NEW_BUTTON_HTML = '<button type="button" class="btn btn-primary btn-sm" onclick="showUserCreateForm();"><i class="bi bi-person-plus me-1"></i>' + t('admin_user.new_user') + '</button>';
 let adminUserFilters = {}; // { is_admin: 1, tour_manage: 1, ... } - AND'ed together, see loadUserList()
 let adminUserFilterPanelOpen = false; // whether the collapsible "Filter by right" panel is expanded
 let adminUserLastList = []; // last list rendered, so toggling the filter panel/typing a search can re-render without a re-fetch
@@ -37,23 +32,12 @@ let adminUserPageSize = ADMIN_LIST_DEFAULT_PAGE_SIZE; // config.js
 let adminUserPage = 1; // 1-indexed, over the filtered result set (not the unfiltered list)
 
 /**
- * Deliberately does NOT call closeMenu() - #useradminmenu's z-index sits
- * above #sidemenu's (style.css, ".cookiemenu opening over the drawer"), so
- * this opens directly on top of the drawer exactly as it currently is
- * (open on whichever screen, or closed) rather than needing to hide it
- * first. closeUserAdminMenu() then needs no matching "reopen the drawer"
- * step either - the drawer was never touched, so it's simply revealed
- * again in the same state once this panel closes. pushMenuLeft() (ui.js)
- * makes a still-open drawer slide fully out of view as this panel slides in
- * over it, the same "pushed left" look navMenuGoTo() gives a nav-screen
- * like Site Settings. slideInPanel()/slideOutPanel() (ui.js) drive the
- * panel's own slide-in-from-the-right transform.
+ * Called once as initAdminAuth()'s onReady (see admin-users.js) - this
+ * page has no panel to slide in/drawer to push aside anymore (that was
+ * the old main-SPA .cookiemenu overlay's job), just resets list state and
+ * loads the first page.
  */
 function openUserAdminMenu() {
-    slideInPanel('useradminmenu');
-    pushMenuLeft();
-    panelOpened();
-    closeUserForm();
     adminUserFilters = {};
     adminUserFilterPanelOpen = false;
     adminUserSearchQuery = '';
@@ -62,18 +46,9 @@ function openUserAdminMenu() {
     loadUserList();
 }
 
-function closeUserAdminMenu() {
-    slideOutPanel('useradminmenu');
-    unpushMenuLeft();
-    panelClosed();
-}
-
 /**
- * Shared sticky title bar for the list/form sub-views - mirrors
- * tour-admin.js's setTourAdminHeader() for the same .cm-panel-header
- * markup. Kept as its own function here (not a cross-file shared utility)
- * to match how this panel's list/pagination logic already duplicates
- * tour-admin.js's equivalents rather than sharing them.
+ * Shared sticky title bar for the list/form sub-views - #useradminmenu-*
+ * elements live in templates/admin-users.php's card header/body.
  */
 function setUserAdminHeader(title, backOnClick, actionHtml) {
     document.getElementById('useradminmenu-title').textContent = title;
@@ -91,7 +66,7 @@ function loadUserList() {
         renderUserTable(answer.data);
     }).catch(err => {
         log('loadUserList() failed', LOG_ERROR, err);
-        showToast(t('admin_user.loading_users_failed', { error: err.message }), 'error');
+        showAdminToast(t('admin_user.loading_users_failed', { error: err.message }), 'error');
     });
 }
 
@@ -124,20 +99,20 @@ function userFilterPanelHtml() {
     var fields = ['is_admin'].concat(TOUR_RIGHT_FIELDS).concat(OTHER_RIGHT_FIELDS);
     var activeCount = Object.keys(adminUserFilters).length;
 
-    var html = '<div class="admin-filter-toggle" onclick="toggleUserFilterPanel();">' +
-        '<i class="material-icons-round">tune</i>' +
+    var html = '<button type="button" class="btn btn-outline-secondary btn-sm mb-2 d-flex align-items-center gap-2" onclick="toggleUserFilterPanel();">' +
+        '<i class="bi bi-sliders"></i>' +
         '<span>' + t('admin_user.filter_by_right') + (activeCount > 0 ? ' (' + activeCount + ')' : '') + '</span>' +
-        '<i class="material-icons-round admin-filter-chevron">' + (adminUserFilterPanelOpen ? 'expand_less' : 'expand_more') + '</i>' +
-        '</div>';
+        '<i class="bi ' + (adminUserFilterPanelOpen ? 'bi-chevron-up' : 'bi-chevron-down') + '"></i>' +
+        '</button>';
 
     if (adminUserFilterPanelOpen) {
-        html += '<div class="admin-filter-panel">';
+        html += '<div class="card card-body mb-3">';
         for (let i = 0; i < fields.length; i++) {
             var field = fields[i];
             var checked = adminUserFilters.hasOwnProperty(field);
-            html += '<div class="admin-filter-check-row">' +
-                '<input type="checkbox" id="userFilter_' + field + '"' + (checked ? ' checked' : '') + ' onchange="toggleUserFilter(\'' + field + '\');">' +
-                '<label for="userFilter_' + field + '"><span></span>' + USER_RIGHT_LABELS[field] + '</label>' +
+            html += '<div class="form-check">' +
+                '<input class="form-check-input" type="checkbox" id="userFilter_' + field + '"' + (checked ? ' checked' : '') + ' onchange="toggleUserFilter(\'' + field + '\');">' +
+                '<label class="form-check-label" for="userFilter_' + field + '">' + USER_RIGHT_LABELS[field] + '</label>' +
                 '</div>';
         }
         html += '</div>';
@@ -151,14 +126,14 @@ function iconButton(icon, title, onclick) {
     // argument, i.e. embedded double quotes) being placed inside a
     // double-quoted HTML attribute, so it must be HTML-escaped here -
     // the browser HTML-attribute-decodes it before running it as JS.
-    return '<span class="icon-btn" title="' + escapeHTML(title) + '" onclick="' + escapeHTML(onclick) + '">' +
-        '<i class="material-icons-round">' + icon + '</i>' +
-        '</span>';
+    return '<button type="button" class="btn btn-sm btn-outline-secondary" title="' + escapeHTML(title) + '" onclick="' + escapeHTML(onclick) + '">' +
+        '<i class="bi ' + icon + '"></i>' +
+        '</button>';
 }
 
 function renderUserTable(users) {
     adminUserLastList = users;
-    setUserAdminHeader(t('admin_user.title'), closeUserAdminMenu, USER_ADMIN_NEW_BUTTON_HTML);
+    setUserAdminHeader(t('admin_user.title'), null, USER_ADMIN_NEW_BUTTON_HTML);
 
     var sizeOptions = '';
     for (let i = 0; i < ADMIN_LIST_PAGE_SIZES.length; i++) {
@@ -166,24 +141,40 @@ function renderUserTable(users) {
         sizeOptions += '<option value="' + size + '"' + (size === adminUserPageSize ? ' selected' : '') + '>' + size + '</option>';
     }
 
-    var html = '<div class="search-bar"><i class="material-icons-round">search</i>' +
-        '<input type="text" id="userSearchInput" placeholder="' + t('admin_user.search_placeholder') + '" value="' + escapeHTML(adminUserSearchQuery) + '" oninput="onAdminUserSearchInput();"></div>';
+    var html = '<div class="input-group mb-3">' +
+        '<span class="input-group-text"><i class="bi bi-search"></i></span>' +
+        '<input type="text" class="form-control" id="userSearchInput" placeholder="' + t('admin_user.search_placeholder') + '" value="' + escapeHTML(adminUserSearchQuery) + '" oninput="onAdminUserSearchInput();">' +
+        '</div>';
 
     html += userFilterPanelHtml();
 
     // Rows-per-page sits above the list, next to the search/filter controls
-    // it affects - matches tour-admin.js's list view (.tour-page-size-row) -
-    // only the prev/next page nav stays with the results below, since that
-    // depends on the current (filtered) result count.
-    html += '<div class="admin-pagination-size tour-page-size-row">' +
-        '<label for="userPageSize">' + t('common.rows_per_page') + '</label>' +
-        '<select id="userPageSize" class="select-css select-css-compact" onchange="onAdminUserPageSizeChange();">' + sizeOptions + '</select>' +
+    // it affects - only the prev/next page nav stays with the results
+    // below, since that depends on the current (filtered) result count.
+    html += '<div class="d-flex align-items-center gap-2 mb-3">' +
+        '<label for="userPageSize" class="form-label mb-0 small">' + t('common.rows_per_page') + '</label>' +
+        '<select id="userPageSize" class="form-select form-select-sm w-auto" onchange="onAdminUserPageSizeChange();">' + sizeOptions + '</select>' +
     '</div>';
 
     html += '<div id="adminUserTableResults"></div>';
 
     document.getElementById('useradminmenu-list').innerHTML = html;
+    showUserList();
     renderFilteredUserRows();
+}
+
+/**
+ * The list and the create/edit/set-password form share the same card body
+ * but are mutually exclusive views - only one is ever meant to be visible.
+ */
+function showUserList() {
+    document.getElementById('useradminmenu-list').hidden = false;
+    document.getElementById('useradminmenu-form').hidden = true;
+}
+
+function showUserFormView() {
+    document.getElementById('useradminmenu-list').hidden = true;
+    document.getElementById('useradminmenu-form').hidden = false;
 }
 
 function onAdminUserSearchInput() {
@@ -210,7 +201,7 @@ function goToAdminUserPage(delta) {
  * firstname/lastname and paged by adminUserPageSize/adminUserPage - kept
  * separate from renderUserTable() so typing in the search box never
  * rebuilds the search input itself (which would steal focus/cursor
- * position), the same split renderFilteredTourList() uses in tour-admin.js.
+ * position).
  */
 function renderFilteredUserRows() {
     var query = foldSearchText(adminUserSearchQuery);
@@ -234,36 +225,36 @@ function renderFilteredUserRows() {
     var pageStart = (adminUserPage - 1) * adminUserPageSize;
     var users = allMatches.slice(pageStart, pageStart + adminUserPageSize);
 
-    var html = '<div class="admin-user-table-wrap"><table class="admin-user-table"><thead><tr>' +
-        '<th>' + t('admin_user.col_username') + '</th><th>' + t('admin_user.col_email') + '</th><th>' + t('admin_user.col_name') + '</th><th>' + t('admin_user.col_rights') + '</th><th class="actions">' + t('admin_user.col_actions') + '</th>' +
+    var html = '<div class="table-responsive"><table class="table table-sm table-hover align-middle"><thead><tr>' +
+        '<th>' + t('admin_user.col_username') + '</th><th>' + t('admin_user.col_email') + '</th><th>' + t('admin_user.col_name') + '</th><th>' + t('admin_user.col_rights') + '</th><th>' + t('admin_user.col_actions') + '</th>' +
         '</tr></thead><tbody>';
 
     for (let i = 0; i < users.length; i++) {
         var u = users[i];
         var name = [u.firstname, u.lastname].filter(Boolean).map(escapeHTML).join(' ');
 
-        var badges = u.is_admin ? '<span class="admin-badge">' + USER_RIGHT_LABELS.is_admin + '</span>' : '';
+        var badges = u.is_admin ? '<span class="badge text-bg-primary me-1">' + USER_RIGHT_LABELS.is_admin + '</span>' : '';
         for (let r = 0; r < TOUR_RIGHT_FIELDS.length; r++) {
             if (u[TOUR_RIGHT_FIELDS[r]]) {
-                badges += '<span class="admin-badge admin-badge-tour">' + USER_RIGHT_LABELS[TOUR_RIGHT_FIELDS[r]] + '</span>';
+                badges += '<span class="badge text-bg-secondary me-1">' + USER_RIGHT_LABELS[TOUR_RIGHT_FIELDS[r]] + '</span>';
             }
         }
         for (let r = 0; r < OTHER_RIGHT_FIELDS.length; r++) {
             if (u[OTHER_RIGHT_FIELDS[r]]) {
-                badges += '<span class="admin-badge admin-badge-tour">' + USER_RIGHT_LABELS[OTHER_RIGHT_FIELDS[r]] + '</span>';
+                badges += '<span class="badge text-bg-secondary me-1">' + USER_RIGHT_LABELS[OTHER_RIGHT_FIELDS[r]] + '</span>';
             }
         }
 
         html += '<tr>' +
-            '<td data-label="' + t('admin_user.col_username') + '">' + escapeHTML(u.username) + '</td>' +
-            '<td data-label="' + t('admin_user.col_email') + '">' + escapeHTML(u.email || '') + '</td>' +
-            '<td data-label="' + t('admin_user.col_name') + '">' + name + '</td>' +
-            '<td data-label="' + t('admin_user.col_rights') + '">' + (badges || '&ndash;') + '</td>' +
-            '<td class="actions" data-label="' + t('admin_user.col_actions') + '">' +
-                iconButton('edit', t('common.edit'), 'editUserRow(' + u.id + ');') +
-                iconButton('vpn_key', t('admin_user.set_password_title'), 'showSetPasswordForm(' + u.id + ', ' + JSON.stringify(u.username) + ');') +
-                iconButton('forward_to_inbox', t('admin_user.send_reset_title'), 'sendResetEmailRow(' + u.id + ');') +
-                iconButton('delete', t('common.delete'), 'deleteUserRow(' + u.id + ');') +
+            '<td>' + escapeHTML(u.username) + '</td>' +
+            '<td>' + escapeHTML(u.email || '') + '</td>' +
+            '<td>' + name + '</td>' +
+            '<td>' + (badges || '&ndash;') + '</td>' +
+            '<td class="text-nowrap">' +
+                iconButton('bi-pencil', t('common.edit'), 'editUserRow(' + u.id + ');') + ' ' +
+                iconButton('bi-key', t('admin_user.set_password_title'), 'showSetPasswordForm(' + u.id + ', ' + JSON.stringify(u.username) + ');') + ' ' +
+                iconButton('bi-envelope-arrow-up', t('admin_user.send_reset_title'), 'sendResetEmailRow(' + u.id + ');') + ' ' +
+                iconButton('bi-trash', t('common.delete'), 'deleteUserRow(' + u.id + ');') +
             '</td>' +
             '</tr>';
     }
@@ -274,16 +265,21 @@ function renderFilteredUserRows() {
 
     document.getElementById('adminUserTableResults').innerHTML = allMatches.length
         ? html
-        : '<p class="hint">' + t('admin_user.no_users_found') + '</p>' + adminUserPaginationHtml(0, totalPages);
+        : '<p class="text-secondary">' + t('admin_user.no_users_found') + '</p>' + adminUserPaginationHtml(0, totalPages);
 }
 
 function adminUserPaginationHtml(totalMatches, totalPages) {
-    return '<div class="admin-pagination admin-pagination-section-only">' +
-        '<div class="admin-pagination-nav">' +
-            '<span class="admin-pagination-nav-btn' + (adminUserPage <= 1 ? ' disabled' : '') + '" onclick="' + (adminUserPage > 1 ? 'goToAdminUserPage(-1);' : '') + '"><i class="material-icons-round">chevron_left</i></span>' +
-            '<span class="admin-pagination-page">' + (totalMatches === 0 ? t('admin_user.zero_users') : t('common.page_of', { page: adminUserPage, total: totalPages })) + '</span>' +
-            '<span class="admin-pagination-nav-btn' + (adminUserPage >= totalPages ? ' disabled' : '') + '" onclick="' + (adminUserPage < totalPages ? 'goToAdminUserPage(1);' : '') + '"><i class="material-icons-round">chevron_right</i></span>' +
-        '</div>' +
+    return '<div class="d-flex align-items-center justify-content-center gap-3 mt-2">' +
+        '<button type="button" class="btn btn-sm btn-outline-secondary" ' + (adminUserPage <= 1 ? 'disabled' : '') + ' onclick="' + (adminUserPage > 1 ? 'goToAdminUserPage(-1);' : '') + '"><i class="bi bi-chevron-left"></i></button>' +
+        '<span class="small text-secondary">' + (totalMatches === 0 ? t('admin_user.zero_users') : t('common.page_of', { page: adminUserPage, total: totalPages })) + '</span>' +
+        '<button type="button" class="btn btn-sm btn-outline-secondary" ' + (adminUserPage >= totalPages ? 'disabled' : '') + ' onclick="' + (adminUserPage < totalPages ? 'goToAdminUserPage(1);' : '') + '"><i class="bi bi-chevron-right"></i></button>' +
+        '</div>';
+}
+
+function formCheckRow(id, checked, label) {
+    return '<div class="form-check form-switch mb-2">' +
+        '<input class="form-check-input" type="checkbox" role="switch" id="' + id + '"' + (checked ? ' checked' : '') + '>' +
+        '<label class="form-check-label" for="' + id + '">' + label + '</label>' +
         '</div>';
 }
 
@@ -292,79 +288,61 @@ function userFormHtml(u) {
 
     var saveCall = u.id === null ? 'saveNewUser()' : 'saveEditedUser(' + u.id + ')';
     var hint = u.id === null
-        ? '<p class="hint">' + t('admin_user.invite_hint') + '</p>'
+        ? '<p class="text-secondary small">' + t('admin_user.invite_hint') + '</p>'
         : '';
     setUserAdminHeader(u.id === null ? t('admin_user.new_user') : t('admin_user.edit_user'), closeUserForm, '');
 
     return '<div class="admin-user-form">' +
         hint +
-        '<div class="adminFormRow">' +
-            '<div class="adminFormLabel"><label for="userFormUsername">' + t('admin_user.username_label') + '</label></div>' +
-            '<div class="adminFormField"><input id="userFormUsername" type="text" value="' + escapeHTML(u.username) + '"></div>' +
+        '<div class="mb-3">' +
+            '<label for="userFormUsername" class="form-label">' + t('admin_user.username_label') + '</label>' +
+            '<input id="userFormUsername" type="text" class="form-control" value="' + escapeHTML(u.username) + '">' +
         '</div>' +
-        '<div class="adminFormRow">' +
-            '<div class="adminFormLabel"><label for="userFormEmail">' + t('admin_user.email_label') + '</label></div>' +
-            '<div class="adminFormField"><input id="userFormEmail" type="email" value="' + escapeHTML(u.email || '') + '"></div>' +
+        '<div class="mb-3">' +
+            '<label for="userFormEmail" class="form-label">' + t('admin_user.email_label') + '</label>' +
+            '<input id="userFormEmail" type="email" class="form-control" value="' + escapeHTML(u.email || '') + '">' +
         '</div>' +
-        '<div class="adminFormRow">' +
-            '<div class="adminFormLabel"><label for="userFormFirstname">' + t('admin_user.firstname_label') + '</label></div>' +
-            '<div class="adminFormField"><input id="userFormFirstname" type="text" value="' + escapeHTML(u.firstname || '') + '"></div>' +
+        '<div class="mb-3">' +
+            '<label for="userFormFirstname" class="form-label">' + t('admin_user.firstname_label') + '</label>' +
+            '<input id="userFormFirstname" type="text" class="form-control" value="' + escapeHTML(u.firstname || '') + '">' +
         '</div>' +
-        '<div class="adminFormRow">' +
-            '<div class="adminFormLabel"><label for="userFormLastname">' + t('admin_user.lastname_label') + '</label></div>' +
-            '<div class="adminFormField"><input id="userFormLastname" type="text" value="' + escapeHTML(u.lastname || '') + '"></div>' +
+        '<div class="mb-3">' +
+            '<label for="userFormLastname" class="form-label">' + t('admin_user.lastname_label') + '</label>' +
+            '<input id="userFormLastname" type="text" class="form-control" value="' + escapeHTML(u.lastname || '') + '">' +
         '</div>' +
-        '<div class="adminFormRow adminFormRowCheckbox">' +
-            '<div class="adminFormField"><input id="userFormIsAdmin" type="checkbox"' + (u.is_admin ? ' checked' : '') + '><label for="userFormIsAdmin"><span></span></label></div>' +
-            '<div class="adminFormLabel"><label for="userFormIsAdmin">' + t('admin_user.admin_label') + '</label></div>' +
-        '</div>' +
-        '<p class="nav-field-label">' + t('admin_user.tour_rights_label') + '</p>' +
-        '<div class="adminFormRow adminFormRowCheckbox">' +
-            '<div class="adminFormField"><input id="userFormTourCreate" type="checkbox"' + (u.tour_create ? ' checked' : '') + '><label for="userFormTourCreate"><span></span></label></div>' +
-            '<div class="adminFormLabel"><label for="userFormTourCreate">' + t('admin_user.tour_create_label') + '</label></div>' +
-        '</div>' +
-        '<div class="adminFormRow adminFormRowCheckbox">' +
-            '<div class="adminFormField"><input id="userFormTourPublish" type="checkbox"' + (u.tour_publish ? ' checked' : '') + '><label for="userFormTourPublish"><span></span></label></div>' +
-            '<div class="adminFormLabel"><label for="userFormTourPublish">' + t('admin_user.tour_publish_label') + '</label></div>' +
-        '</div>' +
-        '<div class="adminFormRow adminFormRowCheckbox">' +
-            '<div class="adminFormField"><input id="userFormTourManage" type="checkbox"' + (u.tour_manage ? ' checked' : '') + '><label for="userFormTourManage"><span></span></label></div>' +
-            '<div class="adminFormLabel"><label for="userFormTourManage">' + t('admin_user.tour_manage_label') + '</label></div>' +
-        '</div>' +
-        '<div class="adminFormRow adminFormRowCheckbox">' +
-            '<div class="adminFormField"><input id="userFormTourCopy" type="checkbox"' + (u.tour_copy ? ' checked' : '') + '><label for="userFormTourCopy"><span></span></label></div>' +
-            '<div class="adminFormLabel"><label for="userFormTourCopy">' + t('admin_user.tour_copy_label') + '</label></div>' +
-        '</div>' +
-        '<p class="nav-field-label">' + t('admin_user.other_rights_label') + '</p>' +
-        '<div class="adminFormRow adminFormRowCheckbox">' +
-            '<div class="adminFormField"><input id="userFormRouteViewRecording" type="checkbox"' + (u.route_view_recording ? ' checked' : '') + '><label for="userFormRouteViewRecording"><span></span></label></div>' +
-            '<div class="adminFormLabel"><label for="userFormRouteViewRecording">' + t('admin_user.route_view_recording_label') + '</label></div>' +
-        '</div>' +
-        '<div class="adminFormRow">' +
-            '<div class="adminFormLabel">&nbsp;</div>' +
-            '<div class="adminFormField">' +
-                '<button id="userFormSaveBtn" class="button" type="button" onclick="' + saveCall + '">' + t('common.save') + '</button>&nbsp;' +
-                '<button class="button" type="button" onclick="closeUserForm();">' + t('common.cancel') + '</button>' +
-            '</div>' +
+        formCheckRow('userFormIsAdmin', u.is_admin, t('admin_user.admin_label')) +
+        '<p class="fw-bold small text-secondary mt-3 mb-2">' + t('admin_user.tour_rights_label') + '</p>' +
+        formCheckRow('userFormTourCreate', u.tour_create, t('admin_user.tour_create_label')) +
+        formCheckRow('userFormTourPublish', u.tour_publish, t('admin_user.tour_publish_label')) +
+        formCheckRow('userFormTourManage', u.tour_manage, t('admin_user.tour_manage_label')) +
+        formCheckRow('userFormTourCopy', u.tour_copy, t('admin_user.tour_copy_label')) +
+        '<p class="fw-bold small text-secondary mt-3 mb-2">' + t('admin_user.other_rights_label') + '</p>' +
+        formCheckRow('userFormRouteViewRecording', u.route_view_recording, t('admin_user.route_view_recording_label')) +
+        '<div class="mt-3">' +
+            '<button id="userFormSaveBtn" class="btn btn-primary" type="button" onclick="' + saveCall + '">' + t('common.save') + '</button>&nbsp;' +
+            '<button class="btn btn-outline-secondary" type="button" onclick="closeUserForm();">' + t('common.cancel') + '</button>' +
         '</div>' +
         '</div>';
 }
 
 function showUserCreateForm() {
     document.getElementById('useradminmenu-form').innerHTML = userFormHtml(null);
+    showUserFormView();
 }
 
 function editUserRow(id) {
     Ytan.get('/users/' + id).then(answer => {
         document.getElementById('useradminmenu-form').innerHTML = userFormHtml(answer.data);
+        showUserFormView();
     }).catch(err => {
-        showToast(t('admin_user.loading_user_failed', { error: err.message }), 'error');
+        showAdminToast(t('admin_user.loading_user_failed', { error: err.message }), 'error');
     });
 }
 
 function closeUserForm() {
     document.getElementById('useradminmenu-form').innerHTML = '';
-    setUserAdminHeader(t('admin_user.title'), closeUserAdminMenu, USER_ADMIN_NEW_BUTTON_HTML);
+    setUserAdminHeader(t('admin_user.title'), null, USER_ADMIN_NEW_BUTTON_HTML);
+    showUserList();
 }
 
 function readUserForm() {
@@ -388,9 +366,10 @@ function saveNewUser() {
     Ytan.post('/users', readUserForm()).then(() => {
         closeUserForm();
         loadUserList();
+        showAdminToast(t('common.saved'), 'success');
     }).catch(err => {
         document.getElementById('userFormSaveBtn').disabled = false;
-        showToast(t('common.save_failed', { error: err.message }), 'error');
+        showAdminToast(t('common.save_failed', { error: err.message }), 'error');
     });
 }
 
@@ -400,21 +379,23 @@ function saveEditedUser(id) {
     Ytan.put('/users/' + id, readUserForm()).then(() => {
         closeUserForm();
         loadUserList();
+        showAdminToast(t('common.saved'), 'success');
     }).catch(err => {
         document.getElementById('userFormSaveBtn').disabled = false;
-        showToast(t('common.save_failed', { error: err.message }), 'error');
+        showAdminToast(t('common.save_failed', { error: err.message }), 'error');
     });
 }
 
-async function deleteUserRow(id) {
-    if (!(await showConfirmDialog(t('admin_user.confirm_delete_user'), { type: 'danger', confirmLabel: t('common.delete') }))) {
+function deleteUserRow(id) {
+    if (!window.confirm(t('admin_user.confirm_delete_user'))) {
         return;
     }
 
     Ytan.del('/users/' + id).then(() => {
         loadUserList();
+        showAdminToast(t('common.saved'), 'success');
     }).catch(err => {
-        showToast(t('common.delete_failed', { error: err.message }), 'error');
+        showAdminToast(t('common.delete_failed', { error: err.message }), 'error');
     });
 }
 
@@ -428,20 +409,18 @@ function showSetPasswordForm(id, username) {
 
     document.getElementById('useradminmenu-form').innerHTML =
         '<div class="admin-user-form">' +
-        '<div class="adminFormRow">' +
-            '<div class="adminFormLabel"><label for="setPasswordNew">' + t('admin_user.new_password_label') + '</label></div>' +
-            '<div class="adminFormField"><input id="setPasswordNew" type="password" autocomplete="new-password"></div>' +
+        '<div class="mb-3">' +
+            '<label for="setPasswordNew" class="form-label">' + t('admin_user.new_password_label') + '</label>' +
+            '<input id="setPasswordNew" type="password" class="form-control" autocomplete="new-password">' +
         '</div>' +
-        '<div id="setPasswordMessage"></div>' +
-        '<div class="adminFormRow">' +
-            '<div class="adminFormLabel">&nbsp;</div>' +
-            '<div class="adminFormField">' +
-                '<button id="setPasswordSaveBtn" class="button" type="button" onclick="submitSetPassword(' + id + ');">' + t('common.save') + '</button>&nbsp;' +
-                '<button class="button" type="button" onclick="closeUserForm();">' + t('common.cancel') + '</button>' +
-            '</div>' +
+        '<div id="setPasswordMessage" class="text-danger small mb-2"></div>' +
+        '<div>' +
+            '<button id="setPasswordSaveBtn" class="btn btn-primary" type="button" onclick="submitSetPassword(' + id + ');">' + t('common.save') + '</button>&nbsp;' +
+            '<button class="btn btn-outline-secondary" type="button" onclick="closeUserForm();">' + t('common.cancel') + '</button>' +
         '</div>' +
         '</div>'
     ;
+    showUserFormView();
 }
 
 function submitSetPassword(id) {
@@ -452,21 +431,21 @@ function submitSetPassword(id) {
     Ytan.put('/users/' + id + '/password', { password: password }).then(() => {
         closeUserForm();
         loadUserList();
+        showAdminToast(t('common.saved'), 'success');
     }).catch(err => {
         document.getElementById('setPasswordSaveBtn').disabled = false;
-        message.style.color = '#b3261e';
         message.textContent = err.message;
     });
 }
 
-async function sendResetEmailRow(id) {
-    if (!(await showConfirmDialog(t('admin_user.confirm_send_reset'), { type: 'default', confirmLabel: t('admin_user.send') }))) {
+function sendResetEmailRow(id) {
+    if (!window.confirm(t('admin_user.confirm_send_reset'))) {
         return;
     }
 
     Ytan.post('/users/' + id + '/send-reset').then(() => {
-        showToast(t('admin_user.reset_email_sent'), 'success');
+        showAdminToast(t('admin_user.reset_email_sent'), 'success');
     }).catch(err => {
-        showToast(t('admin_user.sending_reset_failed', { error: err.message }), 'error');
+        showAdminToast(t('admin_user.sending_reset_failed', { error: err.message }), 'error');
     });
 }

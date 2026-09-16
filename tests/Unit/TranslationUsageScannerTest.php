@@ -56,6 +56,23 @@ final class TranslationUsageScannerTest extends TestCase
         $this->assertSame([['file' => 'templates/fake.php', 'line' => 1]], $usage['app.nav.pois']);
     }
 
+    /**
+     * templates/partials/ (the shared /admin/* page shell) is one
+     * directory level deeper than the plain templates/*.php a naive glob()
+     * would find - real regression caught during the AdminLTE rebuild,
+     * where every key only used in admin-shell-header.php silently showed
+     * up as "not referenced anywhere" in the translate tool.
+     */
+    public function testFindsAPhpCallSiteInsideTemplatesPartialsSubdirectory(): void
+    {
+        mkdir($this->rootDir . '/templates/partials', 0777, true);
+        file_put_contents($this->rootDir . '/templates/partials/admin-shell-header.php', "<?= \$t('admin.nav.dashboard') ?>\n");
+
+        $usage = (new TranslationUsageScanner($this->rootDir))->scan();
+
+        $this->assertSame([['file' => 'templates/partials/admin-shell-header.php', 'line' => 1]], $usage['admin.nav.dashboard']);
+    }
+
     public function testARepeatedKeyInOneFileRecordsEveryOccurrence(): void
     {
         file_put_contents($this->rootDir . '/public/js/fake.js', "t('common.cancel');\nt('common.cancel');\n");

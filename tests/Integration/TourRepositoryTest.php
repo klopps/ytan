@@ -50,6 +50,18 @@ final class TourRepositoryTest extends TestCase
         $this->assertSame(1, (int) $updated['public'], 'update() must not have unpublished the tour');
     }
 
+    public function testCountAllAndCountPublicCoverBothVisibilities(): void
+    {
+        $userId = $this->createUser();
+        $tourA = $this->tours->create($userId, ['name' => 'A']);
+        $this->tours->create($userId, ['name' => 'B']);
+        $this->tours->create($userId, ['name' => 'C']);
+        $this->tours->setPublished((int) $tourA['id'], true, $userId);
+
+        $this->assertSame(3, $this->tours->countAll());
+        $this->assertSame(1, $this->tours->countPublic());
+    }
+
     public function testSetPublishedRecordsWhoAndWhen(): void
     {
         $userId = $this->createUser();

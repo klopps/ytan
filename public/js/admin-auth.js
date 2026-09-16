@@ -41,9 +41,16 @@ function initAdminAuth(options) {
     function showContent(userData) {
         document.getElementById('loginBox').hidden = true;
         document.getElementById(contentId).hidden = false;
+        if (window.adminOnAuthenticated) {
+            window.adminOnAuthenticated(userData);
+        }
         if (onReady) {
             onReady(userData);
         }
+    }
+
+    function notAdminMessage() {
+        return typeof t === 'function' ? t('admin.login.not_admin') : 'Signed in, but this account is not an admin.';
     }
 
     window.submitAdminLogin = async function () {
@@ -55,7 +62,7 @@ function initAdminAuth(options) {
         try {
             var answer = await Ytan.post('/auth/login', { username: username, password: password });
             if (!answer.user.is_admin) {
-                message.textContent = 'Signed in, but this account is not an admin.';
+                message.textContent = notAdminMessage();
                 return;
             }
             Ytan.setToken(answer.token);
@@ -89,7 +96,7 @@ function initAdminAuth(options) {
         try {
             var me = await Ytan.get('/auth/me');
             if (!me.data.is_admin) {
-                showLogin('Signed in, but this account is not an admin.');
+                showLogin(notAdminMessage());
                 return;
             }
             showContent({

@@ -40,6 +40,16 @@ final class AreaRepositoryTest extends TestCase
         $this->assertSame(2, $this->areas->countPublic());
     }
 
+    public function testCountAllIncludesPublicAndPrivateAreas(): void
+    {
+        $userId = $this->createUser();
+        $this->createArea($userId, ['public' => 1]);
+        $this->createArea($userId, ['public' => 0]);
+        $this->createArea($userId, ['public' => 0]);
+
+        $this->assertSame(3, $this->areas->countAll());
+    }
+
     public function testFindPublicLimitAndOffsetPageThroughResultsWithoutOverlap(): void
     {
         $userId = $this->createUser();

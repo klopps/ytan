@@ -23,6 +23,11 @@ final class AreaRepository
         return (int) $this->db->query('SELECT COUNT(*) FROM area WHERE public = 1')->fetchColumn();
     }
 
+    public function countAll(): int
+    {
+        return (int) $this->db->query('SELECT COUNT(*) FROM area')->fetchColumn();
+    }
+
     public function findByUser(int $userId, ?int $limit = null, int $offset = 0): array
     {
         $stmt = $this->db->prepare('SELECT * FROM area WHERE user_id = ? ORDER BY id' . $this->limitSuffix($limit, $offset));

@@ -45,6 +45,17 @@ final class RouteRepositoryTest extends TestCase
         $this->assertSame(2, $routes->countPublic());
     }
 
+    public function testCountAllIncludesPublicAndPrivateRoutes(): void
+    {
+        $routes = new RouteRepository($this->pdo);
+        $userId = $this->createUser();
+        $this->createRoute($userId, ['public' => 1]);
+        $this->createRoute($userId, ['public' => 0]);
+        $this->createRoute($userId, ['public' => 0]);
+
+        $this->assertSame(3, $routes->countAll());
+    }
+
     public function testFindPublicLimitAndOffsetPageThroughResultsWithoutOverlap(): void
     {
         $routes = new RouteRepository($this->pdo);

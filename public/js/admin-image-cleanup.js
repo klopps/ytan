@@ -28,73 +28,65 @@ function formatBytes(bytes) {
 }
 
 async function scan() {
-    document.getElementById('cleanupContent').innerHTML = '<p>Scanning…</p>';
+    document.getElementById('cleanupContent').innerHTML = '<p>' + t('admin.image_cleanup.scanning') + '</p>';
     try {
         var answer = await Ytan.get('/admin/image-orphans');
         state.orphanedFiles = answer.data.orphaned_files;
         state.danglingRows = answer.data.dangling_rows;
         render();
     } catch (err) {
-        document.getElementById('cleanupContent').innerHTML = '<p class="errorText">Scan failed: ' + escapeHtml(err.message) + '</p>';
+        document.getElementById('cleanupContent').innerHTML = '<p class="text-danger">' + t('admin.image_cleanup.scan_failed', { error: err.message }) + '</p>';
     }
+}
+
+function renderSection(items, kind, titleKey, hintKey, hasSize) {
+    var html = '<div class="card mb-4">' +
+        '<div class="card-header d-flex justify-content-between align-items-center">' +
+            '<div>' +
+                '<h2 class="h6 mb-1">' + t(titleKey, { count: items.length }) + '</h2>' +
+                '<p class="text-secondary small mb-0">' + t(hintKey) + '</p>' +
+            '</div>' +
+            '<button type="button" class="btn btn-danger btn-sm" onclick="deleteSelected(\'' + kind + '\');">' + t('admin.image_cleanup.delete_selected') + '</button>' +
+        '</div>' +
+        '<div class="table-responsive">' +
+        '<table class="table table-sm table-hover align-middle mb-0">' +
+        '<thead><tr>' +
+            '<th style="width:2.5rem;"><input type="checkbox" class="form-check-input" onchange="toggleAll(\'' + kind + '\', this.checked);"></th>' +
+            '<th>' + t('admin.image_cleanup.col_type') + '</th>' +
+            '<th>' + t('admin.image_cleanup.col_id') + '</th>' +
+            '<th>' + t('admin.image_cleanup.col_filename') + '</th>' +
+            (hasSize ? '<th>' + t('admin.image_cleanup.col_size') + '</th>' : '') +
+        '</tr></thead><tbody>';
+
+    items.forEach(function (item, index) {
+        html += '<tr>' +
+            '<td><input type="checkbox" class="form-check-input ' + kind + 'Checkbox" data-index="' + index + '"></td>' +
+            '<td class="text-capitalize">' + escapeHtml(item.type) + '</td>' +
+            '<td>#' + item.entity_id + '</td>' +
+            '<td class="font-monospace small text-break">' + escapeHtml(item.filename) + '</td>' +
+            (hasSize ? '<td class="text-nowrap">' + formatBytes(item.size_bytes) + '</td>' : '') +
+        '</tr>';
+    });
+
+    html += '</tbody></table></div></div>';
+    return html;
 }
 
 function render() {
     var container = document.getElementById('cleanupContent');
 
     if (state.orphanedFiles.length === 0 && state.danglingRows.length === 0) {
-        container.innerHTML = '<p id="emptyState">No orphaned images found.</p>';
+        container.innerHTML = '<p id="emptyState" class="text-secondary">' + t('admin.image_cleanup.empty') + '</p>';
         return;
     }
 
-    var totalBytes = state.orphanedFiles.reduce(function (sum, f) { return sum + f.size_bytes; }, 0);
     var html = '';
-
     if (state.orphanedFiles.length > 0) {
-        html += '<section class="cleanupSection">' +
-            '<h2>Orphaned files (' + state.orphanedFiles.length + ', ' + formatBytes(totalBytes) + ')</h2>' +
-            '<p class="cleanupHint">Files on disk with no matching database row - safe to delete, nothing references them.</p>' +
-            '<div class="cleanupActions">' +
-                '<label><input type="checkbox" onchange="toggleAll(\'file\', this.checked);"> Select all</label>' +
-                '<button type="button" class="button" onclick="deleteSelected(\'file\');">Delete selected</button>' +
-            '</div>' +
-            '<ul class="cleanupList">';
-        state.orphanedFiles.forEach(function (item, index) {
-            html += '<li>' +
-                '<label>' +
-                    '<input type="checkbox" class="fileCheckbox" data-index="' + index + '">' +
-                    '<span class="cleanupType">' + escapeHtml(item.type) + '</span>' +
-                    '<span class="cleanupId">#' + item.entity_id + '</span>' +
-                    '<span class="cleanupFilename">' + escapeHtml(item.filename) + '</span>' +
-                    '<span class="cleanupSize">' + formatBytes(item.size_bytes) + '</span>' +
-                '</label>' +
-            '</li>';
-        });
-        html += '</ul></section>';
+        html += renderSection(state.orphanedFiles, 'file', 'admin.image_cleanup.orphaned_files_title', 'admin.image_cleanup.orphaned_files_hint', true);
     }
-
     if (state.danglingRows.length > 0) {
-        html += '<section class="cleanupSection">' +
-            '<h2>Dangling DB rows (' + state.danglingRows.length + ')</h2>' +
-            '<p class="cleanupHint">Database rows whose file is missing on disk - would only ever 404 if served.</p>' +
-            '<div class="cleanupActions">' +
-                '<label><input type="checkbox" onchange="toggleAll(\'row\', this.checked);"> Select all</label>' +
-                '<button type="button" class="button" onclick="deleteSelected(\'row\');">Delete selected</button>' +
-            '</div>' +
-            '<ul class="cleanupList">';
-        state.danglingRows.forEach(function (item, index) {
-            html += '<li>' +
-                '<label>' +
-                    '<input type="checkbox" class="rowCheckbox" data-index="' + index + '">' +
-                    '<span class="cleanupType">' + escapeHtml(item.type) + '</span>' +
-                    '<span class="cleanupId">#' + item.entity_id + '</span>' +
-                    '<span class="cleanupFilename">' + escapeHtml(item.filename) + '</span>' +
-                '</label>' +
-            '</li>';
-        });
-        html += '</ul></section>';
+        html += renderSection(state.danglingRows, 'row', 'admin.image_cleanup.dangling_rows_title', 'admin.image_cleanup.dangling_rows_hint', false);
     }
-
     container.innerHTML = html;
 }
 
@@ -112,8 +104,7 @@ async function deleteSelected(kind) {
     if (indexes.length === 0) {
         return;
     }
-    var noun = kind === 'file' ? 'orphaned file(s)' : 'dangling row(s)';
-    if (!window.confirm('Delete ' + indexes.length + ' ' + noun + '? This cannot be undone.')) {
+    if (!window.confirm(t('admin.image_cleanup.confirm_delete', { count: indexes.length }))) {
         return;
     }
 
@@ -130,9 +121,10 @@ async function deleteSelected(kind) {
         state.orphanedFiles = answer.data.orphaned_files;
         state.danglingRows = answer.data.dangling_rows;
         render();
+        showAdminToast(t('common.saved'), 'success');
     } catch (err) {
-        window.alert('Delete failed: ' + err.message);
+        showAdminToast(t('common.delete_failed', { error: err.message }), 'error');
     }
 }
 
-initAdminAuth({ contentId: 'cleanupPage', onReady: scan });
+initAdminAuth({ contentId: 'adminAppWrapper', onReady: scan });

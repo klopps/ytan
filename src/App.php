@@ -100,12 +100,19 @@ final class App
         $routeController = new RouteController($routeRepository, $tourRepository, $captchaService, $tourNotificationService, $routeImageService);
         $tourController = new TourController($tourRepository, $tourImageService);
         $areaController = new AreaController($areaRepository, $areaImageService);
-        $adminController = new AdminController(new ImageReconciliationService([
-            'tour' => ['repository' => $tourRepository, 'images' => $tourImageService],
-            'poi' => ['repository' => $poiRepository, 'images' => $poiImageService],
-            'route' => ['repository' => $routeRepository, 'images' => $routeImageService],
-            'area' => ['repository' => $areaRepository, 'images' => $areaImageService],
-        ]));
+        $adminController = new AdminController(
+            new ImageReconciliationService([
+                'tour' => ['repository' => $tourRepository, 'images' => $tourImageService],
+                'poi' => ['repository' => $poiRepository, 'images' => $poiImageService],
+                'route' => ['repository' => $routeRepository, 'images' => $routeImageService],
+                'area' => ['repository' => $areaRepository, 'images' => $areaImageService],
+            ]),
+            $poiRepository,
+            $routeRepository,
+            $areaRepository,
+            $tourRepository,
+            $userRepository,
+        );
         $authController = new AuthController($authService, $userRepository, $mailService, $appUrl);
         $userController = new UserController($userRepository, $mailService, $authService, $appUrl);
         $wsiController = new WsiController(new WsiRenderer($rootDir . '/public/images/wsi'));
@@ -320,24 +327,25 @@ final class App
             return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
         });
 
-        // Standalone admin tools menu (templates/admin.php, public/js/
-        // admin.js) - same self-contained login-gate pattern as the
-        // translation editor below (own login form, checks GET /auth/me's
-        // is_admin client-side; never part of the main SPA's script chain).
-        // Always registered, unlike the translate tool's extra opt-in flag
-        // below - this page itself has no risky capability of its own, it
-        // only links to tools that carry their own gating/flags. New admin
-        // tools should be added as their own route + menu entry here, not
-        // as a growing pile of unrelated features crammed into one page.
-        $app->get('/admin', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $settingsRepository) {
+        // All five /admin/* pages below share one AdminLTE shell
+        // (templates/partials/admin-shell-header.php/-footer.php) - each
+        // route computes $logLevel/$t/$translateToolEnabled (needed by the
+        // shell's sidebar on every page, not just this one) plus its own
+        // page-specific data, then requires its own thin template. New
+        // admin tools should be added as their own route + template + one
+        // entry in admin-shell-header.php's $adminNavItems array, not as a
+        // growing pile of unrelated features crammed into one page.
+        $app->get('/admin', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
             ob_start();
+            $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
+            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
             $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
-            $googleSearchRequiresLogin = $settingsRepository->googleSearchRequiresLogin();
             require $rootDir . '/templates/admin.php';
             $res->getBody()->write(ob_get_clean());
 
             return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
         });
+        $app->get('/api/v1/admin/dashboard-stats', [$adminController, 'dashboardStats']);
 
         // User management, moved out of the main SPA's drawer
         // (templates/admin-users.php, public/js/admin-users.js) - loads a
@@ -350,6 +358,7 @@ final class App
             ob_start();
             $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
             $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
+            $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
             require $rootDir . '/templates/admin-users.php';
             $res->getBody()->write(ob_get_clean());
 
@@ -368,8 +377,11 @@ final class App
         // (JWTs are valid for 10 years by default - see JWT_TTL_SECONDS).
         // Reachable via the /admin menu above, hence the nested path.
         if (($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true') {
-            $app->get('/admin/translate', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl) {
+            $app->get('/admin/translate', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
                 ob_start();
+                $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
+                $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
+                $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
                 require $rootDir . '/templates/translate.php';
                 $res->getBody()->write(ob_get_clean());
 
@@ -386,8 +398,11 @@ final class App
         // AdminController's own doc comment): unlike the translate tool,
         // this action by construction only ever touches already-orphaned
         // files/rows, so the standard requireAdmin() gate is enough.
-        $app->get('/admin/image-cleanup', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl) {
+        $app->get('/admin/image-cleanup', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
             ob_start();
+            $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
+            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
+            $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
             require $rootDir . '/templates/admin-image-cleanup.php';
             $res->getBody()->write(ob_get_clean());
 
@@ -395,6 +410,21 @@ final class App
         });
         $app->get('/api/v1/admin/image-orphans', [$adminController, 'scanImageOrphans']);
         $app->post('/api/v1/admin/image-orphans/delete', [$adminController, 'deleteImageOrphans']);
+
+        // Site-wide settings (currently just "Google search requires
+        // login") - its own page so future settings have somewhere to go
+        // without growing the dashboard into a dumping ground.
+        $app->get('/admin/settings', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator, $settingsRepository) {
+            ob_start();
+            $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
+            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
+            $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
+            $googleSearchRequiresLogin = $settingsRepository->googleSearchRequiresLogin();
+            require $rootDir . '/templates/admin-settings.php';
+            $res->getBody()->write(ob_get_clean());
+
+            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
+        });
 
         return $app;
     }

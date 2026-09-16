@@ -35,6 +35,11 @@ final class RouteRepository
         return (int) $this->db->query('SELECT COUNT(*) FROM route WHERE public = 1')->fetchColumn();
     }
 
+    public function countAll(): int
+    {
+        return (int) $this->db->query('SELECT COUNT(*) FROM route')->fetchColumn();
+    }
+
     public function findByUser(int $userId, ?int $limit = null, int $offset = 0): array
     {
         $stmt = $this->db->prepare(self::SELECT_WITH_RECORDER . ' WHERE route.user_id = ? ORDER BY route.id' . $this->limitSuffix($limit, $offset));

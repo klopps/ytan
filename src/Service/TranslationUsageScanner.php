@@ -52,11 +52,21 @@ final class TranslationUsageScanner
     }
 
     /**
+     * Includes templates/partials/*.php (the shared /admin/* page shell,
+     * templates/partials/admin-shell-header.php in particular, is the only
+     * current occupant) alongside the top-level templates/*.php - a plain
+     * glob('templates/*.php') doesn't descend into subdirectories, which
+     * silently made every t()/$t() call in that one file show up as
+     * "not referenced anywhere" here despite being real, live usage.
+     *
      * @return list<string>
      */
     private function phpFiles(): array
     {
-        return glob($this->rootDir . '/templates/*.php') ?: [];
+        return array_merge(
+            glob($this->rootDir . '/templates/*.php') ?: [],
+            glob($this->rootDir . '/templates/partials/*.php') ?: [],
+        );
     }
 
     /**
