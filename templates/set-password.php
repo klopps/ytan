@@ -6,7 +6,16 @@
     <meta charset="utf-8" />
     <script>window.YTAN_TRANSLATIONS = <?= json_encode($translator->all(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;</script>
     <script src="<?= $baseUrl ?>/js/i18n.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/i18n.js') ?>"></script>
+    <!-- helper.js just for togglePasswordVisibility() (the show/hide-password
+         toggle, shared with the main SPA) - pulls in a lot of unrelated map/
+         route helpers too, but that's a few KB and avoids a third copy of
+         the toggle logic living only here. -->
+    <script src="<?= $baseUrl ?>/js/helper.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/helper.js') ?>"></script>
     <link rel="stylesheet" type="text/css" href="<?= $baseUrl ?>/css/style.css?v=<?= \Ytan\App::assetVersion($rootDir, '/css/style.css') ?>" />
+    <!-- Needed for the show/hide-password toggle's eye icon
+         (.material-icons-round) - app.php loads this too but this
+         standalone page otherwise doesn't need it. -->
+    <link rel="stylesheet" type="text/css" href="<?= $baseUrl ?>/css/fonts.css?v=<?= \Ytan\App::assetVersion($rootDir, '/css/fonts.css') ?>" />
     <link rel="shortcut icon" href="<?= $baseUrl ?>/favicon.ico">
     <style>
         body { background-color: #f3f4f8; }
@@ -27,12 +36,17 @@
            visually collides with the input next to it. */
         #setPasswordBox .leftCol { width: 100%; float: none; margin-bottom: 4px; }
         #setPasswordBox .rightCol { width: 100%; }
-        #setPasswordBox input[type="password"] {
+        /* Not input[type="password"] - the show/hide toggle switches the
+           input's type to "text" while revealed, which would otherwise
+           drop all of this styling right when it's toggled. */
+        #setPasswordBox .password-input-wrapper input {
             width: calc(100% - 16px);
+            box-sizing: border-box;
             border: 1px solid #d8d8e2;
             border-radius: 6px;
-            padding: 6px 7px;
+            padding: 6px 30px 6px 7px;
         }
+        #setPasswordBox .password-toggle-btn { right: 6px; }
         #setPasswordMessage { color: #b3261e; margin: 10px 0; font-size: 13px; }
     </style>
 </head>
@@ -42,11 +56,17 @@
         <p><?= $t('setpw.subtitle') ?></p>
         <div class="infoWindowElement">
             <div class="leftCol"><label for="password"><?= $t('setpw.password_label') ?> </label></div>
-            <div class="rightCol"><input id="password" type="password" autocomplete="new-password"></div>
+            <div class="rightCol"><div class="password-input-wrapper">
+                <input id="password" type="password" autocomplete="new-password">
+                <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('password', this);" aria-label="<?= htmlspecialchars($t('common.show_password'), ENT_QUOTES) ?>"><i class="material-icons-round">visibility</i></button>
+            </div></div>
         </div>
         <div class="infoWindowElement">
             <div class="leftCol"><label for="passwordConfirm"><?= $t('setpw.confirm_label') ?> </label></div>
-            <div class="rightCol"><input id="passwordConfirm" type="password" autocomplete="new-password"></div>
+            <div class="rightCol"><div class="password-input-wrapper">
+                <input id="passwordConfirm" type="password" autocomplete="new-password">
+                <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('passwordConfirm', this);" aria-label="<?= htmlspecialchars($t('common.show_password'), ENT_QUOTES) ?>"><i class="material-icons-round">visibility</i></button>
+            </div></div>
         </div>
         <div id="setPasswordMessage"></div>
         <p>

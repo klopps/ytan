@@ -89,7 +89,10 @@ $adminNavItems = [
                 </div>
                 <div class="mb-3">
                     <label for="loginPassword" class="form-label"><?= $t('admin.login.password') ?></label>
-                    <input id="loginPassword" type="password" class="form-control" autocomplete="current-password">
+                    <div class="input-group">
+                        <input id="loginPassword" type="password" class="form-control" autocomplete="current-password">
+                        <button type="button" class="btn btn-outline-secondary" onclick="togglePasswordVisibility('loginPassword', this);" aria-label="<?= htmlspecialchars($t('common.show_password'), ENT_QUOTES) ?>"><i class="bi bi-eye"></i></button>
+                    </div>
                 </div>
                 <button type="button" class="btn btn-primary d-block w-100" onclick="submitAdminLogin();"><?= $t('admin.login.submit') ?></button>
                 <div id="loginMessage" class="text-danger small mt-2"></div>

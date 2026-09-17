@@ -4054,6 +4054,44 @@ input[type="color"] {
   outline-offset: 1px;
 }
 
+/**
+ * "Show/hide password" toggle (helper.js's passwordToggleButtonHtml()/
+ * togglePasswordVisibility()) - wraps just the <input> (not the whole
+ * .nav-field, which also carries the <label>) so the button can be
+ * absolutely positioned inside it. Also reused as-is by
+ * templates/set-password.php (its own <style> block only adds the
+ * page-specific input width/border there, not this wrapper/button pair).
+ */
+.password-input-wrapper {
+  position: relative;
+}
+
+.password-input-wrapper input {
+  padding-right: 38px;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: var(--color-text-faint);
+  cursor: pointer;
+}
+
+.password-toggle-btn .material-icons-round {
+  font-size: 19px;
+}
+
 .nav-link-small {
   display: block;
   text-align: center;

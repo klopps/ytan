@@ -63,6 +63,7 @@ final class WeatherService
      *     coordinates: array{lat: float, lng: float},
      *     fetched_at: string,
      *     has_marine_data: bool,
+     *     utc_offset_seconds: int,
      *     hourly: list<array<string, mixed>>,
      *     daily: list<array{date: string, sunrise: ?string, sunset: ?string}>
      * }
@@ -84,7 +85,7 @@ final class WeatherService
     }
 
     /**
-     * @return array{coordinates: array{lat: float, lng: float}, fetched_at: string, has_marine_data: bool, hourly: list<array<string, mixed>>, daily: list<array{date: string, sunrise: ?string, sunset: ?string}>}
+     * @return array{coordinates: array{lat: float, lng: float}, fetched_at: string, has_marine_data: bool, utc_offset_seconds: int, hourly: list<array<string, mixed>>, daily: list<array{date: string, sunrise: ?string, sunset: ?string}>}
      */
     private function fetchAndCombine(float $lat, float $lng): array
     {
@@ -107,13 +108,30 @@ final class WeatherService
             'coordinates' => ['lat' => $lat, 'lng' => $lng],
             'fetched_at' => gmdate('c'),
             'has_marine_data' => $hasMarineData,
+            // Open-Meteo's `timezone=auto` resolves the queried coordinate's
+            // own IANA zone and returns every hourly/daily timestamp as a
+            // naive local-time string for THAT location (no UTC offset in
+            // the string itself) - this is what we want for display (a
+            // Danish beach's forecast should show Danish local hours
+            // regardless of where the user's own device happens to be), but
+            // it means the frontend can't just `new Date(hour.time)` and
+            // compare against `new Date()` for a "now" indicator: the
+            // browser parses a naive string using the DEVICE's own
+            // timezone, which only coincidentally matches the forecast
+            // location's timezone. Passing this through lets weather.js
+            // shift its own `Date.now()` reading by this many seconds
+            // before comparing, landing in the same "pretend it's UTC"
+            // reference frame the frontend parses hour.time strings into
+            // (see weather.js's own comment on that trick) - independent of
+            // the device's own timezone setting entirely.
+            'utc_offset_seconds' => $general['utc_offset_seconds'],
             'hourly' => $hourly,
             'daily' => $general['daily'],
         ];
     }
 
     /**
-     * @return array{hourly: array<string, array<string, mixed>>, daily: list<array{date: string, sunrise: ?string, sunset: ?string}>}
+     * @return array{hourly: array<string, array<string, mixed>>, daily: list<array{date: string, sunrise: ?string, sunset: ?string}>, utc_offset_seconds: int}
      *         hourly keyed by ISO time string
      */
     private function fetchGeneralHourly(float $lat, float $lng): array
@@ -157,7 +175,11 @@ final class WeatherService
             }
         }
 
-        return ['hourly' => $result, 'daily' => $dailyResult];
+        return [
+            'hourly' => $result,
+            'daily' => $dailyResult,
+            'utc_offset_seconds' => (int) ($response['utc_offset_seconds'] ?? 0),
+        ];
     }
 
     /**

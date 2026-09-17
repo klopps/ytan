@@ -428,7 +428,10 @@ function showSetPasswordForm(id, username) {
         '<div class="admin-user-form">' +
         '<div class="mb-3">' +
             '<label for="setPasswordNew" class="form-label">' + t('admin_user.new_password_label') + '</label>' +
-            '<input id="setPasswordNew" type="password" class="form-control" autocomplete="new-password">' +
+            '<div class="input-group">' +
+                '<input id="setPasswordNew" type="password" class="form-control" autocomplete="new-password">' +
+                '<button type="button" class="btn btn-outline-secondary" onclick="togglePasswordVisibility(\'setPasswordNew\', this);" aria-label="' + t('common.show_password') + '"><i class="bi bi-eye"></i></button>' +
+            '</div>' +
         '</div>' +
         '<div id="setPasswordMessage" class="text-danger small mb-2"></div>' +
         '<div>' +

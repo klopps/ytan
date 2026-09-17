@@ -26,6 +26,7 @@ final class WeatherServiceTest extends TestCase
         $this->service = new WeatherService($this->cacheDir, $this->httpClient);
 
         $this->httpClient->setResponseFor(self::FORECAST_URL, [
+            'utc_offset_seconds' => 7200,
             'hourly' => [
                 'time' => ['2026-09-12T00:00', '2026-09-12T01:00'],
                 'temperature_2m' => [15.7, 15.2],
@@ -74,6 +75,7 @@ final class WeatherServiceTest extends TestCase
 
         $this->assertSame(['lat' => 54.3, 'lng' => 10.15], $result['coordinates']);
         $this->assertTrue($result['has_marine_data']);
+        $this->assertSame(7200, $result['utc_offset_seconds']);
         $this->assertCount(2, $result['hourly']);
 
         $first = $result['hourly'][0];
@@ -91,6 +93,22 @@ final class WeatherServiceTest extends TestCase
         $this->assertSame('2026-09-12', $result['daily'][0]['date']);
         $this->assertSame('2026-09-12T06:52', $result['daily'][0]['sunrise']);
         $this->assertSame('2026-09-12T19:48', $result['daily'][0]['sunset']);
+    }
+
+    public function testUtcOffsetSecondsDefaultsToZeroWhenTheResponseOmitsIt(): void
+    {
+        $this->httpClient->setResponseFor(self::FORECAST_URL, [
+            'hourly' => [
+                'time' => ['2026-09-12T00:00'],
+                'temperature_2m' => [15.7], 'apparent_temperature' => [14.9],
+                'wind_speed_10m' => [10.0], 'wind_gusts_10m' => [18.0], 'wind_direction_10m' => [193],
+                'precipitation' => [0.0], 'weather_code' => [3],
+            ],
+        ]);
+
+        $result = $this->service->getForecast(54.30, 10.15);
+
+        $this->assertSame(0, $result['utc_offset_seconds']);
     }
 
     public function testDailyIsAnEmptyListWhenTheResponseHasNoDailyBlock(): void

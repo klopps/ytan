@@ -273,9 +273,18 @@ function weatherConditionIcon(code, isNight) {
     return 'ic-cloud';
 }
 
+/**
+ * @param {Date} date A "location-local wall-clock time, encoded as if it
+ *   were UTC" Date - see renderWeatherTimeline()'s comment on `now` for why
+ *   every Date derived from data.hourly[].time/data.daily[].date follows
+ *   this convention. timeZone: 'UTC' here is what makes Intl actually read
+ *   that encoded value back out, instead of reinterpreting it through the
+ *   device's own timezone (which would silently reintroduce the same bug
+ *   this convention exists to avoid).
+ */
 function weatherDayLabel(date) {
-    const dow = new Intl.DateTimeFormat(window.YTAN_LOCALE, { weekday: 'short' }).format(date);
-    return { dow: dow, dom: date.getDate() };
+    const dow = new Intl.DateTimeFormat(window.YTAN_LOCALE, { weekday: 'short', timeZone: 'UTC' }).format(date);
+    return { dow: dow, dom: date.getUTCDate() };
 }
 
 /**
@@ -290,7 +299,7 @@ function groupWeatherHourlyByDay(hourly) {
     hourly.forEach((hour) => {
         const dateKey = hour.time.slice(0, 10);
         if (!current || current.dateKey !== dateKey) {
-            current = { dateKey: dateKey, date: new Date(hour.time.slice(0, 10) + 'T00:00'), hours: [] };
+            current = { dateKey: dateKey, date: new Date(hour.time.slice(0, 10) + 'T00:00Z'), hours: [] };
             days.push(current);
         }
         current.hours.push(hour);
@@ -315,7 +324,28 @@ function renderWeatherTimeline(data, preserveScroll) {
     const dailyByDate = {};
     (data.daily || []).forEach((day) => { dailyByDate[day.date] = day; });
 
-    const now = new Date();
+    // Open-Meteo's timezone=auto gives every hour.time/daily.date string as
+    // a naive LOCAL time at the forecast COORDINATE, not at the device's own
+    // location - new Date("...T12:00") would otherwise be parsed using the
+    // device's own timezone, which only coincidentally matches the forecast
+    // location's (e.g. testing this exact spot from a device whose timezone
+    // isn't Europe/Copenhagen, or simply planning a trip to a place in a
+    // different zone than home - see todo.md for the live report that first
+    // caught this). Convention used everywhere in this file instead:
+    // every Date built from one of these strings gets a "Z" appended, so it
+    // encodes the location's own wall-clock reading as if it were UTC - and
+    // is then always read back via getUTC*(), never the device-timezone
+    // get*() variants. `now` is put into that same frame by shifting the
+    // true current instant (Date.now(), a real UTC epoch, unaffected by the
+    // device's timezone setting) by the forecast location's own UTC offset
+    // (WeatherService::fetchAndCombine()'s utc_offset_seconds) - the result
+    // is directly comparable to every hourDate below despite not actually
+    // being the location's wall-clock Date object per se, only encoded the
+    // same way. `|| 0` covers a leftover pre-this-change cache entry still
+    // on disk (30-minute TTL) that predates this field - falls back to the
+    // old (device-timezone) behavior for just that one stale response
+    // rather than throwing.
+    const now = new Date(Date.now() + (data.utc_offset_seconds || 0) * 1000);
     let previousDateKey = null;
     let cumulativeLeft = 0;
     let prevHourLeft = 0, prevHourTime = null;
@@ -323,7 +353,7 @@ function renderWeatherTimeline(data, preserveScroll) {
     const tidePoints = []; // {x, value} - only collected when has_marine_data, drawn as one continuous curve after the loop
 
     data.hourly.forEach((hour) => {
-        const hourDate = new Date(hour.time);
+        const hourDate = new Date(hour.time + 'Z');
         const dateKey = hour.time.slice(0, 10);
 
         if (dateKey !== previousDateKey) {
@@ -364,6 +394,27 @@ function renderWeatherTimeline(data, preserveScroll) {
         // leaving it unset.
         nowLineLeft = prevHourLeft;
     }
+
+    // A first "now"-line mismatch report (2026-09-17, see todo.md) turned
+    // out NOT to be explained by the device-vs-forecast-location timezone
+    // theory this function's utc_offset_seconds handling was originally
+    // built to fix (confirmed live: the reporting device's own timezone was
+    // already the same GMT+2 as the forecast location). The real cause is
+    // still open - this LOG_DEBUG dump gives the exact numbers needed to
+    // find it next time it's reproduced (open Chrome DevTools remote
+    // debugging against the device, same as the background-geolocation
+    // work - see todo.md - and set logLevel high enough to show LOG_DEBUG),
+    // rather than reasoning from a screenshot again.
+    log('renderWeatherTimeline() now-line inputs', LOG_DEBUG, {
+        device_now_iso: new Date().toISOString(),
+        device_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        device_utc_offset_minutes: -new Date().getTimezoneOffset(),
+        location_utc_offset_seconds: data.utc_offset_seconds,
+        computed_now_encoded: now.toISOString(),
+        first_hour_time: data.hourly[0] ? data.hourly[0].time : null,
+        now_line_left_px: nowLineLeft,
+        hour_col_width_px: WEATHER_HOUR_COL_WIDTH,
+    });
 
     if (tidePoints.length > 1) {
         strip.appendChild(buildWeatherTideCurve(tidePoints, cumulativeLeft));
@@ -407,8 +458,10 @@ function weatherFormatTime(iso) {
     if (!iso) {
         return null;
     }
-    const d = new Date(iso);
-    return pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    // See renderWeatherTimeline()'s comment on the "Z"-encoding convention -
+    // sunrise/sunset are naive location-local strings too.
+    const d = new Date(iso + 'Z');
+    return pad2(d.getUTCHours()) + ':' + pad2(d.getUTCMinutes());
 }
 
 /**
@@ -439,7 +492,7 @@ function buildWeatherHourColumn(hour, hourDate, hasMarineData) {
     const col = document.createElement('div');
     col.className = 'weather-timeline-hour-col';
 
-    const isNight = hourDate.getHours() >= 21 || hourDate.getHours() < 6;
+    const isNight = hourDate.getUTCHours() >= 21 || hourDate.getUTCHours() < 6;
     const icon = weatherConditionIcon(hour.weather_code, isNight);
 
     col.innerHTML =
@@ -519,7 +572,11 @@ function interpolateTideExtremum(points, i) {
 
     const neighbor = t >= 0 ? points[i + 1] : points[i - 1];
     const x = points[i].x + Math.abs(t) * (neighbor.x - points[i].x) * (t >= 0 ? 1 : -1);
-    const timeMs = new Date(points[i].time).getTime() + t * 3600000;
+    // points[i].time is the raw hour.time string (see the tidePoints.push()
+    // call in renderWeatherTimeline()) - "Z"-encoded per that function's
+    // comment, so the returned Date follows the same convention and must be
+    // read back with getUTC*(), not getHours()/getMinutes().
+    const timeMs = new Date(points[i].time + 'Z').getTime() + t * 3600000;
 
     return { x: x, value: value, time: new Date(timeMs) };
 }
@@ -571,7 +628,7 @@ function buildWeatherTideCurve(points, totalWidth) {
         const extremum = interpolateTideExtremum(points, i);
         const x = extremum.x.toFixed(1);
         const y = toY(extremum.value);
-        const timeLabel = pad2(extremum.time.getHours()) + ':' + pad2(extremum.time.getMinutes());
+        const timeLabel = pad2(extremum.time.getUTCHours()) + ':' + pad2(extremum.time.getUTCMinutes());
         const labelY = isHigh ? (y + labelOffsetHigh) : (y - labelOffsetLow);
         markersHTML +=
             '<circle class="weather-timeline-tide-dot' + (isHigh ? ' is-high' : ' is-low') + '" cx="' + x + '" cy="' + y.toFixed(1) + '" r="2.2"/>' +
@@ -604,8 +661,8 @@ function renderWeatherDayGlance(dayGroups) {
     dayGroups.forEach((day, index) => {
         const high = Math.round(Math.max.apply(null, day.hours.map((h) => h.temperature)));
         const noonHour = day.hours.reduce((best, h) => {
-            const hod = new Date(h.time).getHours();
-            const bestHod = new Date(best.time).getHours();
+            const hod = new Date(h.time + 'Z').getUTCHours();
+            const bestHod = new Date(best.time + 'Z').getUTCHours();
             return Math.abs(hod - 12) < Math.abs(bestHod - 12) ? h : best;
         });
         const icon = weatherConditionIcon(noonHour.weather_code, false);

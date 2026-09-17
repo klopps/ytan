@@ -21,7 +21,10 @@ function showUserWindow() {
             '</div>' +
             '<div class="nav-field">' +
                 '<label for="userLoginPassword">' + t('user.login.password_label') + '</label>' +
-                '<input id="userLoginPassword" type="password" placeholder="' + t('user.login.password_placeholder') + '" autocomplete="current-password" onkeypress="clickOnEnter(event, \'userLoginBtn\');">' +
+                '<div class="password-input-wrapper">' +
+                    '<input id="userLoginPassword" type="password" placeholder="' + t('user.login.password_placeholder') + '" autocomplete="current-password" onkeypress="clickOnEnter(event, \'userLoginBtn\');">' +
+                    passwordToggleButtonHtml('userLoginPassword') +
+                '</div>' +
             '</div>' +
             '<button id="userLoginBtn" class="nav-btn-primary" type="button" onClick="loginUser()"><i class="material-icons-round">login</i>&nbsp;' + t('user.login.button') + '</button>' +
             '<span class="nav-link-small" onclick="goToForgotPassword();">' + t('user.login.forgot_password') + '</span>'
@@ -84,9 +87,9 @@ function goToForgotPassword() {
 function showChangePasswordForm() {
     document.getElementById('userWindowSub').innerHTML =
         '<div class="nav-divider"></div>' +
-        '<div class="nav-field"><label for="userChangePasswordCurrent">' + t('user.current_password_label') + '</label><input id="userChangePasswordCurrent" type="password" autocomplete="current-password"></div>' +
-        '<div class="nav-field"><label for="userChangePasswordNew">' + t('user.new_password_label') + '</label><input id="userChangePasswordNew" type="password" autocomplete="new-password"></div>' +
-        '<div class="nav-field"><label for="userChangePasswordConfirm">' + t('user.confirm_new_password_label') + '</label><input id="userChangePasswordConfirm" type="password" autocomplete="new-password"></div>' +
+        '<div class="nav-field"><label for="userChangePasswordCurrent">' + t('user.current_password_label') + '</label><div class="password-input-wrapper"><input id="userChangePasswordCurrent" type="password" autocomplete="current-password">' + passwordToggleButtonHtml('userChangePasswordCurrent') + '</div></div>' +
+        '<div class="nav-field"><label for="userChangePasswordNew">' + t('user.new_password_label') + '</label><div class="password-input-wrapper"><input id="userChangePasswordNew" type="password" autocomplete="new-password">' + passwordToggleButtonHtml('userChangePasswordNew') + '</div></div>' +
+        '<div class="nav-field"><label for="userChangePasswordConfirm">' + t('user.confirm_new_password_label') + '</label><div class="password-input-wrapper"><input id="userChangePasswordConfirm" type="password" autocomplete="new-password">' + passwordToggleButtonHtml('userChangePasswordConfirm') + '</div></div>' +
         '<div class="nav-form-message" id="userChangePasswordMessage"></div>' +
         '<button id="userChangePasswordSaveBtn" class="nav-btn-primary" type="button" onClick="submitChangePassword();"><i class="material-icons-round">check</i>&nbsp;' + t('user.save_password_button') + '</button>' +
         '<span class="nav-link-small" onclick="document.getElementById(\'userWindowSub\').innerHTML=\'\';">' + t('common.cancel') + '</span>'
@@ -134,7 +137,7 @@ function showEditProfileForm() {
         '<div class="nav-field"><label for="userEditProfileFirstname">' + t('user.firstname_label') + '</label><input id="userEditProfileFirstname" type="text" value="' + user.firstname + '"></div>' +
         '<div class="nav-field"><label for="userEditProfileLastname">' + t('user.lastname_label') + '</label><input id="userEditProfileLastname" type="text" value="' + user.lastname + '"></div>' +
         '<div class="nav-field"><label for="userEditProfileEmail">' + t('user.email_label') + '</label><input id="userEditProfileEmail" type="email" value="' + user.email + '"></div>' +
-        '<div class="nav-field"><label for="userEditProfileCurrentPassword">' + t('user.current_password_label') + '</label><input id="userEditProfileCurrentPassword" type="password" autocomplete="current-password"></div>' +
+        '<div class="nav-field"><label for="userEditProfileCurrentPassword">' + t('user.current_password_label') + '</label><div class="password-input-wrapper"><input id="userEditProfileCurrentPassword" type="password" autocomplete="current-password">' + passwordToggleButtonHtml('userEditProfileCurrentPassword') + '</div></div>' +
         '<div class="nav-form-message" id="userEditProfileMessage"></div>' +
         '<button id="userEditProfileSaveBtn" class="nav-btn-primary" type="button" onClick="submitEditProfile();"><i class="material-icons-round">check</i>&nbsp;' + t('user.save_profile_button') + '</button>' +
         '<span class="nav-link-small" onclick="document.getElementById(\'userWindowSub\').innerHTML=\'\';">' + t('common.cancel') + '</span>'

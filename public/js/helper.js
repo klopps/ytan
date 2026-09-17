@@ -21,6 +21,46 @@ function apiErrorMessage(err) {
 }
 
 /**
+ * Standard "show/hide password" toggle button for a Material-icon context
+ * (the main SPA and its standalone pages, e.g. templates/set-password.php)
+ * - paired with togglePasswordVisibility() below. The caller must still
+ * wrap the actual <input> in a `.password-input-wrapper` div itself (see
+ * style.css) so this button can be positioned inside it; this only builds
+ * the button markup since callers otherwise differ too much (placeholder,
+ * autocomplete, onkeypress, ...) for a single full-field builder to fit.
+ * The AdminLTE-based /admin/* pages don't use this - they get Bootstrap's
+ * own .input-group + .bi-eye/.bi-eye-slash pattern instead, hand-written
+ * per call site since there are only two of them.
+ */
+function passwordToggleButtonHtml(inputId) {
+    return '<button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility(\'' + inputId + '\', this);" aria-label="' + t('common.show_password') + '"><i class="material-icons-round">visibility</i></button>';
+}
+
+/**
+ * Toggles a <input type="password"> between masked and plain text, and
+ * flips the eye icon inside the button that triggered it. Auto-detects the
+ * icon system in use so one function works both for the main SPA/standalone
+ * pages (.material-icons-round ligature-text glyphs, see
+ * passwordToggleButtonHtml() above) and the AdminLTE-based /admin/* pages
+ * (Bootstrap Icons' .bi-eye/.bi-eye-slash classes) - both load this file
+ * (app.php / admin-shell-footer.php's shared script stack; set-password.php
+ * additionally pulls this one file in just for this pair of functions).
+ */
+function togglePasswordVisibility(inputId, button) {
+    var input = document.getElementById(inputId);
+    var icon = button.querySelector('i');
+    var reveal = input.type === 'password';
+    input.type = reveal ? 'text' : 'password';
+    button.setAttribute('aria-label', reveal ? t('common.hide_password') : t('common.show_password'));
+    if (icon.classList.contains('material-icons-round')) {
+        icon.textContent = reveal ? 'visibility_off' : 'visibility';
+    } else {
+        icon.classList.toggle('bi-eye', !reveal);
+        icon.classList.toggle('bi-eye-slash', reveal);
+    }
+}
+
+/**
  * Escape possible unsecure texts
  *
  * @param {string} unsafe Unescaped text

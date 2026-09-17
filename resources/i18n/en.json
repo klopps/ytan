@@ -367,6 +367,8 @@
     "admin_user.reset_email_sent": "Password reset email sent.",
     "admin_user.sending_reset_failed": "Sending the reset email failed: {error}",
     "common.password_mismatch": "The two passwords do not match.",
+    "common.show_password": "Show password",
+    "common.hide_password": "Hide password",
     "user.login.username_label": "Username or email",
     "user.login.username_placeholder": "username",
     "user.login.username_title": "Enter your username or email used on registration.",
