@@ -23,6 +23,22 @@ const OTHER_RIGHT_FIELDS = ['route_view_recording'];
 // ambiguous - "Create"/"Publish"/"Manage"/"Copy" alone read as generic
 // permissions otherwise.
 const USER_RIGHT_LABELS = { is_admin: t('admin_user.right_admin'), tour_create: t('admin_user.right_tour_create'), tour_publish: t('admin_user.right_tour_publish'), tour_manage: t('admin_user.right_tour_manage'), tour_copy: t('admin_user.right_tour_copy'), route_view_recording: t('admin_user.right_route_view_recording') };
+// Shown as small helper text under each switch in userFormHtml() (see
+// formCheckRow()'s optional 4th param) - exact semantics taken straight from
+// the backend checks these rights actually gate (TourController's
+// assertCanManageTour()/assertCanPublishTour()/copy(), BaseController's
+// hasRight() use in RouteController::redactRecordingInfo()), not just a
+// restatement of the label, since e.g. tour_manage vs. tour_create's overlap
+// (both can edit/delete a tour, but only tour_manage on tours you don't own)
+// isn't obvious from the label alone.
+const USER_RIGHT_DESCRIPTIONS = {
+    is_admin: t('admin_user.admin_desc'),
+    tour_create: t('admin_user.tour_create_desc'),
+    tour_publish: t('admin_user.tour_publish_desc'),
+    tour_manage: t('admin_user.tour_manage_desc'),
+    tour_copy: t('admin_user.tour_copy_desc'),
+    route_view_recording: t('admin_user.route_view_recording_desc'),
+};
 const USER_ADMIN_NEW_BUTTON_HTML = '<button type="button" class="btn btn-primary btn-sm" onclick="showUserCreateForm();"><i class="bi bi-person-plus me-1"></i>' + t('admin_user.new_user') + '</button>';
 let adminUserFilters = {}; // { is_admin: 1, tour_manage: 1, ... } - AND'ed together, see loadUserList()
 let adminUserFilterPanelOpen = false; // whether the collapsible "Filter by right" panel is expanded
@@ -276,10 +292,11 @@ function adminUserPaginationHtml(totalMatches, totalPages) {
         '</div>';
 }
 
-function formCheckRow(id, checked, label) {
+function formCheckRow(id, checked, label, description) {
     return '<div class="form-check form-switch mb-2">' +
         '<input class="form-check-input" type="checkbox" role="switch" id="' + id + '"' + (checked ? ' checked' : '') + '>' +
         '<label class="form-check-label" for="' + id + '">' + label + '</label>' +
+        (description ? '<div class="form-text mt-0">' + description + '</div>' : '') +
         '</div>';
 }
 
@@ -310,14 +327,14 @@ function userFormHtml(u) {
             '<label for="userFormLastname" class="form-label">' + t('admin_user.lastname_label') + '</label>' +
             '<input id="userFormLastname" type="text" class="form-control" value="' + escapeHTML(u.lastname || '') + '">' +
         '</div>' +
-        formCheckRow('userFormIsAdmin', u.is_admin, t('admin_user.admin_label')) +
+        formCheckRow('userFormIsAdmin', u.is_admin, t('admin_user.admin_label'), USER_RIGHT_DESCRIPTIONS.is_admin) +
         '<p class="fw-bold small text-secondary mt-3 mb-2">' + t('admin_user.tour_rights_label') + '</p>' +
-        formCheckRow('userFormTourCreate', u.tour_create, t('admin_user.tour_create_label')) +
-        formCheckRow('userFormTourPublish', u.tour_publish, t('admin_user.tour_publish_label')) +
-        formCheckRow('userFormTourManage', u.tour_manage, t('admin_user.tour_manage_label')) +
-        formCheckRow('userFormTourCopy', u.tour_copy, t('admin_user.tour_copy_label')) +
+        formCheckRow('userFormTourCreate', u.tour_create, t('admin_user.tour_create_label'), USER_RIGHT_DESCRIPTIONS.tour_create) +
+        formCheckRow('userFormTourPublish', u.tour_publish, t('admin_user.tour_publish_label'), USER_RIGHT_DESCRIPTIONS.tour_publish) +
+        formCheckRow('userFormTourManage', u.tour_manage, t('admin_user.tour_manage_label'), USER_RIGHT_DESCRIPTIONS.tour_manage) +
+        formCheckRow('userFormTourCopy', u.tour_copy, t('admin_user.tour_copy_label'), USER_RIGHT_DESCRIPTIONS.tour_copy) +
         '<p class="fw-bold small text-secondary mt-3 mb-2">' + t('admin_user.other_rights_label') + '</p>' +
-        formCheckRow('userFormRouteViewRecording', u.route_view_recording, t('admin_user.route_view_recording_label')) +
+        formCheckRow('userFormRouteViewRecording', u.route_view_recording, t('admin_user.route_view_recording_label'), USER_RIGHT_DESCRIPTIONS.route_view_recording) +
         '<div class="mt-3">' +
             '<button id="userFormSaveBtn" class="btn btn-primary" type="button" onclick="' + saveCall + '">' + t('common.save') + '</button>&nbsp;' +
             '<button class="btn btn-outline-secondary" type="button" onclick="closeUserForm();">' + t('common.cancel') + '</button>' +

@@ -1,6 +1,8 @@
 # Offene Punkte
 
-Im User-Editor müssen die einzelnen Rechte je eine Beschreibung erhalten, so dass man besser versteht, was sich dahinter verbirgt.
+## Password-Felder mit Klartext anzeigen
+
+Auf Wunsch soll man in Password-Eingabefeldern die Anzeige im Klartext statt der Punkte erhalten.
 
 ## Touren-Dokument
 
@@ -48,6 +50,16 @@ Alle Dialoge/Bildschirme unter echter Mobile-Emulation (412×915) durchgetestet.
 
 
 # Erledigt
+
+## Beschreibung der Rechte (2026-09-17)
+
+~~Im User-Editor müssen die einzelnen Rechte je eine Beschreibung erhalten, so dass man besser versteht, was sich dahinter verbirgt.~~ Gelöst (2026-09-17): Jeder Rechte-Schalter im Benutzer-Formular (`admin-user.js`s `userFormHtml()`, `/admin/users`) zeigt jetzt eine kurze Erklärung darunter (neues `USER_RIGHT_DESCRIPTIONS`, gerendert von `formCheckRow()`s neuem optionalem 4. Parameter als Bootstrap-`.form-text`). Die Texte sind bewusst nicht nur Umformulierungen des Labels, sondern beschreiben die tatsächliche Backend-Logik (z.B. dass `tour_manage` fremde Touren einschließt, `tour_create` dagegen nur eigene bearbeiten/löschen erlaubt, oder dass `route_view_recording` die Aufzeichnungsdaten auch vor dem Eigentümer der Route selbst verbirgt) - direkt aus `TourController::assertCanManageTour()`/`assertCanPublishTour()`/`copy()` und `RouteController::redactRecordingInfo()` abgeleitet, nicht geraten. Deutsch/Englisch ergänzt.
+
+## Android-App merkt sich keine Einstellungen (2026-09-17)
+
+~~Die App merkt sich nicht, welche Sprache ich gewählt habe. Wenn ich deutsch auswähle, die App beende und neu starte ist die Sprache wieder Englisch. Anscheinend merkt sich die App überhaupt keine Einstellungen.~~ Gelöst (2026-09-17): Betraf ausschließlich die native Android-App (Browser/PWA bestätigt nicht betroffen), und dort nicht nur die Sprache, sondern alles, was im "settings"-Cookie steckt (Theme, Karteneinstellungen, Einheiten, ...) - der Login (JWT in localStorage) blieb dagegen korrekt erhalten, was die Diagnose entscheidend eingegrenzt hat. Ursache: Androids `CookieManager` puffert `document.cookie`-Schreibvorgänge im Speicher und schreibt sie nur periodisch oder per explizitem `flush()` auf die Festplatte - `onDestroy()` der Activity läuft dafür laut Android-Doku NICHT zuverlässig (z.B. beim Wegwischen aus der App-Übersicht oder bei einem Kill im Hintergrund wird der Prozess einfach beendet), sodass ein per `setCookie()` (settings.js) gesetzter Wert nur für den Rest der laufenden Session sichtbar war, aber nie den Neustart überlebte. `MainActivity.java` überschreibt jetzt `onPause()` (bewusst nicht `onStop()`, das das System unter Speicherdruck überspringen kann) und ruft dort `CookieManager.getInstance().flush()` auf. Auf echtem Gerät bestätigt (Sprache wählen, App wegwischen, neu öffnen - Einstellungen bleiben jetzt erhalten).
+
+Separat dabei aufgefallen (kein Code-Fehler, nur zur Doku falls es nochmal auftaucht): Android zeigte in Einstellungen → Apps → YTAN → "App-Berechtigungen" kurzzeitig noch das generische Capacitor-Logo statt des YTAN-Icons, obwohl die App-Info-Seite selbst schon korrekt war und alle Icon-Ressourcen im Projekt nachweislich richtig sind (Y-Logo in allen Mipmap-Auflösungen, seit 2026-09-14 gesetzt). Ursache war ein separater Icon-Cache des Berechtigungs-Controllers (bei MIUI dafür bekannt), nicht unsere Ressourcen - ein Geräte-Neustart hat es behoben.
 
 ## Berechtigungsprüfung vor Track-Aufzeichnung (2026-09-16)
 
