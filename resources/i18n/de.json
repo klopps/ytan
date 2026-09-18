@@ -428,6 +428,8 @@
     "weather.timeline.loading": "Vorhersage wird geladen…",
     "weather.timeline.failed": "Laden der Vorhersage fehlgeschlagen.",
     "weather.timeline.osm_attribution": "Ortsdaten © OpenStreetMap-Mitwirkende",
+    "weather.timeline.data_from": "Wetterdaten von {date} / {time}",
+    "weather.timeline.reload_aria_label": "Wetterdaten neu laden",
     "radar.context_menu.open_windy_radar_item": "Regenradar auf Windy öffnen",
     "trackrecorder.resumed_notice": "Unterbrochene Aufzeichnung fortgesetzt ({count} Punkte bereits gespeichert)",
     "trackrecorder.notification_title": "YTAN zeichnet auf",

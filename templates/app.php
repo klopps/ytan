@@ -359,6 +359,16 @@
       </div>
       <div id="weatherTimelineMarineNotice" class="weather-timeline-marine-notice" style="display:none;"><?= htmlspecialchars($t('weather.marine.unavailable'), ENT_QUOTES) ?></div>
 
+      <!-- Filled by weather.js's weatherFormatFetchedAt() once data
+           arrives - when the shown forecast was actually fetched (may be up
+           to 30 minutes old, WeatherService's own cache TTL), plus a manual
+           refresh button (reloadWeatherTimeline()) for whenever that's not
+           fresh enough. -->
+      <div class="weather-timeline-meta">
+        <span id="weatherTimelineFetchedAt" class="weather-timeline-fetched-at"></span>
+        <button type="button" class="weather-timeline-reload-btn" onclick="reloadWeatherTimeline();" aria-label="<?= htmlspecialchars($t('weather.timeline.reload_aria_label'), ENT_QUOTES) ?>"><i class="material-icons-round">refresh</i></button>
+      </div>
+
       <!-- One icon + daily high per day covered by the forecast - built by
            weather.js's renderWeatherDayGlance(), not static markup. -->
       <div id="weatherTimelineDayGlance" class="weather-timeline-day-glance"></div>

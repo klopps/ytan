@@ -141,19 +141,36 @@ let weatherLocationMarker = null;
 // already moved on to a new one.
 let weatherTimelineRequestId = 0;
 
+// The coordinate the open panel is currently showing - kept so
+// reloadWeatherTimeline() (the manual refresh button) can refetch the exact
+// same spot without the caller having to pass it in again.
+let weatherTimelineLatLng = null;
+
+// Handle for the "now" line's periodic reposition (see
+// startWeatherNowLineRefresh()) - the line is only ever computed at render
+// time otherwise, so without this it silently falls further behind actual
+// wall-clock time the longer the panel is left open (confirmed live: a
+// user's own DevTools check found the line already ~5 minutes stale,
+// matching how long it took them to get from opening the panel to checking
+// it - see todo.md).
+let weatherNowLineTimer = null;
+
 function openWeatherTimelineForLocation(latLng) {
     const lat = latLng.lat();
     const lng = latLng.lng();
     const requestId = ++weatherTimelineRequestId;
+    weatherTimelineLatLng = latLng;
 
     setWeatherTimelineTitle(lat, lng, null);
     document.getElementById('weatherTimelineMarineNotice').style.display = 'none';
     document.getElementById('weatherTimelineAttribution').style.display = 'none';
+    document.getElementById('weatherTimelineFetchedAt').textContent = '';
     document.getElementById('weatherTimelineStrip').innerHTML =
         '<div class="weather-timeline-message">' + escapeHTML(t('weather.timeline.loading')) + '</div>';
     document.getElementById('weatherTimelinePanel').style.display = 'flex';
     panelOpened();
     lastWeatherTimelineData = null;
+    stopWeatherNowLineRefresh();
 
     if (weatherLocationMarker) {
         weatherLocationMarker.setPosition(latLng);
@@ -206,6 +223,25 @@ function openWeatherTimelineForLocation(latLng) {
         });
 }
 
+/**
+ * Manual refresh button next to the "Wetterdaten von ..." timestamp -
+ * refetches the same spot the panel is already open for. Simply re-runs
+ * openWeatherTimelineForLocation() rather than a slimmer fetch-only path:
+ * the marker repositioning/title-reset/reverse-geocode it also does are all
+ * no-ops or harmless repeats for the same coordinate, and reusing it means
+ * there's only ever one code path that knows how to (re)populate this
+ * panel. WeatherService's own 30-minute cache (by rounded coordinate) means
+ * this can legitimately come back with the exact same data/timestamp if
+ * nothing has changed server-side yet - that's correct, not a bug, and is
+ * exactly what the timestamp line is there to make visible.
+ */
+function reloadWeatherTimeline() {
+    if (!weatherTimelineLatLng) {
+        return;
+    }
+    openWeatherTimelineForLocation(weatherTimelineLatLng);
+}
+
 function setWeatherTimelineTitle(lat, lng, placeName) {
     const titleKey = placeName ? 'weather.timeline.title_with_place' : 'weather.timeline.title';
     document.getElementById('weatherTimelineTitle').textContent = t(titleKey, {
@@ -218,6 +254,7 @@ function setWeatherTimelineTitle(lat, lng, placeName) {
 function closeWeatherTimeline() {
     document.getElementById('weatherTimelinePanel').style.display = 'none';
     panelClosed();
+    stopWeatherNowLineRefresh();
     if (weatherLocationMarker) {
         weatherLocationMarker.setMap(null);
         weatherLocationMarker = null;
@@ -328,28 +365,14 @@ function renderWeatherTimeline(data, preserveScroll) {
     // a naive LOCAL time at the forecast COORDINATE, not at the device's own
     // location - new Date("...T12:00") would otherwise be parsed using the
     // device's own timezone, which only coincidentally matches the forecast
-    // location's (e.g. testing this exact spot from a device whose timezone
-    // isn't Europe/Copenhagen, or simply planning a trip to a place in a
-    // different zone than home - see todo.md for the live report that first
-    // caught this). Convention used everywhere in this file instead:
-    // every Date built from one of these strings gets a "Z" appended, so it
-    // encodes the location's own wall-clock reading as if it were UTC - and
-    // is then always read back via getUTC*(), never the device-timezone
-    // get*() variants. `now` is put into that same frame by shifting the
-    // true current instant (Date.now(), a real UTC epoch, unaffected by the
-    // device's timezone setting) by the forecast location's own UTC offset
-    // (WeatherService::fetchAndCombine()'s utc_offset_seconds) - the result
-    // is directly comparable to every hourDate below despite not actually
-    // being the location's wall-clock Date object per se, only encoded the
-    // same way. `|| 0` covers a leftover pre-this-change cache entry still
-    // on disk (30-minute TTL) that predates this field - falls back to the
-    // old (device-timezone) behavior for just that one stale response
-    // rather than throwing.
-    const now = new Date(Date.now() + (data.utc_offset_seconds || 0) * 1000);
+    // location's. Convention used everywhere in this file: every Date built
+    // from one of these strings gets a "Z" appended, so it encodes the
+    // location's own wall-clock reading as if it were UTC - and is then
+    // always read back via getUTC*(), never the device-timezone get*()
+    // variants. See updateWeatherNowLine() for how "now" is put into that
+    // same frame.
     let previousDateKey = null;
     let cumulativeLeft = 0;
-    let prevHourLeft = 0, prevHourTime = null;
-    let nowLineLeft = null;
     const tidePoints = []; // {x, value} - only collected when has_marine_data, drawn as one continuous curve after the loop
 
     data.hourly.forEach((hour) => {
@@ -363,67 +386,47 @@ function renderWeatherTimeline(data, preserveScroll) {
             previousDateKey = dateKey;
         }
 
-        // The dashed "now" line sits between the last hour at/before now and
-        // the first hour after it, positioned by the actual elapsed fraction
-        // of that hour - not just snapped to whichever column is closest.
-        if (nowLineLeft === null && hourDate > now) {
-            if (prevHourTime) {
-                const fraction = (now - prevHourTime) / (hourDate - prevHourTime);
-                nowLineLeft = prevHourLeft + fraction * WEATHER_HOUR_COL_WIDTH;
-            } else {
-                nowLineLeft = 0; // "now" is before the very first hour in the data
-            }
-        }
-
         strip.appendChild(buildWeatherHourColumn(hour, hourDate, data.has_marine_data));
 
         if (data.has_marine_data && hour.tide_height !== null) {
-            // Centered under its hour column, same as every per-hour value -
-            // the tide curve is drawn as one path afterwards, not per-cell.
-            tidePoints.push({ x: cumulativeLeft + WEATHER_HOUR_COL_WIDTH / 2, value: hour.tide_height, time: hour.time });
+            // At the hour's own LEFT edge (cumulativeLeft, before it's
+            // advanced below) - i.e. hour.time itself, "HH:00", same anchor
+            // updateWeatherNowLine() uses via each column's own offsetLeft.
+            // A previous version anchored this at the column's CENTER
+            // instead (cumulativeLeft + WEATHER_HOUR_COL_WIDTH / 2) - visually
+            // matching where the per-hour VALUES (temperature, wind, ...)
+            // sit, since those genuinely are one value centered under one
+            // column. But an interpolated extremum is a point in continuous
+            // time, not a per-column value - reported live: a "19:35" high
+            // tide, correctly interpolated between the 19:00 and 20:00
+            // samples, still landed visually inside column 20's box, because
+            // 35 minutes is already more than half an hour past the 19:00
+            // sample's CENTER anchor, even though 19:35 is still well
+            // within the 19:00-20:00 hour column's own left/right bounds.
+            // Left-edge anchoring fixes that: a time HH:MM now always lands
+            // within column HH's own box, at fraction MM/60 across it -
+            // matching how a reader naturally compares the curve against
+            // the "Zeit" row's hour labels/column boundaries above it.
+            tidePoints.push({ x: cumulativeLeft, value: hour.tide_height, time: hour.time });
         }
 
-        prevHourLeft = cumulativeLeft;
-        prevHourTime = hourDate;
         cumulativeLeft += WEATHER_HOUR_COL_WIDTH;
-    });
-
-    if (nowLineLeft === null) {
-        // "now" is after every hour in the data (right at the end of the
-        // 7-day window) - pin the line to the last column instead of
-        // leaving it unset.
-        nowLineLeft = prevHourLeft;
-    }
-
-    // A first "now"-line mismatch report (2026-09-17, see todo.md) turned
-    // out NOT to be explained by the device-vs-forecast-location timezone
-    // theory this function's utc_offset_seconds handling was originally
-    // built to fix (confirmed live: the reporting device's own timezone was
-    // already the same GMT+2 as the forecast location). The real cause is
-    // still open - this LOG_DEBUG dump gives the exact numbers needed to
-    // find it next time it's reproduced (open Chrome DevTools remote
-    // debugging against the device, same as the background-geolocation
-    // work - see todo.md - and set logLevel high enough to show LOG_DEBUG),
-    // rather than reasoning from a screenshot again.
-    log('renderWeatherTimeline() now-line inputs', LOG_DEBUG, {
-        device_now_iso: new Date().toISOString(),
-        device_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        device_utc_offset_minutes: -new Date().getTimezoneOffset(),
-        location_utc_offset_seconds: data.utc_offset_seconds,
-        computed_now_encoded: now.toISOString(),
-        first_hour_time: data.hourly[0] ? data.hourly[0].time : null,
-        now_line_left_px: nowLineLeft,
-        hour_col_width_px: WEATHER_HOUR_COL_WIDTH,
     });
 
     if (tidePoints.length > 1) {
         strip.appendChild(buildWeatherTideCurve(tidePoints, cumulativeLeft));
     }
 
+    // Plain, unpositioned for now - updateWeatherNowLine() (below) places it
+    // by reading the hour columns' own real DOM position, the same way both
+    // the initial placement and every later periodic refresh do it. One
+    // implementation, not two kept in sync by hand - see that function's own
+    // comment for why that matters here specifically.
     const nowLine = document.createElement('div');
     nowLine.className = 'weather-timeline-now-line';
-    nowLine.style.left = nowLineLeft + 'px';
     strip.appendChild(nowLine);
+
+    const nowLineLeft = updateWeatherNowLine();
 
     if (preserveScroll) {
         // A wind-unit-only redraw shouldn't jump the user back to "now" if
@@ -432,6 +435,123 @@ function renderWeatherTimeline(data, preserveScroll) {
     } else {
         tableScroll.scrollLeft = Math.max(0, nowLineLeft - 40);
     }
+
+    document.getElementById('weatherTimelineFetchedAt').textContent =
+        weatherFormatFetchedAt(data.fetched_at, data.utc_offset_seconds);
+
+    startWeatherNowLineRefresh();
+}
+
+/**
+ * Repositions the dashed "now" line by reading the ALREADY-RENDERED hour
+ * columns' real offsetLeft - not a parallel pixel-tracking calculation kept
+ * in sync by hand alongside the render loop above. That kind of duplicated,
+ * hand-synced math is exactly what caused a previous bug in this same file
+ * (the tide-curve extremum markers landing on the wrong side of their own
+ * hour, see interpolateTideExtremum()'s comment) - reading the DOM directly
+ * means there is only ever one source of truth for "where is hour X on
+ * screen", used both for the very first render and for every periodic
+ * refresh below (startWeatherNowLineRefresh()), so the two can never drift
+ * apart from each other.
+ *
+ * Returns the computed left position in px (used by renderWeatherTimeline()
+ * to set the initial scroll position), or does nothing if the panel isn't
+ * currently showing a rendered timeline.
+ */
+function updateWeatherNowLine() {
+    if (!lastWeatherTimelineData) {
+        return 0;
+    }
+    const strip = document.getElementById('weatherTimelineStrip');
+    const nowLine = strip.querySelector('.weather-timeline-now-line');
+    const cols = strip.querySelectorAll('.weather-timeline-hour-col');
+    if (!nowLine || cols.length === 0) {
+        return 0;
+    }
+
+    const hourly = lastWeatherTimelineData.hourly;
+    // The true current instant (Date.now(), a real UTC epoch, unaffected by
+    // the device's own timezone setting), shifted by the forecast
+    // location's own UTC offset (WeatherService::fetchAndCombine()'s
+    // utc_offset_seconds) into the same "encoded as UTC" frame every
+    // hour.time Date in this file uses - see renderWeatherTimeline()'s own
+    // comment on that convention. `|| 0` covers a leftover pre-this-field
+    // cache entry still on disk (30-minute TTL) - falls back to the device's
+    // own timezone for just that one stale response rather than throwing.
+    const now = new Date(Date.now() + (lastWeatherTimelineData.utc_offset_seconds || 0) * 1000);
+
+    // The dashed line sits between the last hour at/before now and the
+    // first hour after it, positioned by the actual elapsed fraction of
+    // that hour - not just snapped to whichever column is closest. Using
+    // each column's own offsetLeft (rather than an assumed fixed width)
+    // means a day-divider tile between two hours - which is wider than a
+    // normal hour column - is automatically accounted for.
+    let nowLineLeft = null;
+    for (let i = 0; i < hourly.length; i++) {
+        const hourDate = new Date(hourly[i].time + 'Z');
+        if (hourDate > now) {
+            if (i > 0) {
+                const prevDate = new Date(hourly[i - 1].time + 'Z');
+                const prevLeft = cols[i - 1].offsetLeft;
+                const curLeft = cols[i].offsetLeft;
+                const fraction = (now - prevDate) / (hourDate - prevDate);
+                nowLineLeft = prevLeft + fraction * (curLeft - prevLeft);
+            } else {
+                nowLineLeft = 0; // "now" is before the very first hour in the data
+            }
+            break;
+        }
+    }
+    if (nowLineLeft === null) {
+        // "now" is after every hour in the data (right at the end of the
+        // 7-day window) - pin the line to the last column instead of
+        // leaving it unset.
+        nowLineLeft = cols[cols.length - 1].offsetLeft;
+    }
+
+    nowLine.style.left = nowLineLeft + 'px';
+    return nowLineLeft;
+}
+
+const WEATHER_NOW_LINE_REFRESH_MS = 60000;
+
+/**
+ * Keeps the "now" line actually current while the panel stays open, instead
+ * of freezing it at whatever position it had at render time - confirmed
+ * live that this drifts noticeably within just a few minutes (see todo.md).
+ * Always clears any previous timer first, so calling this again (a fresh
+ * render, a reload) never stacks up a second interval.
+ */
+function startWeatherNowLineRefresh() {
+    stopWeatherNowLineRefresh();
+    weatherNowLineTimer = window.setInterval(updateWeatherNowLine, WEATHER_NOW_LINE_REFRESH_MS);
+}
+
+function stopWeatherNowLineRefresh() {
+    if (weatherNowLineTimer !== null) {
+        window.clearInterval(weatherNowLineTimer);
+        weatherNowLineTimer = null;
+    }
+}
+
+/**
+ * data.fetched_at (WeatherService's gmdate('c'), a real UTC instant - see
+ * PHP's own doc comment on it) is shown converted into the forecast
+ * location's own local time, consistent with every other time in this
+ * panel (the hour axis, tide/sunrise labels), not the device's - same
+ * utc_offset_seconds-shift trick as updateWeatherNowLine()'s `now`. Surfaces
+ * WeatherService's 30-minute cache TTL to the user instead of hiding it -
+ * reloadWeatherTimeline()'s button can legitimately come back with this
+ * exact same timestamp if nothing has changed server-side yet.
+ */
+function weatherFormatFetchedAt(fetchedAtIso, utcOffsetSeconds) {
+    if (!fetchedAtIso) {
+        return '';
+    }
+    const local = new Date(new Date(fetchedAtIso).getTime() + (utcOffsetSeconds || 0) * 1000);
+    const date = pad2(local.getUTCDate()) + '.' + pad2(local.getUTCMonth() + 1) + '.' + local.getUTCFullYear();
+    const time = pad2(local.getUTCHours()) + ':' + pad2(local.getUTCMinutes());
+    return t('weather.timeline.data_from', { date: date, time: time });
 }
 
 const WEATHER_HOUR_COL_WIDTH = 26; // keep in sync with .weather-timeline-hour-col / .weather-timeline-day-divider-tile CSS width
@@ -570,8 +690,25 @@ function interpolateTideExtremum(points, i) {
     t = Math.max(-0.999, Math.min(0.999, t));
     const value = denom === 0 ? y1 : y1 - (y2 - y0) * (y2 - y0) / (8 * denom);
 
-    const neighbor = t >= 0 ? points[i + 1] : points[i - 1];
-    const x = points[i].x + Math.abs(t) * (neighbor.x - points[i].x) * (t >= 0 ? 1 : -1);
+    // points[i].x is always hour i's own true left edge ("HH:00" exactly,
+    // see tidePoints.push()'s own comment), reliable regardless of any
+    // day-divider tile sitting to either side of it - so the extremum
+    // always belongs to whichever hour's box its clock time actually falls
+    // into: hour i itself for t>=0 (time is between i:00 and (i+1):00), or
+    // hour i-1 for t<0 (time is between (i-1):00 and i:00 - (1+t) is then
+    // the fraction across hour i-1's OWN box, e.g. t=-0.4 means 24 minutes
+    // before hour i, i.e. 36 minutes into hour i-1, (1+t)=0.6). Anchoring
+    // t<0 on points[i].x instead (an earlier version) and just subtracting
+    // |t|*WEATHER_HOUR_COL_WIDTH looks equivalent when hour i-1 is a normal
+    // adjacent hour, but breaks the moment hour i is the FIRST hour of a
+    // new day: hour i-1 (23:00 the day before) then sits a further ~30px
+    // (the divider's own dead space) to the left of "points[i].x - one
+    // hour", so subtracting only one hour's width landed inside the
+    // divider itself instead of inside hour i-1's own box - confirmed live,
+    // the mirror image of the forward-direction bug this replaced.
+    const x = t >= 0
+        ? points[i].x + t * WEATHER_HOUR_COL_WIDTH
+        : points[i - 1].x + (1 + t) * WEATHER_HOUR_COL_WIDTH;
     // points[i].time is the raw hour.time string (see the tidePoints.push()
     // call in renderWeatherTimeline()) - "Z"-encoded per that function's
     // comment, so the returned Date follows the same convention and must be

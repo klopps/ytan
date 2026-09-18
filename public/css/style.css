@@ -2106,6 +2106,42 @@ img.wsi {
   color: var(--color-text-faint);
 }
 
+.weather-timeline-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 14px 0;
+}
+
+.weather-timeline-fetched-at {
+  font-size: 11px;
+  color: var(--color-text-faint);
+}
+
+.weather-timeline-reload-btn {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--color-text-faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.weather-timeline-reload-btn:hover {
+  background-color: var(--color-bg-subtle);
+  color: var(--color-accent);
+}
+
+.weather-timeline-reload-btn .material-icons-round {
+  font-size: 16px;
+}
+
 /* Required attribution for reverse-geocoded place names (Nominatim/OSM's
    ODbL license) - only shown once a place name actually came back and is
    displayed in the title, since that's the moment OSM data is genuinely
