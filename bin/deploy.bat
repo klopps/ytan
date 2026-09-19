@@ -110,6 +110,8 @@ tar -C "%BUILD_DIR%" -cf - . | "%DEPLOY_SSH_CLIENT%" -ssh -P %DEPLOY_PORT% -l %D
 if errorlevel 1 goto :error
 
 echo ==^> Deploy finished.
+date /t
+time /t
 rmdir /s /q "%BUILD_DIR%" 2>nul
 endlocal
 exit /b 0
