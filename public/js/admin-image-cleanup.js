@@ -39,12 +39,18 @@ async function scan() {
     }
 }
 
-function renderSection(items, kind, titleKey, hintKey, hasSize) {
+// Takes already-translated title/hint HTML rather than translation keys -
+// the two call sites below resolve their own literal t('...') keys before
+// calling in, instead of this shared function taking a key it would have to
+// pass through a variable. TranslationUsageScanner.php only finds usages
+// via a regex over literal t('...') call sites, so a key held in a variable
+// here would make the /translate admin tool wrongly report it as unused.
+function renderSection(items, kind, titleHtml, hintHtml, hasSize) {
     var html = '<div class="card mb-4">' +
         '<div class="card-header d-flex justify-content-between align-items-center">' +
             '<div>' +
-                '<h2 class="h6 mb-1">' + t(titleKey, { count: items.length }) + '</h2>' +
-                '<p class="text-secondary small mb-0">' + t(hintKey) + '</p>' +
+                '<h2 class="h6 mb-1">' + titleHtml + '</h2>' +
+                '<p class="text-secondary small mb-0">' + hintHtml + '</p>' +
             '</div>' +
             '<button type="button" class="btn btn-danger btn-sm" onclick="deleteSelected(\'' + kind + '\');">' + t('admin.image_cleanup.delete_selected') + '</button>' +
         '</div>' +
@@ -82,10 +88,22 @@ function render() {
 
     var html = '';
     if (state.orphanedFiles.length > 0) {
-        html += renderSection(state.orphanedFiles, 'file', 'admin.image_cleanup.orphaned_files_title', 'admin.image_cleanup.orphaned_files_hint', true);
+        html += renderSection(
+            state.orphanedFiles,
+            'file',
+            t('admin.image_cleanup.orphaned_files_title', { count: state.orphanedFiles.length }),
+            t('admin.image_cleanup.orphaned_files_hint'),
+            true
+        );
     }
     if (state.danglingRows.length > 0) {
-        html += renderSection(state.danglingRows, 'row', 'admin.image_cleanup.dangling_rows_title', 'admin.image_cleanup.dangling_rows_hint', false);
+        html += renderSection(
+            state.danglingRows,
+            'row',
+            t('admin.image_cleanup.dangling_rows_title', { count: state.danglingRows.length }),
+            t('admin.image_cleanup.dangling_rows_hint'),
+            false
+        );
     }
     container.innerHTML = html;
 }

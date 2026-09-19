@@ -47,6 +47,18 @@ function initStyleguideTheme() {
 }
 
 function styleguideShowToast(type) {
-    var key = 'admin.styleguide.toast_demo_' + type;
-    showToast(t(key), type);
+    // Literal keys, not a concatenated 'admin.styleguide.toast_demo_' + type
+    // string - TranslationUsageScanner.php only finds usages via a regex
+    // over literal t('...') call sites, so a computed key here would make
+    // the /translate admin tool wrongly report all four as unused (and a
+    // concatenated key can't be resolved by a static scanner at all, unlike
+    // a key held in a variable, which at least appears as a literal
+    // somewhere in the file).
+    var messages = {
+        info: t('admin.styleguide.toast_demo_info'),
+        success: t('admin.styleguide.toast_demo_success'),
+        warning: t('admin.styleguide.toast_demo_warning'),
+        error: t('admin.styleguide.toast_demo_error'),
+    };
+    showToast(messages[type], type);
 }

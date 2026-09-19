@@ -490,5 +490,12 @@
     "trackrecorder.permission_missing_location_services": "Die Standortdienste (GPS) sind auf dem Gerät deaktiviert",
     "trackrecorder.permission_open_settings_hint": "Öffnet die App-Einstellungen. Unter „Berechtigungen\" → „Standort\" bitte „Immer erlauben\" wählen und Benachrichtigungen aktivieren.",
     "trackrecorder.permission_open_settings_button": "Einstellungen öffnen",
-    "trackrecorder.permission_blocked_toast": "Bitte zuerst die nötigen Berechtigungen erteilen."
+    "trackrecorder.permission_blocked_toast": "Bitte zuerst die nötigen Berechtigungen erteilen.",
+    "trackrecorder.saved_locally_toast": "Track lokal gespeichert - wird automatisch hochgeladen, sobald wieder Netz verfügbar ist.",
+    "trackrecorder.pending_section_title": "Wartende Tracks ({count})",
+    "trackrecorder.pending_upload_button": "Hochladen",
+    "trackrecorder.pending_upload_all_button": "Alle hochladen",
+    "trackrecorder.pending_upload_success": "{count} Tracks hochgeladen",
+    "trackrecorder.pending_upload_failed": "Hochladen von {count} Tracks fehlgeschlagen",
+    "trackrecorder.confirm_discard_pending": "„{name}“ wirklich verwerfen? Das kann nicht rückgängig gemacht werden."
 }

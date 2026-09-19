@@ -7,6 +7,13 @@
 // saveRoute() below. Always null for a normal, manually-drawn route.
 let pendingRouteRecordingMeta = null;
 
+// True for the duration of an in-flight POST/PUT from saveRoute() - checked
+// by validateRouteEditForm() so editing the name/description field while a
+// save is still waiting on the network can't re-enable the Save button and
+// let the user fire a second, duplicate request before the first one has
+// even failed or succeeded.
+let routeSaveInProgress = false;
+
 /**
  * "3:24 h" / "48 min" - used by showRouteInfoWindow() for a GPS-recorded
  * route's recording_duration_seconds.
@@ -183,7 +190,7 @@ function validateRouteEditForm() {
     }
 
     if (errors == 0) {
-        document.getElementById('editRouteSaveBtn').disabled = false;
+        document.getElementById('editRouteSaveBtn').disabled = routeSaveInProgress;
         return true;
     } else {
         document.getElementById('editRouteSaveBtn').disabled = true;
@@ -217,6 +224,31 @@ function closeRouteEditWindow() {
         editMode(false);
         routeEditWindow.close();
     }
+}
+
+/**
+ * Inserts a brand-new (never-before-saved) route into routes[]/the map -
+ * shared by saveRoute()'s own success handler (id === null branch) and
+ * track-recorder.js's uploadPendingTrack(), which reaches this same "just
+ * got a server id back for a brand-new route" moment via a completely
+ * different call path (a background sync, not a live saveRoute() call).
+ *
+ * @param {object} routeData Full route payload, points already a plain
+ *   array (not the JSON string saveRoute()/uploadPendingTrack() POST) and
+ *   id already the server-assigned one.
+ * @returns {number} the new index in routes[]
+ */
+function addSavedRouteToMap(routeData) {
+    var index = routes.push(routeData) - 1;
+    log('new index: ' + index, LOG_INFO);
+
+    if (activeTourModeId !== null) {
+        addNewRouteToActiveTour(routeData.id);
+    }
+
+    createRoute(index);
+
+    return index;
 }
 
 /**
@@ -272,20 +304,46 @@ function saveRoute(i) {
     }
 
     // Set by track-recorder.js immediately before showRouteEditWindow(),
-    // only for a just-finished GPS recording - cleared unconditionally
-    // right after reading it so a later, unrelated manual edit never
-    // accidentally reuses stale recording metadata. Snapshotted into
-    // wasRecordedRoute first so the success handler below still knows
-    // (after the variable itself is already cleared) whether to tell
-    // track-recorder.js to drop its local IndexedDB copy.
-    var wasRecordedRoute = pendingRouteRecordingMeta !== null;
+    // only for a just-finished GPS recording.
     if (pendingRouteRecordingMeta !== null) {
         routeData.recorded_at = pendingRouteRecordingMeta.recorded_at;
         routeData.recording_duration_seconds = pendingRouteRecordingMeta.recording_duration_seconds;
         pendingRouteRecordingMeta = null;
+
+        // A recorded route never touches the network here at all - it's
+        // handed straight to track-recorder.js's local "save now, upload
+        // later" queue (saveRecordedTrackLocally(), which syncs on its own
+        // once connectivity allows) instead of the POST/retry flow below,
+        // which manually-drawn routes still use. A multi-hour kayak day
+        // tour is very likely recorded with no signal at all for its whole
+        // duration - waiting on (or even attempting) a network request
+        // before the user can start recording the next leg would defeat
+        // the point of a "record several legs, upload them all later"
+        // workflow.
+        measureTool.index = null;
+        measureTool.end();
+        closeRouteEditWindow();
+        document.getElementById('routeButton').classList.remove('active');
+        saveRecordedTrackLocally(routeData);
+        return true;
     }
 
     log('saveRoute(' + i + ')', LOG_INFO, routeData);
+
+    // Disabled for the duration of the request (re-enabled in .catch() on
+    // failure, irrelevant on success since the window closes) - prevents a
+    // second, duplicate POST/PUT if the user impatiently clicks Save again
+    // while the first request is still in flight, now that the window no
+    // longer closes immediately (see below). routeSaveInProgress covers the
+    // same case if the user instead edits the name/description field
+    // meanwhile - validateRouteEditForm()'s own oninput handler would
+    // otherwise re-enable this button on every keystroke, in-flight request
+    // or not.
+    routeSaveInProgress = true;
+    var saveBtn = document.getElementById('editRouteSaveBtn');
+    if (saveBtn !== null) {
+        saveBtn.disabled = true;
+    }
 
     var request = (id === null)
         ? Ytan.post('/routes', routeData)
@@ -293,6 +351,7 @@ function saveRoute(i) {
 
     request.then(answer => {
         log('saveRoute() success', LOG_INFO, answer);
+        routeSaveInProgress = false;
 
         // Purely array/network-based (no DOM dependency), so this still
         // completes correctly even after the edit window has closed.
@@ -300,29 +359,30 @@ function saveRoute(i) {
             applyPendingPhotoUploadChanges('routes', id);
         }
 
-        if (wasRecordedRoute && typeof window.onRecordedRouteSaved === 'function') {
-            window.onRecordedRouteSaved();
+        // Guarded on isOpen (same check closeRouteEditWindow() itself
+        // already does) in case the user cancelled the edit while this
+        // request was still in flight - the route is saved server-side
+        // either way, but there's no still-open window/active measureTool
+        // left to tear down a second time.
+        if (routeEditWindow.isOpen) {
+            measureTool.index = null;
+            measureTool.end();
+            closeRouteEditWindow();
+            document.getElementById('routeButton').classList.remove('active');
         }
 
-        measureTool.end();
         routeData.points = JSON.parse(routeData.points);
         var index = i;
 
         if (index == null) {
             log('INSERT into array routes[]', LOG_INFO);
             routeData.id = answer.data.id;
-            index = routes.push(routeData) - 1;
-            log('new index: ' + index, LOG_INFO);
-
-            if (activeTourModeId !== null) {
-                addNewRouteToActiveTour(routeData.id);
-            }
+            index = addSavedRouteToMap(routeData);
         } else {
             routes[index] = routeData;
             log('UPDATE array routes[' + i +']', LOG_INFO, routes[index]);
+            createRoute(index);
         }
-
-        createRoute(index);
 
         if (settings.detailroutes === false) {
             document.getElementById('detailroutes').checked = true;
@@ -333,12 +393,20 @@ function saveRoute(i) {
     }).catch(err => {
         log('saveRoute() failed', LOG_ERROR, err);
         showToast(t('route.save_failed', { error: err.message }), 'error');
+        routeSaveInProgress = false;
+
+        // Deliberately leave the edit window, measureTool and
+        // pendingRouteRecordingMeta untouched here - the old code closed
+        // the window and tore down measureTool unconditionally right after
+        // firing the request, regardless of outcome, which on a network
+        // error orphaned the drawn (and for a GPS recording, otherwise
+        // unrecoverable) route with no way back to its Save button. Just
+        // re-enable Save so the user can retry once the network is back.
+        var btn = document.getElementById('editRouteSaveBtn');
+        if (btn !== null) {
+            btn.disabled = false;
+        }
     });
-
-    measureTool.index = null;
-    closeRouteEditWindow();
-
-    document.getElementById('routeButton').classList.remove('active');
 
     return true;
 }

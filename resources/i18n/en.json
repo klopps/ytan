@@ -490,5 +490,12 @@
     "trackrecorder.permission_missing_location_services": "Location services (GPS) are turned off on this device",
     "trackrecorder.permission_open_settings_hint": "Opens the app settings. Under \"Permissions\" → \"Location\" choose \"Allow all the time\" and enable notifications.",
     "trackrecorder.permission_open_settings_button": "Open settings",
-    "trackrecorder.permission_blocked_toast": "Please grant the required permissions first."
+    "trackrecorder.permission_blocked_toast": "Please grant the required permissions first.",
+    "trackrecorder.saved_locally_toast": "Track saved locally - will upload automatically once you're back online.",
+    "trackrecorder.pending_section_title": "Pending tracks ({count})",
+    "trackrecorder.pending_upload_button": "Upload",
+    "trackrecorder.pending_upload_all_button": "Upload all",
+    "trackrecorder.pending_upload_success": "{count} track(s) uploaded",
+    "trackrecorder.pending_upload_failed": "Failed to upload {count} track(s)",
+    "trackrecorder.confirm_discard_pending": "Really discard \"{name}\"? This cannot be undone."
 }

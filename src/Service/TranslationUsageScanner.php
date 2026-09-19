@@ -7,12 +7,26 @@ namespace Ytan\Service;
 /**
  * Builds a "translation key -> where it's used" reverse index by regex-
  * scanning the app's own source tree, for the /translate admin tool
- * (TranslationController). Every t()/$t() call site in this app uses a
- * literal string key (confirmed by grep across the whole codebase - never
- * a variable/computed key), so a plain regex scan can reliably build a
- * complete, always-accurate index with no manual upkeep - unlike e.g. a
- * hand-maintained "key belongs to this screen" mapping, which would go
- * stale the moment a string moves between files.
+ * (TranslationController). Every t()/$t() call site in this app must use a
+ * literal string key, never a variable/computed one, so a plain regex scan
+ * can reliably build a complete, always-accurate index with no manual
+ * upkeep - unlike e.g. a hand-maintained "key belongs to this screen"
+ * mapping, which would go stale the moment a string moves between files.
+ * This is an enforced convention, not just an observation: a call site
+ * whose key comes from a variable (e.g. `t(titleKey, ...)`) or string
+ * concatenation is invisible to this scanner and gets wrongly reported as
+ * "not referenced anywhere" in the tool - found live for
+ * weather.timeline.title_with_place (public/js/weather.js's
+ * setWeatherTimelineTitle() used to pick the key via a ternary held in a
+ * variable) and two similar cases in admin-image-cleanup.js/
+ * admin-styleguide.js, all since rewritten to call t() with a literal key
+ * at every call site. The one deliberate, known exception is
+ * i18n.js's translateApiError(), which resolves an open-ended
+ * `"error." + error.code` key from the backend's own ApiException error
+ * codes (see BaseController/ApiException) - not a small fixed enum of
+ * literal call sites the way the three fixed cases were, so it can't be
+ * made literal the same way; its error.* keys are expected to show as
+ * unreferenced here despite being real usages.
  *
  * Stateless and re-scans on every call - at ~14 files and a few hundred
  * call sites this is cheap enough per-request that no caching is needed.

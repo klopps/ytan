@@ -33,7 +33,9 @@
     const TRACK_SIMPLIFY_EPSILON_METERS = 3;
     const TRACK_SIMPLIFY_MAX_POINTS = 100;
     const RECORDING_DB_NAME = 'ytan-track-recorder';
-    const RECORDING_DB_VERSION = 1;
+    // v2 added the 'pending' store (local-first "save now, upload later"
+    // queue for finished recordings - see saveRecordedTrackLocally()).
+    const RECORDING_DB_VERSION = 2;
     const CURRENT_META_ID = 'current'; // this app only ever has one recording in progress at a time
     // #trackRecordingBadge sits directly on the map, right where a user's
     // thumb naturally lands while panning/zooming near it - a plain tap
@@ -48,6 +50,11 @@
     let livePointCount = 0;
     let liveDistanceMeters = 0;
     let lastPoint = null;
+    // In-memory mirror of the 'pending' IndexedDB store, kept fresh by
+    // refreshPendingTracks() - renderIdleState() builds its "pending
+    // tracks" section synchronously from this array rather than reading
+    // IndexedDB (inherently async) on every render.
+    let pendingTracksCache = [];
     let badgeTickTimer = null;
     let badgeHoldTimer = null;
     let badgeHoldStartPos = null;
@@ -69,9 +76,20 @@
             const request = indexedDB.open(RECORDING_DB_NAME, RECORDING_DB_VERSION);
             request.onupgradeneeded = function () {
                 const upgradeDb = request.result;
-                const points = upgradeDb.createObjectStore('points', { keyPath: 'seq', autoIncrement: true });
-                points.createIndex('recordingId', 'recordingId');
-                upgradeDb.createObjectStore('meta', { keyPath: 'id' });
+                // Guarded on objectStoreNames.contains() rather than
+                // branching on event.oldVersion - works the same for a
+                // fresh v0->v2 install and an existing v1->v2 upgrade
+                // without needing two code paths.
+                if (!upgradeDb.objectStoreNames.contains('points')) {
+                    const points = upgradeDb.createObjectStore('points', { keyPath: 'seq', autoIncrement: true });
+                    points.createIndex('recordingId', 'recordingId');
+                }
+                if (!upgradeDb.objectStoreNames.contains('meta')) {
+                    upgradeDb.createObjectStore('meta', { keyPath: 'id' });
+                }
+                if (!upgradeDb.objectStoreNames.contains('pending')) {
+                    upgradeDb.createObjectStore('pending', { keyPath: 'id' });
+                }
             };
             request.onsuccess = function () {
                 db = request.result;
@@ -119,7 +137,22 @@
                         cursor.continue();
                     }
                 };
-                tx.objectStore('meta').delete(CURRENT_META_ID);
+                // Only clears the 'current' slot if it still belongs to
+                // THIS recording, rather than deleting it unconditionally -
+                // saveRecordedTrackLocally() frees the slot in the
+                // background (after the user is already back at the map,
+                // edit window already closed), so a user starting the next
+                // leg's recording quickly enough could otherwise have their
+                // brand-new 'current' meta wiped out by this call landing a
+                // moment later for the PREVIOUS leg.
+                const metaStore = tx.objectStore('meta');
+                const metaRequest = metaStore.get(CURRENT_META_ID);
+                metaRequest.onsuccess = function () {
+                    const currentMeta = metaRequest.result;
+                    if (currentMeta && currentMeta.recordingId === recordingId) {
+                        metaStore.delete(CURRENT_META_ID);
+                    }
+                };
                 tx.oncomplete = resolve;
                 tx.onerror = function () { reject(tx.error); };
             });
@@ -144,6 +177,41 @@
                 const request = tx.objectStore('meta').get(CURRENT_META_ID);
                 request.onsuccess = function () { resolve(request.result || null); };
                 request.onerror = function () { reject(request.error); };
+            });
+        });
+    }
+
+    // --- Pending-upload queue ("save locally now, upload once online") --
+
+    function putPending(entry) {
+        return openRecordingDb().then(function (database) {
+            return new Promise(function (resolve, reject) {
+                const tx = database.transaction('pending', 'readwrite');
+                tx.objectStore('pending').put(entry);
+                tx.oncomplete = resolve;
+                tx.onerror = function () { reject(tx.error); };
+            });
+        });
+    }
+
+    function getAllPending() {
+        return openRecordingDb().then(function (database) {
+            return new Promise(function (resolve, reject) {
+                const tx = database.transaction('pending', 'readonly');
+                const request = tx.objectStore('pending').getAll();
+                request.onsuccess = function () { resolve(request.result); };
+                request.onerror = function () { reject(request.error); };
+            });
+        });
+    }
+
+    function deletePending(id) {
+        return openRecordingDb().then(function (database) {
+            return new Promise(function (resolve, reject) {
+                const tx = database.transaction('pending', 'readwrite');
+                tx.objectStore('pending').delete(id);
+                tx.oncomplete = resolve;
+                tx.onerror = function () { reject(tx.error); };
             });
         });
     }
@@ -394,15 +462,25 @@
     /**
      * Hands the finished track off into route.js's EXISTING manual route
      * editing UI (same mechanism used to edit an already-saved route -
-     * measureTool.start(points) + showRouteEditWindow()) rather than
-     * duplicating the save logic.
+     * measureTool.start(points) + showRouteEditWindow()) purely for the
+     * Name/Beschreibung/Farbe form and its live preview line - NOT to save
+     * it over the network. saveRoute() (route.js) checks
+     * pendingRouteRecordingMeta and, when set, calls
+     * saveRecordedTrackLocally() below instead of POSTing: a route born
+     * from a GPS recording is always saved into the local pending-upload
+     * queue first, network or not, and synced later (see
+     * syncPendingTracks()) - a multi-hour kayak day tour is very likely
+     * recorded with no signal at all for its whole duration, so waiting on
+     * a network attempt before the user can start recording the next leg
+     * would defeat the point.
      *
      * Login is checked HERE, before touching measureTool at all:
      * showRouteEditWindow() itself calls cancelEditRoute() -> measureTool.end()
      * when logged out, which would silently discard whatever was just fed
      * into measureTool - verified in route.js while planning this feature.
      * The recording stays intact in IndexedDB either way; only a
-     * successful save clears it.
+     * successful local save (or, for the standard manually-drawn route
+     * this module never touches, a successful network save) clears it.
      */
     function reviewRecordedTrack(points, meta) {
         if (points.length < 2) {
@@ -440,6 +518,159 @@
         showSecondToolbar('routeButton');
         showRouteEditWindow(null, latLngPoints[latLngPoints.length - 1]);
     }
+
+    /**
+     * Called by route.js's saveRoute() instead of POSTing, whenever
+     * pendingRouteRecordingMeta is set (i.e. the route being saved came
+     * from reviewRecordedTrack() above, not a manually-drawn one). routeData
+     * is already fully built and validated by saveRoute() (name/description/
+     * color/public/length/points, points already JSON.stringify()'d) - this
+     * just re-homes it from "about to be POSTed" to "written into the local
+     * pending-upload queue", frees the 'current' recording slot for the next
+     * leg, and kicks off a background sync attempt (silent on failure - the
+     * whole point is that this is expected to fail often).
+     */
+    function saveRecordedTrackLocally(routeData) {
+        getMeta().then(function (meta) {
+            const recordingId = meta ? meta.recordingId : String(Date.now());
+            const pendingEntry = {
+                id: recordingId,
+                name: routeData.name,
+                description: routeData.description,
+                public: routeData.public,
+                length: routeData.length,
+                points: routeData.points, // already a JSON string, see above
+                color: routeData.color,
+                recorded_at: routeData.recorded_at,
+                recording_duration_seconds: routeData.recording_duration_seconds,
+                savedLocallyAt: new Date().toISOString(),
+            };
+            putPending(pendingEntry).then(function () {
+                if (meta) {
+                    clearRecording(meta.recordingId);
+                }
+                showToast(t('trackrecorder.saved_locally_toast'), 'success');
+                refreshPendingTracks();
+                syncPendingTracks({ manual: false });
+            });
+        });
+    }
+    window.saveRecordedTrackLocally = saveRecordedTrackLocally;
+
+    /**
+     * POSTs one pending entry exactly like route.js's saveRoute() would
+     * have, then hands the result to route.js's addSavedRouteToMap() - the
+     * same "just got a server id back for a brand-new route" step
+     * saveRoute()'s own success handler uses, just reached from a
+     * background sync instead of a live save click.
+     */
+    function uploadPendingTrack(entry) {
+        const routeData = {
+            id: null,
+            user_id: user.id,
+            name: entry.name,
+            description: entry.description,
+            public: entry.public,
+            length: entry.length,
+            points: entry.points,
+            color: entry.color,
+            recorded_at: entry.recorded_at,
+            recording_duration_seconds: entry.recording_duration_seconds,
+        };
+        return Ytan.post('/routes', routeData).then(function (answer) {
+            routeData.id = answer.data.id;
+            routeData.points = JSON.parse(routeData.points);
+            addSavedRouteToMap(routeData);
+            if (settings.detailroutes === false) {
+                document.getElementById('detailroutes').checked = true;
+                settings.detailroutes = true;
+                saveSettings();
+                showRoutes();
+            }
+            return deletePending(entry.id);
+        });
+    }
+
+    /**
+     * Uploads every currently pending track, one at a time (not in
+     * parallel - avoids hammering a connection that may have only just
+     * barely come back). Called automatically (opts.manual=false, no
+     * failure toast - a background attempt failing just means still no
+     * signal, not worth nagging about) from saveRecordedTrackLocally(),
+     * openTrackRecorderScreen() and the 'online' event listener below, and
+     * manually (opts.manual=true, failures DO get a toast) from the
+     * "Alle hochladen" button.
+     */
+    function syncPendingTracks(opts) {
+        opts = opts || {};
+        if (user.id === null) {
+            return Promise.resolve();
+        }
+        return getAllPending().then(function (entries) {
+            if (entries.length === 0) {
+                return;
+            }
+            let uploadedCount = 0;
+            let failedCount = 0;
+            let chain = Promise.resolve();
+            entries.forEach(function (entry) {
+                chain = chain.then(function () {
+                    return uploadPendingTrack(entry).then(function () {
+                        uploadedCount++;
+                    }).catch(function (err) {
+                        log('syncPendingTracks() failed for ' + entry.id, LOG_WARN, err);
+                        failedCount++;
+                    });
+                });
+            });
+            return chain.then(function () {
+                if (uploadedCount > 0) {
+                    showToast(t('trackrecorder.pending_upload_success', { count: uploadedCount }), 'success');
+                }
+                if (failedCount > 0 && opts.manual) {
+                    showToast(t('trackrecorder.pending_upload_failed', { count: failedCount }), 'error');
+                }
+                refreshPendingTracks();
+            });
+        });
+    }
+    window.syncPendingTracks = syncPendingTracks;
+
+    function refreshPendingTracks() {
+        return getAllPending().then(function (entries) {
+            // Newest first - the leg just finished belongs at the top.
+            entries.sort(function (a, b) { return b.id.localeCompare(a.id); });
+            pendingTracksCache = entries;
+            renderTrackRecorderScreen();
+        });
+    }
+
+    window.uploadPendingTrackClicked = function (id) {
+        const entry = pendingTracksCache.find(function (e) { return e.id === id; });
+        if (!entry) {
+            return;
+        }
+        uploadPendingTrack(entry).then(function () {
+            showToast(t('trackrecorder.pending_upload_success', { count: 1 }), 'success');
+            refreshPendingTracks();
+        }).catch(function (err) {
+            log('uploadPendingTrackClicked() failed', LOG_ERROR, err);
+            showToast(t('trackrecorder.pending_upload_failed', { count: 1 }), 'error');
+        });
+    };
+
+    window.discardPendingTrackClicked = function (id) {
+        const entry = pendingTracksCache.find(function (e) { return e.id === id; });
+        if (!entry) {
+            return;
+        }
+        showConfirmDialog(t('trackrecorder.confirm_discard_pending', { name: entry.name }), { type: 'danger', confirmLabel: t('common.delete') }).then(function (confirmed) {
+            if (!confirmed) {
+                return;
+            }
+            deletePending(id).then(refreshPendingTracks);
+        });
+    };
 
     /**
      * Douglas-Peucker downsampling, always applied to a finished recording
@@ -653,6 +884,12 @@
         navMenuGoTo('record');
         renderTrackRecorderScreen();
         refreshPermissionStatus();
+        // Covers "opened the app back in cell signal range" - the 'online'
+        // event listener (initTrackRecorder()) already covers the
+        // app-stays-open case, this one catches a cold start/resume
+        // instead. Silent on failure, same reasoning as everywhere else
+        // this is called with manual:false.
+        syncPendingTracks({ manual: false });
     };
 
     // --- UI: drawer screen ---------------------------------------------
@@ -688,7 +925,43 @@
             // Same nav-btn-primary treatment as "Tour-Modus aktivieren"
             // (tour-admin.js) - just a different icon (fiber_manual_record,
             // matching the recording badge's own icon) instead of explore.
-            '<button type="button" class="nav-btn-primary" onclick="trackRecorderStartClicked();"><i class="material-icons-round">fiber_manual_record</i>&nbsp;' + t('trackrecorder.start_button') + '</button>';
+            '<button type="button" class="nav-btn-primary" onclick="trackRecorderStartClicked();"><i class="material-icons-round">fiber_manual_record</i>&nbsp;' + t('trackrecorder.start_button') + '</button>' +
+            renderPendingTracksSection();
+    }
+
+    /**
+     * Tracks already stopped+named (saveRecordedTrackLocally()) but not yet
+     * confirmed on the server - shown right below the Start button so a
+     * multi-leg trip (record leg 1, save locally, record leg 2, ...) always
+     * shows what's still waiting, without leaving the recording screen.
+     * Renders from pendingTracksCache (kept fresh by refreshPendingTracks())
+     * rather than reading IndexedDB here, since this function itself must
+     * stay synchronous - it's called from inside renderTrackRecorderScreen().
+     */
+    function renderPendingTracksSection() {
+        if (pendingTracksCache.length === 0) {
+            return '';
+        }
+        const rows = pendingTracksCache.map(function (entry) {
+            const distanceKm = (entry.length / 1000).toFixed(2);
+            const duration = formatDuration(entry.recording_duration_seconds || 0);
+            return '' +
+                '<div class="track-recorder-pending-row">' +
+                    '<div class="track-recorder-pending-info">' +
+                        '<span class="track-recorder-pending-name">' + escapeHTML(entry.name) + '</span>' +
+                        '<span class="track-recorder-pending-meta">' + distanceKm + ' km &middot; ' + duration + '</span>' +
+                    '</div>' +
+                    '<i class="material-icons-round track-recorder-pending-upload" onclick="uploadPendingTrackClicked(\'' + entry.id + '\');" title="' + t('trackrecorder.pending_upload_button') + '">cloud_upload</i>' +
+                    '<i class="material-icons-round track-recorder-pending-discard" onclick="discardPendingTrackClicked(\'' + entry.id + '\');" title="' + t('common.delete') + '">delete</i>' +
+                '</div>';
+        }).join('');
+        const bulkButton = pendingTracksCache.length > 1
+            ? '<button type="button" class="nav-btn-secondary" onclick="syncPendingTracks({manual:true});">' + t('trackrecorder.pending_upload_all_button') + '</button>'
+            : '';
+        return '' +
+            '<p class="nav-field-label">' + t('trackrecorder.pending_section_title', { count: pendingTracksCache.length }) + '</p>' +
+            '<div class="track-recorder-pending-list">' + rows + '</div>' +
+            bulkButton;
     }
 
     function renderActiveState() {
@@ -738,22 +1011,6 @@
     window.stopRecording = stopRecording;
     window.discardRecording = discardRecording;
 
-    /**
-     * Called by route.js's saveRoute() right after a successful POST
-     * /routes that included this module's recording metadata - only now,
-     * with the save actually confirmed, is it safe to drop the local
-     * IndexedDB copy. Re-reads the current meta rather than relying on any
-     * closure state, since this app only ever tracks one recording at a
-     * time - keeps this hook a single, self-contained statement.
-     */
-    window.onRecordedRouteSaved = function () {
-        getMeta().then(function (meta) {
-            if (meta) {
-                clearRecording(meta.recordingId);
-            }
-        });
-    };
-
     // Covers "tapped Open Settings, granted the permission, pressed back" -
     // the WebView isn't destroyed by that round trip, so the idle screen
     // (if still the active nav screen) can just be silently refreshed
@@ -778,6 +1035,15 @@
         initTrackRecordingBadgePressHold();
         initPermissionStatusRefreshOnResume();
         loadInProgressRecording();
+        refreshPendingTracks();
+        // Covers the "still has the app open, connectivity comes back on
+        // its own" case (e.g. paddled back into range of a cell tower) -
+        // openTrackRecorderScreen() and saveRecordedTrackLocally() already
+        // cover the other two triggers (opening/reopening the screen,
+        // finishing a new recording). Silent on failure, same as those.
+        window.addEventListener('online', function () {
+            syncPendingTracks({ manual: false });
+        });
     }
 
     window.initTrackRecorder = initTrackRecorder;
