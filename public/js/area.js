@@ -258,6 +258,9 @@ function saveArea(i) {
     var isNew = (i === null) || (typeof i === 'undefined');
     var realId = isNew ? null : areas[i].id;
     var publicState = isNew ? 0 : areas[i].public;
+    // Captured before areas[i] gets overwritten below - see poi.js's
+    // savePoi() for why (todo.md's "Offline-Funktionalität" Phase 3).
+    var previousUpdatedAt = isNew ? null : areas[i].updated_at;
 
     if (document.getElementById('editAreaStatus') !== null) {
         publicState = document.getElementById('editAreaStatus').checked ? 1 : 0;
@@ -273,7 +276,8 @@ function saveArea(i) {
         points: JSON.stringify(points),
         color: document.getElementById('editAreaColor').value,
         opacity: Number(document.getElementById('editAreaOpacity').value) / 20,
-        zindex: parseInt(document.getElementById('editAreaZindex').value)
+        zindex: parseInt(document.getElementById('editAreaZindex').value),
+        updated_at: previousUpdatedAt
     }
 
     log('saveArea(' + i + ')', LOG_INFO, areaData);
@@ -296,7 +300,10 @@ function saveArea(i) {
     // for a brand-new area until it syncs); the network payload queued
     // below still sends null for a create, exactly like the POST always did.
     var clientId = isNew ? generateLocalId() : realId;
-    var networkPayload = Object.assign({}, areaData, { id: isNew ? null : clientId });
+    var networkPayload = Object.assign({}, areaData, {
+        id: isNew ? null : clientId,
+        expected_updated_at: previousUpdatedAt
+    });
     var localAreaData = Object.assign({}, areaData, { id: clientId, points: points });
 
     var index;
@@ -411,6 +418,20 @@ function reconcileAreaLocalId(clientId, realId, serverData) {
 }
 
 /**
+ * Called by offline-sync.js's resolveConflictKeepServer() when a locally
+ * queued delete conflicted with a change made on the server (todo.md's
+ * "Offline-Funktionalität" Phase 3) - the local array entry/polygon are
+ * already gone (removeArea() removes them immediately, local-first), so
+ * this just re-adds the server's current version, the same way a brand-new
+ * area is added.
+ */
+function restoreAreaFromServer(serverData) {
+    serverData.points = JSON.parse(serverData.points);
+    var index = areas.push(serverData) - 1;
+    createArea(index);
+}
+
+/**
  * Entfernt die Area <i> aus der Datenbank
  *
  * @param {int} i Index der Area im Array areas[]
@@ -426,6 +447,7 @@ async function removeArea(i) {
     }
 
     var id = areas[i].id;
+    var expectedUpdatedAt = areas[i].updated_at;
 
     log('removeArea(' + i + ')', LOG_INFO, id);
 
@@ -438,7 +460,7 @@ async function removeArea(i) {
     removeAreaOverlayAt(i);
     delete areas[i];
 
-    enqueueChange('area', 'delete', id, null).then(function () {
+    enqueueChange('area', 'delete', id, { expected_updated_at: expectedUpdatedAt }).then(function () {
         syncPendingChanges({ manual: false });
     });
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Ytan\Domain\Route;
 
 use PDO;
+use Ytan\Exception\ConflictException;
 use Ytan\Exception\NotFoundException;
 
 final class RouteRepository
@@ -77,6 +78,17 @@ final class RouteRepository
         return $limit !== null ? ' LIMIT ' . $limit . ' OFFSET ' . max(0, $offset) : '';
     }
 
+    private function assertNotStale(array $existing, ?string $expectedUpdatedAt): void
+    {
+        if ($expectedUpdatedAt === null) {
+            return;
+        }
+
+        if ((string) $existing['updated_at'] !== $expectedUpdatedAt) {
+            throw new ConflictException($existing);
+        }
+    }
+
     public function findByTour(int $tourId): array
     {
         $stmt = $this->db->prepare(
@@ -107,8 +119,8 @@ final class RouteRepository
     public function create(int $userId, array $data): array
     {
         $stmt = $this->db->prepare(
-            'INSERT INTO route (user_id, name, description, public, length, points, color, recorded_at, recording_duration_seconds)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO route (user_id, name, description, public, length, points, color, recorded_at, recording_duration_seconds, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())'
         );
         $stmt->execute([
             $userId,
@@ -127,7 +139,8 @@ final class RouteRepository
 
     public function update(int $id, array $data): array
     {
-        $this->findById($id); // 404s if missing
+        $existing = $this->findById($id); // 404s if missing
+        $this->assertNotStale($existing, $data['expected_updated_at'] ?? null);
 
         // recorded_at/recording_duration_seconds are deliberately NOT
         // updatable here - they're write-once-at-creation facts about a
@@ -136,7 +149,7 @@ final class RouteRepository
         // this SET clause would silently null them out on every routine
         // rename/re-describe of an already-recorded route.
         $stmt = $this->db->prepare(
-            'UPDATE route SET name=?, description=?, public=?, length=?, points=?, color=? WHERE id=?'
+            'UPDATE route SET name=?, description=?, public=?, length=?, points=?, color=?, updated_at=NOW() WHERE id=?'
         );
         $stmt->execute([
             $data['name'],
@@ -151,9 +164,10 @@ final class RouteRepository
         return $this->findById($id);
     }
 
-    public function delete(int $id): void
+    public function delete(int $id, ?string $expectedUpdatedAt = null): void
     {
-        $this->findById($id); // 404s if missing
+        $existing = $this->findById($id); // 404s if missing
+        $this->assertNotStale($existing, $expectedUpdatedAt);
         $this->db->prepare('DELETE FROM route WHERE id = ?')->execute([$id]);
     }
 

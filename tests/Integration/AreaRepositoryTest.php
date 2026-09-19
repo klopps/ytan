@@ -151,4 +151,61 @@ final class AreaRepositoryTest extends TestCase
         $this->assertSame(['a.jpg', 'b.jpg'], $filenames);
         $this->assertArrayHasKey('entity_id', $all[0]);
     }
+
+    public function testUpdateWithoutExpectedUpdatedAtIsUnaffectedByConcurrentChange(): void
+    {
+        $userId = $this->createUser();
+        $area = $this->createArea($userId);
+
+        $updated = $this->areas->update((int) $area['id'], ['name' => 'Renamed']);
+
+        $this->assertSame('Renamed', $updated['name']);
+    }
+
+    public function testUpdateWithMatchingExpectedUpdatedAtSucceeds(): void
+    {
+        $userId = $this->createUser();
+        $area = $this->createArea($userId);
+
+        $updated = $this->areas->update((int) $area['id'], [
+            'name' => 'Renamed',
+            'expected_updated_at' => $area['updated_at'],
+        ]);
+
+        $this->assertSame('Renamed', $updated['name']);
+    }
+
+    public function testUpdateWithStaleExpectedUpdatedAtThrowsConflictException(): void
+    {
+        $userId = $this->createUser();
+        $area = $this->createArea($userId);
+
+        $this->expectException(\Ytan\Exception\ConflictException::class);
+
+        $this->areas->update((int) $area['id'], [
+            'name' => 'Renamed',
+            'expected_updated_at' => '2000-01-01 00:00:00',
+        ]);
+    }
+
+    public function testDeleteWithStaleExpectedUpdatedAtThrowsConflictException(): void
+    {
+        $userId = $this->createUser();
+        $area = $this->createArea($userId);
+
+        $this->expectException(\Ytan\Exception\ConflictException::class);
+
+        $this->areas->delete((int) $area['id'], '2000-01-01 00:00:00');
+    }
+
+    public function testDeleteWithMatchingExpectedUpdatedAtSucceeds(): void
+    {
+        $userId = $this->createUser();
+        $area = $this->createArea($userId);
+
+        $this->areas->delete((int) $area['id'], $area['updated_at']);
+
+        $this->expectException(\Ytan\Exception\NotFoundException::class);
+        $this->areas->findById((int) $area['id']);
+    }
 }

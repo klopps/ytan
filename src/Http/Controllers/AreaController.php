@@ -86,7 +86,8 @@ final class AreaController extends BaseController
         foreach ($this->areas->getImages($id) as $image) {
             $this->images->delete($id, $image['filename']);
         }
-        $this->areas->delete($id);
+        $expectedUpdatedAt = $request->getQueryParams()['expected_updated_at'] ?? null;
+        $this->areas->delete($id, $expectedUpdatedAt);
 
         return $this->json($response, ['data' => ['id' => $id]]);
     }

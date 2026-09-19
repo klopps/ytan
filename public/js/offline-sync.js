@@ -118,9 +118,21 @@ function enqueueChange(entityType, operation, clientId, payload) {
 // pattern already used elsewhere in this app (e.g. map-core.js's
 // editUnit() calling route.js's renewVisibleRouteLabels()).
 const OFFLINE_SYNC_ENTITY_CONFIG = {
-    poi: { apiPath: '/pois', icon: 'place', reconcileCreate: function (clientId, realId, data) { reconcilePoiLocalId(clientId, realId, data); } },
-    route: { apiPath: '/routes', icon: 'timeline', reconcileCreate: function (clientId, realId, data) { reconcileRouteLocalId(clientId, realId, data); } },
-    area: { apiPath: '/areas', icon: 'crop_square', reconcileCreate: function (clientId, realId, data) { reconcileAreaLocalId(clientId, realId, data); } },
+    poi: {
+        apiPath: '/pois', icon: 'place',
+        reconcileCreate: function (clientId, realId, data) { reconcilePoiLocalId(clientId, realId, data); },
+        restoreFromServer: function (data) { restorePoiFromServer(data); },
+    },
+    route: {
+        apiPath: '/routes', icon: 'timeline',
+        reconcileCreate: function (clientId, realId, data) { reconcileRouteLocalId(clientId, realId, data); },
+        restoreFromServer: function (data) { restoreRouteFromServer(data); },
+    },
+    area: {
+        apiPath: '/areas', icon: 'crop_square',
+        reconcileCreate: function (clientId, realId, data) { reconcileAreaLocalId(clientId, realId, data); },
+        restoreFromServer: function (data) { restoreAreaFromServer(data); },
+    },
 };
 
 /**
@@ -137,14 +149,29 @@ function uploadPendingChange(entry) {
     } else if (entry.operation === 'update') {
         request = Ytan.put(config.apiPath + '/' + entry.clientId, entry.payload);
     } else {
-        request = Ytan.del(config.apiPath + '/' + entry.clientId);
+        // DELETE has no body (see route.js's captcha-retry precedent) -
+        // expected_updated_at goes on the query string instead.
+        var deletePath = config.apiPath + '/' + entry.clientId;
+        var expectedUpdatedAt = entry.payload && entry.payload.expected_updated_at;
+        if (expectedUpdatedAt) {
+            deletePath += '?expected_updated_at=' + encodeURIComponent(expectedUpdatedAt);
+        }
+        request = Ytan.del(deletePath);
     }
 
     return request.then(function (answer) {
-        if (entry.operation === 'create') {
+        if (entry.operation === 'create' || entry.operation === 'update') {
             config.reconcileCreate(entry.clientId, answer.data.id, answer.data);
         }
         return deletePendingChange(entry.entityType, entry.clientId);
+    }).catch(function (err) {
+        if (err.status === 409 && err.data && err.data.server) {
+            entry.conflict = { server: err.data.server };
+            return putPendingChange(entry).then(function () {
+                throw err;
+            });
+        }
+        throw err;
     });
 }
 
@@ -178,6 +205,12 @@ function syncPendingChanges(opts) {
         let failed = 0;
         let chain = Promise.resolve();
         entries.forEach(function (entry) {
+            // Already-conflicted entries need a conscious user decision
+            // (showConflictDialog()/resolveConflict()) instead of a blind
+            // retry, which would just re-hit the same 409.
+            if (entry.conflict) {
+                return;
+            }
             chain = chain.then(function () {
                 return uploadPendingChange(entry).then(function () {
                     succeeded++;
@@ -236,6 +269,18 @@ function renderPendingChangesScreen() {
     const rows = pendingChangesCache.map(function (entry) {
         const config = OFFLINE_SYNC_ENTITY_CONFIG[entry.entityType];
         const name = (entry.payload && entry.payload.name) ? entry.payload.name : t('offline_sync.deleted_item_name');
+        if (entry.conflict) {
+            return '' +
+                '<div class="track-recorder-pending-row track-recorder-pending-row-conflict">' +
+                    '<i class="material-icons-round">warning</i>' +
+                    '<div class="track-recorder-pending-info">' +
+                        '<span class="track-recorder-pending-name">' + escapeHTML(name) + '</span>' +
+                        '<span class="track-recorder-pending-meta">' + t('offline_sync.conflict_label') + '</span>' +
+                    '</div>' +
+                    '<button type="button" class="nav-btn-secondary" onclick="resolveConflict(\'' + entry.id + '\');">' + t('offline_sync.conflict_resolve_button') + '</button>' +
+                    '<i class="material-icons-round track-recorder-pending-discard" onclick="discardPendingChangeClicked(\'' + entry.id + '\');" title="' + t('common.delete') + '">delete</i>' +
+                '</div>';
+        }
         return '' +
             '<div class="track-recorder-pending-row">' +
                 '<i class="material-icons-round">' + config.icon + '</i>' +
@@ -289,6 +334,136 @@ function discardPendingChangeClicked(id) {
         }
         deletePendingChange(entry.entityType, entry.clientId).then(refreshPendingChanges);
     });
+}
+
+/**
+ * Shown when a queued update/delete conflicts with a change made on the
+ * server in the meantime (uploadPendingChange()'s 409 handling above,
+ * todo.md's "Offline-Funktionalität" Phase 3) - no automatic merge, the
+ * user picks "server wins" or "app wins" for this one record. Modeled on
+ * confirm-dialog.js's showConfirmDialog()/showCaptchaDialog(), but kept
+ * local here since it's specific to this one screen.
+ *
+ * @returns {Promise<'server'|'app'|null>}
+ */
+function showConflictDialog(entry) {
+    return new Promise(function (resolve) {
+        var server = entry.conflict.server;
+        var localName = (entry.payload && entry.payload.name) || t('offline_sync.deleted_item_name');
+        var localDescription = (entry.payload && entry.payload.description) || '';
+
+        var overlay = document.createElement('div');
+        overlay.className = 'confirm-dialog-overlay';
+
+        var dialog = document.createElement('div');
+        dialog.className = 'confirm-dialog confirm-dialog-default';
+
+        var icon = document.createElement('i');
+        icon.className = 'material-icons-round confirm-dialog-icon';
+        icon.textContent = 'warning';
+
+        var text = document.createElement('div');
+        text.className = 'confirm-dialog-message';
+        text.textContent = t('offline_sync.conflict_dialog_message');
+
+        var appBlock = document.createElement('div');
+        appBlock.className = 'conflict-dialog-version';
+        appBlock.innerHTML = '<strong>' + escapeHTML(t('offline_sync.conflict_app_version')) + '</strong><br>' +
+            escapeHTML(localName) + (localDescription ? '<br>' + escapeHTML(localDescription) : '');
+
+        var serverBlock = document.createElement('div');
+        serverBlock.className = 'conflict-dialog-version';
+        serverBlock.innerHTML = '<strong>' + escapeHTML(t('offline_sync.conflict_server_version')) + '</strong><br>' +
+            escapeHTML(server.name || '') + (server.description ? '<br>' + escapeHTML(server.description) : '');
+
+        var actions = document.createElement('div');
+        actions.className = 'confirm-dialog-actions';
+
+        var keepServerBtn = document.createElement('button');
+        keepServerBtn.type = 'button';
+        keepServerBtn.className = 'button';
+        keepServerBtn.textContent = t('offline_sync.conflict_keep_server_button');
+
+        var keepAppBtn = document.createElement('button');
+        keepAppBtn.type = 'button';
+        keepAppBtn.className = 'startbtn';
+        keepAppBtn.textContent = t('offline_sync.conflict_keep_app_button');
+
+        function close(result) {
+            document.removeEventListener('keydown', onKeydown);
+            overlay.remove();
+            resolve(result);
+        }
+
+        function onKeydown(event) {
+            if (event.key === 'Escape') {
+                close(null);
+            }
+        }
+
+        keepServerBtn.addEventListener('click', function () { close('server'); });
+        keepAppBtn.addEventListener('click', function () { close('app'); });
+
+        actions.appendChild(keepServerBtn);
+        actions.appendChild(keepAppBtn);
+
+        dialog.appendChild(icon);
+        dialog.appendChild(text);
+        dialog.appendChild(appBlock);
+        dialog.appendChild(serverBlock);
+        dialog.appendChild(actions);
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+
+        document.addEventListener('keydown', onKeydown);
+    });
+}
+
+function resolveConflict(id) {
+    const entry = pendingChangesCache.find(function (e) { return e.id === id; });
+    if (!entry || !entry.conflict) {
+        return;
+    }
+    showConflictDialog(entry).then(function (choice) {
+        if (choice === 'server') {
+            resolveConflictKeepServer(entry);
+        } else if (choice === 'app') {
+            resolveConflictKeepApp(entry);
+        }
+    });
+}
+
+// "Server wins": the queued update/delete is dropped, and the record is
+// brought back in line with what the server currently has - reconcileCreate()
+// already does exactly this for an update (clientId === realId here, same as
+// after a normal create sync); a delete needs restoreFromServer() instead,
+// since the local array entry/map overlay were already torn down when the
+// delete was first queued (removePoi()/removeRoute()/removeArea() are
+// local-first, same as everywhere else in this queue).
+function resolveConflictKeepServer(entry) {
+    const config = OFFLINE_SYNC_ENTITY_CONFIG[entry.entityType];
+    if (entry.operation === 'delete') {
+        config.restoreFromServer(entry.conflict.server);
+    } else {
+        config.reconcileCreate(entry.clientId, entry.clientId, entry.conflict.server);
+    }
+    deletePendingChange(entry.entityType, entry.clientId).then(refreshPendingChanges);
+}
+
+// "App wins": retry the same queued change, now targeting the server's
+// current updated_at - if nothing changes again server-side in the
+// meantime this succeeds outright; if it does, uploadPendingChange() just
+// raises a fresh conflict against whatever the server has now.
+function resolveConflictKeepApp(entry) {
+    entry.payload.expected_updated_at = entry.conflict.server.updated_at;
+    entry.conflict = null;
+    putPendingChange(entry).then(function () {
+        return uploadPendingChange(entry);
+    }).then(function () {
+        showToast(t('offline_sync.sync_success', { count: 1 }), 'success');
+    }).catch(function (err) {
+        log('resolveConflictKeepApp() failed', LOG_WARN, err);
+    }).then(refreshPendingChanges);
 }
 
 // Called both from the drawer row (drawer already open) and could be

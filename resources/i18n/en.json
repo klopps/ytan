@@ -510,5 +510,12 @@
     "offline_sync.deleted_item_name": "(deleted item)",
     "offline_sync.operation_create": "Created",
     "offline_sync.operation_update": "Changed",
-    "offline_sync.operation_delete": "Deleted"
+    "offline_sync.operation_delete": "Deleted",
+    "offline_sync.conflict_label": "Conflict",
+    "offline_sync.conflict_resolve_button": "Resolve…",
+    "offline_sync.conflict_dialog_message": "This item was also changed on the server in the meantime. Which version should be kept?",
+    "offline_sync.conflict_app_version": "This version (app)",
+    "offline_sync.conflict_server_version": "Server version",
+    "offline_sync.conflict_keep_server_button": "Keep server version",
+    "offline_sync.conflict_keep_app_button": "Keep my version"
 }

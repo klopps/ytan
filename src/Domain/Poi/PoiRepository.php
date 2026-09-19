@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Ytan\Domain\Poi;
 
 use PDO;
+use Ytan\Exception\ConflictException;
 use Ytan\Exception\NotFoundException;
 use Ytan\Exception\ValidationException;
 
@@ -17,7 +18,7 @@ final class PoiRepository
     private const BASE_SELECT = <<<'SQL'
         SELECT
             p.id, p.poitype_id, p.user_id, p.name, p.description, p.public,
-            p.latitude, p.longitude, p.url,
+            p.latitude, p.longitude, p.url, p.updated_at,
             wsi.direction,
             por.path AS portage_path,
             lh.characteristic, lh.sector_characteristic
@@ -127,8 +128,8 @@ final class PoiRepository
         $this->assertTypeSpecificFields($data);
 
         $stmt = $this->db->prepare(
-            'INSERT INTO poi (poitype_id, user_id, name, description, public, latitude, longitude, url)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO poi (poitype_id, user_id, name, description, public, latitude, longitude, url, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())'
         );
         $stmt->execute([
             $data['poitype_id'],
@@ -149,11 +150,12 @@ final class PoiRepository
 
     public function update(int $id, array $data): array
     {
-        $this->findById($id); // 404s if missing
+        $existing = $this->findById($id); // 404s if missing
         $this->assertTypeSpecificFields($data);
+        $this->assertNotStale($existing, $data['expected_updated_at'] ?? null);
 
         $stmt = $this->db->prepare(
-            'UPDATE poi SET poitype_id=?, name=?, description=?, public=?, latitude=?, longitude=?, url=? WHERE id=?'
+            'UPDATE poi SET poitype_id=?, name=?, description=?, public=?, latitude=?, longitude=?, url=?, updated_at=NOW() WHERE id=?'
         );
         $stmt->execute([
             $data['poitype_id'],
@@ -171,13 +173,25 @@ final class PoiRepository
         return $this->findById($id);
     }
 
-    public function delete(int $id): void
+    public function delete(int $id, ?string $expectedUpdatedAt = null): void
     {
-        $this->findById($id); // 404s if missing
+        $existing = $this->findById($id); // 404s if missing
+        $this->assertNotStale($existing, $expectedUpdatedAt);
 
         $this->db->prepare('DELETE FROM windshelter WHERE poi_id = ?')->execute([$id]);
         $this->db->prepare('DELETE FROM lighthouse WHERE poi_id = ?')->execute([$id]);
         $this->db->prepare('DELETE FROM poi WHERE id = ?')->execute([$id]);
+    }
+
+    private function assertNotStale(array $existing, ?string $expectedUpdatedAt): void
+    {
+        if ($expectedUpdatedAt === null) {
+            return;
+        }
+
+        if ((string) $existing['updated_at'] !== $expectedUpdatedAt) {
+            throw new ConflictException($existing);
+        }
     }
 
     private function assertTypeSpecificFields(array $data): void

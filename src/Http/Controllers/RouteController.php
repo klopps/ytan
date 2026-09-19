@@ -150,7 +150,8 @@ final class RouteController extends BaseController
         foreach ($this->routes->getImages($id) as $image) {
             $this->images->delete($id, $image['filename']);
         }
-        $this->routes->delete($id);
+        $expectedUpdatedAt = $request->getQueryParams()['expected_updated_at'] ?? null;
+        $this->routes->delete($id, $expectedUpdatedAt);
 
         foreach ($affectedTours as $tour) {
             $this->tours->recalculateTotalLength((int) $tour['id']);

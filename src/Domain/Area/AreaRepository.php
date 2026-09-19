@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Ytan\Domain\Area;
 
 use PDO;
+use Ytan\Exception\ConflictException;
 use Ytan\Exception\NotFoundException;
 
 final class AreaRepository
@@ -81,8 +82,8 @@ final class AreaRepository
     public function create(int $userId, array $data): array
     {
         $stmt = $this->db->prepare(
-            'INSERT INTO area (user_id, name, description, public, points, color, opacity, zindex)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO area (user_id, name, description, public, points, color, opacity, zindex, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())'
         );
         $stmt->execute([
             $userId,
@@ -100,10 +101,11 @@ final class AreaRepository
 
     public function update(int $id, array $data): array
     {
-        $this->findById($id); // 404s if missing
+        $existing = $this->findById($id); // 404s if missing
+        $this->assertNotStale($existing, $data['expected_updated_at'] ?? null);
 
         $stmt = $this->db->prepare(
-            'UPDATE area SET name=?, description=?, public=?, points=?, color=?, opacity=?, zindex=? WHERE id=?'
+            'UPDATE area SET name=?, description=?, public=?, points=?, color=?, opacity=?, zindex=?, updated_at=NOW() WHERE id=?'
         );
         $stmt->execute([
             $data['name'],
@@ -119,10 +121,22 @@ final class AreaRepository
         return $this->findById($id);
     }
 
-    public function delete(int $id): void
+    public function delete(int $id, ?string $expectedUpdatedAt = null): void
     {
-        $this->findById($id); // 404s if missing
+        $existing = $this->findById($id); // 404s if missing
+        $this->assertNotStale($existing, $expectedUpdatedAt);
         $this->db->prepare('DELETE FROM area WHERE id = ?')->execute([$id]);
+    }
+
+    private function assertNotStale(array $existing, ?string $expectedUpdatedAt): void
+    {
+        if ($expectedUpdatedAt === null) {
+            return;
+        }
+
+        if ((string) $existing['updated_at'] !== $expectedUpdatedAt) {
+            throw new ConflictException($existing);
+        }
     }
 
     /* ---------------------------------------------------------- Images */

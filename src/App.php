@@ -172,6 +172,9 @@ final class App
                 if ($exception instanceof \Ytan\Exception\CaptchaRequiredException) {
                     $payload['error'] = array_merge($payload['error'], $exception->getPayload());
                 }
+                if ($exception instanceof \Ytan\Exception\ConflictException) {
+                    $payload['error'] = array_merge($payload['error'], $exception->getPayload());
+                }
                 if ($exception instanceof \Ytan\Exception\TranslationKeyMismatchException) {
                     $payload['error'] = array_merge($payload['error'], $exception->getPayload());
                 }

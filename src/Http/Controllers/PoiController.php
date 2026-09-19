@@ -97,7 +97,8 @@ final class PoiController extends BaseController
         foreach ($this->pois->getImages($id) as $image) {
             $this->images->delete($id, $image['filename']);
         }
-        $this->pois->delete($id);
+        $expectedUpdatedAt = $request->getQueryParams()['expected_updated_at'] ?? null;
+        $this->pois->delete($id, $expectedUpdatedAt);
 
         return $this->json($response, ['data' => ['id' => $id]]);
     }

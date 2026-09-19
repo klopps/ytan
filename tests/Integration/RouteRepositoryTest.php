@@ -215,4 +215,66 @@ final class RouteRepositoryTest extends TestCase
         $this->assertSame(['a.jpg', 'b.jpg'], $filenames);
         $this->assertArrayHasKey('entity_id', $all[0]);
     }
+
+    public function testUpdateWithoutExpectedUpdatedAtIsUnaffectedByConcurrentChange(): void
+    {
+        $routes = new RouteRepository($this->pdo);
+        $userId = $this->createUser();
+        $route = $routes->create($userId, ['name' => 'Original']);
+
+        $updated = $routes->update((int) $route['id'], ['name' => 'Renamed']);
+
+        $this->assertSame('Renamed', $updated['name']);
+    }
+
+    public function testUpdateWithMatchingExpectedUpdatedAtSucceeds(): void
+    {
+        $routes = new RouteRepository($this->pdo);
+        $userId = $this->createUser();
+        $route = $routes->create($userId, ['name' => 'Original']);
+
+        $updated = $routes->update((int) $route['id'], [
+            'name' => 'Renamed',
+            'expected_updated_at' => $route['updated_at'],
+        ]);
+
+        $this->assertSame('Renamed', $updated['name']);
+    }
+
+    public function testUpdateWithStaleExpectedUpdatedAtThrowsConflictException(): void
+    {
+        $routes = new RouteRepository($this->pdo);
+        $userId = $this->createUser();
+        $route = $routes->create($userId, ['name' => 'Original']);
+
+        $this->expectException(\Ytan\Exception\ConflictException::class);
+
+        $routes->update((int) $route['id'], [
+            'name' => 'Renamed',
+            'expected_updated_at' => '2000-01-01 00:00:00',
+        ]);
+    }
+
+    public function testDeleteWithStaleExpectedUpdatedAtThrowsConflictException(): void
+    {
+        $routes = new RouteRepository($this->pdo);
+        $userId = $this->createUser();
+        $route = $routes->create($userId, ['name' => 'Original']);
+
+        $this->expectException(\Ytan\Exception\ConflictException::class);
+
+        $routes->delete((int) $route['id'], '2000-01-01 00:00:00');
+    }
+
+    public function testDeleteWithMatchingExpectedUpdatedAtSucceeds(): void
+    {
+        $routes = new RouteRepository($this->pdo);
+        $userId = $this->createUser();
+        $route = $routes->create($userId, ['name' => 'Original']);
+
+        $routes->delete((int) $route['id'], $route['updated_at']);
+
+        $this->expectException(\Ytan\Exception\NotFoundException::class);
+        $routes->findById((int) $route['id']);
+    }
 }

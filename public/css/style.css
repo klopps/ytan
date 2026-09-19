@@ -2107,6 +2107,33 @@ img.wsi {
   color: var(--color-accent);
 }
 
+/* Conflict-detection row (offline-sync.js's resolveConflict() - todo.md's
+   "Offline-Funktionalität" Phase 3): the warning icon and "Konflikt" label
+   need the same accent, and the "Lösen…" button needs a bit of breathing
+   room from the row's trailing delete icon. */
+.track-recorder-pending-row-conflict .track-recorder-pending-name,
+.track-recorder-pending-row-conflict > i.material-icons-round:first-child {
+  color: var(--color-warning);
+}
+
+.track-recorder-pending-row-conflict .nav-btn-secondary {
+  width: auto;
+  margin: 0;
+  flex-shrink: 0;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.conflict-dialog-version {
+  text-align: left;
+  font-size: 13px;
+  padding: 8px 10px;
+  margin: 6px 0;
+  border-radius: 8px;
+  background: var(--color-bg-subtle);
+  color: var(--color-text);
+}
+
 /* Same ~40px touch-target bump as .tour-route-manager-add/-remove below
    this width (see that block's own comment) - both are the same "small
    trailing list-row icon" shape. */

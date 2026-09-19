@@ -1318,6 +1318,12 @@ function savePoi(i) {
     var isNew = (i === null) || (typeof i === 'undefined');
     var realId = isNew ? null : pois[i].id;
     var publicState = isNew ? 0 : pois[i].public;
+    // Captured before pois[i] gets overwritten below - carried on the
+    // optimistic local object until a sync reconciles it with the server's
+    // fresh value, and sent as expected_updated_at so offline-sync.js's
+    // queued update can detect a conflicting server-side change (todo.md's
+    // "Offline-Funktionalität" Phase 3).
+    var previousUpdatedAt = isNew ? null : pois[i].updated_at;
 
     if (document.getElementById('editPoiStatus') !== null) {
         publicState = document.getElementById('editPoiStatus').checked ? 1 : 0;
@@ -1335,7 +1341,8 @@ function savePoi(i) {
         direction: null,
         characteristic: null,
         sector_characteristic: null,
-        public: publicState
+        public: publicState,
+        updated_at: previousUpdatedAt
     }
 
     if ((poiData.poitype_id === 1) || (poiData.poitype_id === 11)) {
@@ -1380,7 +1387,10 @@ function savePoi(i) {
     }
     setPoi(index);
 
-    var networkPayload = Object.assign({}, poiData, { id: isNew ? null : clientId });
+    var networkPayload = Object.assign({}, poiData, {
+        id: isNew ? null : clientId,
+        expected_updated_at: previousUpdatedAt
+    });
     enqueueChange('poi', isNew ? 'create' : 'update', clientId, networkPayload).then(function () {
         syncPendingChanges({ manual: false });
     });
@@ -1457,6 +1467,19 @@ function reconcilePoiLocalId(clientId, realId, serverData) {
 }
 
 /**
+ * Called by offline-sync.js's resolveConflictKeepServer() when a locally
+ * queued delete conflicted with a change made on the server (todo.md's
+ * "Offline-Funktionalität" Phase 3) - the local array entry/marker are
+ * already gone (removePoi() removes them immediately, local-first), so
+ * this just re-adds the server's current version, the same way a brand-new
+ * POI is added.
+ */
+function restorePoiFromServer(serverData) {
+    var index = pois.push(serverData) - 1;
+    setPoi(index);
+}
+
+/**
  * Löscht einen POI
  *
  * @param {integer} i Index des POI im Array pois[]
@@ -1468,6 +1491,7 @@ async function removePoi(i) {
     }
 
     var id = pois[i].id;
+    var expectedUpdatedAt = pois[i].updated_at;
 
     // Local-first, same as savePoi(): remove from the map immediately,
     // queue the actual deletion (or, for a POI never synced in the first
@@ -1479,7 +1503,7 @@ async function removePoi(i) {
     }
     delete pois[i];
 
-    enqueueChange('poi', 'delete', id, null).then(function () {
+    enqueueChange('poi', 'delete', id, { expected_updated_at: expectedUpdatedAt }).then(function () {
         syncPendingChanges({ manual: false });
     });
 

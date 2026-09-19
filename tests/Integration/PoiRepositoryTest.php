@@ -162,4 +162,72 @@ final class PoiRepositoryTest extends TestCase
         $this->assertSame(['a.jpg', 'b.jpg'], $filenames);
         $this->assertArrayHasKey('entity_id', $all[0]);
     }
+
+    public function testUpdateWithoutExpectedUpdatedAtIsUnaffectedByConcurrentChange(): void
+    {
+        $userId = $this->createUser();
+        $poi = $this->createPoi($userId);
+
+        $updated = $this->pois->update((int) $poi['id'], [
+            'poitype_id' => 2,
+            'name' => 'Renamed',
+            'latitude' => 54.0,
+            'longitude' => 10.0,
+        ]);
+
+        $this->assertSame('Renamed', $updated['name']);
+    }
+
+    public function testUpdateWithMatchingExpectedUpdatedAtSucceeds(): void
+    {
+        $userId = $this->createUser();
+        $poi = $this->createPoi($userId);
+
+        $updated = $this->pois->update((int) $poi['id'], [
+            'poitype_id' => 2,
+            'name' => 'Renamed',
+            'latitude' => 54.0,
+            'longitude' => 10.0,
+            'expected_updated_at' => $poi['updated_at'],
+        ]);
+
+        $this->assertSame('Renamed', $updated['name']);
+    }
+
+    public function testUpdateWithStaleExpectedUpdatedAtThrowsConflictException(): void
+    {
+        $userId = $this->createUser();
+        $poi = $this->createPoi($userId);
+
+        $this->expectException(\Ytan\Exception\ConflictException::class);
+
+        $this->pois->update((int) $poi['id'], [
+            'poitype_id' => 2,
+            'name' => 'Renamed',
+            'latitude' => 54.0,
+            'longitude' => 10.0,
+            'expected_updated_at' => '2000-01-01 00:00:00',
+        ]);
+    }
+
+    public function testDeleteWithStaleExpectedUpdatedAtThrowsConflictException(): void
+    {
+        $userId = $this->createUser();
+        $poi = $this->createPoi($userId);
+
+        $this->expectException(\Ytan\Exception\ConflictException::class);
+
+        $this->pois->delete((int) $poi['id'], '2000-01-01 00:00:00');
+    }
+
+    public function testDeleteWithMatchingExpectedUpdatedAtSucceeds(): void
+    {
+        $userId = $this->createUser();
+        $poi = $this->createPoi($userId);
+
+        $this->pois->delete((int) $poi['id'], $poi['updated_at']);
+
+        $this->expectException(\Ytan\Exception\NotFoundException::class);
+        $this->pois->findById((int) $poi['id']);
+    }
 }

@@ -276,6 +276,9 @@ function saveRoute(i) {
     var isNew = (i === null) || (typeof i === 'undefined');
     var realId = isNew ? null : routes[i].id;
     var publicState = isNew ? 0 : routes[i].public;
+    // Captured before routes[i] gets overwritten below - see poi.js's
+    // savePoi() for why (todo.md's "Offline-Funktionalität" Phase 3).
+    var previousUpdatedAt = isNew ? null : routes[i].updated_at;
 
     hideRoute(i); // no-op if routes[i] is undefined (a brand-new route) - guarded inside hideRoute() itself
 
@@ -298,7 +301,8 @@ function saveRoute(i) {
         public: publicState,
         length: measureTool.length,
         points: JSON.stringify(points),
-        color: document.getElementById('editRouteColor').value
+        color: document.getElementById('editRouteColor').value,
+        updated_at: previousUpdatedAt
     }
 
     // Set by track-recorder.js immediately before showRouteEditWindow(),
@@ -346,7 +350,10 @@ function saveRoute(i) {
     // for a brand-new route until it syncs); the network payload queued
     // below still sends null for a create, exactly like the POST always did.
     var clientId = isNew ? generateLocalId() : realId;
-    var networkPayload = Object.assign({}, routeData, { id: isNew ? null : clientId });
+    var networkPayload = Object.assign({}, routeData, {
+        id: isNew ? null : clientId,
+        expected_updated_at: previousUpdatedAt
+    });
     var localRouteData = Object.assign({}, routeData, { id: clientId, points: points });
 
     var index;
@@ -479,6 +486,19 @@ function reconcileRouteLocalId(clientId, realId, serverData) {
 }
 
 /**
+ * Called by offline-sync.js's resolveConflictKeepServer() when a locally
+ * queued delete conflicted with a change made on the server (todo.md's
+ * "Offline-Funktionalität" Phase 3) - the local array entry/polyline are
+ * already gone (removeRoute() removes them immediately, local-first), so
+ * this just re-adds the server's current version via the same helper a
+ * freshly-created route uses.
+ */
+function restoreRouteFromServer(serverData) {
+    serverData.points = JSON.parse(serverData.points);
+    addSavedRouteToMap(serverData);
+}
+
+/**
  * Entfernt die Route <i> aus der Datenbank
  *
  * @param {int} i Index der Route im Array routes[]
@@ -550,8 +570,9 @@ async function removeRoute(i) {
             measureTool.index = null;
             measureTool.end();
             removeRouteOverlayAt(i);
+            var expectedUpdatedAt = routes[i].updated_at;
             delete routes[i];
-            enqueueChange('route', 'delete', id, null).then(function () {
+            enqueueChange('route', 'delete', id, { expected_updated_at: expectedUpdatedAt }).then(function () {
                 syncPendingChanges({ manual: false });
             });
             document.getElementById('routeButton').classList.remove('active');
