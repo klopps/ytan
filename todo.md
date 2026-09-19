@@ -1,5 +1,77 @@
 # Offene Punkte
 
+## Standards für alle Gestaltungselemente festlegen
+
+An verschiedenen Stellen sind die Gestaltungselemente wie Buttons, Inputfelder, Schalter, Hinweistexte etc. unterschiedlich gestaltet. Das muss einheitlich gestaltet werden. Dazu soll im Admin-Bereich eine Beispielseite aufgebaut werden, auf der möglichst alle Elemente vertreten sind, um die Gestaltung vergleichen zu können und schließlich anzugleichen. Ein Vorbild ist das Bootstrap Cheatsheet. Es kann sein, dass einige der folgenden Elemente noch gar nicht zum Einsatz kommen.
+
+Es sollen u. a. Bootstrap Floating Labels verwendet werden.
+
+Gestaltungselemente sind u.a. (nicht vollzählig):
+- allgemeine Typografie (Standardfonts)
+- einfache Texte
+- Warnungen
+- Listen
+- Paginierungssteuerung (Pagination)
+- Popups
+- infoWindows (Google Maps)
+- Überschriften (h1, h2, ...) Inputfelder
+- Textareas
+- Inputfelder
+- Passwortfelder
+- Fehlermeldungen
+- Pflichtfelder
+- Zurück- und Schließenbuttons
+- Dropdowns
+- Badges
+- Carousel
+- Buttons mit Text
+- Buttons mit Symbolen
+- Buttons mit Symbolen und Text
+- Pillswitches
+- Tabellen (Inhalt, Spaltenüberschriften)
+- deaktivierte Elemente
+- Checkboxen
+- Radiobuttons
+- Schieberegler
+- Datei-Upload
+- Validation
+- Akkordeons
+- Modals
+- Toasts
+- Spinners
+- Tooltips
+- Progressbars
+
+Es geht hier nur um die Gestaltung des öffentlichen Bereichs. Das Theming des Adminbereichs auf Basis von AdminLTE ist hier nicht gemeint.
+
+**Zwischenstand (2026-09-18) - Phase 1 (Kernauswahl) umgesetzt, Punkt bleibt offen:** Neue Vergleichsseite unter `/admin/styleguide` (`templates/admin-styleguide.php`, `public/js/admin-styleguide.js`, Route in `src/App.php`) - bewusst NICHT über die AdminLTE-Shell (`admin-shell-header.php`/`-footer.php`), da jene explizit kein `style.css`/`fonts.css` lädt ("two competing CSS systems"); eigener `<html><head>` wie `templates/set-password.php`, admin-gated über das bestehende `initAdminAuth()`. Zeigt bisher sieben Kern-Kategorien (Typografie, Buttons, Inputfelder/Passwortfelder inkl. Bootstrap-Floating-Label, Badges, Checkboxen/Radiobuttons/Pillswitches, Toasts, Warnungen), jede mit Quellenangabe zur Nachverfolgung im Code. Bootstrap-CSS wurde dafür neu vendored (`public/lib/bootstrap/bootstrap.min.css`, v5.3.8, passend zur bereits vorhandenen `bootstrap.bundle.min.js`), nur auf dieser Seite geladen, vor `style.css` eingebunden. Eigener, schlanker Theme-Umschalter (Light/Dark) oben auf der Seite - bewusst nicht über `map-core.js`s `setTheme()`/`settings.js`s `saveSettings()` (lesen ~20 hartkodierte `detail0`..`detail16`-Checkbox-IDs, die es hier nicht gibt).
+
+Beim Bauen zwei nicht triviale Bugs gefunden und behoben, die für künftige Standalone-Seiten relevant bleiben: (1) `style.css`s `html, body { overflow: hidden; }` ist nur für die SPA gedacht - ohne die `standalone-page`-Klasse auf `<html>` (wie bei allen anderen eigenständigen Seiten) ließ sich die Seite nach einem Bildschirm nicht weiterscrollen, der restliche Inhalt war schlicht abgeschnitten. (2) Bootstraps eigene `.toast`-Komponente (`display:none` bis eine `.show`-Klasse gesetzt wird) kollidierte mit dem gleichnamigen `.toast` aus `public/js/toast.js` (nutzt `.toast-visible` statt `.show`) - echte Toasts blieben unsichtbar, bis eine gezielte Override-Regel nach beiden Stylesheets ergänzt wurde. Zusätzlich zeigte sich, dass Bootstraps Formularelemente ihre eigenen `--bs-*`-Variablen nutzen und dem Dark-Theme sonst nicht folgen - gelöst, indem der Theme-Umschalter zusätzlich Bootstraps eigenes `data-bs-theme`-Attribut mitsetzt.
+
+Bewusst noch nicht in diesem Schritt: die restlichen ~23 Kategorien aus der Liste oben sowie die sechs im öffentlichen Bereich aktuell komplett fehlenden Komponenten (Pagination, Akkordeon, Progressbar, Spinner, Datei-Upload, Carousel) - letztere bekommen laut Absprache einen echten Erstentwurf statt Platzhaltern, aber erst in einem Folgeschritt. Die eigentliche Vereinheitlichung (Angleichen der hier nur nebeneinandergestellten Varianten) ist ebenfalls ein separater, späterer Schritt. Verifiziert per Playwright, mobil (390×660) und Desktop (1440×900), Light und Dark; volle PHPUnit-Suite weiterhin grün (213 Tests).
+
+**Zwischenstand (2026-09-18) - erste Vereinheitlichung umgesetzt (Buttons):** Anhand der neuen Vergleichsseite fiel die Größen-/Gestaltungs-Inkonsistenz bei Buttons besonders auf - Größe und Optik von `.button`/`.startbtn`/`.button-danger` (bislang: 10px bzw. 16px Schrift, `border-radius:5px`, `.button-danger` mit abweichender Outline-Optik) in `public/css/style.css` auf dieselben Werte wie die bereits einheitliche `.nav-btn-primary`/`.nav-btn-secondary`/`.nav-btn-secondary.nav-btn-danger`-Familie umgestellt (`padding:10px 14px; border-radius:10px; font-size:13.5px; font-weight:700`), rein per CSS-Wertänderung unter gleichbleibenden Klassennamen - keine Änderungen an `public/js`/`templates` nötig, da alle ~14 Aufrufstellen (Confirm-Dialog app-weit, jedes POI/Route/Area-Bearbeiten-Fenster, Cookie-Menü, Track-Recorder, Tour-Admin-Aktionszeile, drei Auth-Seiten) die Klassennamen unverändert weiterverwenden. Die drei Button-**Arten** (Bestätigen/primär, Abbrechen/neutral, Logout-destruktiv) bleiben wie gewünscht farblich unterschieden; `.button-danger` wechselt dabei von einem roten Outline-Rahmen (füllte beim Hover komplett rot) auf dieselbe sanfte Flächenfarbe wie der Logout-Button im Profil-Drawer. Bewusst unverändert gelassen: das Breitenverhalten (`.nav-btn-*` bleibt volle Blockbreite für den alleinstehenden Drawer, `.button`/`.startbtn` bleiben automatisch breit, da meist mehrere nebeneinanderstehen) sowie bestehende kontextuelle Overrides. Bewusst ausgeschlossen (keine "Bestätigen/Abbrechen/Logout"-Buttons): `.nav-chip-btn` (Filter-Chip, nicht Aktions-Button), alle Icon-only-Buttons (`.nav-back`, `.toolbar-icon-btn` etc. - eigenes, noch offenes Touch-Target-Thema), `.second-toolbar-end-btn`/`.map-search-mode-btn` (Toolbar-Widgets). Per Playwright verifiziert (mobil 390×660 und Desktop 1440×900, Light und Dark): alle sechs Buttons auf der Styleguide-Seite jetzt gleich groß; ein direkt nachgebauter Save/Remove/Cancel-Dreier wie im echten POI-Bearbeiten-Fenster passt bei ~300px Containerbreite noch in eine Zeile, bricht bei 280px (untere Grenze der realen Google-InfoWindow-Breite) auf zwei Zeilen um - kein Überlappen/Bruch, nur ein zusätzlicher Zeilenumbruch durch die größeren Buttons. Keine Backend-Änderung, `composer test` daher nicht erneut nötig.
+
+**Nachtrag (2026-09-18):** Nutzer meldete direkt danach, dass die Buttons in den Google-Maps-InfoWindows (POI/Route/Area bearbeiten) jetzt deutlich zu hoch wirken - zurecht: der oben nachgebaute Dreier-Test hatte nur die Zeilenumbruch-Frage geprüft, nicht die Button-Höhe selbst. Gemessen: `.button` war durch die Vereinheitlichung von ca. 22px auf ca. 39px Höhe gewachsen (fast doppelt) - für die knappe Save/Remove/Cancel-Zeile in einem ~300px breiten InfoWindow spürbar zu viel. Neue, gezielte Override-Regel `div.infoWindowElement .button { padding: 5px 10px; font-size: 13px; }` direkt bei `div.infoWindowElement` in `style.css` ergänzt - wiederverwendet bewusst exakt dieselben kompakten Werte, die `.cm-panel-header .startbtn` für denselben "zu voller Button für zu wenig Platz"-Grund schon einsetzt, statt eine dritte Button-Größe zu erfinden. Radius/Fettung/Farben (also die App-weite Zugehörigkeit zur selben Button-Familie) bleiben erhalten, nur Innenabstand/Schriftgröße schrumpfen. Ergebnis: ca. 28px Höhe statt 39px. Per Playwright verifiziert - mit dem nachgebauten Dreier-Test (Light und Dark) und zusätzlich am echten, per Klick geöffneten POI-Anlegen-InfoWindow im Browser (nicht nur synthetisch nachgebaut).
+
+**Nachtrag 2 (2026-09-18):** Nutzer meldete anschließend dieselbe Beobachtung für die Eingabefelder (Text/Textarea/Select) in denselben InfoWindows - andere Eckenrundung und andere Größe als der Rest der App, aber ausdrücklich mit der Vorgabe, dass die Felder dabei allenfalls nur wenig größer werden dürfen. Ursache: `#editPoiName`/`#editPoiType`/`#editPoiDescription`/`#editPoiLighthouseSectorCharacteristic`/`#editPoiURL`/`#editPoiWSI`/`#editPoiLighthouseCharacteristic`/`#editRouteName`/`#editRouteDescription`/`#editAreaName`/`#editAreaZindex`/`#editAreaDescription` waren acht über die Datei verstreute, inhaltlich identische ID-Regeln aus der Zeit vor der `.nav-field`-Umstellung (`border-radius:2px`, die kräftige `--color-border`-Farbe statt `-subtle`, größtenteils **gar kein** Padding - reiner Browser-Default). `#editPoiType`s ID-Regel überschrieb dabei sogar noch zusätzlich das eigene `.select-css` (das selbst schon nur 3px Radius hat) auf 2px herunter - derselbe ID-schlägt-Klasse-Mechanismus wie beim `#userLoginPassword`-Fund in einer früheren Session. Alle acht Regeln zu einer gemeinsamen Regel in `style.css` zusammengeführt: `border-radius:10px` (voll an `.nav-field input` angeglichen - beim Radius gibt es keinen Grund, nicht anzugleichen), `border-color: var(--color-border-subtle)`, aber bewusst nur `padding: 4px 8px` statt `.nav-field input`s vollem `10px 12px` (Vorgabe "nur wenig größer"). Gemessen am echten Namensfeld: Höhe von 19,6px auf 25,6px (~+31%, nicht verdoppelt wie zuvor bei den Buttons). `box-sizing: border-box` ergänzt, da diese Felder sich selbst über `width: calc(100% - 6px)` bemessen und das zusätzliche Padding sie sonst über die schmale InfoWindow-Spalte hinaus verbreitert hätte. Per Playwright verifiziert (Light und Dark, am echten POI-Bearbeiten-InfoWindow im Browser sowie synthetisch für die Route/Area-Variante derselben Regel) - Ecken und Randfarbe jetzt einheitlich mit dem Rest der App, Feldgröße nur moderat gewachsen. Keine Backend-Änderung.
+
+**Nachtrag 3 (2026-09-18):** Direkte Folge des vorigen Nachtrags - das zusätzliche Padding ließ die Feldbeschreibungen (z.B. "Name: *" in `.leftCol`) nicht mehr mittig zum Feldinhalt in `.rightCol` erscheinen. Ursache: `div.infoWindowElement .leftCol` hatte noch nie ein eigenes `padding-top`, das kam bisher nur zufällig dadurch grob hin, dass Browser-Default-Inputs kaum eigenes Padding hatten; das neue `padding-top:4px` der Felder schob deren Text sichtbar nach unten, während das Label an Ort und Stelle blieb. `padding-top: 3px` auf `div.infoWindowElement .leftCol` ergänzt, um das auszugleichen. Gemessen (Name-Feld): vertikale Mitte von Label und Eingabefeld weichen jetzt nur noch um 0,6px voneinander ab (vorher spürbar mehr). Bewusst bei einfachem Float-Layout geblieben statt auf Flexbox umzustellen, obwohl das robuster gegen künftige Padding-Änderungen wäre: dieselbe `.leftCol`/`.rightCol`-Regel wird unverändert auch von `set-password.php`/`forgot-password.php` mitgenutzt, die dort aber ohnehin per eigenem Override auf `float:none`/`width:100%` (gestapelte Darstellung) umschalten - eine Flexbox-Umstellung an der gemeinsamen Basisregel hätte dort unnötiges Risiko für nicht direkt sichtbare Nebenwirkungen bedeutet. Per Playwright verifiziert (Light und Dark, am echten POI-Bearbeiten-InfoWindow im Browser sowie mit einer pixelgenauen Mittenabstand-Messung).
+
+## Themes
+
+Auf der Beispielseite im Admin-Bereich soll auch die Farbgestaltung überprüft werden können. Es soll zwischen verschiedenen Themes (z. B. Dark und Light) umgeschaltet werden können.
+
+Es soll die Erstellung weiterer Farbthemes ermöglicht werden, bei der ein Admin neue Farben definieren kann und das Ergebnis sofort auf der Beispielseite angezeigt bekommt. Bestehende Themes können angepasst werden.
+
+Es geht hier nur um die Gestaltung des öffentlichen Bereichs. Das Theming des Adminbereichs auf Basis von AdminLTE ist hier nicht gemeint.
+
+## Splashscreen
+
+Wir die Seite geladen, nachdem man für mindestens x-Sekunden das System nicht benutzt hat, wird ein Splashscreen mit dem YTAN-Logo gezeigt, der nach y-Millisekunden ausgeblendet wird. x und y sind konfigurierbar (config.js).
+Dies gilt nur bei der Nutzung im Browser und nicht, wenn die Android-App genutzt wird.
+
+
 ## Touren-Dokument
 
 Ausgabe eines PDF-Dokuments für eine Tour mit 
@@ -46,6 +118,12 @@ Alle Dialoge/Bildschirme unter echter Mobile-Emulation (412×915) durchgetestet.
 
 
 # Erledigt
+
+## Die Password-Eingabefelder vereinheitlichen (2026-09-17)
+
+~~Die Password-Inputs sind unterschiedlich gestaltet. Gut sind die unter Profile > Change Password. Alle anderen Password-Inputs sollen ebenso gestaltet werden. Dies gilt nicht für den Admin-Bereich, da wir hier AdminLTE nutzen.~~ Gelöst (2026-09-17): Ein gemeinsames Show/Hide-Password-Muster eingeführt und auf alle betroffenen Stellen im öffentlichen Bereich angewendet - Login, Passwort ändern (Profil), Profil bearbeiten (aktuelles Passwort) und die eigenständige `/set-password`-Seite. `helper.js` bekam ein neues Funktionspaar: `passwordToggleButtonHtml(inputId)` baut den Augen-Toggle-Button (`.material-icons-round`, Ligatur `visibility`/`visibility_off`), `togglePasswordVisibility(inputId, button)` schaltet das zugehörige `<input>` zwischen `type="password"`/`type="text"` um und spiegelt den Zustand im Icon sowie im `aria-label`. Jeder betroffene Input wird jetzt in ein `.password-input-wrapper`-`<div>` gepackt (neue Regeln in `style.css`, direkt unter der Selects-Sektion), das den Toggle-Button absolut im Feld positioniert; `set-password.php` erhielt dafür zusätzlich einen `helper.js`- und `fonts.css`-Import (die Seite lädt sonst kein `.material-icons-round`-Icon-Set). Bewusst nicht angetastet: der Admin-Bereich (AdminLTE/Bootstrap) - dort nutzt `admin-user.js`s "Passwort setzen"-Formular sowie das Admin-Login (`admin-shell-header.php`) stattdessen Bootstraps `.input-group` + `.bi-eye`/`.bi-eye-slash`-Icons, weiterhin über dieselbe `togglePasswordVisibility()`, die anhand der Icon-Klasse selbst erkennt, welches Icon-System gerade vorliegt. Per Playwright im Mobile-Viewport (390×844) verifiziert: Login-Formular im Drawer und `/set-password` zeigen beide den Augen-Button an der erwarteten Stelle im Feld, ein Klick auf den Button in `/set-password` schaltete das Feld sichtbar von `password` auf `text` um und aktualisierte Icon sowie `aria-label` korrekt.
+
+**Nachtrag (2026-09-18):** Nutzer meldete direkt danach einen sichtbaren Rest-Unterschied - auf dem Login-Screen wirkten die Ecken von Benutzername- und Passwortfeld weniger rund als bei "Passwort ändern"/"Profil bearbeiten". Ursache waren zwei tote, aus der Zeit vor der `.nav-field`-Umstellung stammende ID-Regeln in `style.css` (`#userLoginUsername`, `#userLoginPassword`, dazu die ebenfalls unbenutzten `#userWindow .leftCol`/`.rightCol` direkt daneben - `user.js` erzeugt das Login-Formular längst über `.nav-field`, nie über `leftCol`/`rightCol`), die per ID-Spezifität `border-radius: 10px` und die Randfarbe `--color-border-subtle` aus `.nav-field input` überschrieben (auf `2px` bzw. das kräftigere `--color-border`) - aber eben nur auf dem Login-Screen, da nur dort Felder mit genau diesen IDs existieren. Alle vier toten Regeln entfernt; beide Login-Felder fallen jetzt korrekt auf `.nav-field input` zurück und sehen identisch zu den übrigen Passwortfeldern aus. Per Playwright (berechnete Werte vor/nach dem Fix verglichen, danach Screenshot) verifiziert. Keine Backend-Änderung, PHPUnit-Suite daher nicht erneut ausgeführt.
 
 ## Falsche "Jetzt"-Linie und Gezeitenkurve in der Wetter-Zeitleiste (2026-09-17)
 

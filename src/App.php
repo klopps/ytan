@@ -426,6 +426,19 @@ final class App
             return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
         });
 
+        // Gestaltungs-Vergleichsseite (todo.md: "Standards für alle
+        // Gestaltungselemente festlegen") - deliberately its OWN template,
+        // not one of the AdminLTE-shell pages above (see
+        // templates/admin-styleguide.php's own doc comment for why).
+        $app->get('/admin/styleguide', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
+            ob_start();
+            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
+            require $rootDir . '/templates/admin-styleguide.php';
+            $res->getBody()->write(ob_get_clean());
+
+            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
+        });
+
         return $app;
     }
 

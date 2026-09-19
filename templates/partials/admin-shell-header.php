@@ -37,6 +37,10 @@ $adminNavItems = [
     ['key' => 'image_cleanup', 'icon' => 'bi-images', 'label' => $t('admin.nav.image_cleanup'), 'href' => $baseUrl . '/admin/image-cleanup'],
     ['key' => 'translate', 'icon' => 'bi-translate', 'label' => $t('admin.nav.translations'), 'href' => $baseUrl . '/admin/translate', 'visible' => $translateToolEnabled],
     ['key' => 'settings', 'icon' => 'bi-gear', 'label' => $t('admin.nav.settings'), 'href' => $baseUrl . '/admin/settings'],
+    // Own page (templates/admin-styleguide.php), NOT part of this AdminLTE
+    // shell - clicking this link navigates away from it entirely. See that
+    // template's doc comment for why.
+    ['key' => 'styleguide', 'icon' => 'bi-palette', 'label' => $t('admin.nav.styleguide'), 'href' => $baseUrl . '/admin/styleguide'],
 ];
 ?>
 <!doctype html>

@@ -7,7 +7,11 @@
  * persisted through the same settings-cookie mechanism as maptype/unit
  * (settings.js). Standalone pages (impressum/datenschutz/set-password/
  * forgot-password) never set data-theme, so they always render the light
- * palette below - they have no theme-switch UI, by design.
+ * palette below - they have no theme-switch UI, by design. The one
+ * exception is templates/admin-styleguide.php, which deliberately has its
+ * own small Light/Dark toggle (public/js/admin-styleguide.js) so both
+ * palettes can be checked side by side - own localStorage key, independent
+ * of the settings cookie above.
  */
 :root {
   --color-bg-page: #f3f4f8;
@@ -187,22 +191,42 @@ hr {
   padding: 5px;
 }
 
+/**
+ * .button/.startbtn ("Abbrechen"/"Bestätigen" - the inline, auto-width
+ * button pair used wherever buttons sit side by side: confirm-dialog.js's
+ * OK/Cancel, every POI/Route/Area edit InfoWindow's Save/Remove/Cancel,
+ * the cookie menu, track-recorder, tour-admin's action row, and three
+ * standalone auth pages) and .nav-btn-primary/.nav-btn-secondary further
+ * below (the full-width block pair used alone in the narrow Profile-drawer
+ * column) share one padding/radius/font/weight spec - unified 2026-09-18 so
+ * a button looks the same size/weight everywhere in the public app
+ * regardless of which of the two pairs a given screen happens to use; only
+ * the display/width rules differ (inline-block here vs. flex+full-width
+ * there), since that's genuinely layout, not "size", and forcing one width
+ * model onto both would break whichever context wasn't designed for it. No
+ * shared class/mixin exists between the two pairs (this file predates any
+ * build step) - if the shared values below drift from .nav-btn-primary/
+ * .nav-btn-secondary's own copy, they've drifted apart again. This full
+ * size is too tall for a Google Maps InfoWindow's cramped Save/Remove/
+ * Cancel row though - see div.infoWindowElement .button's own compact
+ * override, further down this file.
+ */
 .button {
-  border: 1px solid var(--color-border);
-  border-radius: 5px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 10px;
   background-color: var(--color-bg-subtle);
-  color: var(--color-text-secondary);
+  color: var(--color-text);
   text-align: center;
-  font-size: 10px;
-  font-weight: 600;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 700;
   display: inline-block;
-  padding: 4px 10px 4px 10px;
+  padding: 10px 14px;
   cursor: pointer;
 }
 
 .button:hover:enabled {
-  color: var(--color-on-accent);
-  background-color: var(--color-accent);
+  background-color: var(--color-border-subtle);
 }
 
 .button:disabled {
@@ -211,13 +235,14 @@ hr {
 }
 
 .startbtn {
-  border: 1px solid var(--color-border);
-  border-radius: 5px;
+  border: none;
+  border-radius: 10px;
   text-align: center;
-  font-size: 16px;
-  font-weight: 600;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 700;
   display: inline-block;
-  padding: 4px 10px 4px 10px;
+  padding: 10px 14px;
   cursor: pointer;
 }
 
@@ -225,6 +250,10 @@ hr {
   background-color: var(--color-accent);
   color: var(--color-on-accent);
   cursor: pointer;
+}
+
+.startbtn:enabled:hover {
+  filter: brightness(0.92);
 }
 
 .startbtn:disabled {
@@ -832,7 +861,7 @@ img.wsi {
   display: block;
   width: 120px;
   aspect-ratio: 1873 / 1349;
-  margin: 50px auto 0 auto;
+  margin: 20px auto 0 auto;
   background-color: var(--color-text);
   mask-image: url("../images/ytan.svg");
   -webkit-mask-image: url("../images/ytan.svg");
@@ -2024,14 +2053,18 @@ img.wsi {
   margin: 0 16px 10px;
 }
 
+/* Same soft-fill treatment as .nav-btn-secondary.nav-btn-danger further
+   below (unified 2026-09-18, was previously an outline that filled solid
+   red on hover - a different, unrelated "danger button" look). Keeps
+   .button's own border (no color override here), matching how
+   .nav-btn-danger leaves .nav-btn-secondary's border untouched too. */
 .button-danger {
+  background-color: var(--color-danger-soft);
   color: var(--color-danger);
-  border-color: var(--color-danger);
 }
 
 .button-danger:hover:enabled {
-  color: var(--color-on-accent);
-  background-color: var(--color-danger);
+  filter: brightness(0.95);
 }
 
 /**
@@ -2073,11 +2106,17 @@ img.wsi {
 
 .weather-timeline-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 6px;
   padding: 12px 14px;
   border-bottom: 1px solid var(--color-border-subtle);
   flex-shrink: 0;
+}
+
+.weather-timeline-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .weather-timeline-title {
@@ -2111,7 +2150,6 @@ img.wsi {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 6px 14px 0;
 }
 
 .weather-timeline-fetched-at {
@@ -2422,6 +2460,16 @@ img.wsi {
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+/* todo.md's "Fehlende Daten" - an hour WeatherService::fillHourlyGaps()
+   couldn't fill at all (see weather.js's isWeatherHourEmpty()). Muted
+   rather than hidden - same faint-text treatment as
+   .weather-timeline-marine-notice above - since the column still needs to
+   take up its normal width/row-heights for the hour-strip and tide-curve
+   layout to stay aligned (see buildWeatherHourColumn()'s own comment). */
+.weather-timeline-hour-col-nodata {
+  opacity: 0.35;
 }
 
 /* Current-time indicator: a dashed line at the precise minute within its
@@ -2945,9 +2993,34 @@ div.infoWindowElement .rightCol {
   overflow:hidden;
 }
 
+/* padding-top compensates for div.infoWindowElement input/select's own
+   padding-top (4px, see the consolidated #editPoiName etc. rule above) -
+   .leftCol's <label> has no padding of its own, so without this it stays
+   pinned to the row's top while the field's now-taller box pushes its
+   text down, throwing off what used to look aligned (reported 2026-09-18,
+   right after that padding was added: the label sat visibly higher than
+   the field's text). Kept as a plain float layout (not flex) since this
+   same rule is also reused, unmodified, by set-password.php/forgot-
+   password.php's own .infoWindowElement rows - those override float:none
+   there instead, so this padding-top is inert for them either way. */
 div.infoWindowElement .leftCol {
   width:74px;
   float:left;
+  padding-top: 3px;
+}
+
+/* .button's app-wide unified size (padding:10px 14px; font-size:13.5px -
+   see .button's own doc comment) is too tall for the Save/Remove/Cancel row
+   inside a Google Maps InfoWindow (poi.js/route.js/area.js) - a ~300px-wide
+   popup fit three buttons in one line comfortably before that unification
+   at the old 4px/10px size, but not at the new one (measured ~39px tall,
+   nearly double the old ~22px - reported as "deutlich zu groß" 2026-09-18).
+   Reuses the same compact padding/font-size .cm-panel-header .startbtn
+   already established above for the same "too tight for the full size"
+   reason, rather than inventing a third button size. */
+div.infoWindowElement .button {
+  padding: 5px 10px;
+  font-size: 13px;
 }
 
 .infoWindowBottom {
@@ -2994,44 +3067,65 @@ p.LighthouseCharacteristic {
 
 
 
-#editPoiName {
-  width: calc(100% - 6px);
-  border: 1px solid var(--color-border);
-  border-radius: 2px;
+/**
+ * Every text input/textarea/select in the POI/Route/Area edit InfoWindows
+ * (poi.js/route.js/area.js) - formerly ~8 separate ID rules scattered
+ * through this file, each an identical copy of the same border/radius
+ * declarations (a pre-.nav-field-era style: border-radius:2px, the
+ * prominent --color-border rather than the app's usual -subtle border).
+ * Consolidated + aligned 2026-09-18 after it was reported these fields
+ * look inconsistent with the rest of the app (radius) and with each other
+ * (some had no padding at all, e.g. #editPoiName/#editPoiURL, others did).
+ * Radius now matches .nav-field input's 10px exactly (corners were the
+ * only thing that cost nothing to fully unify), but padding only grows
+ * modestly (2px/1px -> 4px/8px, not all the way to .nav-field input's
+ * 10px/12px) - explicitly requested to stay close to today's size, this
+ * is the same "match the family, stay compact" compromise already applied
+ * to div.infoWindowElement .button above. box-sizing:border-box is
+ * required here (unlike .nav-field input, nothing upstream sets it) since
+ * these fields size themselves via width:calc(100% - 6px) below - without
+ * it, adding padding would push the field wider than that and overflow
+ * the narrow InfoWindow column.
+ */
+#editPoiName,
+#editPoiType,
+#editPoiDescription,
+#editPoiLighthouseSectorCharacteristic,
+#editPoiURL,
+#editPoiWSI,
+#editPoiLighthouseCharacteristic,
+#editRouteName,
+#editRouteDescription,
+#editAreaName,
+#editAreaZindex,
+#editAreaDescription {
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 10px;
+  padding: 4px 8px;
+  box-sizing: border-box;
   background-color: var(--color-bg-panel);
   color: var(--color-text);
 }
 
-#editPoiType {
-  border: 1px solid var(--color-border);
-  border-radius: 2px;
+#editPoiName,
+#editPoiDescription,
+#editPoiLighthouseSectorCharacteristic,
+#editPoiURL,
+#editPoiWSI,
+#editPoiLighthouseCharacteristic,
+#editRouteName,
+#editRouteDescription,
+#editAreaName,
+#editAreaZindex,
+#editAreaDescription {
+  width: calc(100% - 6px);
 }
-
 
 #editPoiDescription,
-#editPoiLighthouseSectorCharacteristic {
-  width: calc(100% - 6px);
-  border: 1px solid var(--color-border);
-  border-radius: 2px;
+#editPoiLighthouseSectorCharacteristic,
+#editRouteDescription,
+#editAreaDescription {
   resize: none;
-  background-color: var(--color-bg-panel);
-  color: var(--color-text);
-}
-
-#editPoiURL {
-  width: calc(100% - 6px);
-  border: 1px solid var(--color-border);
-  border-radius: 2px;
-  background-color: var(--color-bg-panel);
-  color: var(--color-text);
-}
-
-#editPoiWSI {
-  width: calc(100% - 6px);
-  border: 1px solid var(--color-border);
-  border-radius: 2px;
-  background-color: var(--color-bg-panel);
-  color: var(--color-text);
 }
 
 #editPoiWSIContainer {
@@ -3176,36 +3270,12 @@ p.LighthouseCharacteristic {
   background: var(--color-accent);
 }
 
-#editPoiLighthouseCharacteristic {
-  width: calc(100% - 6px);
-  border: 1px solid var(--color-border);
-  border-radius: 2px;
-}
-
 #editPoiLighthouseContainer {
   display: block;
 }
 
 .inputError {
   background: linear-gradient(90deg, var(--color-bg-panel) 0%, var(--color-bg-panel) 95%, rgba(255,0,0,1) 95%, rgba(255,0,0,1) 100%);
-}
-
-
-#editRouteName, #editAreaName, #editAreaZindex {
-  width: calc(100% - 6px);
-  border: 1px solid var(--color-border);
-  border-radius: 2px;
-  background-color: var(--color-bg-panel);
-  color: var(--color-text);
-}
-
-#editRouteDescription, #editAreaDescription {
-  width: calc(100% - 6px);
-  border: 1px solid var(--color-border);
-  border-radius: 2px;
-  resize: none;
-  background-color: var(--color-bg-panel);
-  color: var(--color-text);
 }
 
 
@@ -3561,32 +3631,6 @@ input[type="color"] {
   color: var(--color-text);
 }
 
-#userWindow .rightCol {
-  width:auto;
-  overflow:hidden;
-}
-
-#userWindow .leftCol {
-  width:140px;
-  float:left;
-}
-
-#userLoginUsername {
-  width: calc(100% - 6px);
-  border: 1px solid var(--color-border);
-  border-radius: 2px;
-  background-color: var(--color-bg-panel);
-  color: var(--color-text);
-}
-
-#userLoginPassword {
-  width: calc(100% - 6px);
-  border: 1px solid var(--color-border);
-  border-radius: 2px;
-  background-color: var(--color-bg-panel);
-  color: var(--color-text);
-}
-
 .poiEdit, .routeEdit, .areaEdit {
   text-align: right;
   color: var(--color-text-secondary);
@@ -3883,8 +3927,8 @@ input[type="color"] {
   font-size: 12.5px;
   font-weight: 500;
   color: var(--color-text-secondary);
-  padding-top: 9px;
-  padding-bottom: 9px;
+  padding-top: 5px;
+  padding-bottom: 5px;
 }
 
 .nav-menu-footer .nav-menu-row-icon {
@@ -3973,6 +4017,16 @@ input[type="color"] {
   color: var(--color-accent);
 }
 
+/**
+ * .nav-btn-primary/.nav-btn-secondary(.nav-btn-danger) - the full-width
+ * block button pair for the narrow Profile-drawer column (Login/Save/
+ * Logout). Padding/radius/font/weight are shared with .button/.startbtn/
+ * .button-danger near the top of this file (unified 2026-09-18) - only
+ * display/width differ (flex+full-width here vs. inline-block/auto-width
+ * there), since the drawer needs a stacked full-width button while every
+ * other context needs several buttons sitting side by side. Change one
+ * pair's padding/radius/font/weight, change the other's too.
+ */
 .nav-btn-primary {
   display: flex;
   align-items: center;
