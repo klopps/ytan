@@ -220,6 +220,21 @@
               <input type="radio" id="windunit4" name="windunitselector" onclick="editWindUnit(this)" value="kn"><label for="windunit4"><?= $t('app.wind_unit.kn') ?></label>
             </div>
           </form>
+          <p class="nav-field-label"><?= $t('app.preferences.coordinate_format') ?></p>
+          <form name="coordformat">
+            <div class="nav-segmented">
+              <input type="radio" id="coordformat1" name="coordformatselector" onclick="editCoordinateFormat(this)" value="dd" checked><label for="coordformat1"><?= $t('app.coordinate_format.dd') ?></label>
+              <input type="radio" id="coordformat2" name="coordformatselector" onclick="editCoordinateFormat(this)" value="mm"><label for="coordformat2"><?= $t('app.coordinate_format.mm') ?></label>
+              <input type="radio" id="coordformat3" name="coordformatselector" onclick="editCoordinateFormat(this)" value="dms"><label for="coordformat3"><?= $t('app.coordinate_format.dms') ?></label>
+            </div>
+          </form>
+          <div class="nav-example-card">
+            <div>
+              <div class="nav-example-value" id="coordinateFormatExampleValue">54.32330° N, 10.12280° O</div>
+              <div class="nav-example-caption"><?= $t('app.preferences.coordinate_format_example_caption') ?></div>
+            </div>
+            <i class="material-icons-round">navigation</i>
+          </div>
           <p class="nav-field-label"><?= $t('app.preferences.route_smoothing') ?></p>
           <form name="routesmoothing">
             <div class="nav-segmented">

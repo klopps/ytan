@@ -14,6 +14,9 @@ const WIND_UNIT_BFT = 'bft';
 const WIND_UNIT_MS = 'ms';
 const WIND_UNIT_KMH = 'kmh';
 const WIND_UNIT_KN = 'kn';
+const COORDINATE_FORMAT_DD = 'dd'; // Dezimalgrad, z.B. 54.32330° N
+const COORDINATE_FORMAT_MM = 'mm'; // Grad + Dezimalminuten, z.B. 54° 19.398' N
+const COORDINATE_FORMAT_DMS = 'dms'; // Grad, Minuten, Sekunden, z.B. 54° 19' 24" N
 const SEARCH_GOOGLE_MIN_LENGTH = 3; // avoid firing a billed Autocomplete call for very short, unspecific input
 
 class RouteTool extends MeasureTool {
@@ -552,6 +555,7 @@ var settings = { // muss wegen JSON.stringify() ein Objekt sein
     unit: METRIC,
     theme: THEME_LIGHT,
     windUnit: WIND_UNIT_KMH,
+    coordinateFormat: COORDINATE_FORMAT_DD,
     smoothRoutes: true // Routen mit abgerundeten statt eckigen Segmenten darstellen (Bearbeitungsmodus bleibt immer exakt)
 };
 
@@ -1232,6 +1236,29 @@ function updateUnitExample() {
     var el = document.getElementById('unitExampleValue');
     if (el) {
         el.textContent = formatDistance(UNIT_EXAMPLE_DISTANCE_METERS, settings.unit);
+    }
+}
+
+const COORDINATE_FORMAT_EXAMPLE_LAT = 54.3233; // Kiel
+const COORDINATE_FORMAT_EXAMPLE_LNG = 10.1228;
+
+function editCoordinateFormat(element) {
+    if ([COORDINATE_FORMAT_DD, COORDINATE_FORMAT_MM, COORDINATE_FORMAT_DMS].includes(element.value)) {
+        settings.coordinateFormat = element.value;
+    }
+    updateCoordinateFormatExample();
+    saveSettings();
+}
+
+/**
+ * Keeps the live example coordinate in the "Preferences" screen (nav-menu.js)
+ * in sync with the current coordinate format - called on toggle and once at
+ * boot, same pattern as updateUnitExample() above.
+ */
+function updateCoordinateFormatExample() {
+    var el = document.getElementById('coordinateFormatExampleValue');
+    if (el) {
+        el.textContent = formatCoordinates(COORDINATE_FORMAT_EXAMPLE_LAT, COORDINATE_FORMAT_EXAMPLE_LNG);
     }
 }
 

@@ -512,8 +512,7 @@ function showPoiInfoWindow(event, i, marker) {
 
         content += '<h3>' + pois[i].name + '</h3>';
         content +=  marked.parse(pois[i].description);
-        content += '<div class="infoWindowCoordinates"><i class="material-icons-round">navigation</i>' + Number.parseFloat(pois[i].latitude).toFixed(6) + ', ' + Number.parseFloat(pois[i].longitude).toFixed(6) + '</div>';
-        content += '<div class="infoWindowCoordinates"><i class="material-icons-round">navigation</i>' + decimalLatLngToDMS(pois[i].latitude, pois[i].longitude) + '</div>';
+        content += '<div class="infoWindowCoordinates"><i class="material-icons-round">navigation</i>' + formatCoordinates(Number.parseFloat(pois[i].latitude), Number.parseFloat(pois[i].longitude)) + '</div>';
 
         // Lighthouse
         if (pois[i].poitype_id == '14') {
@@ -876,8 +875,7 @@ function initPoiEditWindow(i) {
     content += '<button class="button" onClick="cancelEditPoi(' + i +')">' + t('common.cancel') + '</button>' +
         '</div>';
 
-    content += '<div id="poiCoordinates" class="poiEditWindowCoordinates"><i class="material-icons-round">navigation</i>' + Number.parseFloat(poi.latitude).toFixed(6) + ', ' + Number.parseFloat(poi.longitude).toFixed(6) + '</div>';
-    content += '<div id="poiCoordinatesDMS" class="poiEditWindowCoordinates"><i class="material-icons-round">navigation</i>' + decimalLatLngToDMS(poi.latitude, poi.longitude) + '</div>';
+    content += '<div id="poiCoordinates" class="poiEditWindowCoordinates"><i class="material-icons-round">navigation</i>' + formatCoordinates(Number.parseFloat(poi.latitude), Number.parseFloat(poi.longitude)) + '</div>';
 
     poiEditWindow.setContent(content);
 
@@ -887,8 +885,7 @@ function initPoiEditWindow(i) {
 
     poiEditWindow.addListener('position_changed', function () {
         var pos = poiEditWindow.getPosition();
-        document.getElementById('poiCoordinates').innerHTML = '<i class="material-icons-round">navigation</i>' + pos.lat().toFixed(6) + ', ' + pos.lng().toFixed(6);
-        document.getElementById('poiCoordinatesDMS').innerHTML = '<i class="material-icons-round">navigation</i>' + decimalLatLngToDMS(pos.lat(),pos.lng());
+        document.getElementById('poiCoordinates').innerHTML = '<i class="material-icons-round">navigation</i>' + formatCoordinates(pos.lat(), pos.lng());
     });
 }
 

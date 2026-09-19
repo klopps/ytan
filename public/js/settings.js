@@ -95,6 +95,17 @@ function saveSettings() {
         settings['windUnit'] = WIND_UNIT_KMH;
     }
 
+    settings['coordformat1'] = document.getElementById('coordformat1').checked;
+    settings['coordformat2'] = document.getElementById('coordformat2').checked;
+    settings['coordformat3'] = document.getElementById('coordformat3').checked;
+    if (settings['coordformat2']) {
+        settings['coordinateFormat'] = COORDINATE_FORMAT_MM;
+    } else if (settings['coordformat3']) {
+        settings['coordinateFormat'] = COORDINATE_FORMAT_DMS;
+    } else {
+        settings['coordinateFormat'] = COORDINATE_FORMAT_DD;
+    }
+
     settings['routesmoothing1'] = document.getElementById('routesmoothing1').checked;
     settings['routesmoothing2'] = document.getElementById('routesmoothing2').checked;
     settings['smoothRoutes'] = settings['routesmoothing1'] ? true : false;
@@ -155,6 +166,16 @@ function loadSettings() {
         if (!settings['windunit1'] && !settings['windunit2'] && !settings['windunit3'] && !settings['windunit4']) {
             document.getElementById('windunit3').checked = true;
         }
+
+        document.getElementById('coordformat1').checked = settings['coordformat1'];
+        document.getElementById('coordformat2').checked = settings['coordformat2'];
+        document.getElementById('coordformat3').checked = settings['coordformat3'];
+        // Same fallback pattern as windunit1-4 above - a cookie saved before
+        // this preference existed has none of the 3 fields, default to DD.
+        if (!settings['coordformat1'] && !settings['coordformat2'] && !settings['coordformat3']) {
+            document.getElementById('coordformat1').checked = true;
+        }
+        updateCoordinateFormatExample();
 
         document.getElementById('routesmoothing1').checked = settings['routesmoothing1'];
         document.getElementById('routesmoothing2').checked = settings['routesmoothing2'];

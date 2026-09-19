@@ -386,70 +386,56 @@ function angleFromCoordinates(p1, p2) {
 
 
 
-function decimalToDMS(decimal) {
+/**
+ * Formats a lat/lng pair as a single localized string in the user's chosen
+ * coordinateFormat setting (DD/MM/DMS, Preferences screen) - the one shared
+ * formatter for every place in the app that displays coordinates as text
+ * (POI info/edit windows, the weather timeline panel title, the Preferences
+ * screen's own live example).
+ *
+ * @param {number} lat
+ * @param {number} lng
+ * @returns {string}
+ */
+function formatCoordinates(lat, lng) {
+    var format = [COORDINATE_FORMAT_DD, COORDINATE_FORMAT_MM, COORDINATE_FORMAT_DMS].includes(settings.coordinateFormat)
+        ? settings.coordinateFormat
+        : COORDINATE_FORMAT_DD;
 
-    var degrees = Math.floor(decimal);
-    var minutesDecimal = (decimal - degrees) * 60;
-    var minutes = Math.floor(minutesDecimal);
-    var seconds = (minutesDecimal - minutes) * 60;
-
-    return degrees + "° " + minutes + "' " + seconds.toFixed(2) + '"';
+    return formatCoordinatePart(lat, format, t('coordinate.north'), t('coordinate.south'))
+        + ', '
+        + formatCoordinatePart(lng, format, t('coordinate.east'), t('coordinate.west'));
 }
 
-
-function decimalLatitudeToDMS(decimal) {
-    var direction = decimal >= 0 ? "N" : "S";
+function formatCoordinatePart(decimal, format, positiveDirection, negativeDirection) {
+    var direction = decimal >= 0 ? positiveDirection : negativeDirection;
     decimal = Math.abs(decimal);
-    var degrees = Math.floor(decimal);
-    var minutesDecimal = (decimal - degrees) * 60;
-    var minutes = Math.floor(minutesDecimal);
-    var seconds = (minutesDecimal - minutes) * 60;
 
-    return degrees + "°" + minutes + "'" + seconds.toFixed(2) + '"' + direction;
-}
-
-
-function decimalLongitudeToDMS(decimal) {
-    var direction = decimal >= 0 ? "E" : "W";
-    decimal = Math.abs(decimal);
-    var degrees = Math.floor(decimal);
-    var minutesDecimal = (decimal - degrees) * 60;
-    var minutes = Math.floor(minutesDecimal);
-    var seconds = (minutesDecimal - minutes) * 60;
-
-    return degrees + "°" + minutes + "'" + seconds.toFixed(2) + '"' + direction;
-}
-
-
-function decimalLatLngToDMS(decimalLat, decimalLng) {
-        
-    var directionLat = decimalLat >= 0 ? "N" : "S";
-    decimalLat = Math.abs(decimalLat);
-    var degreesLat = Math.floor(decimalLat);
-    var minutesDecimalLat = (decimalLat - degreesLat) * 60;
-    var minutesLat = Math.floor(minutesDecimalLat);
-    var secondsLat = (minutesDecimalLat - minutesLat) * 60;
-
-    var directionLng = decimalLng >= 0 ? "E" : "W";
-    decimalLng = Math.abs(decimalLng);
-    var degreesLng = Math.floor(decimalLng);
-    var minutesDecimalLng = (decimalLng - degreesLng) * 60;
-    var minutesLng = Math.floor(minutesDecimalLng);
-    var secondsLng = (minutesDecimalLng - minutesLng) * 60;
-
-    return degreesLat + "°" + pad(minutesLat, 2) + "'" + pad(secondsLat, 2 ,2) + '"' + directionLat + ', ' + degreesLng + "°" + pad(minutesLng, 2) + "'" + pad(secondsLng, 2, 2) + '"' + directionLng;
-}
-
-
-function pad(num, size, decimals = 0) {
-    var  before = num.toFixed(1).slice(0,-2);
-    while (before.length  < size) before = "0" + before;
-
-    if (decimals < 1) {
-        return before;
-    } else {
-        return before + '.' + num.toFixed(decimals).slice(-decimals);
+    if (format === COORDINATE_FORMAT_DD) {
+        return decimal.toFixed(5) + '° ' + direction;
     }
+
+    var degrees = Math.floor(decimal);
+    var minutesDecimal = (decimal - degrees) * 60;
+
+    if (format === COORDINATE_FORMAT_MM) {
+        return degrees + '° ' + minutesDecimal.toFixed(3) + "' " + direction;
+    }
+
+    var minutes = Math.floor(minutesDecimal);
+    var seconds = Math.round((minutesDecimal - minutes) * 60);
+    // A rounded 60" carries into the next minute (and a rounded 60' into the
+    // next degree) - rare, but showing e.g. 54°19'60"N would look broken.
+    if (seconds === 60) {
+        seconds = 0;
+        minutes += 1;
+    }
+    if (minutes === 60) {
+        minutes = 0;
+        degrees += 1;
+    }
+
+    return degrees + '° ' + minutes + "' " + seconds + '" ' + direction;
 }
 
 

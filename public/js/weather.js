@@ -246,8 +246,7 @@ function setWeatherTimelineTitle(lat, lng, placeName) {
     const titleKey = placeName ? 'weather.timeline.title_with_place' : 'weather.timeline.title';
     document.getElementById('weatherTimelineTitle').textContent = t(titleKey, {
         place: placeName,
-        lat: lat.toFixed(4),
-        lng: lng.toFixed(4),
+        coords: formatCoordinates(lat, lng),
     });
 }
 
