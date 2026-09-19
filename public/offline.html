@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>YTAN - Offline</title>
+<style>
+  :root {
+    --color-bg-page: #f3f4f8;
+    --color-bg-panel: #ffffff;
+    --color-text: #2c2c3d;
+    --color-text-secondary: #666666;
+    --color-accent: #60609f;
+    --color-accent-soft: #ecebf7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-bg-page: #17151f;
+      --color-bg-panel: #211f2c;
+      --color-text: #ece9f7;
+      --color-text-secondary: #b3b0c6;
+      --color-accent: #8886c9;
+      --color-accent-soft: #2c2a45;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px 16px 40px;
+    background: var(--color-bg-page);
+    color: var(--color-text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+  }
+  h1 {
+    font-size: 1.4rem;
+    margin: 8px 0 4px;
+  }
+  .subtitle {
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+    margin: 0 0 24px;
+  }
+  .card {
+    background: var(--color-bg-panel);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+  .card h2 {
+    font-size: 1rem;
+    margin: 0 0 12px;
+  }
+  .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--color-accent-soft);
+    font-size: 0.9rem;
+  }
+  .row:last-child { border-bottom: none; }
+  .row .count {
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  .names {
+    color: var(--color-text-secondary);
+    font-size: 0.8rem;
+    margin-top: 2px;
+  }
+  .empty {
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+  }
+  button {
+    display: block;
+    width: 100%;
+    margin-top: 8px;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    background: var(--color-accent);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:active { opacity: 0.85; }
+</style>
+</head>
+<body>
+  <h1>Keine Internetverbindung</h1>
+  <p class="subtitle" id="userLine">YTAN konnte nicht geladen werden.</p>
+
+  <div class="card">
+    <h2>Zwischengespeicherte Daten</h2>
+    <div id="cacheList"><p class="empty">Lade...</p></div>
+  </div>
+
+  <div class="card">
+    <h2>Ausstehende Synchronisierung</h2>
+    <div id="pendingList"><p class="empty">Lade...</p></div>
+  </div>
+
+  <button onclick="location.href = location.origin + '/';">Erneut versuchen</button>
+
+<script>
+(function () {
+  var LABELS = {
+    poi: 'POIs', pois: 'POIs',
+    route: 'Routen', routes: 'Routen',
+    area: 'Areas', areas: 'Areas',
+    tour: 'Touren', tours: 'Touren'
+  };
+
+  function decodeJwt(token) {
+    try {
+      var parts = token.split('.');
+      var base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      var padded = base64 + '==='.slice((base64.length + 3) % 4);
+      return JSON.parse(atob(padded));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function showUserLine() {
+    var token = localStorage.getItem('ytan_token');
+    var el = document.getElementById('userLine');
+    if (!token) {
+      el.textContent = 'YTAN konnte nicht geladen werden.';
+      return;
+    }
+    var payload = decodeJwt(token);
+    var name = payload && (payload.firstname || payload.username);
+    el.textContent = name
+      ? 'Angemeldet als ' + name + ' - offline verfügbare Daten unten.'
+      : 'YTAN konnte nicht geladen werden.';
+  }
+
+  function renderCacheList(rows) {
+    var el = document.getElementById('cacheList');
+    if (!rows.length) {
+      el.innerHTML = '<p class="empty">Noch keine Daten zwischengespeichert.</p>';
+      return;
+    }
+    var byCollection = {};
+    rows.forEach(function (row) {
+      var key = row.collection || 'unbekannt';
+      if (!byCollection[key]) byCollection[key] = [];
+      byCollection[key].push(row);
+    });
+    var html = '';
+    Object.keys(byCollection).forEach(function (key) {
+      var entries = byCollection[key];
+      var items = [];
+      entries.forEach(function (entry) {
+        var data = entry.data;
+        if (Array.isArray(data)) {
+          data.forEach(function (item) {
+            items.push(item && (item.name || item.title) || ('#' + (item && item.id)));
+          });
+        }
+      });
+      html += '<div class="row"><span>' + (LABELS[key] || key) + '</span><span class="count">' + items.length + '</span></div>';
+      if (items.length) {
+        html += '<div class="names">' + items.slice(0, 8).join(', ') + (items.length > 8 ? '...' : '') + '</div>';
+      }
+    });
+    el.innerHTML = html;
+  }
+
+  function renderPendingList(rows) {
+    var el = document.getElementById('pendingList');
+    if (!rows.length) {
+      el.innerHTML = '<p class="empty">Keine ausstehenden Änderungen.</p>';
+      return;
+    }
+    var byType = {};
+    rows.forEach(function (row) {
+      var key = row.entityType || 'unbekannt';
+      byType[key] = (byType[key] || 0) + 1;
+    });
+    var html = '';
+    Object.keys(byType).forEach(function (key) {
+      html += '<div class="row"><span>' + (LABELS[key] || key) + '</span><span class="count">' + byType[key] + '</span></div>';
+    });
+    el.innerHTML = html;
+  }
+
+  function readStore(db, storeName) {
+    return new Promise(function (resolve) {
+      if (!db.objectStoreNames.contains(storeName)) {
+        resolve([]);
+        return;
+      }
+      var tx = db.transaction(storeName, 'readonly');
+      var req = tx.objectStore(storeName).getAll();
+      req.onsuccess = function () { resolve(req.result || []); };
+      req.onerror = function () { resolve([]); };
+    });
+  }
+
+  showUserLine();
+
+  var openReq = indexedDB.open('ytan-offline-cache');
+  openReq.onsuccess = function () {
+    var db = openReq.result;
+    readStore(db, 'collections').then(renderCacheList);
+    readStore(db, 'pendingChanges').then(renderPendingList);
+  };
+  openReq.onerror = function () {
+    document.getElementById('cacheList').innerHTML = '<p class="empty">Keine zwischengespeicherten Daten verfügbar.</p>';
+    document.getElementById('pendingList').innerHTML = '<p class="empty">Keine ausstehenden Änderungen.</p>';
+  };
+})();
+</script>
+</body>
+</html>

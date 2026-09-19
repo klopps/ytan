@@ -32,6 +32,7 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- Required by @capacitor-community/background-geolocation for the
          "record a route with the screen locked" use case this app was

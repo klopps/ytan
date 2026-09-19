@@ -4,10 +4,13 @@
   "webDir": "public",
   "server": {
     "url": "https://ytan.pesr.org/",
-    "cleartext": false
+    "hostname": "ytan.pesr.org",
+    "cleartext": false,
+    "errorPath": "offline.html"
   },
   "android": {
     "allowMixedContent": false,
-    "useLegacyBridge": true
+    "useLegacyBridge": true,
+    "resolveServiceWorkerRequests": false
   }
 }

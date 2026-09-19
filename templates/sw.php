@@ -51,10 +51,12 @@ foreach ($shellFiles as $file) {
 }
 $cacheName = 'ytan-shell-' . $versionSum;
 $navigationFallbackUrl = $baseUrl . '/';
+$offlineFallbackPageUrl = $baseUrl . '/offline.html';
 ?>
 const CACHE_NAME = <?= json_encode($cacheName) ?>;
 const PRECACHE_URLS = <?= json_encode($precacheUrls) ?>;
 const NAVIGATION_FALLBACK_URL = <?= json_encode($navigationFallbackUrl) ?>;
+const OFFLINE_FALLBACK_PAGE_URL = <?= json_encode($offlineFallbackPageUrl) ?>;
 
 // Only the versioned static shell assets (the ?v=<mtime> files listed in
 // PRECACHE_URLS - JS/CSS/fonts/icons/manifest) are safe to serve cache-first
@@ -106,6 +108,22 @@ self.addEventListener('fetch', (event) => {
     // network - map tiles/scripts aren't ours to cache, and API responses
     // must never be served stale.
     if (url.origin !== self.location.origin || url.pathname.includes('/api/')) {
+        return;
+    }
+
+    // The Capacitor Android shell's server.errorPath points at this exact
+    // URL and serves it directly from the bundled app assets (Capacitor's
+    // WebViewLocalServer, isErrorUrl()) whenever the WebView's very first
+    // navigation fails outright - including on a cold start with no
+    // connectivity at all, before this service worker's own navigate
+    // fallback below would even have a matching cache entry to fall back
+    // to. Intercepting it here instead raced with and beat that mechanism
+    // (confirmed on-device): this fetch handler's own fetch().catch(...)
+    // rejected/resolved to undefined, producing a Chromium-level "network
+    // error" for the request and overriding Capacitor's already-successful
+    // local serve. Never intercept this one URL, in either context - a
+    // plain browser has no legitimate reason to load it directly either.
+    if (url.href === OFFLINE_FALLBACK_PAGE_URL) {
         return;
     }
 
