@@ -1,9 +1,5 @@
 package org.pesr.ytan;
 
-import android.content.Context;
-import android.net.ConnectivityManager;
-import android.net.Network;
-import android.net.NetworkCapabilities;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -27,7 +23,7 @@ public class MainActivity extends BridgeActivity {
 
         // See OfflineAwareWebViewClient: covers later navigation failures
         // (e.g. the offline.html "Erneut versuchen" button failing again).
-        this.bridge.setWebViewClient(new OfflineAwareWebViewClient(this.bridge));
+        this.bridge.setWebViewClient(new OfflineAwareWebViewClient(this.bridge, this));
 
         // The very first page load - the one that fails on a cold start
         // with no connectivity at all - happens inside super.onCreate()
@@ -48,7 +44,7 @@ public class MainActivity extends BridgeActivity {
         // network at all when the app launches, the initial load is
         // certain to fail, so just force the errorPath page after a fixed
         // delay unconditionally - no ambiguous state-comparison needed.
-        if (!isNetworkAvailable()) {
+        if (!NetworkUtils.isAvailable(this)) {
             final WebView webView = this.bridge.getWebView();
             final String errorUrl = this.bridge.getErrorUrl();
             if (errorUrl != null) {
@@ -58,19 +54,6 @@ public class MainActivity extends BridgeActivity {
                 );
             }
         }
-    }
-
-    private boolean isNetworkAvailable() {
-        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-        if (cm == null) {
-            return true;
-        }
-        Network network = cm.getActiveNetwork();
-        if (network == null) {
-            return false;
-        }
-        NetworkCapabilities capabilities = cm.getNetworkCapabilities(network);
-        return capabilities != null && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
     }
 
     /**

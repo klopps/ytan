@@ -92,6 +92,14 @@
     cursor: pointer;
   }
   button:active { opacity: 0.85; }
+  .retry-message {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+    text-align: center;
+    margin: 8px 0 0;
+    display: none;
+  }
+  .retry-message.visible { display: block; }
 </style>
 </head>
 <body>
@@ -108,9 +116,30 @@
     <div id="pendingList"><p class="empty">Lade...</p></div>
   </div>
 
-  <button onclick="location.href = location.origin + '/';">Erneut versuchen</button>
+  <button onclick="retryConnection();">Erneut versuchen</button>
+  <p class="retry-message" id="retryMessage">Immer noch keine Verbindung.</p>
 
 <script>
+// A plain location.href navigation here, while still offline, hits the same
+// native WebView error interstitial (chrome-error://chromewebdata/) as the
+// original cold-start failure this page exists to avoid - and unlike the
+// cold start, the app's own WebViewClient can't reliably redirect back out
+// of it for this one (confirmed on-device: the WebViewClient callbacks this
+// depends on don't fire consistently for a service-worker-mediated failure
+// on this navigation). navigator.onLine is backed by the same underlying
+// Android connectivity state and lets this button just not attempt the
+// navigation at all while still offline, sidestepping that native failure
+// mode entirely instead of trying to recover from it after the fact.
+function retryConnection() {
+  var msg = document.getElementById('retryMessage');
+  if (navigator.onLine === false) {
+    msg.classList.add('visible');
+    return;
+  }
+  msg.classList.remove('visible');
+  location.href = location.origin + '/';
+}
+
 (function () {
   var LABELS = {
     poi: 'POIs', pois: 'POIs',
