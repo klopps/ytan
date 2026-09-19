@@ -395,7 +395,23 @@ function getAreasByUserId(userId) {
         if (settings.detailareas) {
             showAreas();
         }
-    }).catch(err => log('getAreasByUserId() failed', LOG_ERROR, err));
+        // Cached AFTER the points/opacity/zindex normalization above - one
+        // shape everywhere, so the offline fallback below doesn't need its
+        // own separate parsing step.
+        putCachedCollection('areas', 'mine_public', areas);
+    }).catch(err => {
+        log('getAreasByUserId() failed', LOG_ERROR, err);
+        getCachedCollection('areas', 'mine_public').then(cached => {
+            if (cached) {
+                areas = cached.data;
+                createAreas();
+                if (settings.detailareas) {
+                    showAreas();
+                }
+            }
+            notifyOfflineFallback('areas', cached ? cached.cachedAt : null);
+        });
+    });
 }
 
 /**
@@ -414,7 +430,20 @@ function getPublicAreas() {
         if (settings.detailareas) {
             showAreas();
         }
-    }).catch(err => log('getPublicAreas() failed', LOG_ERROR, err));
+        putCachedCollection('areas', 'public', areas);
+    }).catch(err => {
+        log('getPublicAreas() failed', LOG_ERROR, err);
+        getCachedCollection('areas', 'public').then(cached => {
+            if (cached) {
+                areas = cached.data;
+                createAreas();
+                if (settings.detailareas) {
+                    showAreas();
+                }
+            }
+            notifyOfflineFallback('areas', cached ? cached.cachedAt : null);
+        });
+    });
 }
 
 function showAreas() {

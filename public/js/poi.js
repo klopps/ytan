@@ -92,7 +92,17 @@ function getPublicPois() {
         log("getPublicPois()", LOG_INFO, answer);
         pois = answer.data;
         setAllPois(pois);
-    }).catch(err => log('getPublicPois() failed', LOG_ERROR, err));
+        putCachedCollection('pois', 'public', pois);
+    }).catch(err => {
+        log('getPublicPois() failed', LOG_ERROR, err);
+        getCachedCollection('pois', 'public').then(cached => {
+            if (cached) {
+                pois = cached.data;
+                setAllPois(pois);
+            }
+            notifyOfflineFallback('pois', cached ? cached.cachedAt : null);
+        });
+    });
 }
 
 /**
@@ -103,7 +113,17 @@ function getPoisByUserId(userId) {
         log("getPoisByUserId()", LOG_INFO, answer);
         pois = answer.data;
         setAllPois(pois);
-    }).catch(err => log('getPoisByUserId() failed', LOG_ERROR, err));
+        putCachedCollection('pois', 'mine_public', pois);
+    }).catch(err => {
+        log('getPoisByUserId() failed', LOG_ERROR, err);
+        getCachedCollection('pois', 'mine_public').then(cached => {
+            if (cached) {
+                pois = cached.data;
+                setAllPois(pois);
+            }
+            notifyOfflineFallback('pois', cached ? cached.cachedAt : null);
+        });
+    });
 }
 
 /**

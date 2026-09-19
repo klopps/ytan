@@ -544,7 +544,30 @@ function getRoutesByUserId(userId) {
         if (settings.detailroutes) {
             showRoutes();
         }
-    }).catch(err => log('getRoutesByUserId() failed', LOG_ERROR, err));
+        // Cached AFTER the points/labels normalization above - one shape
+        // everywhere, so the offline fallback below doesn't need its own
+        // separate parsing step.
+        putCachedCollection('routes', 'mine_public', routes);
+    }).catch(err => {
+        log('getRoutesByUserId() failed', LOG_ERROR, err);
+        getCachedCollection('routes', 'mine_public').then(cached => {
+            if (cached) {
+                deleteRoutes();
+                routes = cached.data;
+                // points is already a parsed array in the cached copy;
+                // labels is transient UI state, never persisted - reset
+                // fresh rather than trusting a stale cached value.
+                for (let i = 0; i < routes.length; i++) {
+                    routes[i].labels = [];
+                }
+                createRoutes();
+                if (settings.detailroutes) {
+                    showRoutes();
+                }
+            }
+            notifyOfflineFallback('routes', cached ? cached.cachedAt : null);
+        });
+    });
 }
 
 /**
@@ -563,7 +586,24 @@ function getPublicRoutes() {
         if (settings.detailroutes) {
             showRoutes();
         }
-    }).catch(err => log('getPublicRoutes() failed', LOG_ERROR, err));
+        putCachedCollection('routes', 'public', routes);
+    }).catch(err => {
+        log('getPublicRoutes() failed', LOG_ERROR, err);
+        getCachedCollection('routes', 'public').then(cached => {
+            if (cached) {
+                deleteRoutes();
+                routes = cached.data;
+                for (let i = 0; i < routes.length; i++) {
+                    routes[i].labels = [];
+                }
+                createRoutes();
+                if (settings.detailroutes) {
+                    showRoutes();
+                }
+            }
+            notifyOfflineFallback('routes', cached ? cached.cachedAt : null);
+        });
+    });
 }
 
 /**

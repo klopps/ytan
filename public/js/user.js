@@ -223,6 +223,14 @@ function updateProfileRowLabel() {
  * the public (unauthenticated) view.
  */
 function logoutUser() {
+    // Defense-in-depth, on top of offline-cache.js's own exact-key
+    // matching (which already stops the app's UI from ever reading this
+    // user's cached "mine_public" data back once someone else is logged
+    // in/out): actively removes it from IndexedDB too, rather than leaving
+    // it sitting there indefinitely for anyone with direct device/DevTools
+    // access to the same browser profile.
+    clearOfflineCacheForUser(user.id);
+
     Ytan.setToken(null);
     user = initUser();
     sessionStorage.removeItem('user');
@@ -240,6 +248,11 @@ function logoutUser() {
     getPublicPois();
     getPublicRoutes();
     getPublicAreas();
+    // Pre-existing gap: unlike POIs/routes/areas above, tours[] was never
+    // reset/reloaded here - the previous user's tour list kept showing
+    // until a full page reload. Fixed alongside this change since it's the
+    // same "don't leak/strand a previous user's data" concern.
+    getPublicTours();
     disablePoiButton();
     infoWindow.close();
 }

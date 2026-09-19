@@ -16,7 +16,16 @@ function getToursByUserId(userId) {
     Ytan.get('/tours?scope=mine_public').then(answer => {
         tours = answer.data;
         log('getToursByUserId(' + userId + ')', LOG_INFO, answer);
-    }).catch(err => log('getToursByUserId() failed', LOG_ERROR, err));
+        putCachedCollection('tours', 'mine_public', tours);
+    }).catch(err => {
+        log('getToursByUserId() failed', LOG_ERROR, err);
+        getCachedCollection('tours', 'mine_public').then(cached => {
+            if (cached) {
+                tours = cached.data;
+            }
+            notifyOfflineFallback('tours', cached ? cached.cachedAt : null);
+        });
+    });
 }
 
 /**
@@ -28,7 +37,16 @@ function getPublicTours() {
     Ytan.get('/tours?scope=public').then(answer => {
         log('getPublicTours() answer received', LOG_INFO, answer);
         tours = answer.data;
-    }).catch(err => log('getPublicTours() failed', LOG_ERROR, err));
+        putCachedCollection('tours', 'public', tours);
+    }).catch(err => {
+        log('getPublicTours() failed', LOG_ERROR, err);
+        getCachedCollection('tours', 'public').then(cached => {
+            if (cached) {
+                tours = cached.data;
+            }
+            notifyOfflineFallback('tours', cached ? cached.cachedAt : null);
+        });
+    });
 }
 
 let activeTourModeId = null; // the tour active in Tour Mode, or null - route.js's saveRoute() reads this to auto-add newly created routes to it

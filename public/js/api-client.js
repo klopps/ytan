@@ -29,6 +29,33 @@ const Ytan = (() => {
     }
 
     /**
+     * Decodes the stored JWT's payload (the `sub` claim, i.e. the user id)
+     * WITHOUT verifying its signature - purely advisory, never used to
+     * authorize anything (the server always re-verifies via a real request).
+     * Exists because `user.id` (templates/app.php's inline bootstrap) stays
+     * null until an async GET /auth/me round trip resolves, which can't
+     * happen offline - offline-cache.js uses this instead to know which
+     * user's cached data to read back on a cold, offline boot. Returns null
+     * if there's no token, or it can't be parsed as a JWT.
+     */
+    function getStoredUserId() {
+        const token = getToken();
+        if (!token) {
+            return null;
+        }
+        const parts = token.split('.');
+        if (parts.length !== 3) {
+            return null;
+        }
+        try {
+            const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+            return (typeof payload.sub === 'number') ? payload.sub : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /**
      * fetch() itself rejects (as opposed to resolving with a non-ok status)
      * when the request never reaches a server at all - offline, DNS/
      * connection failure, CORS, etc. Its rejection message is a raw browser
@@ -165,6 +192,7 @@ const Ytan = (() => {
         postFile,
         setToken,
         getToken,
+        getStoredUserId,
         isLoggedIn: () => !!getToken(),
     };
 })();

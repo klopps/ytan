@@ -497,5 +497,7 @@
     "trackrecorder.pending_upload_all_button": "Alle hochladen",
     "trackrecorder.pending_upload_success": "{count} Tracks hochgeladen",
     "trackrecorder.pending_upload_failed": "Hochladen von {count} Tracks fehlgeschlagen",
-    "trackrecorder.confirm_discard_pending": "„{name}“ wirklich verwerfen? Das kann nicht rückgängig gemacht werden."
+    "trackrecorder.confirm_discard_pending": "„{name}“ wirklich verwerfen? Das kann nicht rückgängig gemacht werden.",
+    "offline.showing_cached_data": "Offline - zeige zwischengespeicherte Daten vom {date}, {time}",
+    "offline.no_cached_data": "Offline und noch keine zwischengespeicherten Daten vorhanden"
 }

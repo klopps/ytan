@@ -1,5 +1,27 @@
 # Offene Punkte
 
+## Offline-Funktionalität für die Android-App
+
+Alle Daten werden lokal zwischengespeichert. Beendet man die App, startet sie neu und hat keine Internetverbindung, so werden die gespeicherten lokalen Daten verwendet.
+
+Ähnlich wie bei der Trackaufzeichnung kann man nun auch ohne Internetverbindung POIs, Areas, Routen und Touren anlegen, ändern und löschen. Sobald wieder eine Internetverbindung existiert, werden die Daten mit dem Server synchronisiert. Dabei muss festgestellt werden können, ob es zu einem Änderungskonflikt gekommen ist, also sowohl lokal, als auch auf dem Server die Daten verändert werden. Dann muss manuell entschieden werden, ob der Server oder die App "gewinnt". Dazu benötigt jeder Datensatz einen eindeutigen Timestamp mit der letzten Änderung. 
+
+Mit dem Nutzer abgestimmt, dies in drei Phasen umzusetzen (wie schon beim Wetterdaten-Punkt) - reiner Lese-Cache, dann Offline-Schreiben mit lokaler Warteschlange, dann Konflikterkennung/-auflösung.
+
+**Zwischenstand (2026-09-19) - Phase 1 (Lese-Cache) umgesetzt, Punkt bleibt offen:** Neues Modul `public/js/offline-cache.js` (nicht hinter `CapacitorBridge.isAvailable()` versteckt wie der Track-Recorder - funktioniert identisch in nativer Android-Shell und normalem Browser-Tab, da reines IndexedDB) generalisiert das dort bereits bewährte "Warteschlange"-Muster (`openRecordingDb()`/`putPending()`/... aus einer vorigen Sitzung) zu einem reinen "letzter bekannter Stand"-Cache: `putCachedCollection(collection, scope, data)`/`getCachedCollection(collection, scope)`, Schlüssel `[collection, scope, userId]` (`userId` = tatsächliche Nutzer-ID oder das Sentinel `'public'`). Alle acht bestehenden Lade-Funktionen (`getPoisByUserId`/`getPublicPois` in `poi.js`, analog `route.js`/`area.js`/`tour.js`) schreiben bei Erfolg in den Cache und lesen ihn bei einem Netzwerkfehler zurück, statt die In-Memory-Arrays einfach leer zu lassen. Ein `online`-Event-Listener (`map-core.js`) lädt still neu, sobald die Verbindung zurückkommt.
+
+Beim Planen zwei nicht offensichtliche Probleme gefunden und mit dem Nutzer abgestimmt behoben: (1) `user.id` ist beim Boot immer zunächst `null` (die eigentliche Auflösung läuft über einen asynchronen `GET /auth/me`, der offline nie ankommt) - ohne Gegenmaßnahme hätte ein eingeloggter Nutzer nach einem Offline-Kaltstart immer nur die öffentlichen Daten gesehen, nie seine eigenen. Neue `Ytan.getStoredUserId()` (`api-client.js`) liest die `sub`-Klausel direkt aus dem gespeicherten JWT, ohne Signaturprüfung - rein zur Wahl des richtigen Cache-Schlüssels, nicht zur Autorisierung (der Erstellen-Button bleibt bewusst weiterhin an das echte, serverbestätigte `user.id` gebunden, da Phase 1 rein lesend ist). (2) Vorbestehender, unabhängiger Bug in `logoutUser()` (`user.js`) gefunden: Touren wurden beim Abmelden nie zurückgesetzt/neu geladen, anders als POIs/Routen/Gebiete - behoben (`getPublicTours()` ergänzt), zusammen mit einem aktiven Löschen des Caches des vorigen Nutzers beim Abmelden (`clearOfflineCacheForUser()`, Tiefenverteidigung zusätzlich zur ohnehin schon greifenden Schlüssel-Zugriffsgrenze).
+
+Live per Playwright verifiziert (mobil 390×660): normaler Online-Ladevorgang schreibt alle vier Collections in den Cache; simulierter Netzwerkfehler (`Ytan.get` gezielt fehlschlagen lassen) füllt die In-Memory-Arrays stattdessen aus dem Cache, die Karte zeichnet die zwischengespeicherten Marker/Routen/Gebiete tatsächlich sichtbar; genau EIN gebündelter Toast statt vier einzelner bei einem gemeinsamen Fallback-Burst; separater Toast für "noch nie zuvor geladen, kein Cache vorhanden". Zugriffsgrenze gezielt geprüft: ein untergeschobener Cache-Eintrag unter der ID eines anderen Nutzers wird von der aktuellen Sitzung nachweislich nicht gelesen. Abmelden geprüft: der zuvor eingeloggte Nutzer verschwindet sowohl aus den IndexedDB-Rohdaten (direkt nachgesehen, nicht nur über die App-eigene Zugriffsgrenze) als auch aus der Tourenliste. Kaltstart-Erkennung geprüft: mit `user.id` absichtlich noch `null` (genau der Boot-Zustand) wählt die Verzweigung korrekt über `Ytan.getStoredUserId()` den richtigen (eigenen) statt des öffentlichen Zweigs. Reconnect geprüft: `online`-Event lädt alle vier Collections erneut. Komplette Playwright-E2E-Suite (9/9) und PHPUnit (255 Tests, keine Backend-Änderung) grün.
+
+### Phase 2: Offline anlegen/ändern/löschen
+
+Noch offen. Direkte Verallgemeinerung des Track-Recorder-Warteschlangen-Musters (`pending`-IndexedDB-Store, `syncPendingTracks()`-Vorbild) auf POIs/Routen/Gebiete/Touren - lokal anlegen/ändern/löschen während offline, automatischer Sync sobald wieder Netz da ist.
+
+### Phase 3: Konflikterkennung und -auflösung
+
+Noch offen. Braucht eine neue DB-Spalte (aktuell hat keine der Tabellen `poi`/`route`/`area` einen Last-modified-Timestamp - nur `tour` bereits `updated_at`, siehe Recherche) sowie eine manuelle Konfliktauflösungs-UI ("Server gewinnt" vs. "App gewinnt" pro Datensatz).
+
 ## Standards für alle Gestaltungselemente festlegen
 
 An verschiedenen Stellen sind die Gestaltungselemente wie Buttons, Inputfelder, Schalter, Hinweistexte etc. unterschiedlich gestaltet. Das muss einheitlich gestaltet werden. Dazu soll im Admin-Bereich eine Beispielseite aufgebaut werden, auf der möglichst alle Elemente vertreten sind, um die Gestaltung vergleichen zu können und schließlich anzugleichen. Ein Vorbild ist das Bootstrap Cheatsheet. Es kann sein, dass einige der folgenden Elemente noch gar nicht zum Einsatz kommen.

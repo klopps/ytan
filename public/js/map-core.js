@@ -651,18 +651,58 @@ function initMap() {
 
     updateGoogleSearchAllowed();
 
-    if (user.id !== null) {
-        getPoisByUserId(user.id);
-        getRoutesByUserId(user.id);
-        getAreasByUserId(user.id);
-        getToursByUserId(user.id);
-        enablePoiButton();
+    // user.id is only ever set once an async GET /auth/me round trip
+    // resolves (templates/app.php's inline bootstrap) - on a cold start
+    // it's always still null at this point, online or offline. Normally
+    // that's fine (app.php's own recovery path re-loads everything once
+    // /auth/me actually wins the race), but offline that request can never
+    // resolve at all - without this fallback, a genuinely logged-in user
+    // would always fall into the anonymous branch below on an offline cold
+    // start and only ever see cached PUBLIC data, never their own. This
+    // reads the same JWT the request would have used, without waiting for
+    // (or needing) the server's own confirmation of it - only to pick the
+    // right offline-cache entry (offline-cache.js), not to authorize
+    // anything. enablePoiButton() stays gated on the real, server-confirmed
+    // user.id (see app.php's recovery path) - Phase 1 is read-only, offline
+    // create/edit/delete doesn't exist yet, so the create-POI button
+    // shouldn't imply it does just because a stored token looks valid.
+    var effectiveUserId = (user.id !== null) ? user.id : Ytan.getStoredUserId();
+    if (effectiveUserId !== null) {
+        getPoisByUserId(effectiveUserId);
+        getRoutesByUserId(effectiveUserId);
+        getAreasByUserId(effectiveUserId);
+        getToursByUserId(effectiveUserId);
+        if (user.id !== null) {
+            enablePoiButton();
+        }
     } else {
         getPublicPois();
         getPublicRoutes();
         getPublicAreas();
         getPublicTours();
     }
+
+    // Silently refreshes all four collections once connectivity returns -
+    // same 'online'-event trigger track-recorder.js already uses for its
+    // own pending-upload queue. Simpler than tracking exactly which
+    // collection(s) fell back to cache: a redundant re-fetch of an
+    // already-fresh collection is harmless, and this reuses the exact same
+    // branch this function just ran instead of a second, parallel version
+    // of it.
+    window.addEventListener('online', function () {
+        var onlineEffectiveUserId = (user.id !== null) ? user.id : Ytan.getStoredUserId();
+        if (onlineEffectiveUserId !== null) {
+            getPoisByUserId(onlineEffectiveUserId);
+            getRoutesByUserId(onlineEffectiveUserId);
+            getAreasByUserId(onlineEffectiveUserId);
+            getToursByUserId(onlineEffectiveUserId);
+        } else {
+            getPublicPois();
+            getPublicRoutes();
+            getPublicAreas();
+            getPublicTours();
+        }
+    });
 
     mapInitialized = true;
 
