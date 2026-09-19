@@ -123,7 +123,7 @@ self.addEventListener('fetch', (event) => {
     // error" for the request and overriding Capacitor's already-successful
     // local serve. Never intercept this one URL, in either context - a
     // plain browser has no legitimate reason to load it directly either.
-    if (url.href === OFFLINE_FALLBACK_PAGE_URL) {
+    if (url.pathname === OFFLINE_FALLBACK_PAGE_URL) {
         return;
     }
 
