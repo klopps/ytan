@@ -838,6 +838,7 @@ function initMap() {
     if (typeof initTrackRecorder === 'function') {
         initTrackRecorder(); // track-recorder.js - no-op outside the native Capacitor shell
     }
+    initOfflineSync(); // offline-sync.js - unlike track-recorder.js, not native-only
 }
 
 function panToGeolocation() {

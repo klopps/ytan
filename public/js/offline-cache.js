@@ -2,10 +2,14 @@
  * Local "last known good" cache for the four map-data collections
  * (POIs/Routes/Areas/Tours) - lets the app boot with real data after a cold
  * restart with no network, instead of an empty map. Phase 1 of todo.md's
- * "Offline-Funktionalität für die Android-App" - read-only caching only;
- * offline create/edit/delete (a local sync queue, generalizing
- * track-recorder.js's own `pending` store) and timestamp-based conflict
- * detection are later, separate phases.
+ * "Offline-Funktionalität für die Android-App" - read-only caching.
+ *
+ * Also owns the shared IndexedDB connection (openOfflineCacheDb()) for
+ * Phase 2's write queue (public/js/offline-sync.js, the `pendingChanges`
+ * store below) - both features live in the same 'ytan-offline-cache'
+ * database so there's only ever one indexedDB.open()/onupgradeneeded to
+ * coordinate, even though the two concerns (read cache vs. write queue)
+ * stay in separate files.
  *
  * Deliberately NOT gated behind CapacitorBridge.isAvailable() the way
  * track-recorder.js is - IndexedDB works identically in the native Android
@@ -18,8 +22,11 @@
  */
 
 const OFFLINE_CACHE_DB_NAME = 'ytan-offline-cache';
-const OFFLINE_CACHE_DB_VERSION = 1;
+// v2 added the 'pendingChanges' store (offline-sync.js's write queue for
+// offline-created/edited/deleted POIs/Routes/Areas).
+const OFFLINE_CACHE_DB_VERSION = 2;
 const OFFLINE_CACHE_STORE = 'collections';
+const OFFLINE_SYNC_STORE = 'pendingChanges';
 // Every anonymous/public-scope session shares one entry - public data is
 // identical for everyone, no need to key it per browser session.
 const OFFLINE_CACHE_PUBLIC_USER_KEY = 'public';
@@ -36,6 +43,9 @@ function openOfflineCacheDb() {
             const upgradeDb = request.result;
             if (!upgradeDb.objectStoreNames.contains(OFFLINE_CACHE_STORE)) {
                 upgradeDb.createObjectStore(OFFLINE_CACHE_STORE, { keyPath: ['collection', 'scope', 'userId'] });
+            }
+            if (!upgradeDb.objectStoreNames.contains(OFFLINE_SYNC_STORE)) {
+                upgradeDb.createObjectStore(OFFLINE_SYNC_STORE, { keyPath: 'id' });
             }
         };
         request.onsuccess = function () {

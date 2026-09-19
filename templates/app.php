@@ -20,6 +20,7 @@
     <script src="./js/helper.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/helper.js') ?>"></script>
     <script src="./js/api-client.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/api-client.js') ?>"></script>
     <script src="./js/offline-cache.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/offline-cache.js') ?>"></script>
+    <script src="./js/offline-sync.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/offline-sync.js') ?>"></script>
     <script src="./js/settings.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/settings.js') ?>"></script>
     <script src="./js/ui.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/ui.js') ?>"></script>
     <script src="./js/toast.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/toast.js') ?>"></script>
@@ -124,6 +125,10 @@
                  track-recorder.js's initTrackRecorder() (no-op in a normal
                  browser/PWA, matching capacitor-bridge.js's own guard). -->
             <li id="trackRecorderMenuRow" style="display:none;"><button type="button" class="nav-menu-row" onclick="openTrackRecorderScreen();"><i class="material-icons-round nav-menu-row-icon">fiber_manual_record</i><span class="nav-menu-row-labels"><?= $t('app.nav.track_recorder') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
+            <!-- Not Capacitor-gated like the row above - offline
+                 create/edit/delete (offline-sync.js) works in a plain
+                 browser tab too, not just the native shell. -->
+            <li><button type="button" class="nav-menu-row" onclick="openPendingChangesScreen();"><i class="material-icons-round nav-menu-row-icon">sync</i><span class="nav-menu-row-labels"><?= $t('app.nav.pending_changes') ?><span class="nav-menu-row-sub" id="pendingChangesRowSub"></span></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
             <li><button type="button" class="nav-menu-row" onclick="shareMap();"><i class="material-icons-round nav-menu-row-icon">share</i><span class="nav-menu-row-labels"><?= $t('app.nav.share') ?></span></button></li>
             <li><button type="button" class="nav-menu-row" onclick="showUserWindow();"><i class="material-icons-round nav-menu-row-icon">account_circle</i><span class="nav-menu-row-labels"><?= $t('app.nav.profile') ?><span class="nav-menu-row-sub" id="profileRowSub"><?= $t('app.nav.not_signed_in') ?></span></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
             <li><button type="button" class="nav-menu-row" onclick="navMenuGoTo('preferences');"><i class="material-icons-round nav-menu-row-icon">tune</i><span class="nav-menu-row-labels"><?= $t('app.nav.preferences') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
@@ -264,6 +269,19 @@
           <h3><?= $t('app.nav.track_recorder') ?></h3>
         </div>
         <div class="nav-screen-body" id="trackRecorderScreenBody"></div>
+      </div>
+
+      <!-- AUSSTEHENDE ÄNDERUNGEN - offline-erstellte/geänderte/gelöschte
+           POIs/Routen/Gebiete, die noch auf den Server übertragen werden
+           müssen (offline-sync.js). Body content is entirely JS-rendered,
+           same split-static-shell/dynamic-body approach as the Track
+           Recorder screen above. -->
+      <div class="nav-screen nav-screen-off-right" data-nav-screen="pending-changes">
+        <div class="nav-screen-header">
+          <button type="button" class="nav-back" onclick="navMenuBack();"><i class="material-icons-round">arrow_back</i></button>
+          <h3><?= $t('app.nav.pending_changes') ?></h3>
+        </div>
+        <div class="nav-screen-body" id="pendingChangesScreenBody"></div>
       </div>
 
       <!-- PROFILE -->
@@ -494,6 +512,14 @@
             getAreasByUserId(user.id);
             getToursByUserId(user.id);
             enablePoiButton();
+          }
+
+          // Same race as above, for offline-sync.js's queue: initOfflineSync()
+          // (called from initMap()) may have already tried and silently
+          // no-op'd because syncPendingChanges() itself requires a resolved
+          // user.id - retry now that it's actually known.
+          if (typeof syncPendingChanges === 'function') {
+            syncPendingChanges({ manual: false });
           }
         }).catch((err) => {
           if (err.status !== 401) {

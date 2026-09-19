@@ -862,7 +862,10 @@ function initPoiEditWindow(i) {
     // photo-upload.js's doc comment for why POI edit windows can't just
     // wait on that fetch before opening, the way tour-admin.js's edit form
     // does).
-    if ((i !== null) && (typeof i !== 'undefined')) {
+    // poi.id can be a negative local placeholder for a POI created offline
+    // and not yet synced (offline-sync.js) - it has no server-side photos to
+    // fetch yet, so skip the endpoint call rather than 404ing.
+    if ((i !== null) && (typeof i !== 'undefined') && poi.id > 0) {
         initPhotoUpload('pois', poi.id, POI_PHOTO_MAX_COUNT);
         content +=
             '<div class="infoWindowElement">' +
@@ -1312,19 +1315,16 @@ function savePoi(i) {
         return false;
     }
 
-    var id = null;
-    var publicState = 0;
-    if ((i !== null) && (typeof i !== 'undefined')) {
-        id = pois[i].id;
-        publicState = pois[i].public;
-    }
+    var isNew = (i === null) || (typeof i === 'undefined');
+    var realId = isNew ? null : pois[i].id;
+    var publicState = isNew ? 0 : pois[i].public;
 
     if (document.getElementById('editPoiStatus') !== null) {
         publicState = document.getElementById('editPoiStatus').checked ? 1 : 0;
     }
 
     var poiData = {
-        id: id,
+        id: realId,
         user_id: user.id,
         poitype_id: parseInt(document.getElementById('editPoiType').value),
         name: escapeHTML(document.getElementById('editPoiName').value),
@@ -1349,16 +1349,65 @@ function savePoi(i) {
 
     log("savePoi()", LOG_INFO, poiData);
 
+    // Photo uploads/removals staged during this edit aren't offline-
+    // queueable (Phase 2 of todo.md's "Offline-Funktionalität" explicitly
+    // scoped photos out) - a save involving them keeps the old, online-
+    // required, wait-for-the-real-response behavior below instead of the
+    // local-first path further down. Only possible on an edit (isNew=true
+    // never had photo staging to begin with - see photo-upload.js).
+    var hasPhotoChanges = !isNew && (photoUploadPendingUploads.length > 0 || photoUploadPendingRemovals.length > 0);
+    if (hasPhotoChanges) {
+        savePoiOnlineWithPhotos(i, realId, poiData);
+        return true;
+    }
+
+    // Local-first: always write to the offline queue and update the map
+    // immediately, online or not - see offline-sync.js's own doc comment
+    // for why. clientId is the array/map's own id (negative placeholder
+    // for a brand-new POI until it syncs); the network payload queued
+    // below still sends null for a create, exactly like the POST always did.
+    var clientId = isNew ? generateLocalId() : realId;
+    poiData.id = clientId;
+
+    var index;
+    if (isNew) {
+        index = pois.push(poiData) - 1;
+        log('new index: ' + index, LOG_INFO);
+    } else {
+        index = i;
+        pois[index] = poiData;
+        log('UPDATE array pois[' + i + ']', LOG_INFO);
+    }
+    setPoi(index);
+
+    var networkPayload = Object.assign({}, poiData, { id: isNew ? null : clientId });
+    enqueueChange('poi', isNew ? 'create' : 'update', clientId, networkPayload).then(function () {
+        syncPendingChanges({ manual: false });
+    });
+
+    closePoiEditWindow();
+    enableAreaButton();
+    enablePoiButton();
+    enableRouteButton();
+    editMode(false);
+
+    return true;
+}
+
+/**
+ * The old, pre-Phase-2 synchronous save path - kept for the one case that
+ * still needs it: an edit with staged photo uploads/removals, which can't
+ * be deferred to the offline queue (see the hasPhotoChanges branch in
+ * savePoi() above).
+ */
+function savePoiOnlineWithPhotos(i, id, poiData) {
     var request = (id === null)
         ? Ytan.post('/pois', poiData)
         : Ytan.put('/pois/' + id, poiData);
 
     request.then(answer => {
-        log('savePoi() success', LOG_INFO, answer);
+        log('savePoiOnlineWithPhotos() success', LOG_INFO, answer);
 
-        // Purely array/network-based (no DOM dependency), so this still
-        // completes correctly even though closePoiEditWindow() below closes
-        // the edit window synchronously, before this .then() ever runs.
         if (id !== null) {
             applyPendingPhotoUploadChanges('pois', id);
         }
@@ -1376,7 +1425,7 @@ function savePoi(i) {
 
         setPoi(index);
     }).catch(err => {
-        log('savePoi() failed', LOG_ERROR, err);
+        log('savePoiOnlineWithPhotos() failed', LOG_ERROR, err);
         showToast(t('poi.save_failed', { error: err.message }), 'error');
     });
 
@@ -1385,8 +1434,26 @@ function savePoi(i) {
     enablePoiButton();
     enableRouteButton();
     editMode(false);
+}
 
-    return true;
+/**
+ * Called by offline-sync.js's uploadPendingChange() right after a
+ * successful 'create' sync - swaps the local placeholder id for the real
+ * server id and rebuilds the marker via the exact same setPoi() a normal
+ * create already uses (markers[] is indexed by id, not array position -
+ * see removeMarkerById() - so the old marker under the placeholder id has
+ * to be torn down explicitly, a plain in-place `.id =` update isn't
+ * enough). serverData is the full re-fetched row the API always responds
+ * with, so this also picks up anything the server itself normalized.
+ */
+function reconcilePoiLocalId(clientId, realId, serverData) {
+    var index = pois.findIndex(function (p) { return p && p.id === clientId; });
+    if (index === -1) {
+        return;
+    }
+    removeMarkerById(clientId);
+    pois[index] = serverData;
+    setPoi(index);
 }
 
 /**
@@ -1402,17 +1469,18 @@ async function removePoi(i) {
 
     var id = pois[i].id;
 
-    Ytan.del('/pois/' + id).then(() => {
-        log('removePoi(' + i + ') success', LOG_INFO);
+    // Local-first, same as savePoi(): remove from the map immediately,
+    // queue the actual deletion (or, for a POI never synced in the first
+    // place - id < 0 - just drop its still-queued 'create', see
+    // enqueueChange()) and sync in the background.
+    removeMarkerById(id);
+    if ((pois[i].poitype_id === 1) || (pois[i].poitype_id === 11)) {
+        removeWsiMarkerById(id);
+    }
+    delete pois[i];
 
-        removeMarkerById(pois[i].id);
-        if ((pois[i].poitype_id === 1) || (pois[i].poitype_id === 11)) {
-            removeWsiMarkerById(pois[i].id);
-        }
-        delete pois[i];
-    }).catch(err => {
-        log('removePoi() failed', LOG_ERROR, err);
-        showToast(t('poi.remove_failed', { error: err.message }), 'error');
+    enqueueChange('poi', 'delete', id, null).then(function () {
+        syncPendingChanges({ manual: false });
     });
 
     closePoiEditWindow();

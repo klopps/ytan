@@ -107,7 +107,10 @@ function showRouteEditWindow(i, latLng) {
     // rule tour-admin.js's photo grid follows for tours) - see poi.js's
     // initPoiEditWindow() for the identical pattern and photo-upload.js's
     // doc comment for why the grid starts empty and repaints shortly after.
-    if ((i !== null) && (typeof i !== 'undefined')) {
+    // route.id can be a negative local placeholder for a route created
+    // offline and not yet synced (offline-sync.js) - it has no server-side
+    // photos to fetch yet, so skip the endpoint call rather than 404ing.
+    if ((i !== null) && (typeof i !== 'undefined') && route.id > 0) {
         initPhotoUpload('routes', route.id, ROUTE_PHOTO_MAX_COUNT);
         content +=
             '<div class="infoWindowElement">' +
@@ -270,16 +273,11 @@ function saveRoute(i) {
         return false;
     }
 
-    var id = null;
-    var publicState = 0;
+    var isNew = (i === null) || (typeof i === 'undefined');
+    var realId = isNew ? null : routes[i].id;
+    var publicState = isNew ? 0 : routes[i].public;
 
-    if ((i !== null) && (typeof i !== 'undefined')) {
-        id = routes[i].id;
-        publicState = routes[i].public;
-        hideRoute(i);
-    } else {
-        hideRoute(i);
-    }
+    hideRoute(i); // no-op if routes[i] is undefined (a brand-new route) - guarded inside hideRoute() itself
 
     if (document.getElementById('editRouteStatus') !== null) {
         publicState = document.getElementById('editRouteStatus').checked ? 1 : 0;
@@ -293,7 +291,7 @@ function saveRoute(i) {
     }
 
     var routeData = {
-        id: id,
+        id: realId,
         user_id: user.id,
         name: escapeHTML(document.getElementById('editRouteName').value),
         description: escapeHTML(document.getElementById('editRouteDescription').value),
@@ -304,22 +302,22 @@ function saveRoute(i) {
     }
 
     // Set by track-recorder.js immediately before showRouteEditWindow(),
-    // only for a just-finished GPS recording.
+    // only for a just-finished GPS recording. Unaffected by Phase 2 of
+    // todo.md's "Offline-Funktionalität" below - a recorded route never
+    // touches the network here at all, still handed straight to track-
+    // recorder.js's OWN, separate local "save now, upload later" queue
+    // (saveRecordedTrackLocally(), syncs via syncPendingTracks()), not the
+    // generalized pendingChanges queue offline-sync.js adds for manually-
+    // drawn routes below. A multi-hour kayak day tour is very likely
+    // recorded with no signal at all for its whole duration - waiting on
+    // (or even attempting) a network request before the user can start
+    // recording the next leg would defeat the point of a "record several
+    // legs, upload them all later" workflow.
     if (pendingRouteRecordingMeta !== null) {
         routeData.recorded_at = pendingRouteRecordingMeta.recorded_at;
         routeData.recording_duration_seconds = pendingRouteRecordingMeta.recording_duration_seconds;
         pendingRouteRecordingMeta = null;
 
-        // A recorded route never touches the network here at all - it's
-        // handed straight to track-recorder.js's local "save now, upload
-        // later" queue (saveRecordedTrackLocally(), which syncs on its own
-        // once connectivity allows) instead of the POST/retry flow below,
-        // which manually-drawn routes still use. A multi-hour kayak day
-        // tour is very likely recorded with no signal at all for its whole
-        // duration - waiting on (or even attempting) a network request
-        // before the user can start recording the next leg would defeat
-        // the point of a "record several legs, upload them all later"
-        // workflow.
         measureTool.index = null;
         measureTool.end();
         closeRouteEditWindow();
@@ -330,15 +328,64 @@ function saveRoute(i) {
 
     log('saveRoute(' + i + ')', LOG_INFO, routeData);
 
-    // Disabled for the duration of the request (re-enabled in .catch() on
-    // failure, irrelevant on success since the window closes) - prevents a
-    // second, duplicate POST/PUT if the user impatiently clicks Save again
-    // while the first request is still in flight, now that the window no
-    // longer closes immediately (see below). routeSaveInProgress covers the
-    // same case if the user instead edits the name/description field
-    // meanwhile - validateRouteEditForm()'s own oninput handler would
-    // otherwise re-enable this button on every keystroke, in-flight request
-    // or not.
+    // Photo uploads/removals staged during this edit aren't offline-
+    // queueable (Phase 2 of todo.md's "Offline-Funktionalität" explicitly
+    // scoped photos out) - a save involving them keeps the old, online-
+    // required, wait-for-the-real-response behavior instead of the
+    // local-first path below. Only possible on an edit (isNew=true never
+    // had photo staging to begin with - see photo-upload.js).
+    var hasPhotoChanges = !isNew && (photoUploadPendingUploads.length > 0 || photoUploadPendingRemovals.length > 0);
+    if (hasPhotoChanges) {
+        saveRouteOnlineWithPhotos(i, realId, routeData);
+        return true;
+    }
+
+    // Local-first: always write to the offline queue and update the map
+    // immediately, online or not - see offline-sync.js's own doc comment
+    // for why. clientId is the array/map's own id (negative placeholder
+    // for a brand-new route until it syncs); the network payload queued
+    // below still sends null for a create, exactly like the POST always did.
+    var clientId = isNew ? generateLocalId() : realId;
+    var networkPayload = Object.assign({}, routeData, { id: isNew ? null : clientId });
+    var localRouteData = Object.assign({}, routeData, { id: clientId, points: points });
+
+    var index;
+    if (isNew) {
+        index = addSavedRouteToMap(localRouteData);
+    } else {
+        index = i;
+        routes[index] = localRouteData;
+        createRoute(index);
+    }
+
+    if (settings.detailroutes === false) {
+        document.getElementById('detailroutes').checked = true;
+        settings.detailroutes = true;
+        saveSettings();
+        showRoutes();
+    }
+
+    enqueueChange('route', isNew ? 'create' : 'update', clientId, networkPayload).then(function () {
+        syncPendingChanges({ manual: false });
+    });
+
+    measureTool.index = null;
+    measureTool.end();
+    closeRouteEditWindow();
+    document.getElementById('routeButton').classList.remove('active');
+
+    return true;
+}
+
+/**
+ * The old, pre-Phase-2 synchronous save path - kept for the one case that
+ * still needs it: an edit with staged photo uploads/removals, which can't
+ * be deferred to the offline queue (see the hasPhotoChanges branch in
+ * saveRoute() above). Identical to saveRoute()'s own pre-Phase-2 body,
+ * including the network-failure-resilience behavior added earlier (window/
+ * measureTool stay untouched on failure so Save can just be clicked again).
+ */
+function saveRouteOnlineWithPhotos(i, id, routeData) {
     routeSaveInProgress = true;
     var saveBtn = document.getElementById('editRouteSaveBtn');
     if (saveBtn !== null) {
@@ -350,20 +397,13 @@ function saveRoute(i) {
         : Ytan.put('/routes/' + id, routeData);
 
     request.then(answer => {
-        log('saveRoute() success', LOG_INFO, answer);
+        log('saveRouteOnlineWithPhotos() success', LOG_INFO, answer);
         routeSaveInProgress = false;
 
-        // Purely array/network-based (no DOM dependency), so this still
-        // completes correctly even after the edit window has closed.
         if (id !== null) {
             applyPendingPhotoUploadChanges('routes', id);
         }
 
-        // Guarded on isOpen (same check closeRouteEditWindow() itself
-        // already does) in case the user cancelled the edit while this
-        // request was still in flight - the route is saved server-side
-        // either way, but there's no still-open window/active measureTool
-        // left to tear down a second time.
         if (routeEditWindow.isOpen) {
             measureTool.index = null;
             measureTool.end();
@@ -375,12 +415,10 @@ function saveRoute(i) {
         var index = i;
 
         if (index == null) {
-            log('INSERT into array routes[]', LOG_INFO);
             routeData.id = answer.data.id;
             index = addSavedRouteToMap(routeData);
         } else {
             routes[index] = routeData;
-            log('UPDATE array routes[' + i +']', LOG_INFO, routes[index]);
             createRoute(index);
         }
 
@@ -391,24 +429,53 @@ function saveRoute(i) {
             showRoutes();
         }
     }).catch(err => {
-        log('saveRoute() failed', LOG_ERROR, err);
+        log('saveRouteOnlineWithPhotos() failed', LOG_ERROR, err);
         showToast(t('route.save_failed', { error: err.message }), 'error');
         routeSaveInProgress = false;
 
-        // Deliberately leave the edit window, measureTool and
-        // pendingRouteRecordingMeta untouched here - the old code closed
-        // the window and tore down measureTool unconditionally right after
-        // firing the request, regardless of outcome, which on a network
-        // error orphaned the drawn (and for a GPS recording, otherwise
-        // unrecoverable) route with no way back to its Save button. Just
-        // re-enable Save so the user can retry once the network is back.
         var btn = document.getElementById('editRouteSaveBtn');
         if (btn !== null) {
             btn.disabled = false;
         }
     });
+}
 
-    return true;
+/**
+ * Tears down the polyline overlay(s) at routePaths[i] - shared by
+ * removeRoute() and reconcileRouteLocalId(), both of which need to remove
+ * an existing overlay before either deleting the route for good or
+ * rebuilding it under its now-real server id.
+ */
+function removeRouteOverlayAt(i) {
+    if (typeof routePaths[i] === 'undefined') {
+        return;
+    }
+    google.maps.event.clearInstanceListeners(routePaths[i].routePathLine);
+    google.maps.event.clearInstanceListeners(routePaths[i].routePathBackground);
+    routePaths[i].routePathLine.setMap(null);
+    routePaths[i].routePathBackground.setMap(null);
+    detachLongPressCandidate(routePaths[i].routeHitTestLine);
+    routePaths[i].routeHitTestLine.setMap(null);
+    delete routePaths[i];
+}
+
+/**
+ * Called by offline-sync.js's uploadPendingChange() right after a
+ * successful 'create' sync - swaps the local placeholder id for the real
+ * server id and rebuilds the polyline via createRoute(), same as a normal
+ * create already uses. serverData is the full re-fetched row the API
+ * always responds with (points still JSON-encoded, like any other route
+ * fetch - parsed here same as everywhere else in this file).
+ */
+function reconcileRouteLocalId(clientId, realId, serverData) {
+    var index = routes.findIndex(function (r) { return r && r.id === clientId; });
+    if (index === -1) {
+        return;
+    }
+    removeRouteOverlayAt(index);
+    serverData.points = JSON.parse(serverData.points);
+    routes[index] = serverData;
+    createRoute(index);
 }
 
 /**
@@ -428,6 +495,21 @@ async function removeRoute(i) {
 
     var id = routes[i].id;
 
+    // A route that was never synced (id < 0, still just a queued 'create')
+    // can't possibly belong to a tour yet - always safe to cancel it
+    // locally, no network involved at all (see enqueueChange()).
+    if (id < 0) {
+        hideRouteLabels(i);
+        measureTool.index = null;
+        measureTool.end();
+        removeRouteOverlayAt(i);
+        delete routes[i];
+        enqueueChange('route', 'delete', id, null);
+        document.getElementById('routeButton').classList.remove('active');
+        routeEditWindow.close();
+        return true;
+    }
+
     hideRouteLabels(i);
 
     log('removeRoute(' + i + ')', LOG_INFO, id);
@@ -439,8 +521,11 @@ async function removeRoute(i) {
     } catch (err) {
         // A route that's part of >=1 tours 422s with a captcha challenge
         // instead of deleting immediately (Touren.md's "warn + simple
-        // captcha before deleting a tour route" flow) - solve it and retry
-        // the same DELETE with the answer attached.
+        // captcha before deleting a tour route" flow) - needs an
+        // interactive, online-only round trip, so this stays the old,
+        // immediate, online-required flow rather than deferring to the
+        // offline queue: solve it and retry the same DELETE with the
+        // answer attached.
         if (err.status === 422 && err.data && err.data.captcha) {
             var answer = await showCaptchaDialog(err.data.captcha.question);
             if (answer === null) {
@@ -453,6 +538,25 @@ async function removeRoute(i) {
                 showToast(t('route.remove_failed', { error: err2.message }), 'error');
                 return false;
             }
+        } else if (err.status === undefined) {
+            // A genuine network failure (offline/unreachable - api-
+            // client.js's networkError() never sets .status, unlike a real
+            // HTTP error response) - fall back to the local-first queue
+            // instead of just failing, same as POI/Gebiet deletion already
+            // does unconditionally. Whether THIS route turns out to need
+            // the captcha step above will only be discovered once the
+            // queued delete actually reaches the server.
+            log('removeRoute() network failure, queueing for later', LOG_WARN, err);
+            measureTool.index = null;
+            measureTool.end();
+            removeRouteOverlayAt(i);
+            delete routes[i];
+            enqueueChange('route', 'delete', id, null).then(function () {
+                syncPendingChanges({ manual: false });
+            });
+            document.getElementById('routeButton').classList.remove('active');
+            routeEditWindow.close();
+            return true;
         } else {
             log('removeRoute() failed', LOG_ERROR, err);
             showToast(t('route.remove_failed', { error: err.message }), 'error');
@@ -477,13 +581,7 @@ async function removeRoute(i) {
     // routePaths[] access with typeof !== 'undefined' for exactly this
     // reason (createRoute(), createRoutes(), hideRoute(), ...), so no new
     // guards are needed here - just this deletion itself.
-    google.maps.event.clearInstanceListeners(routePaths[i].routePathLine);
-    google.maps.event.clearInstanceListeners(routePaths[i].routePathBackground);
-    routePaths[i].routePathLine.setMap(null);
-    routePaths[i].routePathBackground.setMap(null);
-    detachLongPressCandidate(routePaths[i].routeHitTestLine);
-    routePaths[i].routeHitTestLine.setMap(null);
-    delete routePaths[i];
+    removeRouteOverlayAt(i);
     delete routes[i];
 
     document.getElementById('routeButton').classList.remove('active');

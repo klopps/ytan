@@ -15,6 +15,7 @@
     "app.nav.administration": "Administration",
     "app.nav.preferences": "Preferences",
     "app.nav.track_recorder": "Record Track",
+    "app.nav.pending_changes": "Pending Changes",
     "app.nav.profile": "Profile",
     "app.nav.not_signed_in": "Not signed in",
     "app.nav.about": "About",
@@ -499,5 +500,15 @@
     "trackrecorder.pending_upload_failed": "Failed to upload {count} track(s)",
     "trackrecorder.confirm_discard_pending": "Really discard \"{name}\"? This cannot be undone.",
     "offline.showing_cached_data": "Offline - showing cached data from {date}, {time}",
-    "offline.no_cached_data": "Offline and no cached data available yet"
+    "offline.no_cached_data": "Offline and no cached data available yet",
+    "offline_sync.empty": "No pending changes - everything is synced.",
+    "offline_sync.upload_button": "Upload",
+    "offline_sync.sync_all_button": "Sync all",
+    "offline_sync.sync_success": "{count} change(s) synced",
+    "offline_sync.sync_failed": "Failed to sync {count} change(s)",
+    "offline_sync.confirm_discard": "Really discard \"{name}\"? This cannot be undone.",
+    "offline_sync.deleted_item_name": "(deleted item)",
+    "offline_sync.operation_create": "Created",
+    "offline_sync.operation_update": "Changed",
+    "offline_sync.operation_delete": "Deleted"
 }

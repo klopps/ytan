@@ -15,6 +15,7 @@
     "app.nav.administration": "Administration",
     "app.nav.preferences": "Einstellungen",
     "app.nav.track_recorder": "Track aufzeichnen",
+    "app.nav.pending_changes": "Ausstehende Änderungen",
     "app.nav.profile": "Profil",
     "app.nav.not_signed_in": "Nicht angemeldet",
     "app.nav.about": "Über",
@@ -499,5 +500,15 @@
     "trackrecorder.pending_upload_failed": "Hochladen von {count} Tracks fehlgeschlagen",
     "trackrecorder.confirm_discard_pending": "„{name}“ wirklich verwerfen? Das kann nicht rückgängig gemacht werden.",
     "offline.showing_cached_data": "Offline - zeige zwischengespeicherte Daten vom {date}, {time}",
-    "offline.no_cached_data": "Offline und noch keine zwischengespeicherten Daten vorhanden"
+    "offline.no_cached_data": "Offline und noch keine zwischengespeicherten Daten vorhanden",
+    "offline_sync.empty": "Keine ausstehenden Änderungen - alles ist synchronisiert.",
+    "offline_sync.upload_button": "Hochladen",
+    "offline_sync.sync_all_button": "Alle synchronisieren",
+    "offline_sync.sync_success": "{count} Änderung(en) synchronisiert",
+    "offline_sync.sync_failed": "Synchronisieren von {count} Änderung(en) fehlgeschlagen",
+    "offline_sync.confirm_discard": "„{name}“ wirklich verwerfen? Das kann nicht rückgängig gemacht werden.",
+    "offline_sync.deleted_item_name": "(gelöschter Eintrag)",
+    "offline_sync.operation_create": "Neu angelegt",
+    "offline_sync.operation_update": "Geändert",
+    "offline_sync.operation_delete": "Gelöscht"
 }

@@ -98,7 +98,10 @@ function showAreaEditWindow(i, latLng) {
     // rule tour-admin.js's photo grid follows for tours) - see poi.js's
     // initPoiEditWindow() for the identical pattern and photo-upload.js's
     // doc comment for why the grid starts empty and repaints shortly after.
-    if ((i !== null) && (typeof i !== 'undefined')) {
+    // area.id can be a negative local placeholder for an area created
+    // offline and not yet synced (offline-sync.js) - it has no server-side
+    // photos to fetch yet, so skip the endpoint call rather than 404ing.
+    if ((i !== null) && (typeof i !== 'undefined') && area.id > 0) {
         initPhotoUpload('areas', area.id, AREA_PHOTO_MAX_COUNT);
         content +=
             '<div class="infoWindowElement">' +
@@ -252,24 +255,22 @@ function saveArea(i) {
         return false;
     }
 
-    var id = null;
-    var publicState = 0;
-    if ((i !== null) && (typeof i !== 'undefined')) {
-        id = areas[i].id;
-        publicState = areas[i].public;
-    }
+    var isNew = (i === null) || (typeof i === 'undefined');
+    var realId = isNew ? null : areas[i].id;
+    var publicState = isNew ? 0 : areas[i].public;
 
     if (document.getElementById('editAreaStatus') !== null) {
         publicState = document.getElementById('editAreaStatus').checked ? 1 : 0;
     }
 
+    var points = measureTool.points;
     var areaData = {
-        id: id,
+        id: realId,
         user_id: user.id,
         name: escapeHTML(document.getElementById('editAreaName').value),
         description: escapeHTML(document.getElementById('editAreaDescription').value),
         public: publicState,
-        points: JSON.stringify(measureTool.points),
+        points: JSON.stringify(points),
         color: document.getElementById('editAreaColor').value,
         opacity: Number(document.getElementById('editAreaOpacity').value) / 20,
         zindex: parseInt(document.getElementById('editAreaZindex').value)
@@ -277,15 +278,71 @@ function saveArea(i) {
 
     log('saveArea(' + i + ')', LOG_INFO, areaData);
 
+    // Photo uploads/removals staged during this edit aren't offline-
+    // queueable (Phase 2 of todo.md's "Offline-Funktionalität" explicitly
+    // scoped photos out) - a save involving them keeps the old, online-
+    // required, wait-for-the-real-response behavior instead of the
+    // local-first path below. Only possible on an edit (isNew=true never
+    // had photo staging to begin with - see photo-upload.js).
+    var hasPhotoChanges = !isNew && (photoUploadPendingUploads.length > 0 || photoUploadPendingRemovals.length > 0);
+    if (hasPhotoChanges) {
+        saveAreaOnlineWithPhotos(i, realId, areaData);
+        return true;
+    }
+
+    // Local-first: always write to the offline queue and update the map
+    // immediately, online or not - see offline-sync.js's own doc comment
+    // for why. clientId is the array/map's own id (negative placeholder
+    // for a brand-new area until it syncs); the network payload queued
+    // below still sends null for a create, exactly like the POST always did.
+    var clientId = isNew ? generateLocalId() : realId;
+    var networkPayload = Object.assign({}, areaData, { id: isNew ? null : clientId });
+    var localAreaData = Object.assign({}, areaData, { id: clientId, points: points });
+
+    var index;
+    if (isNew) {
+        index = areas.push(localAreaData) - 1;
+        log('new index: ' + index, LOG_INFO);
+    } else {
+        index = i;
+        areas[index] = localAreaData;
+        log('UPDATE array areas[' + i + ']', LOG_INFO);
+    }
+    createArea(index);
+
+    if (settings.detailareas === false) {
+        document.getElementById('detailareas').checked = true;
+        settings.detailareas = true;
+        saveSettings();
+        showAreas();
+    }
+
+    enqueueChange('area', isNew ? 'create' : 'update', clientId, networkPayload).then(function () {
+        syncPendingChanges({ manual: false });
+    });
+
+    measureTool.index = null;
+    measureTool.end();
+    closeAreaEditWindow();
+    document.getElementById('areaButton').classList.remove('active');
+
+    return true;
+}
+
+/**
+ * The old, pre-Phase-2 synchronous save path - kept for the one case that
+ * still needs it: an edit with staged photo uploads/removals, which can't
+ * be deferred to the offline queue (see the hasPhotoChanges branch in
+ * saveArea() above).
+ */
+function saveAreaOnlineWithPhotos(i, id, areaData) {
     var request = (id === null)
         ? Ytan.post('/areas', areaData)
         : Ytan.put('/areas/' + id, areaData);
 
     request.then(answer => {
-        log('saveArea() success', LOG_INFO, answer);
+        log('saveAreaOnlineWithPhotos() success', LOG_INFO, answer);
 
-        // Purely array/network-based (no DOM dependency), so this still
-        // completes correctly even after the edit window has closed.
         if (id !== null) {
             applyPendingPhotoUploadChanges('areas', id);
         }
@@ -295,13 +352,12 @@ function saveArea(i) {
         var index = i;
 
         if (index == null) {
-            log('INSERT into array areas[]', LOG_INFO);
             areaData.id = answer.data.id;
             index = areas.push(areaData) - 1;
             log('new index: ' + index, LOG_INFO);
         } else {
-            log('UPDATE array areas[' + i +']', LOG_INFO);
             areas[index] = areaData;
+            log('UPDATE array areas[' + i + ']', LOG_INFO);
         }
 
         createArea(index);
@@ -313,17 +369,45 @@ function saveArea(i) {
             showAreas();
         }
     }).catch(err => {
-        log('saveArea() failed', LOG_ERROR, err);
+        log('saveAreaOnlineWithPhotos() failed', LOG_ERROR, err);
         showToast(t('area.save_failed', { error: err.message }), 'error');
     });
 
     measureTool.index = null;
-
     closeAreaEditWindow();
-
     document.getElementById('areaButton').classList.remove('active');
+}
 
-    return true;
+/**
+ * Tears down the polygon overlay at areaPolygons[i] - shared by
+ * removeArea() and reconcileAreaLocalId().
+ */
+function removeAreaOverlayAt(i) {
+    if (typeof areaPolygons[i] === 'undefined') {
+        return;
+    }
+    google.maps.event.clearInstanceListeners(areaPolygons[i]);
+    areaPolygons[i].setMap(null);
+    delete areaPolygons[i];
+}
+
+/**
+ * Called by offline-sync.js's uploadPendingChange() right after a
+ * successful 'create' sync - swaps the local placeholder id for the real
+ * server id and rebuilds the polygon via createArea(), same as a normal
+ * create already uses. serverData is the full re-fetched row the API
+ * always responds with (points still JSON-encoded, like any other area
+ * fetch - parsed here same as everywhere else in this file).
+ */
+function reconcileAreaLocalId(clientId, realId, serverData) {
+    var index = areas.findIndex(function (a) { return a && a.id === clientId; });
+    if (index === -1) {
+        return;
+    }
+    removeAreaOverlayAt(index);
+    serverData.points = JSON.parse(serverData.points);
+    areas[index] = serverData;
+    createArea(index);
 }
 
 /**
@@ -345,36 +429,21 @@ async function removeArea(i) {
 
     log('removeArea(' + i + ')', LOG_INFO, id);
 
-    Ytan.del('/areas/' + id).then(() => {
-        log('removeArea() success', LOG_INFO);
-        measureTool.index = null;
-        measureTool.end();
+    // Local-first, same as saveArea(): remove from the map immediately,
+    // queue the actual deletion (or, for an area never synced in the first
+    // place - id < 0 - just drop its still-queued 'create', see
+    // enqueueChange()) and sync in the background.
+    measureTool.index = null;
+    measureTool.end();
+    removeAreaOverlayAt(i);
+    delete areas[i];
 
-        // delete areas[i]/areaPolygons[i] rather than .splice() them out - a
-        // splice() shifts every later area down by one array index, but
-        // createArea()'s click/contextmenu listeners on each area's polygon
-        // are closed over the index it had at creation time, so a shift
-        // leaves them stale (pointing at the wrong area, or past the end of
-        // the now-shorter array - "Cannot read properties of undefined
-        // (reading 'user_id')" in showAreaContextMenu()). delete leaves a
-        // hole instead of shifting anything, so every other area's index -
-        // and its listeners - stays valid. Same approach poi.js's
-        // removeMarkerById() already uses; the rest of this file already
-        // guards every areas[]/areaPolygons[] access with
-        // typeof !== 'undefined' for exactly this reason (createArea(),
-        // createAreas(), hideArea(), ...), so no new guards are needed here
-        // - just this deletion itself.
-        google.maps.event.clearInstanceListeners(areaPolygons[i]);
-        areaPolygons[i].setMap(null);
-        delete areaPolygons[i];
-        delete areas[i];
-
-        document.getElementById('areaButton').classList.remove('active');
-        areaEditWindow.close();
-    }).catch(err => {
-        log('removeArea() failed', LOG_ERROR, err);
-        showToast(t('area.remove_failed', { error: err.message }), 'error');
+    enqueueChange('area', 'delete', id, null).then(function () {
+        syncPendingChanges({ manual: false });
     });
+
+    document.getElementById('areaButton').classList.remove('active');
+    areaEditWindow.close();
 }
 
 /**
