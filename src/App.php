@@ -17,6 +17,7 @@ use Ytan\Domain\Route\RouteRepository;
 use Ytan\Domain\Settings\SettingsRepository;
 use Ytan\Domain\Tour\TourRepository;
 use Ytan\Domain\User\UserRepository;
+use Ytan\Domain\Weather\WeatherForecastRepository;
 use Ytan\Exception\ApiException;
 use Ytan\Http\Controllers\AdminController;
 use Ytan\Http\Controllers\AreaController;
@@ -43,6 +44,9 @@ use Ytan\Service\TourNotificationService;
 use Ytan\Service\TranslationRepository;
 use Ytan\Service\TranslationUsageScanner;
 use Ytan\Service\Translator;
+use Ytan\Service\Weather\OpenMeteoWeatherProvider;
+use Ytan\Service\Weather\SmhiWeatherProvider;
+use Ytan\Service\Weather\WeatherRegionResolver;
 use Ytan\Service\WeatherService;
 use Ytan\Service\WsiRenderer;
 
@@ -123,12 +127,16 @@ final class App
             new TranslationUsageScanner($rootDir)
         );
         $jsonHttpClient = new CurlJsonHttpClient();
+        $geocodingService = new GeocodingService($rootDir . '/storage/geocoding-cache', $jsonHttpClient, $locale);
         $weatherController = new WeatherController(
-            new WeatherService($rootDir . '/storage/weather-cache', $jsonHttpClient)
+            new WeatherService(
+                new WeatherForecastRepository($pdo),
+                new WeatherRegionResolver($geocodingService),
+                new OpenMeteoWeatherProvider($jsonHttpClient),
+                new SmhiWeatherProvider($jsonHttpClient),
+            )
         );
-        $geocodingController = new GeocodingController(
-            new GeocodingService($rootDir . '/storage/geocoding-cache', $jsonHttpClient, $locale)
-        );
+        $geocodingController = new GeocodingController($geocodingService);
 
         $app = AppFactory::create();
 

@@ -138,4 +138,43 @@ final class GeocodingServiceTest extends TestCase
 
         $this->assertSame('de', $this->httpClient->requestedQueries[0]['accept-language']);
     }
+
+    public function testResolveCountryCodeReturnsTheAddressCountryCode(): void
+    {
+        $this->httpClient->setResponseFor(self::NOMINATIM_URL, [
+            'name' => 'Kungsbacka',
+            'address' => ['country_code' => 'se'],
+        ]);
+
+        $this->assertSame('se', $this->service->resolveCountryCode(57.487, 12.076));
+    }
+
+    public function testResolveCountryCodeReturnsNullForAPointWithNoCountry(): void
+    {
+        $this->httpClient->setResponseFor(self::NOMINATIM_URL, ['error' => 'Unable to geocode']);
+
+        $this->assertNull($this->service->resolveCountryCode(56.0, 15.0));
+    }
+
+    public function testRequestsAddressdetailsSoCountryCodeIsAvailable(): void
+    {
+        $this->httpClient->setResponseFor(self::NOMINATIM_URL, ['name' => 'Lyø By']);
+
+        $this->service->reverseGeocode(55.043, 10.152);
+
+        $this->assertSame(1, $this->httpClient->requestedQueries[0]['addressdetails']);
+    }
+
+    public function testReverseGeocodeAndResolveCountryCodeShareOneCacheEntry(): void
+    {
+        $this->httpClient->setResponseFor(self::NOMINATIM_URL, [
+            'name' => 'Lyø By',
+            'address' => ['country_code' => 'dk'],
+        ]);
+
+        $this->service->reverseGeocode(55.043, 10.152);
+        $this->service->resolveCountryCode(55.043, 10.152);
+
+        $this->assertSame(1, $this->httpClient->callCount());
+    }
 }

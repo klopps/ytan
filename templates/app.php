@@ -353,21 +353,27 @@
          automatically. A bottom sheet with a horizontally scrollable
          hourly strip (temperature/wind/waves) covering the next 7 days. -->
     <div id="weatherTimelinePanel" class="weather-timeline-panel" style="display:none;">
+      <!-- todo.md's "Wetterdatenhinweis": the fetched-at/source notice sits
+           directly under the title (place + coordinates), both still above
+           .weather-timeline-header's own border-bottom (the "horizontale
+           Linie" the todo item means - there's no separate <hr>, everything
+           else in the panel comes after this one bordered header box). -->
       <div class="weather-timeline-header">
-        <span id="weatherTimelineTitle" class="weather-timeline-title"></span>
-        <div class="weather-timeline-close" onclick="closeWeatherTimeline();" aria-label="<?= htmlspecialchars($t('weather.widget.close_aria_label'), ENT_QUOTES) ?>"><i class="material-icons-round">close</i></div>
+        <div class="weather-timeline-header-row">
+          <span id="weatherTimelineTitle" class="weather-timeline-title"></span>
+          <div class="weather-timeline-close" onclick="closeWeatherTimeline();" aria-label="<?= htmlspecialchars($t('weather.widget.close_aria_label'), ENT_QUOTES) ?>"><i class="material-icons-round">close</i></div>
+        </div>
+        <!-- Filled by weather.js's weatherFormatFetchedAt() once data
+             arrives - source/model plus when the shown forecast was
+             actually fetched (may be up to 30 minutes old, WeatherService's
+             own cache TTL), plus a manual refresh button
+             (reloadWeatherTimeline()) for whenever that's not fresh enough. -->
+        <div class="weather-timeline-meta">
+          <span id="weatherTimelineFetchedAt" class="weather-timeline-fetched-at"></span>
+          <button type="button" class="weather-timeline-reload-btn" onclick="reloadWeatherTimeline();" aria-label="<?= htmlspecialchars($t('weather.timeline.reload_aria_label'), ENT_QUOTES) ?>"><i class="material-icons-round">refresh</i></button>
+        </div>
       </div>
       <div id="weatherTimelineMarineNotice" class="weather-timeline-marine-notice" style="display:none;"><?= htmlspecialchars($t('weather.marine.unavailable'), ENT_QUOTES) ?></div>
-
-      <!-- Filled by weather.js's weatherFormatFetchedAt() once data
-           arrives - when the shown forecast was actually fetched (may be up
-           to 30 minutes old, WeatherService's own cache TTL), plus a manual
-           refresh button (reloadWeatherTimeline()) for whenever that's not
-           fresh enough. -->
-      <div class="weather-timeline-meta">
-        <span id="weatherTimelineFetchedAt" class="weather-timeline-fetched-at"></span>
-        <button type="button" class="weather-timeline-reload-btn" onclick="reloadWeatherTimeline();" aria-label="<?= htmlspecialchars($t('weather.timeline.reload_aria_label'), ENT_QUOTES) ?>"><i class="material-icons-round">refresh</i></button>
-      </div>
 
       <!-- One icon + daily high per day covered by the forecast - built by
            weather.js's renderWeatherDayGlance(), not static markup. -->

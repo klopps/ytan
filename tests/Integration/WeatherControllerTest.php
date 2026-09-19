@@ -4,26 +4,34 @@ declare(strict_types=1);
 
 namespace Ytan\Tests\Integration;
 
+use Ytan\Domain\Weather\WeatherForecastRepository;
 use Ytan\Exception\ApiException;
 use Ytan\Exception\ValidationException;
 use Ytan\Http\Controllers\WeatherController;
+use Ytan\Service\GeocodingService;
+use Ytan\Service\Weather\OpenMeteoWeatherProvider;
+use Ytan\Service\Weather\SmhiWeatherProvider;
+use Ytan\Service\Weather\WeatherRegionResolver;
 use Ytan\Service\WeatherService;
 use Ytan\Tests\Fixtures\FakeJsonHttpClient;
 
 /**
- * Covers WeatherController's validation and response shape. WeatherService
- * is wired to a FakeJsonHttpClient throughout - no test here ever makes
- * a real network call. No DB fixtures needed (WeatherService never touches
- * $this->pdo), but ControllerTestCase remains the right base for its
- * request()/response()/decode() helpers, per this app's existing
- * convention for controller-level tests.
+ * Covers WeatherController's validation and response shape. The two
+ * general-forecast providers and region-resolving GeocodingService are
+ * wired to a FakeJsonHttpClient throughout - no test here ever makes a
+ * real network call. WeatherForecastRepository IS backed by the real test
+ * DB (this app's usual DB-touching-service convention, via
+ * ControllerTestCase's inherited transaction-per-test TestCase base) -
+ * unlike WeatherServiceTest's DB-free FakeWeatherForecastRepository, since
+ * this suite is already an Integration test.
  */
 final class WeatherControllerTest extends ControllerTestCase
 {
     private const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
     private const MARINE_URL = 'https://marine-api.open-meteo.com/v1/marine';
+    private const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/reverse';
 
-    private string $cacheDir;
+    private string $geocodingCacheDir;
     private FakeJsonHttpClient $httpClient;
     private WeatherController $controller;
 
@@ -31,9 +39,16 @@ final class WeatherControllerTest extends ControllerTestCase
     {
         parent::setUp();
 
-        $this->cacheDir = sys_get_temp_dir() . '/ytan-weather-controller-test-' . uniqid();
-        mkdir($this->cacheDir);
+        $this->geocodingCacheDir = sys_get_temp_dir() . '/ytan-weather-controller-test-' . uniqid();
+        mkdir($this->geocodingCacheDir);
         $this->httpClient = new FakeJsonHttpClient();
+        // Every coordinate this suite uses (54.30/10.15, 48.135/11.582) is
+        // in Germany - still resolves through OpenMeteoWeatherProvider (now
+        // with source "DWD"/model "icon_seamless" rather than plain
+        // "Open-Meteo", see WeatherRegionResolver::COUNTRY_MODELS - not
+        // asserted on by name here, this suite only cares about the
+        // response shape/values, which this routing change doesn't affect).
+        $this->httpClient->setResponseFor(self::NOMINATIM_URL, ['address' => ['country_code' => 'de']]);
         $this->httpClient->setResponseFor(self::FORECAST_URL, [
             'hourly' => [
                 'time' => ['2026-09-12T00:00'],
@@ -51,15 +66,21 @@ final class WeatherControllerTest extends ControllerTestCase
             ],
         ]);
 
-        $this->controller = new WeatherController(new WeatherService($this->cacheDir, $this->httpClient));
+        $geocoding = new GeocodingService($this->geocodingCacheDir, $this->httpClient, 'en');
+        $this->controller = new WeatherController(new WeatherService(
+            new WeatherForecastRepository($this->pdo),
+            new WeatherRegionResolver($geocoding),
+            new OpenMeteoWeatherProvider($this->httpClient),
+            new SmhiWeatherProvider($this->httpClient),
+        ));
     }
 
     protected function tearDown(): void
     {
-        foreach (glob($this->cacheDir . '/*') as $file) {
+        foreach (glob($this->geocodingCacheDir . '/*') as $file) {
             unlink($file);
         }
-        rmdir($this->cacheDir);
+        rmdir($this->geocodingCacheDir);
         parent::tearDown();
     }
 

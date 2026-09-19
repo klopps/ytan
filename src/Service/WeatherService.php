@@ -4,19 +4,39 @@ declare(strict_types=1);
 
 namespace Ytan\Service;
 
+use DateTimeImmutable;
+use DateTimeZone;
+use Exception;
+use Ytan\Domain\Weather\WeatherForecastRepositoryInterface;
 use Ytan\Exception\ApiException;
+use Ytan\Service\Weather\OpenMeteoWeatherProvider;
+use Ytan\Service\Weather\SmhiWeatherProvider;
+use Ytan\Service\Weather\WeatherProviderResult;
+use Ytan\Service\Weather\WeatherRegion;
+use Ytan\Service\Weather\WeatherRegionResolver;
 
 /**
- * Fetches an hourly, 7-day weather + marine (wave/swell) forecast for a
- * coordinate from Open-Meteo (free, no API key - see open-meteo.com),
- * zipping both series together by timestamp and caching the combined
- * result on disk with a real TTL. Also fetches one sunrise/sunset pair
- * per calendar day (Open-Meteo's `daily` block, same request as the
- * hourly general forecast) for the week-chart's sunrise/sunset markers.
- * Backs GET /api/v1/weather (shown on-demand via the map's right-click/
- * long-press "Weather data for this location" context menu item - see
- * public/js/weather.js), which renders it as a horizontally scrollable
- * hourly timeline.
+ * Orchestrates an hourly, 7-day weather + marine (wave/swell/tide) forecast
+ * for a coordinate, caching the combined result in the weather_forecast DB
+ * table (see database/migrations/022_create_weather_forecast.sql) with a
+ * real TTL. Backs GET /api/v1/weather (shown on-demand via the map's
+ * right-click/long-press "Weather data for this location" context menu
+ * item - see public/js/weather.js), which renders it as a horizontally
+ * scrollable hourly timeline.
+ *
+ * Was a single-provider (Open-Meteo only) class with its own flat-file
+ * cache until 2026-09-18, when todo.md's "Wetterdaten" item asked for
+ * region-specific data sources (only SMHI/Sweden+international Baltic
+ * waters is wired up so far - see WeatherRegionResolver's own doc comment
+ * for the rest) plus durably storing which source/model/generation-time
+ * served each forecast - neither fit the old per-coordinate JSON file
+ * cache well, hence the move to a real table. This class's own job
+ * narrowed to orchestration: WeatherRegionResolver picks a
+ * WeatherProviderInterface for the general (temperature/wind/precipitation/
+ * weather-code) forecast, OpenMeteoWeatherProvider is still used directly
+ * (regardless of which general provider was chosen) for marine/tide data
+ * and sunrise/sunset - see fetchAndCombine() below for why both stay
+ * provider-independent.
  *
  * A marine fetch failure (network error, non-200) is treated exactly the
  * same as Open-Meteo's own "every hour null" response for inland points -
@@ -29,32 +49,22 @@ use Ytan\Exception\ApiException;
  */
 final class WeatherService
 {
-    private const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
-    private const MARINE_URL = 'https://marine-api.open-meteo.com/v1/marine';
-
-    private const GENERAL_HOURLY_VARS = 'temperature_2m,apparent_temperature,wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation,weather_code';
-    private const GENERAL_DAILY_VARS = 'sunrise,sunset';
-    private const MARINE_HOURLY_VARS = 'wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,wind_wave_height,wind_wave_direction,wind_wave_period,sea_surface_temperature,sea_level_height_msl';
-
-    // Open-Meteo's marine model caps hourly forecasts at 7 days - matching
-    // that for the general forecast too keeps both series the same length
-    // (they're zipped together by timestamp) and is plenty for planning a
-    // multi-day kayak tour.
-    private const FORECAST_DAYS = 7;
-
     // ~1.1km grid at these latitudes - enough cache-hit rate across small
     // pans, fine enough that wave/wind conditions near a coastline aren't
     // blurred across a whole bay.
     private const COORD_PRECISION = 2;
 
-    // Open-Meteo's underlying models don't update sub-hourly; this stays
-    // well under the 10k-calls/day free tier even with many distinct
-    // lookups, while staying fresh enough for a touring-planning session.
+    // Open-Meteo's/SMHI's underlying models don't update sub-hourly; this
+    // stays well under Open-Meteo's 10k-calls/day free tier even with many
+    // distinct lookups, while staying fresh enough for a touring-planning
+    // session.
     private const CACHE_TTL_SECONDS = 1800;
 
     public function __construct(
-        private readonly string $cacheDir,
-        private readonly JsonHttpClient $httpClient,
+        private readonly WeatherForecastRepositoryInterface $forecasts,
+        private readonly WeatherRegionResolver $regionResolver,
+        private readonly OpenMeteoWeatherProvider $openMeteoProvider,
+        private readonly SmhiWeatherProvider $smhiProvider,
     ) {
     }
 
@@ -62,6 +72,9 @@ final class WeatherService
      * @return array{
      *     coordinates: array{lat: float, lng: float},
      *     fetched_at: string,
+     *     source: string,
+     *     model: ?string,
+     *     generated_at: ?string,
      *     has_marine_data: bool,
      *     utc_offset_seconds: int,
      *     hourly: list<array<string, mixed>>,
@@ -71,31 +84,69 @@ final class WeatherService
     public function getForecast(float $lat, float $lng): array
     {
         [$roundedLat, $roundedLng] = $this->roundCoordinates($lat, $lng);
-        $file = $this->cacheFilePath($roundedLat, $roundedLng);
 
-        $cached = $this->readCache($file);
+        $cached = $this->forecasts->findFresh($roundedLat, $roundedLng, self::CACHE_TTL_SECONDS);
         if ($cached !== null) {
-            return $cached;
+            return $cached['payload'];
         }
 
-        $data = $this->fetchAndCombine($roundedLat, $roundedLng);
-        $this->writeCache($file, $data);
+        $region = $this->regionResolver->resolve($roundedLat, $roundedLng);
+        $data = $this->fetchAndCombine($roundedLat, $roundedLng, $region);
+
+        $this->forecasts->upsert(
+            $roundedLat,
+            $roundedLng,
+            $region->regionCode,
+            $data['source'],
+            $data['model'],
+            $this->toMysqlDatetime($data['generated_at']),
+            gmdate('Y-m-d H:i:s'),
+            $data,
+        );
 
         return $data;
     }
 
-    /**
-     * @return array{coordinates: array{lat: float, lng: float}, fetched_at: string, has_marine_data: bool, utc_offset_seconds: int, hourly: list<array<string, mixed>>, daily: list<array{date: string, sunrise: ?string, sunset: ?string}>}
-     */
-    private function fetchAndCombine(float $lat, float $lng): array
+    private function fetchAndCombine(float $lat, float $lng, WeatherRegion $region): array
     {
-        $general = $this->fetchGeneralHourly($lat, $lng);
-        $marine = $this->fetchMarineHourly($lat, $lng);
+        if ($region->provider === WeatherRegion::PROVIDER_SMHI) {
+            $general = $this->smhiProvider->fetchGeneralForecast($lat, $lng);
+        } elseif ($region->openMeteoModel !== null) {
+            // One of the five countries WeatherRegionResolver maps onto a
+            // specific Open-Meteo model (DWD/DMI/MET Norway/Météo-France/
+            // KNMI) - still Open-Meteo's own API, just not its default
+            // best-match model.
+            $general = $this->openMeteoProvider->fetchGeneralForecastForModel(
+                $lat,
+                $lng,
+                $region->openMeteoModel,
+                $region->sourceLabel ?? 'Open-Meteo',
+            );
+        } else {
+            $general = $this->openMeteoProvider->fetchGeneralForecast($lat, $lng);
+        }
+        $general = $this->fillHourlyGaps($general, $region, $lat, $lng);
+
+        // Marine (wave/swell/tide) has no SMHI equivalent in this app, and
+        // sunrise/sunset is astronomical, not weather-model-specific - both
+        // always come from Open-Meteo regardless of which general provider
+        // served the actual weather. Whenever OpenMeteoWeatherProvider
+        // itself served the general forecast - its own best-match default
+        // OR one of the five countries routed through its `models=`
+        // parameter (see fetchAndCombine() above) - $general->daily already
+        // carries it (that same request asks for hourly+daily together);
+        // fetchDailySunTimes() only runs as a separate call for the one
+        // region that isn't OpenMeteoWeatherProvider at all (SMHI), which
+        // has no daily block of its own to reuse.
+        $marine = $this->openMeteoProvider->fetchMarineHourly($lat, $lng);
+        $daily = $region->provider === WeatherRegion::PROVIDER_SMHI
+            ? $this->openMeteoProvider->fetchDailySunTimes($lat, $lng)['daily']
+            : $general->daily;
 
         $hourly = [];
         $hasMarineData = false;
 
-        foreach ($general['hourly'] as $time => $entry) {
+        foreach ($general->hourly as $time => $entry) {
             $marineEntry = $marine[$time] ?? null;
             if ($marineEntry !== null && $marineEntry['wave_height'] !== null) {
                 $hasMarineData = true;
@@ -107,9 +158,13 @@ final class WeatherService
         return [
             'coordinates' => ['lat' => $lat, 'lng' => $lng],
             'fetched_at' => gmdate('c'),
+            'source' => $general->source,
+            'model' => $general->model,
+            'generated_at' => $general->generatedAt,
             'has_marine_data' => $hasMarineData,
-            // Open-Meteo's `timezone=auto` resolves the queried coordinate's
-            // own IANA zone and returns every hourly/daily timestamp as a
+            // Open-Meteo's `timezone=auto` (and SmhiWeatherProvider's own
+            // matching conversion) resolves the queried coordinate's own
+            // IANA zone and returns every hourly/daily timestamp as a
             // naive local-time string for THAT location (no UTC offset in
             // the string itself) - this is what we want for display (a
             // Danish beach's forecast should show Danish local hours
@@ -124,113 +179,197 @@ final class WeatherService
             // reference frame the frontend parses hour.time strings into
             // (see weather.js's own comment on that trick) - independent of
             // the device's own timezone setting entirely.
-            'utc_offset_seconds' => $general['utc_offset_seconds'],
+            'utc_offset_seconds' => $general->utcOffsetSeconds,
             'hourly' => $hourly,
-            'daily' => $general['daily'],
+            'daily' => $daily,
         ];
     }
 
     /**
-     * @return array{hourly: array<string, array<string, mixed>>, daily: list<array{date: string, sunrise: ?string, sunset: ?string}>, utc_offset_seconds: int}
-     *         hourly keyed by ISO time string
+     * todo.md's "Fehlende Daten": a general-forecast provider that doesn't
+     * cover every hour of the 7-day window (SMHI's real point forecast is
+     * hourly for ~2.5 days, then a mix of 3h/6h/12h steps out past day 10 -
+     * confirmed live, not hypothetical). A no-op when $general is already
+     * Open-Meteo's own result - it's this method's own filler/fallback, so
+     * by construction it has nothing to fill against itself.
+     *
+     * Walks an independently synthesized 168-key hourly grid (see
+     * buildExpectedHourlyKeys() - deliberately not just $filler's own key
+     * set, so a real "no data" hour is still possible, correctly time-
+     * slotted, even if the Open-Meteo filler request itself fails). Per
+     * missing hour: interpolate against $general's OWN nearest neighbors if
+     * they're <=4h apart (a genuine short gap in that provider's own data);
+     * otherwise fall back to Open-Meteo's value for that exact hour (covers
+     * both "gap too wide to interpolate" and "provider's coverage ends
+     * before day 7" with one mechanism, since Open-Meteo essentially always
+     * has dense hourly data for any coordinate). Only when even that
+     * Open-Meteo fetch fails does an hour end up with every field null -
+     * the frontend's actual "keine Daten" case (weather.js's
+     * buildWeatherHourColumn(), gated on `hour.temperature === null`, the
+     * same idiom already used for a missing marine reading).
      */
-    private function fetchGeneralHourly(float $lat, float $lng): array
+    private function fillHourlyGaps(WeatherProviderResult $general, WeatherRegion $region, float $lat, float $lng): WeatherProviderResult
     {
-        $response = $this->httpClient->getJson(self::FORECAST_URL, [
-            'latitude' => $lat,
-            'longitude' => $lng,
-            'hourly' => self::GENERAL_HOURLY_VARS,
-            'daily' => self::GENERAL_DAILY_VARS,
-            'forecast_days' => self::FORECAST_DAYS,
-            'timezone' => 'auto',
-        ]);
-
-        $hourly = $response['hourly'] ?? null;
-        if (!is_array($hourly) || !isset($hourly['time']) || !is_array($hourly['time'])) {
-            throw new ApiException('Weather data is currently unavailable.', 503, 'weather.unavailable');
+        if ($region->provider !== WeatherRegion::PROVIDER_SMHI) {
+            return $general;
         }
 
-        $result = [];
-        foreach ($hourly['time'] as $index => $time) {
-            $result[$time] = [
-                'temperature' => $hourly['temperature_2m'][$index] ?? null,
-                'feels_like' => $hourly['apparent_temperature'][$index] ?? null,
-                'wind_speed' => $hourly['wind_speed_10m'][$index] ?? null,
-                'wind_gusts' => $hourly['wind_gusts_10m'][$index] ?? null,
-                'wind_direction' => $hourly['wind_direction_10m'][$index] ?? null,
-                'precipitation' => $hourly['precipitation'][$index] ?? null,
-                'weather_code' => $hourly['weather_code'][$index] ?? null,
-            ];
+        try {
+            $filler = $this->openMeteoProvider->fetchGeneralForecast($lat, $lng);
+        } catch (ApiException) {
+            $filler = null;
         }
 
-        $daily = $response['daily'] ?? null;
-        $dailyResult = [];
-        if (is_array($daily) && isset($daily['time']) && is_array($daily['time'])) {
-            foreach ($daily['time'] as $index => $date) {
-                $dailyResult[] = [
-                    'date' => $date,
-                    'sunrise' => $daily['sunrise'][$index] ?? null,
-                    'sunset' => $daily['sunset'][$index] ?? null,
-                ];
+        $generalKeys = array_keys($general->hourly);
+        sort($generalKeys);
+        // Synthesized independently (168 hourly steps from the primary
+        // provider's own first hour's local calendar day) rather than
+        // reusing $filler's own key set - so a "no data" hour is still
+        // possible (and correctly time-slotted) even when the Open-Meteo
+        // filler request itself fails, instead of silently shrinking back
+        // to whatever sparse hours $general happened to have.
+        $referenceKeys = $this->buildExpectedHourlyKeys($generalKeys[0]);
+
+        $merged = [];
+        foreach ($referenceKeys as $key) {
+            if (isset($general->hourly[$key])) {
+                $merged[$key] = $general->hourly[$key];
+                continue;
+            }
+
+            $before = $this->findNearestKey($generalKeys, $key, before: true);
+            $after = $this->findNearestKey($generalKeys, $key, before: false);
+
+            if ($before !== null && $after !== null && $this->hoursBetween($before, $after) <= 4.0) {
+                $fraction = $this->hoursBetween($before, $key) / $this->hoursBetween($before, $after);
+                $merged[$key] = $this->interpolateHourlyEntry($general->hourly[$before], $general->hourly[$after], $fraction);
+                continue;
+            }
+
+            $merged[$key] = $filler?->hourly[$key] ?? $this->emptyGeneralEntry();
+        }
+
+        return new WeatherProviderResult(
+            hourly: $merged,
+            utcOffsetSeconds: $general->utcOffsetSeconds,
+            source: $general->source,
+            model: $general->model,
+            generatedAt: $general->generatedAt,
+            daily: $general->daily,
+        );
+    }
+
+    /**
+     * @return list<string> 7*24 hourly local-time keys ("Y-m-d\TH:i"),
+     *         starting at $firstKnownKey's own calendar day's midnight -
+     *         matches Open-Meteo's own forecast_days=7 window without
+     *         depending on an Open-Meteo response actually being available.
+     */
+    private function buildExpectedHourlyKeys(string $firstKnownKey): array
+    {
+        $day = (new DateTimeImmutable($firstKnownKey, new DateTimeZone('UTC')))->setTime(0, 0);
+
+        $keys = [];
+        for ($hour = 0; $hour < 7 * 24; $hour++) {
+            $keys[] = $day->modify("+{$hour} hours")->format('Y-m-d\TH:i');
+        }
+
+        return $keys;
+    }
+
+    /**
+     * @param list<string> $sortedKeys
+     */
+    private function findNearestKey(array $sortedKeys, string $key, bool $before): ?string
+    {
+        if ($before) {
+            $result = null;
+            foreach ($sortedKeys as $candidate) {
+                if ($candidate >= $key) {
+                    break;
+                }
+                $result = $candidate;
+            }
+
+            return $result;
+        }
+
+        foreach ($sortedKeys as $candidate) {
+            if ($candidate > $key) {
+                return $candidate;
             }
         }
 
-        return [
-            'hourly' => $result,
-            'daily' => $dailyResult,
-            'utc_offset_seconds' => (int) ($response['utc_offset_seconds'] ?? 0),
-        ];
+        return null;
+    }
+
+    private function hoursBetween(string $keyA, string $keyB): float
+    {
+        $utc = new DateTimeZone('UTC');
+
+        return abs((new DateTimeImmutable($keyB, $utc))->getTimestamp() - (new DateTimeImmutable($keyA, $utc))->getTimestamp()) / 3600;
     }
 
     /**
-     * @return array<string, array<string, mixed>>|null keyed by ISO time
-     *         string, or null when the request itself failed (network
-     *         error, non-200) - distinct from a successful response whose
-     *         values are simply all null for an inland point, which
-     *         returns a normal keyed array here (each entry's
-     *         wave_height just happens to be null).
+     * @param array<string, mixed> $before
+     * @param array<string, mixed> $after
+     * @return array<string, mixed>
      */
-    private function fetchMarineHourly(float $lat, float $lng): ?array
+    private function interpolateHourlyEntry(array $before, array $after, float $fraction): array
     {
-        $response = $this->httpClient->getJson(self::MARINE_URL, [
-            'latitude' => $lat,
-            'longitude' => $lng,
-            'hourly' => self::MARINE_HOURLY_VARS,
-            'forecast_days' => self::FORECAST_DAYS,
-            'timezone' => 'auto',
-        ]);
+        return [
+            'temperature' => $this->lerp($before['temperature'], $after['temperature'], $fraction),
+            'feels_like' => $this->lerp($before['feels_like'], $after['feels_like'], $fraction),
+            'wind_speed' => $this->lerp($before['wind_speed'], $after['wind_speed'], $fraction),
+            'wind_gusts' => $this->lerp($before['wind_gusts'], $after['wind_gusts'], $fraction),
+            'wind_direction' => $this->lerpAngleDegrees($before['wind_direction'], $after['wind_direction'], $fraction),
+            'precipitation' => $this->lerp($before['precipitation'], $after['precipitation'], $fraction),
+            // Categorical, not numeric - averaging two WMO codes would
+            // produce a meaningless third code. Nearest neighbor instead.
+            'weather_code' => $fraction < 0.5 ? $before['weather_code'] : $after['weather_code'],
+        ];
+    }
 
-        $hourly = $response['hourly'] ?? null;
-        if (!is_array($hourly) || !isset($hourly['time']) || !is_array($hourly['time'])) {
+    private function lerp(int|float|null $a, int|float|null $b, float $fraction): ?float
+    {
+        if ($a === null || $b === null) {
             return null;
         }
 
-        $result = [];
-        foreach ($hourly['time'] as $index => $time) {
-            $result[$time] = [
-                'wave_height' => $hourly['wave_height'][$index] ?? null,
-                'wave_direction' => $hourly['wave_direction'][$index] ?? null,
-                'wave_period' => $hourly['wave_period'][$index] ?? null,
-                'swell_wave_height' => $hourly['swell_wave_height'][$index] ?? null,
-                'swell_wave_direction' => $hourly['swell_wave_direction'][$index] ?? null,
-                'swell_wave_period' => $hourly['swell_wave_period'][$index] ?? null,
-                'wind_wave_height' => $hourly['wind_wave_height'][$index] ?? null,
-                'wind_wave_direction' => $hourly['wind_wave_direction'][$index] ?? null,
-                'wind_wave_period' => $hourly['wind_wave_period'][$index] ?? null,
-                'sea_surface_temperature' => $hourly['sea_surface_temperature'][$index] ?? null,
-                // Astronomical/oceanographic sea level relative to mean sea
-                // level - i.e. the actual tide, not wave chop. Confirmed
-                // live: a real tidal North Sea point (Cuxhaven) returns a
-                // clean ~12.4h semi-diurnal curve swinging +-2m; the Baltic
-                // reference point this feature was built against shows only
-                // a small, non-tidal-shaped sea-level wobble (the Baltic is
-                // nearly tideless) - both are real, non-null data, just very
-                // different amplitudes depending on the coast.
-                'tide_height' => $hourly['sea_level_height_msl'][$index] ?? null,
-            ];
+        return $a + ($b - $a) * $fraction;
+    }
+
+    /**
+     * Shortest-arc interpolation for a compass bearing (0-359°) - a naive
+     * lerp() between e.g. 350° and 10° would sweep the WRONG way around
+     * through 180° instead of the 20° short way through 0°/360°.
+     */
+    private function lerpAngleDegrees(int|float|null $a, int|float|null $b, float $fraction): ?float
+    {
+        if ($a === null || $b === null) {
+            return null;
         }
 
-        return $result;
+        $diff = fmod($b - $a, 360);
+        if ($diff < -180) {
+            $diff += 360;
+        } elseif ($diff > 180) {
+            $diff -= 360;
+        }
+
+        return round(fmod($a + $diff * $fraction + 360, 360));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function emptyGeneralEntry(): array
+    {
+        return [
+            'temperature' => null, 'feels_like' => null, 'wind_speed' => null,
+            'wind_gusts' => null, 'wind_direction' => null, 'precipitation' => null,
+            'weather_code' => null,
+        ];
     }
 
     /**
@@ -247,50 +386,35 @@ final class WeatherService
     }
 
     /**
+     * The weather_forecast.generated_at column is a plain SQL DATETIME
+     * (no timezone-aware type) - a provider's own generatedAt is always a
+     * real UTC instant (SmhiWeatherProvider's `referenceTime`, ISO 8601
+     * with a trailing "Z"; Open-Meteo doesn't populate this field at all
+     * yet, see OpenMeteoWeatherProvider's own doc comment), which MySQL's
+     * DATETIME parser rejects outright rather than just ignoring the "Z" -
+     * confirmed via a real PDOException, not assumed. Reformatted to plain
+     * UTC "Y-m-d H:i:s" here rather than changing the column type, so
+     * every provider this app adds only ever needs to hand back an ISO
+     * string, not a MySQL-specific one.
+     */
+    private function toMysqlDatetime(?string $isoUtc): ?string
+    {
+        if ($isoUtc === null) {
+            return null;
+        }
+
+        try {
+            return (new DateTimeImmutable($isoUtc))->format('Y-m-d H:i:s');
+        } catch (Exception) {
+            return null;
+        }
+    }
+
+    /**
      * @return array{0: float, 1: float}
      */
     private function roundCoordinates(float $lat, float $lng): array
     {
         return [round($lat, self::COORD_PRECISION), round($lng, self::COORD_PRECISION)];
-    }
-
-    private function cacheFilePath(float $lat, float $lng): string
-    {
-        return $this->cacheDir . '/weather_' . $lat . '_' . $lng . '.json';
-    }
-
-    /**
-     * @return array{coordinates: array{lat: float, lng: float}, fetched_at: string, has_marine_data: bool, hourly: list<array<string, mixed>>}|null
-     *         null = cache miss (file missing, corrupt, or expired)
-     */
-    private function readCache(string $file): ?array
-    {
-        if (!is_file($file)) {
-            return null;
-        }
-
-        $decoded = json_decode((string) file_get_contents($file), true);
-        if (!is_array($decoded) || !isset($decoded['fetched_at'], $decoded['data'])) {
-            return null;
-        }
-
-        if (time() - (int) $decoded['fetched_at'] > self::CACHE_TTL_SECONDS) {
-            return null;
-        }
-
-        return $decoded['data'];
-    }
-
-    /**
-     * @param array{coordinates: array{lat: float, lng: float}, fetched_at: string, has_marine_data: bool, hourly: list<array<string, mixed>>} $data
-     */
-    private function writeCache(string $file, array $data): void
-    {
-        if (!is_dir($this->cacheDir)) {
-            mkdir($this->cacheDir, 0777, true);
-        }
-
-        $payload = json_encode(['fetched_at' => time(), 'data' => $data], JSON_UNESCAPED_UNICODE);
-        file_put_contents($file, $payload);
     }
 }

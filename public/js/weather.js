@@ -345,7 +345,7 @@ function groupWeatherHourlyByDay(hourly) {
 }
 
 function renderWeatherTimeline(data, preserveScroll) {
-    document.getElementById('weatherTimelineMarineNotice').style.display = data.has_marine_data ? 'none' : 'block';
+    //document.getElementById('weatherTimelineMarineNotice').style.display = data.has_marine_data ? 'none' : 'block';
 
     const dayGroups = groupWeatherHourlyByDay(data.hourly);
     renderWeatherDayGlance(dayGroups);
@@ -437,7 +437,7 @@ function renderWeatherTimeline(data, preserveScroll) {
     }
 
     document.getElementById('weatherTimelineFetchedAt').textContent =
-        weatherFormatFetchedAt(data.fetched_at, data.utc_offset_seconds);
+        weatherFormatFetchedAt(data.fetched_at, data.utc_offset_seconds, data.source, data.model);
 
     startWeatherNowLineRefresh();
 }
@@ -480,12 +480,20 @@ function updateWeatherNowLine() {
     // own timezone for just that one stale response rather than throwing.
     const now = new Date(Date.now() + (lastWeatherTimelineData.utc_offset_seconds || 0) * 1000);
 
-    // The dashed line sits between the last hour at/before now and the
-    // first hour after it, positioned by the actual elapsed fraction of
-    // that hour - not just snapped to whichever column is closest. Using
-    // each column's own offsetLeft (rather than an assumed fixed width)
-    // means a day-divider tile between two hours - which is wider than a
-    // normal hour column - is automatically accounted for.
+    // The dashed line sits within the last hour at/before now, positioned
+    // by the actual elapsed fraction of that hour - anchored at that hour's
+    // own column offsetLeft, plus that fraction of ONE hour-column's width
+    // (WEATHER_HOUR_COL_WIDTH), not a fraction of the raw gap to the NEXT
+    // column. Those two are only the same thing when the next column is an
+    // ordinary hour - crossing midnight, a day-divider tile (wider than an
+    // hour column, see renderWeatherTimeline()) sits between them, and a
+    // fraction of that widened gap pushed the line past the end of "23:00"'s
+    // own column and into the divider tile itself (reported live 2026-09-18/
+    // 19 - the line appeared to sit at the day boundary instead of ~35min
+    // into the last hour before it). Confirmed with a day-boundary-crossing
+    // fixture: the gap to the next column measured 56px there vs. the
+    // WEATHER_HOUR_COL_WIDTH constant's 26px for an ordinary hour-to-hour
+    // gap - using the raw gap could overshoot by more than an entire column.
     let nowLineLeft = null;
     for (let i = 0; i < hourly.length; i++) {
         const hourDate = new Date(hourly[i].time + 'Z');
@@ -493,9 +501,8 @@ function updateWeatherNowLine() {
             if (i > 0) {
                 const prevDate = new Date(hourly[i - 1].time + 'Z');
                 const prevLeft = cols[i - 1].offsetLeft;
-                const curLeft = cols[i].offsetLeft;
                 const fraction = (now - prevDate) / (hourDate - prevDate);
-                nowLineLeft = prevLeft + fraction * (curLeft - prevLeft);
+                nowLineLeft = prevLeft + fraction * WEATHER_HOUR_COL_WIDTH;
             } else {
                 nowLineLeft = 0; // "now" is before the very first hour in the data
             }
@@ -543,15 +550,24 @@ function stopWeatherNowLineRefresh() {
  * WeatherService's 30-minute cache TTL to the user instead of hiding it -
  * reloadWeatherTimeline()'s button can legitimately come back with this
  * exact same timestamp if nothing has changed server-side yet.
+ *
+ * todo.md's "Wetterdatenhinweis" - source is always present (every
+ * WeatherProviderInterface implementation sets one, see WeatherService),
+ * model is nullable (OpenMeteoWeatherProvider doesn't set one - "Open-Meteo"
+ * alone already names the source unambiguously; SmhiWeatherProvider does,
+ * e.g. "snow1g") - a separate, shorter i18n string covers the no-model case
+ * instead of leaving a dangling ", " in the sentence.
  */
-function weatherFormatFetchedAt(fetchedAtIso, utcOffsetSeconds) {
+function weatherFormatFetchedAt(fetchedAtIso, utcOffsetSeconds, source, model) {
     if (!fetchedAtIso) {
         return '';
     }
     const local = new Date(new Date(fetchedAtIso).getTime() + (utcOffsetSeconds || 0) * 1000);
     const date = pad2(local.getUTCDate()) + '.' + pad2(local.getUTCMonth() + 1) + '.' + local.getUTCFullYear();
     const time = pad2(local.getUTCHours()) + ':' + pad2(local.getUTCMinutes());
-    return t('weather.timeline.data_from', { date: date, time: time });
+    return model
+        ? t('weather.timeline.data_from_with_model', { source: source, model: model, date: date, time: time })
+        : t('weather.timeline.data_from', { source: source, date: date, time: time });
 }
 
 const WEATHER_HOUR_COL_WIDTH = 26; // keep in sync with .weather-timeline-hour-col / .weather-timeline-day-divider-tile CSS width
@@ -608,39 +624,60 @@ function buildWeatherDayDividerTile(date, daily) {
     return tile;
 }
 
+// todo.md's "Fehlende Daten" - hour.temperature === null is the signal a
+// gap couldn't be filled at all (WeatherService::fillHourlyGaps() - see its
+// own doc comment), the general-forecast equivalent of the marine block's
+// pre-existing `hour.wave_height !== null` idiom just below. Every other
+// general field (wind/precipitation/weather_code) is null in exactly the
+// same hours, so checking temperature alone is enough to gate all of them.
+function isWeatherHourEmpty(hour) {
+    return hour.temperature === null;
+}
+
 function buildWeatherHourColumn(hour, hourDate, hasMarineData) {
     const col = document.createElement('div');
     col.className = 'weather-timeline-hour-col';
 
+    const noData = isWeatherHourEmpty(hour);
+    if (noData) {
+        col.classList.add('weather-timeline-hour-col-nodata');
+    }
+
     const isNight = hourDate.getUTCHours() >= 21 || hourDate.getUTCHours() < 6;
-    const icon = weatherConditionIcon(hour.weather_code, isNight);
+    const icon = noData ? null : weatherConditionIcon(hour.weather_code, isNight);
 
     col.innerHTML =
         '<div class="r-time">' + hour.time.slice(11, 13) + '</div>' +
-        '<div class="r-icon" aria-hidden="true"><svg><use href="#' + icon + '"/></svg></div>' +
-        '<div class="r-temp"><span class="t-main">' + Math.round(hour.temperature) + '&deg;</span><span class="t-feel">' + Math.round(hour.feels_like) + '&deg;</span></div>' +
-        '<div class="r-rain' + (hour.precipitation > 0 ? ' has-rain' : '') + '">' + hour.precipitation.toFixed(1) + '</div>';
+        '<div class="r-icon" aria-hidden="true">' + (icon ? '<svg><use href="#' + icon + '"/></svg>' : '') + '</div>' +
+        (noData
+            ? '<div class="r-temp"><span class="t-main">&ndash;</span></div><div class="r-rain"></div>'
+            : '<div class="r-temp"><span class="t-main">' + Math.round(hour.temperature) + '&deg;</span><span class="t-feel">' + Math.round(hour.feels_like) + '&deg;</span></div>' +
+              '<div class="r-rain' + (hour.precipitation > 0 ? ' has-rain' : '') + '">' + hour.precipitation.toFixed(1) + '</div>');
 
     const windRow = document.createElement('div');
     windRow.className = 'r-wind';
-    windRow.style.backgroundColor = windSpeedColor(hour.wind_speed);
-    // Open-Meteo's wind_direction is the standard meteorological "from"
-    // bearing (0deg/360deg = wind blowing FROM the north) - our ic-arrow glyph
-    // points straight up at 0deg rotation, so rotating by the raw value
-    // would point the arrow AT the direction the wind comes from, not
-    // where it's actually going. +180deg flips it to a flow/"blowing
-    // toward" arrow instead, matching Windy's own arrows (verified live
-    // against windy.com for this exact coordinate/time: their glyph's own
-    // rest orientation points down, and they rotate by the raw value with
-    // no offset - mathematically the same flow bearing this +180deg
-    // produces from an up-pointing glyph).
-    windRow.innerHTML = '<svg style="transform:rotate(' + (hour.wind_direction + 180) + 'deg)"><use href="#ic-arrow"/></svg>' + escapeHTML(formatWindSpeedValue(hour.wind_speed, settings.windUnit));
+    if (!noData) {
+        windRow.style.backgroundColor = windSpeedColor(hour.wind_speed);
+        // Open-Meteo's wind_direction is the standard meteorological "from"
+        // bearing (0deg/360deg = wind blowing FROM the north) - our ic-arrow glyph
+        // points straight up at 0deg rotation, so rotating by the raw value
+        // would point the arrow AT the direction the wind comes from, not
+        // where it's actually going. +180deg flips it to a flow/"blowing
+        // toward" arrow instead, matching Windy's own arrows (verified live
+        // against windy.com for this exact coordinate/time: their glyph's own
+        // rest orientation points down, and they rotate by the raw value with
+        // no offset - mathematically the same flow bearing this +180deg
+        // produces from an up-pointing glyph).
+        windRow.innerHTML = '<svg style="transform:rotate(' + (hour.wind_direction + 180) + 'deg)"><use href="#ic-arrow"/></svg>' + escapeHTML(formatWindSpeedValue(hour.wind_speed, settings.windUnit));
+    }
     col.appendChild(windRow);
 
     const gustRow = document.createElement('div');
     gustRow.className = 'r-gust';
-    gustRow.style.backgroundColor = windSpeedColor(hour.wind_gusts);
-    gustRow.textContent = formatWindSpeedValue(hour.wind_gusts, settings.windUnit);
+    if (!noData) {
+        gustRow.style.backgroundColor = windSpeedColor(hour.wind_gusts);
+        gustRow.textContent = formatWindSpeedValue(hour.wind_gusts, settings.windUnit);
+    }
     col.appendChild(gustRow);
 
     if (hasMarineData && hour.wave_height !== null) {
@@ -796,23 +833,51 @@ function renderWeatherDayGlance(dayGroups) {
     const container = document.getElementById('weatherTimelineDayGlance');
     container.innerHTML = '';
     dayGroups.forEach((day, index) => {
-        const high = Math.round(Math.max.apply(null, day.hours.map((h) => h.temperature)));
-        const noonHour = day.hours.reduce((best, h) => {
+        // "keine Daten" hours (isWeatherHourEmpty()) are excluded from both
+        // the daily high and the noon-icon pick - Math.max/reduce would
+        // otherwise silently treat a null temperature as 0, corrupting the
+        // real high (e.g. beating a genuine negative high) for the sake of
+        // an hour that has no data at all.
+        const knownHours = day.hours.filter((h) => !isWeatherHourEmpty(h));
+        const high = knownHours.length ? Math.round(Math.max.apply(null, knownHours.map((h) => h.temperature))) : null;
+        const noonHour = knownHours.length ? knownHours.reduce((best, h) => {
             const hod = new Date(h.time + 'Z').getUTCHours();
             const bestHod = new Date(best.time + 'Z').getUTCHours();
             return Math.abs(hod - 12) < Math.abs(bestHod - 12) ? h : best;
-        });
-        const icon = weatherConditionIcon(noonHour.weather_code, false);
+        }) : null;
+        const icon = noonHour ? weatherConditionIcon(noonHour.weather_code, false) : null;
         const label = weatherDayLabel(day.date);
 
         const cell = document.createElement('div');
         cell.className = 'weather-timeline-day-glance-cell' + (index === 0 ? ' is-today' : '');
         cell.innerHTML =
             '<span class="dow">' + escapeHTML(label.dow) + ' ' + label.dom + '.</span>' +
-            '<svg aria-hidden="true"><use href="#' + icon + '"/></svg>' +
-            '<span class="hi">' + high + '&deg;</span>';
+            (icon ? '<svg aria-hidden="true"><use href="#' + icon + '"/></svg>' : '<svg aria-hidden="true"></svg>') +
+            '<span class="hi">' + (high !== null ? high + '&deg;' : '&ndash;') + '</span>';
         container.appendChild(cell);
     });
+}
+
+/**
+ * Forward- then backward-fills null entries with the nearest known value -
+ * not a real interpolation, just enough so a chart positioned by index
+ * (renderWeatherWeekChart() below) never has to plot a null. Falls back to
+ * 0 everywhere only in the pathological case where every value is null.
+ *
+ * @param {Array<number|null>} values
+ * @returns {Array<number>}
+ */
+function nearestKnownValues(values) {
+    const filled = values.slice();
+    let last = null;
+    for (let i = 0; i < filled.length; i++) {
+        if (filled[i] === null) { filled[i] = last; } else { last = filled[i]; }
+    }
+    let next = null;
+    for (let i = filled.length - 1; i >= 0; i--) {
+        if (filled[i] === null) { filled[i] = next === null ? 0 : next; } else { next = filled[i]; }
+    }
+    return filled;
 }
 
 /**
@@ -827,13 +892,22 @@ function renderWeatherWeekChart(hourly, dayCount) {
     const VB_W = dayCount * 100, VB_H = 60;
     const CURVE_TOP = 5, CURVE_BOTTOM = 38, BAR_Y = 44, BAR_H = 12;
 
-    const temps = hourly.map((h) => h.temperature);
+    // A "keine Daten" hour (see isWeatherHourEmpty()/WeatherService::
+    // fillHourlyGaps()) has no temperature/wind_speed to plot - but this
+    // curve draws one continuous shape positioned by INDEX across the whole
+    // week (matching the hour-strip's columns below it), so a null value
+    // can't just be filtered out without shifting every later point's x
+    // position out of alignment. nearestKnownValues() bridges the (rare -
+    // only when even the Open-Meteo fallback failed) gap with the nearest
+    // known reading instead, purely for this chart's own continuity - the
+    // real null stays null in hourly[] itself, this never feeds back into it.
+    const temps = nearestKnownValues(hourly.map((h) => h.temperature));
     const tMin = Math.min.apply(null, temps), tMax = Math.max.apply(null, temps);
     const tRange = Math.max(0.1, tMax - tMin); // guard against a flat week dividing by zero
 
     const points = hourly.map((h, i) => {
         const x = i / (hourly.length - 1) * VB_W;
-        const y = CURVE_BOTTOM - (h.temperature - tMin) / tRange * (CURVE_BOTTOM - CURVE_TOP);
+        const y = CURVE_BOTTOM - (temps[i] - tMin) / tRange * (CURVE_BOTTOM - CURVE_TOP);
         return [x, y];
     });
     const lineD = points.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
@@ -846,9 +920,10 @@ function renderWeatherWeekChart(hourly, dayCount) {
     const showZeroLine = tMin < 0 && tMax > 0;
     const zeroFrac = ((zeroY - CURVE_TOP) / (CURVE_BOTTOM - CURVE_TOP) * 100).toFixed(1);
 
+    const windSpeeds = nearestKnownValues(hourly.map((h) => h.wind_speed));
     const stops = hourly.map((h, i) => {
         const pct = (i / (hourly.length - 1) * 100).toFixed(1);
-        return '<stop offset="' + pct + '%" stop-color="' + windSpeedColor(h.wind_speed) + '"/>';
+        return '<stop offset="' + pct + '%" stop-color="' + windSpeedColor(windSpeeds[i]) + '"/>';
     }).join('');
 
     let ticks = '';

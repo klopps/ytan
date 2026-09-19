@@ -24,6 +24,13 @@ namespace Ytan\Service;
  * like it did before this feature existed. There is no equivalent of
  * WeatherService's "general forecast must always succeed" case here,
  * since a place name is always a nice-to-have, never core data.
+ *
+ * Also backs WeatherRegionResolver's country lookup (resolveCountryCode())
+ * - added alongside the place-name lookup rather than as a second Nominatim
+ * client, since `addressdetails=1` on the exact same request/cache entry
+ * gets both a display name AND an ISO country code in one call. Nominatim's
+ * usage policy (see above) is strict enough (~1 req/s) that a second,
+ * separate lookup per coordinate wasn't worth it.
  */
 final class GeocodingService
 {
@@ -57,6 +64,25 @@ final class GeocodingService
 
     public function reverseGeocode(float $lat, float $lng): ?string
     {
+        return $this->resolve($lat, $lng)['place_name'];
+    }
+
+    /**
+     * @return string|null lowercase ISO 3166-1 alpha-2 (e.g. "se", "dk"),
+     *         or null for a point Nominatim can't attribute to any country
+     *         (open sea) - exactly the signal WeatherRegionResolver needs
+     *         to fall back to its own Baltic bounding box instead.
+     */
+    public function resolveCountryCode(float $lat, float $lng): ?string
+    {
+        return $this->resolve($lat, $lng)['country_code'];
+    }
+
+    /**
+     * @return array{place_name: ?string, country_code: ?string}
+     */
+    private function resolve(float $lat, float $lng): array
+    {
         [$roundedLat, $roundedLng] = $this->roundCoordinates($lat, $lng);
         $file = $this->cacheFilePath($roundedLat, $roundedLng);
 
@@ -65,25 +91,31 @@ final class GeocodingService
             return $cached;
         }
 
-        $placeName = $this->fetchPlaceName($roundedLat, $roundedLng);
-        $this->writeCache($file, $placeName);
+        $resolved = $this->fetchPlaceAndCountry($roundedLat, $roundedLng);
+        $this->writeCache($file, $resolved);
 
-        return $placeName;
+        return $resolved;
     }
 
-    private function fetchPlaceName(float $lat, float $lng): ?string
+    /**
+     * @return array{place_name: ?string, country_code: ?string}
+     */
+    private function fetchPlaceAndCountry(float $lat, float $lng): array
     {
         $response = $this->httpClient->getJson(self::NOMINATIM_URL, [
             'format' => 'jsonv2',
             'lat' => $lat,
             'lon' => $lng,
             'zoom' => self::ZOOM,
+            'addressdetails' => 1,
             'accept-language' => $this->locale,
         ]);
 
         if ($response === null || isset($response['error'])) {
-            return null;
+            return ['place_name' => null, 'country_code' => null];
         }
+
+        $countryCode = $response['address']['country_code'] ?? null;
 
         // "name" is Nominatim's own label for the best-matched feature
         // (e.g. "Lyø By", "Kungsbacka kommun", "Danmark") - exactly the
@@ -91,14 +123,14 @@ final class GeocodingService
         // (a full comma-joined address) which would be too long for a
         // panel title.
         if (isset($response['name']) && is_string($response['name']) && $response['name'] !== '') {
-            return $response['name'];
+            return ['place_name' => $response['name'], 'country_code' => $countryCode];
         }
 
         if (isset($response['display_name']) && is_string($response['display_name']) && $response['display_name'] !== '') {
-            return $response['display_name'];
+            return ['place_name' => $response['display_name'], 'country_code' => $countryCode];
         }
 
-        return null;
+        return ['place_name' => null, 'country_code' => $countryCode];
     }
 
     /**
@@ -115,12 +147,16 @@ final class GeocodingService
     }
 
     /**
-     * @return string|null|false false = cache miss (file missing, corrupt,
-     *         or expired); null/string = a cached "no place name found"
-     *         result or a cached place name, both valid cache hits that
-     *         must NOT trigger a re-fetch
+     * @return array{place_name: ?string, country_code: ?string}|false
+     *         false = cache miss (file missing, corrupt, or expired);
+     *         an array (even with both fields null) is a valid cache hit
+     *         that must NOT trigger a re-fetch. `country_code` defaults to
+     *         null for a cache entry written before this field existed,
+     *         rather than treating it as a miss - that coordinate's region
+     *         just falls back to the default provider until the entry's
+     *         own TTL naturally expires and refreshes it.
      */
-    private function readCache(string $file): string|null|false
+    private function readCache(string $file): array|false
     {
         if (!is_file($file)) {
             return false;
@@ -135,16 +171,22 @@ final class GeocodingService
             return false;
         }
 
-        return $decoded['place_name'];
+        return [
+            'place_name' => $decoded['place_name'],
+            'country_code' => $decoded['country_code'] ?? null,
+        ];
     }
 
-    private function writeCache(string $file, ?string $placeName): void
+    /**
+     * @param array{place_name: ?string, country_code: ?string} $resolved
+     */
+    private function writeCache(string $file, array $resolved): void
     {
         if (!is_dir($this->cacheDir)) {
             mkdir($this->cacheDir, 0777, true);
         }
 
-        $payload = json_encode(['fetched_at' => time(), 'place_name' => $placeName], JSON_UNESCAPED_UNICODE);
+        $payload = json_encode(array_merge(['fetched_at' => time()], $resolved), JSON_UNESCAPED_UNICODE);
         file_put_contents($file, $payload);
     }
 }
