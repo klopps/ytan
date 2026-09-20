@@ -26,6 +26,7 @@
     <script src="./js/toast.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/toast.js') ?>"></script>
     <script src="./js/photo-upload.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/photo-upload.js') ?>"></script>
     <script src="./js/capacitor-bridge.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/capacitor-bridge.js') ?>"></script>
+    <script src="./js/splashscreen.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/splashscreen.js') ?>"></script>
     <script src="./js/confirm-dialog.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/confirm-dialog.js') ?>"></script>
     <script src="./js/nav-menu.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/nav-menu.js') ?>"></script>
     <script src="./js/map-core.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/map-core.js') ?>"></script>
@@ -55,6 +56,16 @@
     <meta name="apple-mobile-web-app-title" content="<?= htmlspecialchars($appName) ?>">
   </head>
   <body>
+    <div id="splashScreen"><div class="splash-logo"></div></div>
+    <script>
+      // applyStoredTheme() must run before initSplashScreen() paints
+      // anything - otherwise the splash screen itself would flash the light
+      // palette for a moment on a dark-mode return visit, the same bug this
+      // call ordering already avoids for the rest of the page (see below).
+      applyStoredTheme();
+      initSplashScreen();
+    </script>
+
     <div id="gotomylocation" onclick="panToGeolocation();">
       <i class="material-icons-round">my_location</i>
     </div>
@@ -128,7 +139,7 @@
             <!-- Not Capacitor-gated like the row above - offline
                  create/edit/delete (offline-sync.js) works in a plain
                  browser tab too, not just the native shell. -->
-            <li><button type="button" class="nav-menu-row" onclick="openPendingChangesScreen();"><i class="material-icons-round nav-menu-row-icon">sync</i><span class="nav-menu-row-labels"><?= $t('app.nav.pending_changes') ?><span class="nav-menu-row-sub" id="pendingChangesRowSub"></span></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
+            <li id="pendingChangesMenuRow" style="display:none;"><button type="button" class="nav-menu-row" onclick="openPendingChangesScreen();"><i class="material-icons-round nav-menu-row-icon">sync</i><span class="nav-menu-row-labels"><?= $t('app.nav.pending_changes') ?><span class="nav-menu-row-sub" id="pendingChangesRowSub"></span></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
             <li><button type="button" class="nav-menu-row" onclick="shareMap();"><i class="material-icons-round nav-menu-row-icon">share</i><span class="nav-menu-row-labels"><?= $t('app.nav.share') ?></span></button></li>
             <li><button type="button" class="nav-menu-row" onclick="showUserWindow();"><i class="material-icons-round nav-menu-row-icon">account_circle</i><span class="nav-menu-row-labels"><?= $t('app.nav.profile') ?><span class="nav-menu-row-sub" id="profileRowSub"><?= $t('app.nav.not_signed_in') ?></span></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
             <li><button type="button" class="nav-menu-row" onclick="navMenuGoTo('preferences');"><i class="material-icons-round nav-menu-row-icon">tune</i><span class="nav-menu-row-labels"><?= $t('app.nav.preferences') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
@@ -468,7 +479,8 @@
     <script>
       let logLevel = <?= (int) $logLevel ?>;
 
-      applyStoredTheme();
+      // applyStoredTheme() already ran earlier, right after <body> opened
+      // (see the splash screen script above) - not repeated here.
 
       if (getCookie("gdpr_accepted") == "yes") {
         loadGoogleMaps("<?= htmlspecialchars($mapsApiKey, ENT_QUOTES) ?>");
@@ -497,6 +509,7 @@
           sessionStorage.setItem('user', JSON.stringify(user));
           updateProfileRowLabel();
           updateAdminMenuVisibility();
+          updatePendingChangesMenuVisibility();
           updateGoogleSearchAllowed();
 
           // initMap() (map-core.js) is racing this same fetch - if it

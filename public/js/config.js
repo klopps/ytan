@@ -98,6 +98,15 @@ const POI_CLUSTER_ZOOM_THRESHOLD = 11;
 // appears to represent.
 const POI_CLUSTER_MAX_MERGE_DISTANCE_METERS = 150_000;
 
+// Browser-only "cold start" splash screen (splashscreen.js) - shown when the
+// page loads after the app hasn't been used for at least this many seconds
+// (tracked in localStorage), hidden again after
+// SPLASHSCREEN_DISPLAY_DURATION_MS regardless of load progress. Skipped
+// entirely inside the native Capacitor Android shell, which already shows
+// its own native splash screen before this page even starts loading.
+const SPLASHSCREEN_IDLE_THRESHOLD_SECONDS = 300;
+const SPLASHSCREEN_DISPLAY_DURATION_MS = 1500;
+
 
  // additionl scripts to be injected after Google Maps is loaded
  const injectScripts = [

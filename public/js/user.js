@@ -209,6 +209,19 @@ function updateAdminMenuVisibility() {
 }
 
 /**
+ * Shows/hides the sidemenu's "Pending changes" entry based on sign-in state.
+ * A signed-out user can't create offline changes in the first place
+ * (savePoi()/saveRoute()/saveArea() all require a logged-in user before
+ * queuing anything in offline-sync.js), so the row is pointless noise for
+ * them - hidden by default in the markup, same fail-closed pattern as
+ * updateAdminMenuVisibility(). Called from the same places as that
+ * function.
+ */
+function updatePendingChangesMenuVisibility() {
+    document.getElementById('pendingChangesMenuRow').style.display = user.id !== null ? '' : 'none';
+}
+
+/**
  * Reflects the current sign-in state as the "Profile" root menu row's
  * subtitle (e.g. "Signed in as cst" / "Not signed in"). Called from the
  * same places as updateAdminMenuVisibility().
@@ -240,6 +253,7 @@ function logoutUser() {
     document.getElementById('routeButton').classList.remove('active');
     updateProfileRowLabel();
     updateAdminMenuVisibility();
+    updatePendingChangesMenuVisibility();
     updateGoogleSearchAllowed();
     resetSearchState();
     deleteRoutes();
@@ -294,6 +308,7 @@ function loginUser() {
         getRoutesByUserId(user.id);
         updateProfileRowLabel();
         updateAdminMenuVisibility();
+        updatePendingChangesMenuVisibility();
         updateGoogleSearchAllowed();
         enablePoiButton();
     }).catch(err => {

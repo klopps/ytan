@@ -2808,6 +2808,42 @@ img.wsi {
   -webkit-mask-size: contain;
 }
 
+/* Browser-only "cold start" splash screen, see splashscreen.js. z-index
+   1500 sits above every other overlay in the app (#sidemenu at 101, toasts
+   at 1000, confirm-dialog at 1100) since it's meant to cover the very
+   first paint of the page, before any of those could plausibly exist yet -
+   but a stray one (e.g. an offline toast) during the display window
+   shouldn't peek out from behind it either. */
+#splashScreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-bg-panel);
+  transition: opacity 0.4s ease;
+}
+
+#splashScreen.splash-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.splash-logo {
+  width: 220px;
+  aspect-ratio: 1873 / 1349;
+  background-color: var(--color-text);
+  mask-image: url("../images/ytan.svg");
+  -webkit-mask-image: url("../images/ytan.svg");
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-position: center;
+  mask-size: contain;
+  -webkit-mask-size: contain;
+}
+
 #gotomylocation {
   position: absolute;
   bottom: 270px;
