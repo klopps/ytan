@@ -1172,7 +1172,7 @@ async function downloadTourDocument(tourId) {
     showToast(t('tour_admin.document_generating'), 'info');
     try {
         var blob = await Ytan.fetchBlob('/tours/' + tourId + '/document?maptype=' + mapType);
-        downloadBlob(blob, 'tour-' + tourId + '.pdf');
+        await downloadBlob(blob, 'tour-' + tourId + '.pdf');
     } catch (err) {
         showToast(t('tour_admin.document_generation_failed', { error: err.message }), 'error');
     }

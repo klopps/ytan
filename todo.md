@@ -126,11 +126,6 @@ Der Hinweis "Wetterdaten: <Dienst>, von <Datum> / <Uhrzeit>" in der Wetterdatena
 
 
 
-## Logo
-
-Logo-Alternative entwickeln
-
-
 ## Mobile-Anzeige-Audit (2026-09-10)
 
 Alle Dialoge/Bildschirme unter echter Mobile-Emulation (412×915) durchgetestet.
@@ -171,6 +166,8 @@ Alle Dialoge/Bildschirme unter echter Mobile-Emulation (412×915) durchgetestet.
 jeweils inkl. Kartenansicht.
 Der Benutzer kann vor der Erzeugung des Dokuments die Kartendarstellung (Hybrid, Terrain oder SAT) auswählen.
 Formatierungen durch MarkDown sollen entsprechend im PDF-Dokument dargestellt werden.~~ Gelöst (2026-09-20): Es gab weder eine PDF-Bibliothek noch einen serverseitigen Markdown-Renderer noch eine POI/Area↔Route/Tour-Beziehung im Schema - alles wurde neu gebaut, ohne Migration: `GET /tours/{id}/document?maptype=hybrid|terrain|satellite` (`TourController::document()`) generiert das PDF bei jedem Aufruf frisch aus den bestehenden Tabellen. Welche POIs aufgenommen werden, entscheidet die Nähe zur Route (`GeometryService::isPointNearPolyline()`, Schwellwert 200 m, Haversine-Distanz vom Punkt zum jeweils nächsten Routensegment); welche Areas aufgenommen werden, entscheidet eine Segment-Polygon-Schnittprüfung (`GeometryService::doesPolylineIntersectPolygon()` - orientierungsbasierter Segment-Test plus Punkt-in-Polygon via Ray-Casting, damit auch eine Route erkannt wird, die komplett innerhalb eines Gebiets liegt, ohne dessen Rand zu kreuzen). Kartenausschnitte kommen über eine neue, eigenständige `StaticMapImageService` von der Google-Static-Maps-API (eigener `MAPS_STATIC_API_KEY` in `.env`, getrennt vom Client-seitigen, vermutlich Referrer-beschränkten `MAPS_API_KEY`; inkl. selbst geschriebenem Google-Polyline-Encoder und Datenträger-Cache unter `storage/static-maps-cache/`, außerhalb des Webroots) - fehlt der Key oder schlägt ein Abruf fehl, wird das jeweilige Kartenbild stillschweigend weggelassen statt das ganze Dokument scheitern zu lassen. Rendering läuft über `dompdf/dompdf`, Markdown-Beschreibungen über `league/commonmark`s `GithubFlavoredMarkdownConverter` (neue Composer-Abhängigkeiten). Vor dem Generieren wählt der Nutzer die Kartendarstellung über einen eigenständigen Dialog (`tour-admin.js`: `showTourDocumentDialog()`) mit einem eigenen, nicht-persistenten `nav-segmented`-Kartentyp-Schalter (`pdfmaptype1`-`3`) - bewusst getrennt vom dauerhaften Kartentyp-Schalter der Drawer-Einstellungen, damit diese einmalige Wahl nicht die Kartenanzeige-Einstellung des Nutzers überschreibt.
+
+**Nachtrag (2026-09-20):** In der Android-App löste der Download-Button gar nichts aus - `helper.js`s `downloadBlob()` setzte auf den `<a download>`-Trick mit einer `blob:`-URL, den die Capacitor-WebView (anders als ein normaler Browser-Tab) stillschweigend ignoriert, da sie keinen Download-Manager für `blob:`-URLs kennt. Behoben durch zwei neue, offizielle Capacitor-Plugins (`@capacitor/filesystem`, `@capacitor/share`, per `npm install` + `npx cap sync android` eingebunden - keine eigene native Plugin-Klasse nötig, beide registrieren sich wie `@capacitor-community/background-geolocation` automatisch): `capacitor-bridge.js` bekam `saveAndShareFile()`, das den Blob (als Base64 über einen neuen `blobToBase64()`-Helper in `helper.js`) via `Filesystem.writeFile()` ins App-eigene Cache-Verzeichnis schreibt und die entstandene `file://`-URI an `Share.share()` übergibt - Capacitors bereits vorhandener `FileProvider` (`AndroidManifest.xml`, `file_paths.xml`s `<cache-path>`) wandelt sie dabei automatisch in eine teilbare `content://`-URI um und öffnet Androids nativen Share-Dialog (Speichern, in einem PDF-Viewer öffnen, ...). `downloadBlob()` selbst prüft jetzt `CapacitorBridge.isAvailable()` und nutzt in der nativen App diesen Pfad statt des `<a download>`-Tricks, der dort weiterhin nur im normalen Browser/PWA-Kontext läuft.
 
 ## Die Android-App offline-fähig machen (2026-09-19)
 

@@ -31,6 +31,12 @@ const CapacitorBridge = (function () {
     // if a build predates this feature (nothing to auto-sync it in), so
     // every use below guards on it rather than assuming it exists.
     const LocationPermissions = window.Capacitor.Plugins.LocationPermissions;
+    // Both npm packages (@capacitor/filesystem, @capacitor/share), same
+    // auto-registration as BackgroundGeolocation above. May be absent on a
+    // build predating the Touren-Dokument PDF download fix, hence the guard
+    // in saveAndShareFile() below.
+    const Filesystem = window.Capacitor.Plugins.Filesystem;
+    const Share = window.Capacitor.Plugins.Share;
 
     /**
      * With android.useLegacyBridge:true (capacitor.config.json - required to
@@ -100,11 +106,39 @@ const CapacitorBridge = (function () {
         return Promise.resolve(BackgroundGeolocation.openSettings());
     }
 
+    /**
+     * The Android WebView has no download manager for blob: URLs, so
+     * helper.js's downloadBlob() can't just click an <a download> link the
+     * way a normal browser tab does (silently a no-op there - confirmed on
+     * a real device with the Touren-Dokument PDF download). Instead, write
+     * the file into the app's cache dir via the Filesystem plugin, then
+     * hand its resulting file:// uri to the Share plugin, which internally
+     * rewrites it to a content:// uri via Capacitor's own FileProvider and
+     * opens Android's native share sheet - letting the user save it to
+     * Downloads, open it in a PDF viewer, etc.
+     * @param {string} base64Data
+     * @param {string} filename
+     */
+    function saveAndShareFile(base64Data, filename) {
+        if (!Filesystem || !Share) {
+            return Promise.reject(new Error('Filesystem/Share plugin not available'));
+        }
+        return Filesystem.writeFile({
+            path: filename,
+            data: base64Data,
+            directory: 'CACHE',
+            recursive: true,
+        }).then(function (result) {
+            return Share.share({ url: result.uri, dialogTitle: filename });
+        });
+    }
+
     return {
         isAvailable: function () { return true; },
         startLocationWatch: startLocationWatch,
         stopLocationWatch: stopLocationWatch,
         checkLocationPermissionStatus: checkLocationPermissionStatus,
         openAppSettings: openAppSettings,
+        saveAndShareFile: saveAndShareFile,
     };
 })();

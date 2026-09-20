@@ -474,10 +474,18 @@ function initUser() {
 
 /**
  * Triggers a browser "Save As"/download of an in-memory Blob (e.g. a PDF
- * fetched via Ytan.fetchBlob()) - no existing precedent for this in the
- * app, every prior URL.createObjectURL() use just points an <img> at it.
+ * fetched via Ytan.fetchBlob()). Inside the Capacitor Android shell, an
+ * <a download> click is silently a no-op (the WebView has no download
+ * manager for blob: URLs) - CapacitorBridge.saveAndShareFile() is used
+ * there instead, handing the file to Android's native share sheet.
  */
-function downloadBlob(blob, filename) {
+async function downloadBlob(blob, filename) {
+    if (typeof CapacitorBridge !== 'undefined' && CapacitorBridge.isAvailable()) {
+        var base64Data = await blobToBase64(blob);
+        await CapacitorBridge.saveAndShareFile(base64Data, filename);
+        return;
+    }
+
     var url = URL.createObjectURL(blob);
     var link = document.createElement('a');
     link.href = url;
@@ -486,6 +494,23 @@ function downloadBlob(blob, filename) {
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
+}
+
+/**
+ * @returns {Promise<string>} the Blob's data, base64-encoded without the
+ * "data:<mime>;base64," prefix FileReader.readAsDataURL() adds - the plain
+ * payload the Filesystem plugin's writeFile() expects.
+ */
+function blobToBase64(blob) {
+    return new Promise(function (resolve, reject) {
+        var reader = new FileReader();
+        reader.onloadend = function () {
+            var result = reader.result;
+            resolve(result.substring(result.indexOf(',') + 1));
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
 }
 
 window.mobileCheck = function() {
