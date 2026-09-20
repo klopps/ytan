@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Ytan\Service;
 
+use Dompdf\Canvas;
 use Dompdf\Dompdf;
+use Dompdf\FontMetrics;
 use League\CommonMark\ConverterInterface;
 use Ytan\Domain\Area\AreaRepository;
 use Ytan\Domain\Poi\PoiRepository;
@@ -44,6 +46,19 @@ final class TourDocumentService
     // no longer a user choice - Terrain is the only one that reliably works.
     private const MAP_TYPE = 'terrain';
 
+    // Footer drawn via Canvas::page_script() after render() (see generate()),
+    // not plain HTML - dompdf has no working {PAGE_NUM}/CSS counter() support
+    // for a real per-page page count, and page_script() hands back genuine
+    // per-page ints without needing eval-based <script type="text/php">
+    // blocks (isPhpEnabled stays off, same isRemoteEnabled=false spirit).
+    // FOOTER_MARGIN_PT matches css()'s @page left/right margin so the logo
+    // and page number line up with the body content's own edges.
+    private const FOOTER_MARGIN_PT = 34.0;
+    private const FOOTER_BOTTOM_OFFSET_PT = 28.0;
+    private const FOOTER_LOGO_HEIGHT_PT = 14.0;
+    private const FOOTER_FONT_SIZE_PT = 8.0;
+    private const FOOTER_TEXT_COLOR = [0.4, 0.4, 0.4];
+
     /** @var array<int,string|null> */
     private array $poiIconCache = [];
     private ?string $areaIconCache = null;
@@ -59,6 +74,8 @@ final class TourDocumentService
         private readonly ConverterInterface $markdown,
         private readonly string $markersDir,
         private readonly Translator $translator,
+        private readonly string $logoFile,
+        private readonly string $websiteUrl,
     ) {
     }
 
@@ -79,8 +96,63 @@ final class TourDocumentService
         $dompdf->setPaper('A4');
         $dompdf->loadHtml($html);
         $dompdf->render();
+        $this->drawFooter($dompdf);
 
         return (string) $dompdf->output();
+    }
+
+    /**
+     * Must run after render() - page_script()'s callback is invoked once
+     * per already-created page (see CPDF::processPageScript()), so calling
+     * this before render() would iterate zero pages and draw nothing.
+     */
+    private function drawFooter(Dompdf $dompdf): void
+    {
+        $logoSize = is_file($this->logoFile) ? getimagesize($this->logoFile) : false;
+        if ($logoSize === false) {
+            return;
+        }
+
+        $logoFile = $this->logoFile;
+        $logoWidth = self::FOOTER_LOGO_HEIGHT_PT * ($logoSize[0] / $logoSize[1]);
+        $websiteUrl = $this->websiteUrl;
+        $font = $dompdf->getFontMetrics()->getFont('sans-serif');
+
+        $dompdf->getCanvas()->page_script(
+            function (int $pageNumber, int $pageCount, Canvas $canvas, FontMetrics $fontMetrics) use ($font, $logoFile, $logoWidth, $websiteUrl) {
+                $pageWidth = $canvas->get_width();
+                $baseline = $canvas->get_height() - self::FOOTER_BOTTOM_OFFSET_PT;
+
+                $canvas->image(
+                    $logoFile,
+                    self::FOOTER_MARGIN_PT,
+                    $baseline - self::FOOTER_LOGO_HEIGHT_PT / 2,
+                    $logoWidth,
+                    self::FOOTER_LOGO_HEIGHT_PT
+                );
+
+                $linkWidth = $fontMetrics->getTextWidth($websiteUrl, $font, self::FOOTER_FONT_SIZE_PT);
+                $canvas->text(
+                    ($pageWidth - $linkWidth) / 2,
+                    $baseline - self::FOOTER_FONT_SIZE_PT / 2,
+                    $websiteUrl,
+                    $font,
+                    self::FOOTER_FONT_SIZE_PT,
+                    self::FOOTER_TEXT_COLOR
+                );
+
+                $pageLabel = $pageNumber . ' / ' . $pageCount;
+                $labelWidth = $fontMetrics->getTextWidth($pageLabel, $font, self::FOOTER_FONT_SIZE_PT);
+                $canvas->text(
+                    $pageWidth - self::FOOTER_MARGIN_PT - $labelWidth,
+                    $baseline - self::FOOTER_FONT_SIZE_PT / 2,
+                    $pageLabel,
+                    $font,
+                    self::FOOTER_FONT_SIZE_PT,
+                    self::FOOTER_TEXT_COLOR
+                );
+            }
+        );
     }
 
     /**
@@ -457,6 +529,7 @@ final class TourDocumentService
     private static function css(): string
     {
         return <<<'CSS'
+            @page { margin: 1.2cm 1.2cm 2.3cm 1.2cm; }
             body { font-family: sans-serif; font-size: 11pt; color: #222; }
             h1 { font-size: 20pt; margin-bottom: 4pt; }
             h2 { font-size: 15pt; margin-bottom: 4pt; }

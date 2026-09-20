@@ -123,7 +123,9 @@ final class App
             // Fixed to German rather than the request-resolved $locale above -
             // the rest of the document's text (e.g. "Länge") is hardcoded
             // German too, so this keeps it internally consistent.
-            new Translator($rootDir . '/resources/i18n', 'de')
+            new Translator($rootDir . '/resources/i18n', 'de'),
+            $rootDir . '/public/images/ytan-logo.png',
+            $appUrl
         );
         $tourController = new TourController($tourRepository, $tourImageService, $tourDocumentService);
         $areaController = new AreaController($areaRepository, $areaImageService);

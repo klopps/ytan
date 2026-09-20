@@ -85,6 +85,8 @@ final class EntityImageCleanupTest extends ControllerTestCase
             new GithubFlavoredMarkdownConverter(),
             dirname(__DIR__, 2) . '/public/markers',
             new Translator(dirname(__DIR__, 2) . '/resources/i18n', 'de'),
+            dirname(__DIR__, 2) . '/public/images/ytan-logo.png',
+            'https://example.com',
         );
         $controller = new TourController($tours, $images, $documents);
 

@@ -52,6 +52,8 @@ final class TourDocumentServiceTest extends TestCase
             new GithubFlavoredMarkdownConverter(),
             dirname(__DIR__, 2) . '/public/markers',
             new Translator(dirname(__DIR__, 2) . '/resources/i18n', 'de'),
+            dirname(__DIR__, 2) . '/public/images/ytan-logo.png',
+            'https://example.com',
         );
     }
 
@@ -241,5 +243,32 @@ final class TourDocumentServiceTest extends TestCase
 
         $this->assertSame([], $this->documents->selectPois($tour, []));
         $this->assertSame([], $this->documents->selectAreas($tour, []));
+    }
+
+    /**
+     * The one test in this file that actually calls generate() (see the
+     * class docblock) - specifically to exercise drawFooter()'s real
+     * Canvas::page_script()/image()/text() calls against the real vendored
+     * logo file, which selectPois()/selectAreas() alone never touch. Safe
+     * to run without network access: StaticMapImageService::fetch() returns
+     * null before ever calling curl when constructed with an empty API key
+     * (see setUp()), the same way the other Integration tests avoid it.
+     */
+    public function testGenerateProducesAValidPdfWithTheFooterDrawnOnEveryPage(): void
+    {
+        $userId = $this->createUser();
+        $tour = $this->createTour($userId);
+        $routeId = $this->createRoute($userId, [
+            'points' => json_encode([
+                ['lat' => 54.0, 'lng' => 10.0],
+                ['lat' => 54.0, 'lng' => 10.01],
+            ]),
+        ]);
+        $this->tours->addRoute((int) $tour['id'], $routeId);
+
+        $pdf = $this->documents->generate((int) $tour['id']);
+
+        $this->assertStringStartsWith('%PDF-', $pdf);
+        $this->assertGreaterThan(1000, strlen($pdf));
     }
 }
