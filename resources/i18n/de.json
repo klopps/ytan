@@ -444,6 +444,8 @@
     "error.auth.current_new_password_required": "Aktuelles und neues Passwort sind erforderlich.",
     "error.auth.profile_fields_required": "Vorname, Nachname, E-Mail und aktuelles Passwort sind erforderlich.",
     "error.auth.token_required": "Token ist erforderlich.",
+    "error.app.update_required": "Diese App-Version wird nicht mehr unterstützt. Bitte aktualisiere die App, um Änderungen vorzunehmen.",
+    "app.update_required.banner": "Diese App-Version ist veraltet. Aktualisiere die App, um weiterhin Änderungen vornehmen zu können.",
     "weather.widget.close_aria_label": "Schließen",
     "weather.row.time": "Zeit",
     "weather.row.temperature": "Temp.",

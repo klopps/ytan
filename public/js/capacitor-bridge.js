@@ -37,6 +37,11 @@ const CapacitorBridge = (function () {
     // in saveAndShareFile() below.
     const Filesystem = window.Capacitor.Plugins.Filesystem;
     const Share = window.Capacitor.Plugins.Share;
+    // App-local plugin (android/app/src/main/java/org/pesr/ytan/
+    // AppInfoPlugin.java), same convention as LocationPermissions above -
+    // may be absent on a build predating this feature (todo.md "App-
+    // Backend-Kompatibilität"), guarded in getAppVersionCode() below.
+    const AppInfo = window.Capacitor.Plugins.AppInfo;
 
     /**
      * With android.useLegacyBridge:true (capacitor.config.json - required to
@@ -133,6 +138,35 @@ const CapacitorBridge = (function () {
         });
     }
 
+    // Memoized (not re-fetched per call) since api-client.js's
+    // appVersionHeader() awaits this on every single API request - the
+    // installed APK's versionCode can't change during a running session,
+    // so one native round trip is enough.
+    let appVersionCodePromise = null;
+
+    /**
+     * @returns {Promise<?number>} the installed APK's versionCode (see
+     * android/app/build.gradle) via the app-local AppInfo plugin, or null
+     * if that plugin is absent (a build predating it) or the native call
+     * fails - callers should treat null as "unknown" and NOT report a
+     * version, matching checkLocationPermissionStatus()'s fail-open
+     * convention above rather than assuming incompatibility.
+     */
+    function getAppVersionCode() {
+        if (!AppInfo) {
+            return Promise.resolve(null);
+        }
+        if (!appVersionCodePromise) {
+            appVersionCodePromise = Promise.resolve(AppInfo.getInfo()).then(function (info) {
+                return (info && typeof info.versionCode !== 'undefined') ? Number(info.versionCode) : null;
+            }).catch(function (err) {
+                log('getAppVersionCode() failed', LOG_ERROR, err);
+                return null;
+            });
+        }
+        return appVersionCodePromise;
+    }
+
     return {
         isAvailable: function () { return true; },
         startLocationWatch: startLocationWatch,
@@ -140,5 +174,6 @@ const CapacitorBridge = (function () {
         checkLocationPermissionStatus: checkLocationPermissionStatus,
         openAppSettings: openAppSettings,
         saveAndShareFile: saveAndShareFile,
+        getAppVersionCode: getAppVersionCode,
     };
 })();

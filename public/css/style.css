@@ -39,6 +39,16 @@
   --color-overlay-strong: rgba(0,0,0,0.35);
   --font-display: 'Sora', sans-serif;
   --font-body: 'Plus Jakarta Sans', sans-serif;
+
+  /* 0px until #appUpdateBanner is shown - ui.js's setAppUpdateRequired()
+     then sets this to the banner's own live-measured rendered height, the
+     same "measure the real DOM instead of hardcoding a height" approach
+     already used by showSecondToolbar()/positionRecordingBadge(). Every
+     top-anchored fixed/absolute element below the banner (the row of
+     #sidemenu-toggle/.map-search-wrapper/#editToolbar, and the tour-mode/
+     recording badges under it) adds this into its own `top` via calc() so
+     the banner visually pushes them all down instead of covering them. */
+  --top-banner-offset: 0px;
 }
 
 a {
@@ -166,8 +176,73 @@ hr {
 /* Always set the map height explicitly to define the size of the div
        * element that contains the map. */
 #map {
-  height: 100%;
+  /* calc() rather than a plain 100% so #appUpdateBanner - which sits right
+     before this element in the DOM, in normal flow - visually pushes the
+     map down instead of the map simply overflowing past the bottom of the
+     page by the banner's own height (html/body's overflow:hidden would
+     otherwise just silently clip that excess rather than error, but the
+     map's internal canvas would still think it has the extra space,
+     misaligning any Maps-native chrome anchored to its container's
+     bottom/corners). setAppUpdateRequired() (ui.js) sets --top-banner-
+     offset to the banner's live-measured height and fires a
+     google.maps.event.trigger(map, 'resize') right after, since the Maps
+     API only re-lays-out its tiles automatically on a real window resize
+     event, not a CSS-driven container resize like this one. */
+  height: calc(100% - var(--top-banner-offset));
   display: none;
+}
+
+/* Persistent "please update the app" notice, templates/app.php -
+   see AppVersionMiddleware (backend) and api-client.js's checkAppCompat().
+   Sits above #map in the DOM/flow (not position:fixed) so it pushes the
+   map down rather than overlaying it; a full-screen panel (.cookiemenu/
+   #sidemenu, both position:fixed, z-index 10, top:0, height:100%) still
+   covers it while open, same as it already covers #editToolbar/
+   .tour-mode-badge - the banner is a proactive UI hint only, the backend's
+   426 response is what actually and authoritatively blocks a write
+   regardless of whether this banner is currently visible. */
+.app-update-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  box-sizing: border-box;
+  background: var(--color-warning);
+  color: var(--color-on-accent);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.app-update-banner-icon {
+  font-size: 18px;
+  flex: none;
+}
+
+/* Client-side nicety only, NOT the actual enforcement - AppVersionMiddleware
+   (backend) rejects the underlying POST/PUT/DELETE with 426 regardless of
+   whether this class is present, e.g. a stale already-open tab that hasn't
+   received setAppUpdateRequired()'s event yet. This just spares a
+   guaranteed-to-fail round trip on the handful of "start a new change"
+   entry points a mobile client actually exposes (the 3 create-toolbar
+   buttons; Save on the POI/Route/Area map edit windows, whose ids only
+   exist in the DOM once one is actually open; the Tours panel's create/
+   edit form and its route-membership manager). pointer-events (not the
+   .disabled class those buttons already use for their own, unrelated
+   mutual-exclusion-during-editing logic - see editRouteBtnClick() etc. in
+   ui.js) keeps this fully independent of that: neither mechanism can
+   accidentally clear the other. */
+body.app-update-required #routeButton,
+body.app-update-required #poiButton,
+body.app-update-required #areaButton,
+body.app-update-required #editPoiSaveBtn,
+body.app-update-required #editRouteSaveBtn,
+body.app-update-required #editAreaSaveBtn,
+body.app-update-required #tourFormSaveBtn,
+body.app-update-required #tourRouteManagerSaveBtn {
+  opacity: 0.35;
+  pointer-events: none;
 }
 
 #gdpr {
@@ -274,7 +349,7 @@ hr {
 
 #sidemenu-toggle {
   position: fixed;
-  top: 16px;
+  top: calc(16px + var(--top-banner-offset));
   left: 16px;
   z-index: 10;
   width: 40px;
@@ -313,7 +388,7 @@ hr {
 
 .map-search-wrapper {
   position: fixed;
-  top: 16px;
+  top: calc(16px + var(--top-banner-offset));
   left: 68px;
   z-index: 10;
   /* Hidden until GDPR consent (shown by loadGoogleMaps(), same as
@@ -476,7 +551,7 @@ hr {
 @media screen and (max-width: 640px) {
   .map-search-dropdown {
     position: fixed;
-    top: 64px;
+    top: calc(64px + var(--top-banner-offset));
     left: 16px;
     right: 16px;
     width: calc(100vw - 32px);
@@ -827,7 +902,7 @@ img.wsi {
 .panel-close-btn {
   display: none;
   position: fixed;
-  top: 16px;
+  top: calc(16px + var(--top-banner-offset));
   right: 20px;
   width: 36px;
   height: 36px;
@@ -1810,7 +1885,7 @@ img.wsi {
 */
 .tour-mode-badge {
   position: absolute;
-  top: 64px;
+  top: calc(64px + var(--top-banner-offset));
   left: 16px;
   display: flex;
   align-items: center;
@@ -1895,7 +1970,7 @@ img.wsi {
 */
 .track-recording-badge {
   position: absolute;
-  top: 64px;
+  top: calc(64px + var(--top-banner-offset));
   left: 16px;
   width: 200px;
   box-sizing: border-box;
@@ -3570,7 +3645,7 @@ input[type="color"] {
   display: none; /* to show user "inline-block" */
   position: absolute;
   line-height: 0px;
-  top: 16px; /* aligned with #sidemenu-toggle / .map-search-wrapper's top:16px */
+  top: calc(16px + var(--top-banner-offset)); /* aligned with #sidemenu-toggle / .map-search-wrapper's top */
   right: 10px;
   margin: 0;
   padding: 2px 6px; /* 2px top/bottom + 36px icon-buttons + 2px = 40px, matching the other top-bar controls */
@@ -3679,7 +3754,7 @@ input[type="color"] {
 #secondToolbar {
   display: none; /* toggled to "flex" by showSecondToolbar()/hideSecondToolbar() in ui.js */
   position: absolute;
-  top: 16px; /* mirrors #editToolbar's top:16px */
+  top: calc(16px + var(--top-banner-offset)); /* mirrors #editToolbar's top */
   /* right is set dynamically in showSecondToolbar() - depends on #editToolbar's rendered width */
   margin: 0;
   padding: 2px 6px; /* mirrors #editToolbar's 40px-tall box */

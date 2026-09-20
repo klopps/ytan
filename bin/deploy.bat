@@ -93,6 +93,7 @@ tar -C "%ROOT_DIR%" ^
     --exclude="package.json" ^
     --exclude="package-lock.json" ^
     --exclude="public/images/wsi/*.svg" ^
+    --exclude="storage" ^
     -cf - . | tar -C "%BUILD_DIR%" -xf -
 if errorlevel 1 goto :error
 

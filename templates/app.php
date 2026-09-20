@@ -90,6 +90,19 @@
       <div class="logo_large"></div>
     </div>
 
+    <!-- Persistent, non-dismissable notice shown once AppVersionMiddleware
+         (server-side) has flagged this session's native app build as too
+         old for a feature already live on the server - see api-client.js's
+         checkAppCompat() and todo.md "App-Backend-Kompatibilität". Sits in
+         normal document flow, ahead of #map, so showing it pushes the map
+         down (via the --top-banner-offset var below) rather than covering
+         it - viewing/browsing must keep working even while it's shown, only
+         writes are actually blocked (enforced server-side regardless of
+         whether this banner is seen at all). -->
+    <div id="appUpdateBanner" class="app-update-banner" style="display:none;">
+      <i class="material-icons-round app-update-banner-icon">warning</i>
+      <span><?= $t('app.update_required.banner') ?></span>
+    </div>
     <div id="map"></div>
     <div id="sidemenu-toggle" onclick="toggleMenu()">
       <i class="material-icons-round" id="sidemenu-opener">menu</i>

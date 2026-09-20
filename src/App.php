@@ -32,6 +32,7 @@ use Ytan\Http\Controllers\TranslationController;
 use Ytan\Http\Controllers\UserController;
 use Ytan\Http\Controllers\WeatherController;
 use Ytan\Http\Controllers\WsiController;
+use Ytan\Http\Middleware\AppVersionMiddleware;
 use Ytan\Http\Middleware\AuthMiddleware;
 use Ytan\Http\Middleware\CorsMiddleware;
 use Ytan\Service\AuthService;
@@ -175,6 +176,7 @@ final class App
 
         $app->addBodyParsingMiddleware();
         $app->add(new CorsMiddleware($_ENV['ALLOWED_ORIGINS'] ?? '*'));
+        $app->add(new AppVersionMiddleware((int) ($_ENV['MIN_APP_VERSION_CODE'] ?? 0)));
         $app->add(new AuthMiddleware($authService));
         $app->addRoutingMiddleware();
 

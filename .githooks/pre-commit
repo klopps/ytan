@@ -5,3 +5,33 @@
 version="$(date -u +%y%m%d-%H%M)-$(git rev-parse --short HEAD 2>/dev/null || echo 'init')"
 echo "$version" > VERSION
 git add VERSION
+
+# Auto-bumps android/app/build.gradle's versionCode/versionName by one patch
+# level whenever a commit touches anything under android/ - this is what
+# lets AppVersionMiddleware (src/Http/Middleware/, see todo.md "App-Backend-
+# Kompatibilität") ever have a new versionCode to compare an installed APK
+# against in the first place; without it, versionCode would stay 601
+# forever and every build would look identical to the compatibility check.
+# Only fires if versionCode itself is UNCHANGED between HEAD and the staged
+# copy - if a real release bump (e.g. a deliberate 0.6.x -> 0.7.0 minor
+# version) is already part of this same commit, that manual edit is left
+# alone rather than incremented a second time on top of it.
+gradle_file="android/app/build.gradle"
+if git diff --cached --name-only | grep -q '^android/'; then
+    staged_code="$(git show ":$gradle_file" 2>/dev/null | grep -oE 'versionCode [0-9]+' | grep -oE '[0-9]+')"
+    head_code="$(git show "HEAD:$gradle_file" 2>/dev/null | grep -oE 'versionCode [0-9]+' | grep -oE '[0-9]+')"
+    if [ -n "$staged_code" ] && [ "$staged_code" = "$head_code" ]; then
+        # versionCode encodes major*10000 + minor*100 + patch (see the
+        # comment above the field itself) - re-deriving versionName from
+        # the bumped code, rather than parsing/incrementing the "x.y.z"
+        # string separately, guarantees the two can never drift apart.
+        new_code=$((staged_code + 1))
+        major=$((new_code / 10000))
+        minor=$(((new_code % 10000) / 100))
+        patch=$((new_code % 100))
+        new_name="$major.$minor.$patch"
+        sed -i "s/versionCode [0-9]\+/versionCode $new_code/" "$gradle_file"
+        sed -i "s/versionName \"[0-9]\+\.[0-9]\+\.[0-9]\+\"/versionName \"$new_name\"/" "$gradle_file"
+        git add "$gradle_file"
+    fi
+fi

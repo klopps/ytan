@@ -383,3 +383,38 @@ function disableAreaButton() {
 function enableAreaButton() {
     document.getElementById('areaButton').classList.remove('disabled');
 }
+
+/**
+ * Shows/hides the persistent "please update the app" banner and the
+ * body.app-update-required CSS hooks that grey out the create/save entry
+ * points (see style.css) - fired once by api-client.js's checkAppCompat()
+ * the first time any API response (success or error) comes back tagged as
+ * incompatible, via the `ytan:app-update-required` CustomEvent listened for
+ * below. Only ever called with `true` - api-client.js's appUpdateRequired
+ * flag is sticky for the rest of the page load (only actually updating the
+ * app and reloading clears it), so there's no hide path to wire up.
+ */
+function setAppUpdateRequired() {
+    const banner = document.getElementById('appUpdateBanner');
+    banner.style.display = 'flex';
+    document.body.classList.add('app-update-required');
+
+    // #map's own height depends on --top-banner-offset (style.css) rather
+    // than a hardcoded value, since the banner wraps to two lines on a
+    // narrow phone in landscape - measure the banner's real rendered
+    // height instead of assuming one. google.maps.event.trigger(...,
+    // 'resize') is required here because this height change comes from a
+    // CSS variable, not an actual window resize - the Maps API only
+    // re-lays-out its tiles automatically for the latter.
+    document.documentElement.style.setProperty('--top-banner-offset', banner.getBoundingClientRect().height + 'px');
+    // Both guarded: this can fire before GDPR consent/loadGoogleMaps() ever
+    // ran (e.g. the very first GET /auth/me on a cold, pre-consent load),
+    // in which case there's no map instance yet to resize at all - the
+    // #map height still gets its --top-banner-offset correctly once the
+    // map is eventually created, no separate catch-up needed.
+    if (typeof google !== 'undefined' && typeof map !== 'undefined' && map) {
+        google.maps.event.trigger(map, 'resize');
+    }
+}
+
+document.addEventListener('ytan:app-update-required', setAppUpdateRequired);

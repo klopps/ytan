@@ -30,8 +30,13 @@ final class CorsMiddleware implements MiddlewareInterface
             $response = $response
                 ->withHeader('Access-Control-Allow-Origin', $origin)
                 ->withHeader('Vary', 'Origin')
-                ->withHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type')
-                ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+                ->withHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-App-Version')
+                ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+                // Non-"simple" response headers are invisible to JS in a
+                // cross-origin fetch() unless explicitly exposed here - see
+                // AppVersionMiddleware, whose X-App-Update-Required header
+                // api-client.js reads on every response.
+                ->withHeader('Access-Control-Expose-Headers', 'X-App-Update-Required');
         }
 
         return $response;
