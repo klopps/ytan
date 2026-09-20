@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Ytan;
 
 use Dotenv\Dotenv;
+use League\CommonMark\GithubFlavoredMarkdownConverter;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\App as SlimApp;
@@ -40,6 +41,8 @@ use Ytan\Service\GeocodingService;
 use Ytan\Service\ImageReconciliationService;
 use Ytan\Service\ImageStorageService;
 use Ytan\Service\MailService;
+use Ytan\Service\StaticMapImageService;
+use Ytan\Service\TourDocumentService;
 use Ytan\Service\TourNotificationService;
 use Ytan\Service\TranslationRepository;
 use Ytan\Service\TranslationUsageScanner;
@@ -102,7 +105,22 @@ final class App
         $areaRepository = new AreaRepository($pdo);
         $poiController = new PoiController($poiRepository, $poiImageService);
         $routeController = new RouteController($routeRepository, $tourRepository, $captchaService, $tourNotificationService, $routeImageService);
-        $tourController = new TourController($tourRepository, $tourImageService);
+        $staticMapImageService = new StaticMapImageService(
+            $rootDir . '/storage/static-maps-cache',
+            $_ENV['MAPS_STATIC_API_KEY'] ?? ''
+        );
+        $tourDocumentService = new TourDocumentService(
+            $tourRepository,
+            $routeRepository,
+            $poiRepository,
+            $areaRepository,
+            $tourImageService,
+            $poiImageService,
+            $areaImageService,
+            $staticMapImageService,
+            new GithubFlavoredMarkdownConverter()
+        );
+        $tourController = new TourController($tourRepository, $tourImageService, $tourDocumentService);
         $areaController = new AreaController($areaRepository, $areaImageService);
         $adminController = new AdminController(
             new ImageReconciliationService([
@@ -235,6 +253,7 @@ final class App
         $app->get('/api/v1/tours/{id}/images/{imageId}', [$tourController, 'showImage']);
         $app->delete('/api/v1/tours/{id}/images/{imageId}', [$tourController, 'deleteImage']);
         $app->put('/api/v1/tours/{id}/images/order', [$tourController, 'reorderImages']);
+        $app->get('/api/v1/tours/{id}/document', [$tourController, 'document']);
 
         $app->get('/api/v1/areas', [$areaController, 'index']);
         $app->get('/api/v1/areas/{id}', [$areaController, 'show']);

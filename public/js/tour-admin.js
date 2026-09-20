@@ -384,6 +384,7 @@ function renderTourDetail(tour, routesInTour) {
     if (canManageTour(tour)) {
         html += '<div class="button" onclick="deleteTourRow(' + tour.id + ');"><i class="material-icons-round">delete</i>&nbsp;' + t('common.delete') + '</div>';
     }
+    html += '<div class="button" onclick="downloadTourDocument(' + tour.id + ');"><i class="material-icons-round">picture_as_pdf</i>&nbsp;' + t('tour_admin.download_document') + '</div>';
 
     html += '</div></div>';
 
@@ -1154,4 +1155,115 @@ function saveTourRouteManager() {
 
 function cancelTourRouteManager() {
     showTourDetail(tourAdminCurrentTourId);
+}
+
+/**
+ * "Download PDF" button on the tour detail screen - asks for a map type
+ * via showTourDocumentDialog() below, then fetches the generated PDF as a
+ * Blob (auth needed, so a plain <a href> can't be used directly) and
+ * triggers a browser download via helper.js's downloadBlob().
+ */
+async function downloadTourDocument(tourId) {
+    var mapType = await showTourDocumentDialog();
+    if (!mapType) {
+        return;
+    }
+
+    showToast(t('tour_admin.document_generating'), 'info');
+    try {
+        var blob = await Ytan.fetchBlob('/tours/' + tourId + '/document?maptype=' + mapType);
+        downloadBlob(blob, 'tour-' + tourId + '.pdf');
+    } catch (err) {
+        showToast(t('tour_admin.document_generation_failed', { error: err.message }), 'error');
+    }
+}
+
+/**
+ * Same overlay/dialog shell as showConfirmDialog() (confirm-dialog.js),
+ * plus a one-off nav-segmented map-type control of its own
+ * (pdfmaptype1-3 / pdfdocmaptypeselector) - distinct from the persistent
+ * maptypeselector in the drawer, and deliberately never calls
+ * saveSettings() or touches the settings cookie, since this choice only
+ * applies to the one PDF about to be generated. Resolves the chosen map
+ * type ('hybrid'/'terrain'/'satellite'), or null on cancel/Escape/backdrop
+ * click.
+ */
+function showTourDocumentDialog() {
+    return new Promise(function (resolve) {
+        var overlay = document.createElement('div');
+        overlay.className = 'confirm-dialog-overlay';
+
+        var dialog = document.createElement('div');
+        dialog.className = 'confirm-dialog confirm-dialog-default';
+
+        var icon = document.createElement('i');
+        icon.className = 'material-icons-round confirm-dialog-icon';
+        icon.textContent = 'picture_as_pdf';
+
+        var text = document.createElement('div');
+        text.className = 'confirm-dialog-message';
+        text.textContent = t('tour_admin.document_dialog_title');
+
+        var label = document.createElement('p');
+        label.className = 'nav-field-label';
+        label.textContent = t('tour_admin.document_maptype_label');
+
+        var segmented = document.createElement('div');
+        segmented.className = 'nav-segmented';
+        segmented.innerHTML =
+            '<input type="radio" id="pdfmaptype1" name="pdfdocmaptypeselector" value="hybrid" checked><label for="pdfmaptype1">' + t('app.map.hybrid') + '</label>' +
+            '<input type="radio" id="pdfmaptype2" name="pdfdocmaptypeselector" value="terrain"><label for="pdfmaptype2">' + t('app.map.terrain') + '</label>' +
+            '<input type="radio" id="pdfmaptype3" name="pdfdocmaptypeselector" value="satellite"><label for="pdfmaptype3">' + t('app.map.sat') + '</label>';
+
+        var actions = document.createElement('div');
+        actions.className = 'confirm-dialog-actions';
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'button';
+        cancelBtn.textContent = t('common.cancel');
+
+        var confirmBtn = document.createElement('button');
+        confirmBtn.type = 'button';
+        confirmBtn.className = 'startbtn';
+        confirmBtn.textContent = t('tour_admin.document_generate');
+
+        function close(result) {
+            document.removeEventListener('keydown', onKeydown);
+            overlay.remove();
+            resolve(result);
+        }
+
+        function onKeydown(event) {
+            if (event.key === 'Escape') {
+                close(null);
+            }
+        }
+
+        overlay.addEventListener('click', function (event) {
+            if (event.target === overlay) {
+                close(null);
+            }
+        });
+        cancelBtn.addEventListener('click', function () {
+            close(null);
+        });
+        confirmBtn.addEventListener('click', function () {
+            var selected = segmented.querySelector('input[name="pdfdocmaptypeselector"]:checked');
+            close(selected ? selected.value : 'hybrid');
+        });
+
+        actions.appendChild(cancelBtn);
+        actions.appendChild(confirmBtn);
+
+        dialog.appendChild(icon);
+        dialog.appendChild(text);
+        dialog.appendChild(label);
+        dialog.appendChild(segmented);
+        dialog.appendChild(actions);
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+
+        document.addEventListener('keydown', onKeydown);
+    });
 }

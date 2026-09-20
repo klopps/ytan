@@ -11,16 +11,19 @@ use Ytan\Exception\ForbiddenException;
 use Ytan\Exception\NotFoundException;
 use Ytan\Exception\ValidationException;
 use Ytan\Service\ImageStorageService;
+use Ytan\Service\TourDocumentService;
 
 final class TourController extends BaseController
 {
     // Mirrored client-side by TOUR_PHOTO_MAX_COUNT (public/js/config.js) -
     // kept in sync manually, there being no shared config layer between PHP and JS.
     private const MAX_IMAGES_PER_TOUR = 9;
+    private const VALID_DOCUMENT_MAP_TYPES = ['hybrid', 'terrain', 'satellite'];
 
     public function __construct(
         private readonly TourRepository $tours,
         private readonly ImageStorageService $images,
+        private readonly TourDocumentService $documents,
     ) {
     }
 
@@ -248,17 +251,7 @@ final class TourController extends BaseController
     {
         $tourId = (int) $args['id'];
         $tour = $this->tours->findById($tourId);
-        $auth = $request->getAttribute('auth');
-
-        $canView = (int) $tour['public'] === 1
-            || ($auth !== null && (
-                (int) $auth['sub'] === (int) $tour['user_id']
-                || ($auth['is_admin'] ?? false)
-                || ($auth['tour_manage'] ?? false)
-            ));
-        if (!$canView) {
-            throw new ForbiddenException();
-        }
+        $this->assertCanView($request->getAttribute('auth'), $tour);
 
         $image = $this->tours->findImage($tourId, (int) $args['imageId']);
         if ($image === null) {
@@ -273,6 +266,45 @@ final class TourController extends BaseController
         $response->getBody()->write($file['contents']);
 
         return $response->withHeader('Content-Type', $image['mime_type']);
+    }
+
+    public function document(Request $request, Response $response, array $args): Response
+    {
+        $tourId = (int) $args['id'];
+        $tour = $this->tours->findById($tourId);
+        $this->assertCanView($request->getAttribute('auth'), $tour);
+
+        $mapType = $request->getQueryParams()['maptype'] ?? 'hybrid';
+        if (!in_array($mapType, self::VALID_DOCUMENT_MAP_TYPES, true)) {
+            throw new ValidationException('maptype must be one of: ' . implode(', ', self::VALID_DOCUMENT_MAP_TYPES) . '.');
+        }
+
+        $pdf = $this->documents->generate($tourId, $mapType);
+
+        $response->getBody()->write($pdf);
+
+        return $response
+            ->withHeader('Content-Type', 'application/pdf')
+            ->withHeader('Content-Disposition', 'attachment; filename="tour-' . $tourId . '.pdf"')
+            ->withHeader('Cache-Control', 'no-store');
+    }
+
+    /**
+     * Same visibility rule as everywhere else in this controller: public,
+     * or the owner/admin/tour_manage. Shared by showImage() and
+     * document(), which need an identical check.
+     */
+    private function assertCanView(?array $auth, array $tour): void
+    {
+        $canView = (int) $tour['public'] === 1
+            || ($auth !== null && (
+                (int) $auth['sub'] === (int) $tour['user_id']
+                || ($auth['is_admin'] ?? false)
+                || ($auth['tour_manage'] ?? false)
+            ));
+        if (!$canView) {
+            throw new ForbiddenException();
+        }
     }
 
     /**

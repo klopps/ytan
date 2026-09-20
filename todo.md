@@ -119,28 +119,11 @@ Dabei ist zu beachten, dass Niederschlagsmengen, die für einen Zeitraum von z. 
 
 
 ### Wetterdatenhinweis
-Der Hinweis "Wetterdaten: <Dienst>, <Modell> von <Datum> / <Uhrzeit>" in der Wetterdatenazeige soll direkt unter der Überschrift mit dem Ort und den Koordinaten oberhalb der horizontalen Linie stehen.
+Der Hinweis "Wetterdaten: <Dienst>, von <Datum> / <Uhrzeit>" in der Wetterdatenazeige soll direkt unter der Überschrift mit dem Ort und den Koordinaten oberhalb der horizontalen Linie stehen.
 
 **Zwischenstand (2026-09-19) - umgesetzt:** Zwei Teile. (1) Text erweitert: `weatherFormatFetchedAt()` (`public/js/weather.js`) bekommt jetzt `source`/`model` aus der API-Antwort übergeben (die seit dem Architektur-Schritt schon vorhanden waren, aber noch nirgends angezeigt wurden) und baut je nachdem, ob ein Modell vorhanden ist, einen von zwei neuen i18n-Strings zusammen - `"Wetterdaten: {source} von {date} / {time}"` (Open-Meteo hat kein eigenes Modell, "Open-Meteo" allein benennt die Quelle schon eindeutig) oder `"Wetterdaten: {source}, {model} von {date} / {time}"` (z. B. SMHI/snow1g) - statt eines hängenden Kommas bei fehlendem Modell. (2) Position korrigiert: der Hinweis (`.weather-timeline-meta`) saß bisher NACH `.weather-timeline-header`, also unterhalb von dessen `border-bottom` (der im Todo gemeinten "horizontalen Linie" - es gibt kein eigenes `<hr>`-Element). In `templates/app.php` in den Header verschoben (Titel+Schließen-Button in eine neue `.weather-timeline-header-row` gekapselt, der Hinweis direkt darunter, beide noch innerhalb der umrandeten Header-Box) - `style.css`s `.weather-timeline-header` entsprechend von einer einzeiligen Flex-Zeile auf eine zweizeilige Flex-Spalte umgestellt. Im Browser geprüft (mobil 390×660 und Desktop 1440×900, Light und Dark): beide Text-Varianten (mit und ohne Modell) rendern korrekt direkt unter dem Titel, die horizontale Trennlinie liegt jetzt wie gefordert darunter statt darüber. Keine Backend-Änderung, `composer test` daher nicht erneut nötig.
 
 
-
-
-## Splashscreen
-
-Wir die Seite geladen, nachdem man für mindestens x-Sekunden das System nicht benutzt hat, wird ein Splashscreen mit dem YTAN-Logo gezeigt, der nach y-Millisekunden ausgeblendet wird. x und y sind konfigurierbar (config.js).
-Dies gilt nur bei der Nutzung im Browser und nicht, wenn die Android-App genutzt wird.
-
-
-## Touren-Dokument
-
-Ausgabe eines PDF-Dokuments für eine Tour mit 
-- Bildern und Beschreibung der Gesamttour,
-- Bildern und Beschreibungen der einzelnen POIs,
-- Bildern und Beschreibungen der Areas, durch die eine Route der Tour führt,
-jeweils inkl. Kartenansicht.
-Der Benutzer kann vor der Erzeugung des Dokuments die Kartendarstellung (Hybrid, Terrain oder SAT) auswählen.
-Formatierungen durch MarkDown sollen entsprechend im PDF-Dokument dargestellt werden. 
 
 
 ## Logo
@@ -178,6 +161,16 @@ Alle Dialoge/Bildschirme unter echter Mobile-Emulation (412×915) durchgetestet.
 
 
 # Erledigt
+
+## Touren-Dokument (2026-09-20)
+
+~~Ausgabe eines PDF-Dokuments für eine Tour mit
+- Bildern und Beschreibung der Gesamttour,
+- Bildern und Beschreibungen der einzelnen POIs,
+- Bildern und Beschreibungen der Areas, durch die eine Route der Tour führt,
+jeweils inkl. Kartenansicht.
+Der Benutzer kann vor der Erzeugung des Dokuments die Kartendarstellung (Hybrid, Terrain oder SAT) auswählen.
+Formatierungen durch MarkDown sollen entsprechend im PDF-Dokument dargestellt werden.~~ Gelöst (2026-09-20): Es gab weder eine PDF-Bibliothek noch einen serverseitigen Markdown-Renderer noch eine POI/Area↔Route/Tour-Beziehung im Schema - alles wurde neu gebaut, ohne Migration: `GET /tours/{id}/document?maptype=hybrid|terrain|satellite` (`TourController::document()`) generiert das PDF bei jedem Aufruf frisch aus den bestehenden Tabellen. Welche POIs aufgenommen werden, entscheidet die Nähe zur Route (`GeometryService::isPointNearPolyline()`, Schwellwert 200 m, Haversine-Distanz vom Punkt zum jeweils nächsten Routensegment); welche Areas aufgenommen werden, entscheidet eine Segment-Polygon-Schnittprüfung (`GeometryService::doesPolylineIntersectPolygon()` - orientierungsbasierter Segment-Test plus Punkt-in-Polygon via Ray-Casting, damit auch eine Route erkannt wird, die komplett innerhalb eines Gebiets liegt, ohne dessen Rand zu kreuzen). Kartenausschnitte kommen über eine neue, eigenständige `StaticMapImageService` von der Google-Static-Maps-API (eigener `MAPS_STATIC_API_KEY` in `.env`, getrennt vom Client-seitigen, vermutlich Referrer-beschränkten `MAPS_API_KEY`; inkl. selbst geschriebenem Google-Polyline-Encoder und Datenträger-Cache unter `storage/static-maps-cache/`, außerhalb des Webroots) - fehlt der Key oder schlägt ein Abruf fehl, wird das jeweilige Kartenbild stillschweigend weggelassen statt das ganze Dokument scheitern zu lassen. Rendering läuft über `dompdf/dompdf`, Markdown-Beschreibungen über `league/commonmark`s `GithubFlavoredMarkdownConverter` (neue Composer-Abhängigkeiten). Vor dem Generieren wählt der Nutzer die Kartendarstellung über einen eigenständigen Dialog (`tour-admin.js`: `showTourDocumentDialog()`) mit einem eigenen, nicht-persistenten `nav-segmented`-Kartentyp-Schalter (`pdfmaptype1`-`3`) - bewusst getrennt vom dauerhaften Kartentyp-Schalter der Drawer-Einstellungen, damit diese einmalige Wahl nicht die Kartenanzeige-Einstellung des Nutzers überschreibt.
 
 ## Die Android-App offline-fähig machen (2026-09-19)
 
@@ -765,3 +758,17 @@ Frontend: `savePoi()`/`saveRoute()`/`saveArea()` sichern den bisherigen `updated
 Testabdeckung: je 5 neue Fälle in `PoiRepositoryTest`/`RouteRepositoryTest`/`AreaRepositoryTest` (kein `expected_updated_at` → unverändert; passendes → normales Update/Delete; veraltetes → `ConflictException` mit frischem Datensatz im Payload), dazu ein neues `RouteControllerConflictTest.php` (3 Fälle), das die Query-Parameter-Durchleitung tatsächlich über einen echten Controlleraufruf beweist statt nur auf Repository-Ebene. `composer test` grün (273 Tests). Komplette Playwright-E2E-Suite (9/9) grün - dabei eine bisher unbekannte Falle in der Testinfrastruktur gefunden und behoben: `ytan_e2e` wird von `reset-e2e-db.php` nur beim allerersten Lauf aus `ytan_test` geklont, eine bereits existierende `ytan_e2e`-Datenbank aus einer früheren Sitzung übernahm die neue `updated_at`-Spalte aus Migration 023 daher nicht automatisch (manuell per `ALTER TABLE` nachgezogen).
 
 Zusätzlich eine interaktive Playwright-Verifikation des Konfliktdialogs selbst durchgeführt (mobil 390×660 zuerst, dann Desktop 1440×900, je Hell/Dunkel), inklusive eines echten End-to-End-Konflikts gegen das Dev-Backend (ein Wegwerf-Testnutzer legt einen echten POI an, ein simulierter "zweites Gerät"-Request ändert ihn serverseitig, die Warteschlange trägt bewusst den veralteten `expected_updated_at` - der reale Sync-Versuch liefert tatsächlich einen 409 mit dem frischen Server-Datensatz). Dabei einen echten Layout-Bug gefunden und behoben: die neue `.track-recorder-pending-row-conflict .nav-btn-secondary`-Regel setzte nur `flex-shrink: 0`, überschrieb aber nicht `.nav-btn-secondary`s Basis-`width: calc(100% - 32px); margin: 8px 16px` (gedacht für dessen sonstige Verwendung als vollbreiter Block-Button) - dadurch quetschte der "Lösen…"-Button den Namens-/Label-Bereich auf 0px und lief selbst über den Zeilenrand hinaus; behoben durch `width: auto; margin: 0` in der Override-Regel. Beide Auflösungspfade end-to-end bestätigt: "Server-Version behalten" ruft für ein `update` korrekt `reconcileCreate`/`reconcilePoiLocalId` auf, ersetzt den lokalen Datensatz samt Kartenmarker durch die Serverversion und leert den Warteschlangen-Eintrag; "Meine Version behalten" aktualisiert `expected_updated_at` auf den aktuellen Server-Stand und der sofort erneut angestoßene Sync greift durch (per echtem `GET` gegen den Server verifiziert: der Datensatz trägt danach den lokalen Namen mit neuem `updated_at`). Damit ist der Kern-Punkt "Offline-Funktionalität für die Android-App" (alle drei Phasen) inhaltlich abgeschlossen und die Konfliktdialog-UI selbst verifiziert; offen bleibt weiterhin nur der in Phase 2 bewusst zurückgestellte Touren-Nachtrag (siehe dort).
+
+## Splashscreen (2026-09-20)
+
+~~Wir die Seite geladen, nachdem man für mindestens x-Sekunden das System nicht benutzt hat, wird ein Splashscreen mit dem YTAN-Logo gezeigt, der nach y-Millisekunden ausgeblendet wird. x und y sind konfigurierbar (config.js). Dies gilt nur bei der Nutzung im Browser und nicht, wenn die Android-App genutzt wird.~~ Gelöst (2026-09-20): Neue `SPLASHSCREEN_IDLE_THRESHOLD_SECONDS` (x, Default 300s) und `SPLASHSCREEN_DISPLAY_DURATION_MS` (y, Default 1500ms) in `config.js`. Neues `public/js/splashscreen.js` (im `<head>`-Ladeplan direkt nach `capacitor-bridge.js`, da es dessen `CapacitorBridge.isAvailable()` zur Android-Erkennung braucht) trackt den letzten Nutzungszeitpunkt in `localStorage['ytan_last_active']` statt `sessionStorage` (muss ein vollständiges Schließen von Tab/App überleben) - aufgefrischt bei jedem Seitenaufruf, bei `visibilitychange` auf `hidden` und per 30s-Intervall solange die Seite sichtbar ist (nicht nur `beforeunload`/`pagehide`, da mobile Browser/PWAs die nicht zuverlässig feuern, wenn das OS einen in den Hintergrund gelegten Prozess einfach beendet).
+
+`#splashScreen` (neues Overlay-Div, `templates/app.php`, als *erstes* Element direkt nach `<body>`) rendert das YTAN-Logo als maskiertes Div (`.splash-logo`, gleiche `mask-image`-Technik wie `.panel-logo`/`.logo_large`, folgt also automatisch Hell/Dunkel über `--color-text`/`--color-bg-panel`). `initSplashScreen()` wird synchron direkt nach dem Div aufgerufen (noch bevor der Rest von `<body>` geparst wird) und entscheidet: in der nativen Capacitor-Android-Hülle sofort ausblenden (die hat bereits ihren eigenen nativen Splashscreen, siehe den bereits erledigten "App-Icon/Splash-Screen"-Punkt oben); sonst nur zeigen, wenn `Date.now() - letzterZeitpunkt >= x*1000` (oder noch nie ein Zeitpunkt gespeichert war), dann nach y ms per CSS-Transition ausblenden. `applyStoredTheme()` (`settings.js`) wurde dafür von seiner bisherigen Aufrufstelle weiter unten im Bootstrap-Script nach ganz oben (direkt vor `initSplashScreen()`) vorgezogen, damit der Splashscreen selbst nicht kurz im falschen Theme aufblitzt, bevor das gespeicherte Dark-Mode-Cookie ausgewertet wird - dieselbe Reihenfolge-Problematik, die dieser Aufruf laut Doku schon für den Rest der Seite vermeidet.
+
+Verifiziert per Playwright (mobil 390×660, Light und Dark): `initSplashScreen()` direkt aufgerufen mit künstlich zurückdatiertem `ytan_last_active` (10 Minuten, > 300s-Schwelle) zeigt das Overlay sofort (`display: flex`, Logo sichtbar), bleibt bis kurz vor y=1500ms voll sichtbar (`opacity: 1`), blendet danach per `.splash-hidden`-Klasse aus (`opacity` sinkt, `transition: opacity 0.4s`) und ist bei t=2200ms vollständig entfernt (`display: none`). Ein frischer Seitenaufruf mit kürzlich zurückliegendem Zeitpunkt (< x Sekunden) überspringt das Overlay komplett - dabei eine testmethodische Falle gefunden (kein Bug im Feature selbst): ein normales `page.reload()`/`page.goto()` derselben Seite löst zuverlässig `pagehide` aus, was den Zeitpunkt unmittelbar vor der Navigation ohnehin auf "jetzt" aktualisiert - ein manuelles Neuladen zählt also immer als "gerade benutzt", was inhaltlich korrekt ist (der Nutzer hat die Seite ja bis zu diesem Moment aktiv benutzt) und exakt der Formulierung "wird geladen, nachdem man X Sekunden nicht benutzt hat" entspricht. `composer test` weiterhin grün (273 Tests, keine Backend-Änderung, reines Frontend-Feature).
+
+## Ausstehende Änderungen: Menüpunkt für nicht angemeldete Benutzer ausblenden (2026-09-20)
+
+~~Der Menüpunkt ist auch für nicht angemeldete Benutzer sichtbar. Das ist unnötig. Unangemeldete Benutzer haben Änderungen, die übertragen werden müssen, da sie keine Änderungen erzeugen können.~~ Gelöst (2026-09-20): Die Schublade-Zeile "Ausstehende Änderungen" (`#pendingChangesMenuRow`, `templates/app.php`) folgt jetzt demselben fail-closed-Muster wie die bestehende "Administration"-Zeile (`#adminMenuBtn`) - im Markup standardmäßig `display:none`, per neuer `updatePendingChangesMenuVisibility()` (`user.js`, direkt neben `updateAdminMenuVisibility()`) auf Basis von `user.id !== null` ein-/ausgeblendet. Aufgerufen an genau den drei Stellen, an denen auch `updateAdminMenuVisibility()` läuft: `loginUser()`, `logoutUser()` und die Boot-Zeit-Revalidierung gegen `GET /auth/me` in `templates/app.php`s Bootstrap-Script - dieselbe Nahtstelle, dieselbe Reihenfolge.
+
+Live per Playwright verifiziert (mobil 390×660): als Gast ist die Zeile im geöffneten Menü nicht vorhanden (`display:none` bestätigt), nach simuliertem Login (`user.id` gesetzt, `updatePendingChangesMenuVisibility()` aufgerufen) erscheint sie korrekt zwischen "Touren" und "Teilen". Reine Frontend-Änderung, `composer test` daher nicht erneut nötig.

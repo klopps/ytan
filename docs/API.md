@@ -66,6 +66,15 @@ also takes `search` (matches name/description/creator username) and
 `min_length`/`max_length` (meters) filters, on top of the shared
 `limit`/`offset` from Pagination above.
 
+`GET /tours/{id}/document?maptype=hybrid|terrain|satellite` - generates and
+returns a PDF (`application/pdf`, as an attachment) containing the tour's
+own description/photos/map, one section per POI within 200m of any of the
+tour's routes, and one section per Area any route segment crosses (or
+starts/ends inside). Same visibility rule as `GET /tours/{id}/images/...`
+(public tour, or owner/admin/tour_manage). `maptype` defaults to `hybrid`;
+map images are omitted (not an error) if `MAPS_STATIC_API_KEY` isn't
+configured or a Static Maps request fails.
+
 ## Users (admin only)
 
 `GET /users` - optional exact-match filters `is_admin`/`tour_create`/
