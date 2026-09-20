@@ -434,9 +434,24 @@ final class TourDocumentService
         return 'data:image/png;base64,' . base64_encode($bytes);
     }
 
+    /**
+     * Some POI/area names imported from the old PESR system already contain
+     * literal HTML entities baked into the stored name itself (e.g. "Noor
+     * &amp; Lara Livs", "Årsta Handlar&#039;n" - confirmed live against the
+     * poi table, see todo.md "Touren-Dokument: HTMLSpecialchars"), rather
+     * than the real character. A plain htmlspecialchars() on top of that
+     * re-escapes the already-escaped entity's own "&" into "&amp;", which
+     * dompdf's HTML parser then only unwraps by one level - leaving the
+     * residual entity syntax (e.g. "&quot;") visible as literal text in the
+     * PDF instead of the intended character. Decoding first normalizes
+     * both that legacy double-escaped data AND an ordinary name (a decode
+     * of a string with no entities at all is a no-op) to the real
+     * characters, so the following htmlspecialchars() always escapes
+     * exactly once, correctly, either way.
+     */
     private static function esc(string $value): string
     {
-        return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+        return htmlspecialchars(html_entity_decode($value, ENT_QUOTES, 'UTF-8'), ENT_QUOTES, 'UTF-8');
     }
 
     private static function css(): string

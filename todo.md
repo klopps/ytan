@@ -1,9 +1,5 @@
 # Offene Punkte
 
-## Touren-Dokument: HTMLSpecialchars
-
-In den Überschriften der POIs und Areas werden die bestimmte Zeichen als HTML-Entsprechung dargestellt. Doppelte Anführungszeichen stehen dort als "&quot;".
-
 ## Standards für alle Gestaltungselemente festlegen
 
 An verschiedenen Stellen sind die Gestaltungselemente wie Buttons, Inputfelder, Schalter, Hinweistexte etc. unterschiedlich gestaltet. Das muss einheitlich gestaltet werden. Dazu soll im Admin-Bereich eine Beispielseite aufgebaut werden, auf der möglichst alle Elemente vertreten sind, um die Gestaltung vergleichen zu können und schließlich anzugleichen. Ein Vorbild ist das Bootstrap Cheatsheet. Es kann sein, dass einige der folgenden Elemente noch gar nicht zum Einsatz kommen.
@@ -160,6 +156,10 @@ Alle Dialoge/Bildschirme unter echter Mobile-Emulation (412×915) durchgetestet.
 
 
 # Erledigt
+
+## Touren-Dokument: HTMLSpecialchars (2026-09-20)
+
+~~In den Überschriften der POIs und Areas werden die bestimmte Zeichen als HTML-Entsprechung dargestellt. Doppelte Anführungszeichen stehen dort als "&quot;".~~ Gelöst (2026-09-20): Live gegen die Dev-Datenbank geprüft und bestätigt - manche aus dem alten PESR-System übernommenen POI-Namen enthalten die HTML-Entity bereits fest im gespeicherten Namen selbst statt des echten Zeichens (z. B. `Noor &amp; Lara Livs`, `Årsta Handlar&#039;n`). `TourDocumentService::esc()` hat solche Namen bisher ein zweites Mal mit `htmlspecialchars()` escaped, wodurch aus dem führenden `&` der bereits vorhandenen Entity ein `&amp;` wurde; Dompdf löst beim Rendern nur eine Ebene davon auf und zeigt den Rest der Entity-Syntax (z. B. `&quot;`) als sichtbaren Text in der PDF statt des eigentlichen Zeichens. `esc()` dekodiert den Namen jetzt per `html_entity_decode()` einmal vor, bevor `htmlspecialchars()` genau einmal korrekt escaped - bei einem normalen, nicht vorbelasteten Namen ist das Dekodieren ein No-op, ändert also nichts am bisherigen Verhalten. Bewusst nur in `TourDocumentService` behoben (nicht in der Datenbank selbst): die restliche SPA zeigt dieselben Namen bereits unauffällig korrekt an, weil sie beim Einfügen als `innerHTML` vom Browser ohnehin einmal automatisch entity-dekodiert werden - nur Dompdfs eigener, expliziter `esc()`-Aufruf hat das doppelt gemacht. Test: `tests/Unit/TourDocumentServiceEscTest.php` (Reflection auf die private `esc()`-Methode, gleiches Muster wie `MailServiceEncodingTest`), deckt sowohl den Normalfall als auch die drei in der Dev-DB gefundenen Entity-Arten (`&amp;`, `&quot;`, `&#039;`) ab.
 
 ## App-Backend-Kompatibilität (2026-09-20)
 
