@@ -114,11 +114,15 @@ final class App
             $routeRepository,
             $poiRepository,
             $areaRepository,
-            $tourImageService,
             $poiImageService,
             $areaImageService,
             $staticMapImageService,
-            new GithubFlavoredMarkdownConverter()
+            new GithubFlavoredMarkdownConverter(),
+            $rootDir . '/public/markers',
+            // Fixed to German rather than the request-resolved $locale above -
+            // the rest of the document's text (e.g. "Länge") is hardcoded
+            // German too, so this keeps it internally consistent.
+            new Translator($rootDir . '/resources/i18n', 'de')
         );
         $tourController = new TourController($tourRepository, $tourImageService, $tourDocumentService);
         $areaController = new AreaController($areaRepository, $areaImageService);

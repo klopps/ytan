@@ -107,6 +107,16 @@ const POI_CLUSTER_MAX_MERGE_DISTANCE_METERS = 150_000;
 const SPLASHSCREEN_IDLE_THRESHOLD_SECONDS = 300;
 const SPLASHSCREEN_DISPLAY_DURATION_MS = 1500;
 
+// Max distance (meters) a POI may be from a tour route - and the only
+// distance an Area's boundary/interior is tested against a route at all -
+// to be included in that route's section of the Touren-Dokument PDF
+// (tour-admin.js's downloadTourDocument(), sent as the `poi_radius` query
+// param). Must match TourDocumentService::DEFAULT_POI_PROXIMITY_METERS
+// (src/Service/TourDocumentService.php) since that's the fallback the
+// backend uses if this ever isn't sent - kept in sync manually, same as
+// the photo-limit constants above.
+const TOUR_DOCUMENT_POI_PROXIMITY_METERS = 200;
+
 
  // additionl scripts to be injected after Google Maps is loaded
  const injectScripts = [

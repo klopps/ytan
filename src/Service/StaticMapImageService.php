@@ -26,7 +26,6 @@ final class StaticMapImageService
     private const USER_AGENT = 'YTAN/1.0 (+https://ytan.pesr.org; no-reply@pesr.org)';
     private const SIZE = '640x400';
     private const SCALE = 2;
-    private const POI_ZOOM = 15;
     private const VALID_MAP_TYPES = ['hybrid', 'terrain', 'satellite'];
 
     public function __construct(
@@ -36,61 +35,60 @@ final class StaticMapImageService
     }
 
     /**
-     * Tour overview: every route drawn as its own polyline, viewport
-     * auto-fit by Static Maps itself (no center/zoom passed) since only
-     * path= params are supplied.
+     * Renders one static map combining any number of colored route
+     * polylines, labeled POI markers and labeled area polygons - used for
+     * both the tour overview (routes only, one per route, in that
+     * route's own color) and each per-route section map (that route plus
+     * the POI/Area markers of its own sub-entries), so a marker's label
+     * on the image lines up with the same number in front of that
+     * sub-entry's heading in the document text.
      *
-     * @param array<int,array<int,array{lat:float,lng:float}>> $polylines
+     * Viewport is auto-fit by Static Maps itself (no center/zoom passed)
+     * from whatever path=/markers= params end up in the query string.
+     *
+     * @param list<array{polyline: list<array{lat: float, lng: float}>, color: string}> $routes
+     * @param list<array{lat: float, lng: float, label: string}> $markers
+     * @param list<array{polygon: list<array{lat: float, lng: float}>, label: string, color: string}> $areas
      */
-    public function forRoutes(array $polylines, string $mapType): ?string
+    public function render(array $routes, array $markers, array $areas, string $mapType): ?string
     {
         $params = [];
-        foreach ($polylines as $polyline) {
-            if (count($polyline) < 2) {
+
+        foreach ($areas as $area) {
+            if (count($area['polygon']) < 3) {
                 continue;
             }
-            $params[] = 'path=color:0x3388ffcc|weight:4|enc:' . rawurlencode(self::encodePolyline($polyline));
+
+            $closed = $area['polygon'];
+            $closed[] = $area['polygon'][0];
+            $strokeColor = '0x' . ltrim($area['color'], '#') . 'cc';
+            $fillColor = '0x' . ltrim($area['color'], '#') . '33';
+
+            $params[] = 'path=color:' . $strokeColor . '|weight:3|fillcolor:' . $fillColor
+                . '|enc:' . rawurlencode(self::encodePolyline($closed));
+
+            $centroid = self::polygonCentroid($area['polygon']);
+            $params[] = 'markers=color:0x' . ltrim($area['color'], '#') . '|label:' . rawurlencode($area['label'])
+                . '|' . rawurlencode($centroid['lat'] . ',' . $centroid['lng']);
+        }
+
+        foreach ($routes as $route) {
+            if (count($route['polyline']) < 2) {
+                continue;
+            }
+
+            $color = '0x' . ltrim($route['color'], '#') . 'cc';
+            $params[] = 'path=color:' . $color . '|weight:4|enc:' . rawurlencode(self::encodePolyline($route['polyline']));
+        }
+
+        foreach ($markers as $marker) {
+            $params[] = 'markers=color:red|label:' . rawurlencode($marker['label'])
+                . '|' . rawurlencode($marker['lat'] . ',' . $marker['lng']);
         }
 
         if ($params === []) {
             return null;
         }
-
-        return $this->fetch($params, $mapType);
-    }
-
-    public function forPoint(float $lat, float $lng, string $mapType): ?string
-    {
-        $params = [
-            'center=' . rawurlencode($lat . ',' . $lng),
-            'zoom=' . self::POI_ZOOM,
-            'markers=color:red|' . rawurlencode($lat . ',' . $lng),
-        ];
-
-        return $this->fetch($params, $mapType);
-    }
-
-    /**
-     * Area outline, drawn as a closed path so Static Maps renders it as a
-     * polygon; viewport auto-fit the same way forRoutes() is.
-     *
-     * @param array<int,array{lat:float,lng:float}> $polygon
-     */
-    public function forPolygon(array $polygon, string $mapType, string $color = '#00FF30'): ?string
-    {
-        if (count($polygon) < 3) {
-            return null;
-        }
-
-        $closed = $polygon;
-        $closed[] = $polygon[0];
-
-        $fillColor = '0x' . ltrim($color, '#') . '33';
-        $strokeColor = '0x' . ltrim($color, '#') . 'cc';
-
-        $params = [
-            'path=color:' . $strokeColor . '|weight:3|fillcolor:' . $fillColor . '|enc:' . rawurlencode(self::encodePolyline($closed)),
-        ];
 
         return $this->fetch($params, $mapType);
     }
@@ -153,6 +151,30 @@ final class StaticMapImageService
         }
 
         return $body;
+    }
+
+    /**
+     * Plain average of an area's own vertices - not a true geometric
+     * centroid for an irregular polygon, but good enough to place a
+     * number label roughly inside the shapes areas are drawn as here
+     * (small, close to convex, kayak-touring-scale polygons), without
+     * pulling in a full centroid-of-polygon-by-signed-area formula for a
+     * label position nobody needs pixel-perfect.
+     *
+     * @param list<array{lat: float, lng: float}> $polygon
+     * @return array{lat: float, lng: float}
+     */
+    private static function polygonCentroid(array $polygon): array
+    {
+        $latSum = 0.0;
+        $lngSum = 0.0;
+        foreach ($polygon as $point) {
+            $latSum += (float) $point['lat'];
+            $lngSum += (float) $point['lng'];
+        }
+        $count = count($polygon);
+
+        return ['lat' => $latSum / $count, 'lng' => $lngSum / $count];
     }
 
     /**

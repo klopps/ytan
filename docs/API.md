@@ -66,13 +66,18 @@ also takes `search` (matches name/description/creator username) and
 `min_length`/`max_length` (meters) filters, on top of the shared
 `limit`/`offset` from Pagination above.
 
-`GET /tours/{id}/document?maptype=hybrid|terrain|satellite` - generates and
-returns a PDF (`application/pdf`, as an attachment) containing the tour's
-own description/photos/map, one section per POI within 200m of any of the
-tour's routes, and one section per Area any route segment crosses (or
-starts/ends inside). Same visibility rule as `GET /tours/{id}/images/...`
-(public tour, or owner/admin/tour_manage). `maptype` defaults to `hybrid`;
-map images are omitted (not an error) if `MAPS_STATIC_API_KEY` isn't
+`GET /tours/{id}/document?poi_radius=200` - generates and returns a PDF
+(`application/pdf`, as an attachment): a tour overview section (name, total
+length, a table of each route's name/length, description, a map of every
+route combined), then one section per route (name, length, description, a
+map of just that route), each followed by a sub-entry for every POI within
+`poi_radius` meters of that route and every Area that route crosses (or
+starts/ends inside) - but only if the POI/Area has a description and/or at
+least one image. Same visibility rule as `GET /tours/{id}/images/...`
+(public tour, or owner/admin/tour_manage). `poi_radius` defaults to 200
+(must be a positive number). Maps always render as Terrain (Hybrid/
+Satellite are 403-rejected by the Static Maps API for EEA-region accounts).
+Map images are omitted (not an error) if `MAPS_STATIC_API_KEY` isn't
 configured or a Static Maps request fails.
 
 ## Users (admin only)

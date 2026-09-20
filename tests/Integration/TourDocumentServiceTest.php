@@ -12,6 +12,7 @@ use Ytan\Domain\Tour\TourRepository;
 use Ytan\Service\ImageStorageService;
 use Ytan\Service\StaticMapImageService;
 use Ytan\Service\TourDocumentService;
+use Ytan\Service\Translator;
 use Ytan\Tests\TestCase;
 
 /**
@@ -45,11 +46,12 @@ final class TourDocumentServiceTest extends TestCase
             $this->routes,
             $this->pois,
             $this->areas,
-            new ImageStorageService($imageDir . '/tour'),
             new ImageStorageService($imageDir . '/poi'),
             new ImageStorageService($imageDir . '/area'),
             new StaticMapImageService($imageDir . '/maps', ''),
             new GithubFlavoredMarkdownConverter(),
+            dirname(__DIR__, 2) . '/public/markers',
+            new Translator(dirname(__DIR__, 2) . '/resources/i18n', 'de'),
         );
     }
 
@@ -60,21 +62,31 @@ final class TourDocumentServiceTest extends TestCase
         ], $overrides));
     }
 
+    /**
+     * Defaults to a non-blank description so selectPois()'s "has content"
+     * filter doesn't need to be considered by every test that isn't
+     * specifically about that filter - tests exercising it override this.
+     */
     private function createPoi(int $userId, array $overrides = []): array
     {
         return $this->pois->create($userId, array_merge([
             'poitype_id' => 2,
             'name' => 'Poi ' . bin2hex(random_bytes(3)),
+            'description' => 'A test POI.',
             'latitude' => 54.0,
             'longitude' => 10.0,
             'public' => 0,
         ], $overrides));
     }
 
+    /**
+     * Defaults to a non-blank description - see createPoi().
+     */
     private function createArea(int $userId, array $overrides = []): array
     {
         return $this->areas->create($userId, array_merge([
             'name' => 'Area ' . bin2hex(random_bytes(3)),
+            'description' => 'A test area.',
             'public' => 0,
         ], $overrides));
     }
@@ -166,6 +178,53 @@ final class TourDocumentServiceTest extends TestCase
 
         $this->assertCount(1, $selected);
         $this->assertSame((int) $area['id'], (int) $selected[0]['id']);
+    }
+
+    public function testPoiNearARouteWithNeitherDescriptionNorImageIsNotSelected(): void
+    {
+        $userId = $this->createUser();
+        $tour = $this->createTour($userId);
+        $this->createPoi($userId, [
+            'latitude' => 54.001,
+            'longitude' => 10.005,
+            'description' => '',
+        ]);
+
+        $selected = $this->documents->selectPois($tour, [$this->straightRoutePolyline()]);
+
+        $this->assertCount(0, $selected);
+    }
+
+    public function testAreaCrossedByARouteWithNeitherDescriptionNorImageIsNotSelected(): void
+    {
+        $userId = $this->createUser();
+        $tour = $this->createTour($userId);
+        $this->createArea($userId, [
+            'description' => '',
+            'points' => json_encode([
+                ['lat' => 53.999, 'lng' => 10.004],
+                ['lat' => 53.999, 'lng' => 10.006],
+                ['lat' => 54.001, 'lng' => 10.006],
+                ['lat' => 54.001, 'lng' => 10.004],
+            ]),
+        ]);
+
+        $selected = $this->documents->selectAreas($tour, [$this->straightRoutePolyline()]);
+
+        $this->assertCount(0, $selected);
+    }
+
+    public function testPoiOutsideACustomRadiusIsNotSelected(): void
+    {
+        $userId = $this->createUser();
+        $tour = $this->createTour($userId);
+        // ~55m north of the route line - within the default 200m, but
+        // outside a custom, narrower radius.
+        $this->createPoi($userId, ['latitude' => 54.0005, 'longitude' => 10.005]);
+
+        $selected = $this->documents->selectPois($tour, [$this->straightRoutePolyline()], 20.0);
+
+        $this->assertCount(0, $selected);
     }
 
     public function testNoPoisOrAreasAreSelectedWhenTheTourHasNoRoutes(): void

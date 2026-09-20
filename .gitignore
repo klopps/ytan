@@ -38,3 +38,6 @@ Thumbs.db
 /android/.cxx/
 *.apk
 *.aab
+
+# Kartenbilder für Touren-Dokumente
+storage/static-maps-cache/*

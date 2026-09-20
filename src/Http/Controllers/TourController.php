@@ -18,7 +18,6 @@ final class TourController extends BaseController
     // Mirrored client-side by TOUR_PHOTO_MAX_COUNT (public/js/config.js) -
     // kept in sync manually, there being no shared config layer between PHP and JS.
     private const MAX_IMAGES_PER_TOUR = 9;
-    private const VALID_DOCUMENT_MAP_TYPES = ['hybrid', 'terrain', 'satellite'];
 
     public function __construct(
         private readonly TourRepository $tours,
@@ -274,12 +273,16 @@ final class TourController extends BaseController
         $tour = $this->tours->findById($tourId);
         $this->assertCanView($request->getAttribute('auth'), $tour);
 
-        $mapType = $request->getQueryParams()['maptype'] ?? 'hybrid';
-        if (!in_array($mapType, self::VALID_DOCUMENT_MAP_TYPES, true)) {
-            throw new ValidationException('maptype must be one of: ' . implode(', ', self::VALID_DOCUMENT_MAP_TYPES) . '.');
+        $poiRadius = TourDocumentService::DEFAULT_POI_PROXIMITY_METERS;
+        $poiRadiusParam = $request->getQueryParams()['poi_radius'] ?? null;
+        if ($poiRadiusParam !== null) {
+            if (!is_numeric($poiRadiusParam) || (float) $poiRadiusParam <= 0) {
+                throw new ValidationException('poi_radius must be a positive number.');
+            }
+            $poiRadius = (float) $poiRadiusParam;
         }
 
-        $pdf = $this->documents->generate($tourId, $mapType);
+        $pdf = $this->documents->generate($tourId, $poiRadius);
 
         $response->getBody()->write($pdf);
 
