@@ -147,3 +147,14 @@ ROUTELABEL_ZOOM_VISIBILITY[16] =       125;
 ROUTELABEL_ZOOM_VISIBILITY[17] =        75;
 ROUTELABEL_ZOOM_VISIBILITY[18] =        35;
 ROUTELABEL_ZOOM_VISIBILITY[19] =        15;
+
+// Below this zoom level, MeasureTool's own per-segment/cumulative distance
+// labels (route.js's editRouteBtnClick()/track-recorder.js's review flow,
+// both drive the same shared `measureTool` instance) are hidden - unlike
+// ROUTELABEL_ZOOM_VISIBILITY above, this is a single on/off cutoff rather
+// than a per-segment threshold table, since MeasureTool renders one label
+// per point with no built-in way to filter individual ones. Needed mainly
+// for a just-recorded GPS track (up to TRACK_SIMPLIFY_MAX_POINTS points,
+// track-recorder.js) - zoomed out enough to see the whole track, dozens of
+// overlapping distance labels are unreadable clutter, not useful detail.
+const MEASURETOOL_LABEL_MIN_ZOOM = 15;

@@ -25,6 +25,35 @@ class RouteTool extends MeasureTool {
     }
 }
 
+/**
+ * Shows/hides MeasureTool's own per-segment and cumulative distance labels
+ * depending on the current zoom (MEASURETOOL_LABEL_MIN_ZOOM, config.js) -
+ * todo.md's "Darstellung der Track-Aufzeichnung". Unlike route.js's
+ * showRouteLabels()/ROUTELABEL_ZOOM_VISIBILITY (per-segment, for already-
+ * saved routes rendered by our own code), MeasureTool is a vendored
+ * third-party tool with no per-segment filtering hook of its own - and its
+ * public setOption('showSegmentLength'/'showAccumulativeLength', ...) API
+ * turned out unsafe to call once the overlay has already attached: its
+ * _redrawOverlay() forces a synchronous draw() before the new overlay's
+ * label groups exist yet, throwing "Cannot read properties of undefined
+ * (reading 'selectAll')" (reproduced by zooming in during a review after
+ * having zoomed out first). Toggling the rendered <text> elements' own CSS
+ * display instead sidesteps that vendor bug entirely: RouteTool's own
+ * construction (below) never overrides showSegmentLength/
+ * showAccumulativeLength away from their default `true`, so the label
+ * groups are always created normally through the library's own working
+ * lifecycle, and this function only ever hides/shows DOM that already
+ * exists rather than asking the library to redraw anything.
+ */
+function updateMeasureToolLabelVisibility() {
+    const shouldShow = map.getZoom() >= MEASURETOOL_LABEL_MIN_ZOOM;
+    document.querySelectorAll(
+        'svg.measure-tool-svg-overlay .segment-text, svg.measure-tool-svg-overlay .node-text'
+    ).forEach((el) => {
+        el.style.display = shouldShow ? '' : 'none';
+    });
+}
+
 // Lights
 let light = new LightCharacteristic();
 
@@ -783,6 +812,16 @@ function initMap() {
         unit: MeasureTool.UnitTypeId.METRIC,
         index: null
     });
+    // MeasureTool's label <g> groups (.segment-text/.node-text) aren't in
+    // the DOM synchronously after start() - they're created when its
+    // overlay's draw() lifecycle callback first runs, which Maps schedules
+    // asynchronously. 'measure_change' is dispatched unconditionally on
+    // that very first draw (gmaps-measuretool.umd.js only skips it once
+    // _lastMeasure is already set to an unchanged result), and again on
+    // every later geometry edit - a reliable hook for (re)applying our
+    // zoom-based visibility right as soon as there's something to apply it
+    // to, without needing a call at every measureTool.start() call site.
+    measureTool.addListener('measure_change', updateMeasureToolLabelVisibility);
 
     if (zoomParam == null) {
         if (Number.isInteger(settings['zoom'])) {
@@ -822,6 +861,7 @@ function initMap() {
         saveSettings();
         renewVisibleRouteLabels();
         updatePoiClustering();
+        updateMeasureToolLabelVisibility();
     });
 
     // Desktop equivalent of findLongPressTarget()'s touch fallback below -
@@ -831,6 +871,21 @@ function initMap() {
     // area.js), so this needs no hit-testing of its own.
     map.addListener('rightclick', (event) => {
         showMapContextMenu(event.latLng);
+    });
+
+    // Closes the whole drawer on any click/tap inside the map area, whichever
+    // nav-screen it's currently drilled into (todo.md "Schließen des Menüs
+    // durch Klick auf Karte"). A native listener on the container div rather
+    // than map.addListener('click', ...) - Maps' own 'click' event doesn't
+    // fire for clicks on markers/polylines/polygons (those have their own
+    // separate 'click' listeners in poi.js/route.js/area.js), while a plain
+    // DOM click on #map bubbles up from all of them, so this catches every
+    // click inside the map area the same way regardless of what was hit.
+    document.getElementById("map").addEventListener('click', () => {
+        const sidemenu = document.getElementById("sidemenu");
+        if (sidemenu && sidemenu.style.marginLeft.charAt(0) === "0") {
+            closeMenu();
+        }
     });
 
     map.setClickableIcons(true);
