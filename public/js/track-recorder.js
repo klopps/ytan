@@ -974,10 +974,16 @@
                 '<div><span class="track-recorder-live-value">' + livePointCount + '</span><span class="track-recorder-live-label">' + t('trackrecorder.stat_points') + '</span></div>' +
             '</div>' +
             (isPaused
-                ? '<button type="button" class="button" onclick="resumeRecording();">' + t('trackrecorder.resume_button') + '</button>'
-                : '<button type="button" class="button" onclick="pauseRecording();">' + t('trackrecorder.pause_button') + '</button>') +
-            '<button type="button" class="button" onclick="stopRecording();">' + t('trackrecorder.stop_button') + '</button>' +
-            '<button type="button" class="button button-danger" onclick="discardRecording();">' + t('trackrecorder.discard_button') + '</button>';
+                ? '<button type="button" class="button" onclick="resumeRecording();"><i class="material-icons-round">play_arrow</i>&nbsp;' + t('trackrecorder.resume_button') + '</button>'
+                : '<button type="button" class="button" onclick="pauseRecording();"><i class="material-icons-round">pause</i>&nbsp;' + t('trackrecorder.pause_button') + '</button>') +
+            // A single-point track has no distance/duration between points to
+            // review - stopRecording() would hand saveRecordedTrackLocally() a
+            // 1-point track it can't sensibly draw as a line, so this stays
+            // disabled until there's at least a two-point segment. Pause and
+            // Verwerfen have no such requirement, they stay enabled from the
+            // first point onward.
+            '<button type="button" class="button" onclick="stopRecording();"' + (livePointCount < 2 ? ' disabled' : '') + '><i class="material-icons-round">stop_circle</i>&nbsp;' + t('trackrecorder.stop_button') + '</button>' +
+            '<button type="button" class="button button-danger" onclick="discardRecording();"><i class="material-icons-round">delete</i>&nbsp;' + t('trackrecorder.discard_button') + '</button>';
     }
 
     window.trackRecorderStartClicked = function () {
