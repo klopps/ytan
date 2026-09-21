@@ -51,6 +51,15 @@ if (!(isNaN(initialLat) || isNaN(initialLng))) {
     };
 }
 
+// Shared-tour link (tour-admin.js's shareTour()) - handled at the end of
+// initMap(), once the map itself is ready to show Tour Mode's badge/route
+// filter.
+let initialTourId = null;
+let tourParam = ytanUrl.searchParams.get("tour");
+if (tourParam !== null && !isNaN(parseInt(tourParam))) {
+    initialTourId = parseInt(tourParam);
+}
+
 let map;
 let mapInitialized = false; // set true at the end of initMap() - app.php's /auth/me callback checks this to tell whether it lost the race against Google Maps loading (see initMap()'s user.id !== null branch)
 let googleMapsScriptIsInjected = false;
@@ -839,6 +848,20 @@ function initMap() {
         initTrackRecorder(); // track-recorder.js - no-op outside the native Capacitor shell
     }
     initOfflineSync(); // offline-sync.js - unlike track-recorder.js, not native-only
+
+    // Landing here from a shareTour() link (tour-admin.js) - fetch the tour
+    // directly by id rather than waiting on tours[] (still loading async
+    // above, and wouldn't contain another user's private... well, public
+    // tour anyway unless it's already in scope=public). A 404 means the
+    // tour was deleted (or made private) since the link was shared.
+    if (initialTourId !== null) {
+        Ytan.get('/tours/' + initialTourId).then(answer => {
+            activateTourMode(answer.data.id, answer.data.name);
+        }).catch(err => {
+            log('shared tour link - tour ' + initialTourId + ' could not be loaded', LOG_WARN, err);
+            showToast(t('tour_admin.share_link_tour_not_found'), 'error');
+        });
+    }
 }
 
 function panToGeolocation() {

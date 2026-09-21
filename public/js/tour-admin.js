@@ -386,6 +386,15 @@ function renderTourDetail(tour, routesInTour) {
     }
     html += '<div class="button" onclick="downloadTourDocument(' + tour.id + ');"><i class="material-icons-round">picture_as_pdf</i>&nbsp;' + t('tour_admin.download_document') + '</div>';
 
+    // Only a published tour has a meaningful shareable link - a private
+    // one would 404 (or worse, leak content) for whoever opens it, since
+    // TourController::show() has no owner/admin check of its own to fall
+    // back on.
+    if (tour.public == 1) {
+        var shareTourCall = 'shareTour(' + tour.id + ', ' + JSON.stringify(tour.name) + ');';
+        html += '<div class="button" onclick="' + escapeHTML(shareTourCall) + '"><i class="material-icons-round">share</i>&nbsp;' + t('tour_admin.share') + '</div>';
+    }
+
     html += '</div></div>';
 
     document.getElementById('touradminmenu-body').innerHTML = html;
@@ -1172,5 +1181,34 @@ async function downloadTourDocument(tourId) {
         await downloadBlob(blob, 'tour-' + tourId + '.pdf');
     } catch (err) {
         showToast(t('tour_admin.document_generation_failed', { error: err.message }), 'error');
+    }
+}
+
+/**
+ * "Share" button on the tour detail screen (public tours only, see
+ * renderTourDetail()) - builds a link that, when opened, lands on YTAN with
+ * Tour Mode automatically activated for this tour (see the "?tour=" param
+ * handling in map-core.js's initMap()). Mirrors shareMap()'s Web Share API
+ * / clipboard-copy fallback, but uses location.origin instead of
+ * location.hostname so a non-default port survives the round trip (unlike
+ * shareMap(), whose own URL-building predates this and is left as-is here).
+ *
+ * @param {number} id
+ * @param {string} name
+ */
+function shareTour(id, name) {
+    var tourUrl = window.location.origin + window.location.pathname + '?tour=' + id;
+
+    if (navigator.share) {
+        navigator.share({
+            title: 'YTAN',
+            text: t('tour_admin.share_text', { name: name }),
+            url: tourUrl,
+        })
+            .then(() => log('shareTour(' + id + ') - successfull', LOG_INFO))
+            .catch((error) => log('shareTour(' + id + ') - error', LOG_ERROR, error));
+    } else {
+        copyTextToClipboard(tourUrl);
+        showToast(t('map.link_copied'), 'success');
     }
 }
