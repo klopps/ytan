@@ -42,8 +42,12 @@ final class GeocodingService
     private const COORD_PRECISION = 3;
 
     // Place names essentially never change - a long TTL keeps real load on
-    // Nominatim's shared, rate-limited service minimal.
-    private const CACHE_TTL_SECONDS = 30 * 24 * 3600;
+    // Nominatim's shared, rate-limited service minimal. Public: also read by
+    // bin/cleanup-file-caches.php (via FileCacheCleanupService) as the age
+    // past which a cache file is dead weight - readCache() below already
+    // treats it as a miss at that age, so there's nothing left to gain by
+    // keeping the file around any longer.
+    public const CACHE_TTL_SECONDS = 30 * 24 * 3600;
 
     // Nominatim's own "zoom" parameter for reverse geocoding: how detailed
     // the matched feature should be (3=country, 10=city, 14=suburb/hamlet,

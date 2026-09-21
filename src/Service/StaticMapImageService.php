@@ -28,6 +28,15 @@ final class StaticMapImageService
     private const SCALE = 2;
     private const VALID_MAP_TYPES = ['hybrid', 'terrain', 'satellite'];
 
+    // Unlike GeocodingService's CACHE_TTL_SECONDS, this is NOT a freshness
+    // TTL - a cached image is content-addressed by its full query string
+    // (see fetch() below), so it never goes stale on its own; a route/area
+    // edit simply produces a new hash and leaves the old file orphaned
+    // rather than invalidating it. This is purely a disk-retention window
+    // for bin/cleanup-file-caches.php (via FileCacheCleanupService) to
+    // reclaim space from images no tour document will ever request again.
+    public const CACHE_MAX_AGE_SECONDS = 90 * 24 * 3600;
+
     public function __construct(
         private readonly string $cacheDir,
         private readonly string $apiKey,
