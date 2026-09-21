@@ -1,5 +1,9 @@
 # Offene Punkte
 
+## Darstellung der Track-Aufzeichnung
+
+Wenn man die Track-Aufzeichnung beendet, wird der Track inkl. Entfernungsangaben zwischen den Punkte dargestellt, egal wie der Zoomfaktor ist. Das führt dazu das man den Track evtl. nicht erkennen kann, sondern nur einen Wust von Zahlen sieht. Nach der Track-Aufzeichnung soll der Track abhängig von der Zoomstufe mit oder ohne Entfernungsangaben dargestellt werden.
+
 ## Standards für alle Gestaltungselemente festlegen
 
 An verschiedenen Stellen sind die Gestaltungselemente wie Buttons, Inputfelder, Schalter, Hinweistexte etc. unterschiedlich gestaltet. Das muss einheitlich gestaltet werden. Dazu soll im Admin-Bereich eine Beispielseite aufgebaut werden, auf der möglichst alle Elemente vertreten sind, um die Gestaltung vergleichen zu können und schließlich anzugleichen. Ein Vorbild ist das Bootstrap Cheatsheet. Es kann sein, dass einige der folgenden Elemente noch gar nicht zum Einsatz kommen.
@@ -156,6 +160,10 @@ Alle Dialoge/Bildschirme unter echter Mobile-Emulation (412×915) durchgetestet.
 
 
 # Erledigt
+
+## Teilen-Dialog in der Android-App (2026-09-21)
+
+~~Wenn ich in der Android-App eine Kartenansicht oder Tour teile, wird der Link nur in die Zwischenablage kopiert und kein Teilendialog aufgerufen.~~ Gelöst (2026-09-21): `shareMap()` (`map-core.js`) und `shareTour()` (`tour-admin.js`, siehe unten) versuchten zuerst die Web-Share-API (`navigator.share`), erst wenn die nicht existiert die Zwischenablage-Kopie. Innerhalb der Capacitor-Android-Hülle existiert `navigator.share` zwar als Funktion, öffnet dort aber nachweislich keinen echten nativen Dialog, sondern fällt fehlschlagend auf den Zwischenablage-Zweig durch - dieselbe Art Problem wie beim PDF-Download (`downloadBlob()`), wo ein `<a download>`-Klick im WebView ebenfalls stillschweigend wirkungslos bleibt und stattdessen `CapacitorBridge.saveAndShareFile()` (das bereits gebündelte `@capacitor/share`-Plugin) verwendet wird. Neue `CapacitorBridge.shareLink(url, title, text)` (`capacitor-bridge.js`) nutzt dasselbe `Share`-Plugin für einen reinen Link statt einer Datei; `shareMap()`/`shareTour()` prüfen jetzt zuerst `CapacitorBridge.isAvailable()` (öffnet dort den echten nativen Android-Teilen-Dialog), erst danach `navigator.share` (normale Browser/PWA), erst danach die Zwischenablage - dieselbe Prioritätsreihenfolge wie `downloadBlob()`. In einem normalen Browser bleibt `CapacitorBridge.isAvailable()` `false` (kein `window.Capacitor`), das bisherige Verhalten dort ist unverändert (in Chromium verifiziert: unveränderter `navigator.share`/Zwischenablage-Ablauf). Keine Backend-Änderung, PHPUnit weiterhin grün (311 Tests). Die native `Share`-Plugin-Route selbst konnte nicht auf einem echten Android-Gerät nachgestellt werden (kein Gerät in dieser Session verfügbar) - beruht auf `saveAndShareFile()`s bereits real-geräte-verifiziertem Einsatz desselben Plugins für Dateien.
 
 ## Share Tour (2026-09-21)
 

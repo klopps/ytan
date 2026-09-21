@@ -138,6 +138,28 @@ const CapacitorBridge = (function () {
         });
     }
 
+    /**
+     * Shares a plain URL (a map/tour deep link, see shareMap()/shareTour()
+     * in map-core.js/tour-admin.js) via Android's native share sheet.
+     * navigator.share (the Web Share API) does exist inside the WebView,
+     * but proved unreliable there in practice - confirmed on a real device,
+     * it silently fell through to the clipboard-copy fallback instead of
+     * ever opening a share dialog, the same class of "quietly a no-op
+     * instead of the real native behavior" problem as downloadBlob()'s
+     * <a download> click above. The Share plugin used by
+     * saveAndShareFile() already works reliably for files, so it's used
+     * here for a plain link too rather than trusting navigator.share.
+     * @param {string} url
+     * @param {string} title
+     * @param {string} text
+     */
+    function shareLink(url, title, text) {
+        if (!Share) {
+            return Promise.reject(new Error('Share plugin not available'));
+        }
+        return Share.share({ title: title, text: text, url: url, dialogTitle: title });
+    }
+
     // Memoized (not re-fetched per call) since api-client.js's
     // appVersionHeader() awaits this on every single API request - the
     // installed APK's versionCode can't change during a running session,
@@ -174,6 +196,7 @@ const CapacitorBridge = (function () {
         checkLocationPermissionStatus: checkLocationPermissionStatus,
         openAppSettings: openAppSettings,
         saveAndShareFile: saveAndShareFile,
+        shareLink: shareLink,
         getAppVersionCode: getAppVersionCode,
     };
 })();
