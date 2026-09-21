@@ -209,16 +209,20 @@ function updateAdminMenuVisibility() {
 }
 
 /**
- * Shows/hides the sidemenu's "Pending changes" entry based on sign-in state.
- * A signed-out user can't create offline changes in the first place
+ * Shows/hides the sidemenu's "Pending changes" entry based on sign-in state
+ * AND on offline-sync.js's pendingChangesCache actually holding something -
+ * showing an always-visible row for an empty queue was itself the
+ * complaint (todo.md), on top of the original signed-out case: a
+ * signed-out user can't create offline changes in the first place
  * (savePoi()/saveRoute()/saveArea() all require a logged-in user before
- * queuing anything in offline-sync.js), so the row is pointless noise for
- * them - hidden by default in the markup, same fail-closed pattern as
- * updateAdminMenuVisibility(). Called from the same places as that
- * function.
+ * queuing anything in offline-sync.js). Hidden by default in the markup,
+ * same fail-closed pattern as updateAdminMenuVisibility(). Called from the
+ * same places as that function, plus offline-sync.js's
+ * refreshPendingChanges() (the queue can change without a login/logout in
+ * between).
  */
 function updatePendingChangesMenuVisibility() {
-    document.getElementById('pendingChangesMenuRow').style.display = user.id !== null ? '' : 'none';
+    document.getElementById('pendingChangesMenuRow').style.display = (user.id !== null && pendingChangesCache.length > 0) ? '' : 'none';
 }
 
 /**

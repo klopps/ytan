@@ -75,6 +75,33 @@ function escapeHTML(unsafe) {
          .replace(/'/g, "&#039;");
  }
 
+/**
+ * Decodes HTML entities in plain text (e.g. "&quot;" -> '"') without ever
+ * executing markup - some POI/area names imported from the old PESR system
+ * already contain a literal entity baked into the stored name itself
+ * instead of the real character (see todo.md "Touren-Dokument:
+ * HTMLSpecialchars", the same root cause fixed server-side in
+ * TourDocumentService::esc()). Most of the SPA displays names via a raw
+ * HTML string that ends up parsed through innerHTML, so the browser
+ * decodes such an already-escaped name for free the same way it decodes
+ * ordinary markup - but a spot that assigns a name straight to
+ * `.textContent` (e.g. the map search dropdown) never goes through an HTML
+ * parser at all, so the literal entity text leaks through undecoded. Uses
+ * a detached <textarea> rather than an actual innerHTML assignment on a
+ * rendered element: a textarea's content is parsed as plain text (no
+ * markup execution), and its `.value` after that parse is exactly the
+ * decoded string, once, without also decoding a legitimate literal "&"
+ * that was never meant as the start of an entity.
+ *
+ * @param {string} text
+ * @returns {string}
+ */
+function decodeHtmlEntities(text) {
+    const el = document.createElement('textarea');
+    el.innerHTML = text;
+    return el.value;
+}
+
 
 const DIACRITIC_FOLD_MAP = {
     'æ': 'ae', 'œ': 'oe', 'ø': 'o', 'ß': 'ss',

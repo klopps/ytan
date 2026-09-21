@@ -988,7 +988,7 @@ function renderSearchDropdown() {
             item.appendChild(icon);
 
             const label = document.createElement('span');
-            label.textContent = poi.name;
+            label.textContent = decodeHtmlEntities(poi.name);
             item.appendChild(label);
 
             item.addEventListener('mousedown', (event) => {
@@ -1093,7 +1093,7 @@ function selectSearchPoi(poiId) {
     if (i === -1) return;
 
     resetSearchState();
-    document.getElementById('mapSearchInput').value = pois[i].name;
+    document.getElementById('mapSearchInput').value = decodeHtmlEntities(pois[i].name);
 
     zoomToMaxAndPan({ latLng: new google.maps.LatLng(pois[i].latitude, pois[i].longitude) });
     showPoiInfoWindow(null, i, markers[pois[i].id]);

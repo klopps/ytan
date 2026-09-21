@@ -4121,6 +4121,18 @@ input[type="color"] {
   flex-shrink: 0;
 }
 
+/* #pendingChangesMenuRow only appears at all once there's something
+   pending (see updatePendingChangesMenuVisibility()), so it's always
+   shown in its "attention" state - icon and label text in --color-danger,
+   which already has a dedicated dark-mode value tuned for contrast on a
+   dark panel background rather than just reusing the light one. The
+   count badge (.nav-menu-row-sub) keeps its own faint color, since that
+   selector's specificity already wins over this inherited one. */
+#pendingChangesMenuRow .nav-menu-row-icon,
+#pendingChangesMenuRow .nav-menu-row-labels {
+  color: var(--color-danger);
+}
+
 .nav-divider {
   height: 1px;
   background: var(--color-border-subtle);

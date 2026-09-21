@@ -245,6 +245,7 @@ function refreshPendingChanges() {
         entries.sort(function (a, b) { return b.queuedAt - a.queuedAt; }); // newest first
         pendingChangesCache = entries;
         updatePendingChangesRowSub();
+        updatePendingChangesMenuVisibility(); // user.js - loaded before this ever runs (initOfflineSync() fires from initMap(), well after all page scripts)
         renderPendingChangesScreen();
     });
 }
