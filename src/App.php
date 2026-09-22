@@ -287,12 +287,14 @@ final class App
         $app->get('/api/v1/geocode/reverse', [$geocodingController, 'reverse']);
 
         $app->put('/api/v1/settings/google-search-requires-login', [$settingsController, 'updateGoogleSearchRequiresLogin']);
+        $app->put('/api/v1/settings/track-distance-filter', [$settingsController, 'updateTrackDistanceFilterPresets']);
 
         $app->get('/', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $settingsRepository, $translator) {
             ob_start();
             $mapsApiKey = $_ENV['MAPS_API_KEY'] ?? '';
             $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
             $googleSearchRequiresLogin = $settingsRepository->googleSearchRequiresLogin();
+            $trackDistanceFilterPresets = $settingsRepository->trackDistanceFilterPresets();
             $appVersion = 'dev';
             $versionFile = $rootDir . '/VERSION';
             if (is_file($versionFile)) {
@@ -458,6 +460,7 @@ final class App
             $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
             $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
             $googleSearchRequiresLogin = $settingsRepository->googleSearchRequiresLogin();
+            $trackDistanceFilterPresets = $settingsRepository->trackDistanceFilterPresets();
             require $rootDir . '/templates/admin-settings.php';
             $res->getBody()->write(ob_get_clean());
 

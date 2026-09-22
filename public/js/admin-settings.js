@@ -15,6 +15,23 @@ function toggleGoogleSearchRequiresLogin(checkbox) {
     });
 }
 
+function saveTrackDistanceFilterPresets() {
+    var btn = document.getElementById('settingTrackFilterSaveBtn');
+    var body = {
+        precise: parseInt(document.getElementById('settingTrackFilterPrecise').value, 10),
+        balanced: parseInt(document.getElementById('settingTrackFilterBalanced').value, 10),
+        battery: parseInt(document.getElementById('settingTrackFilterBattery').value, 10)
+    };
+    btn.disabled = true;
+    Ytan.put('/settings/track-distance-filter', body).then(function () {
+        showAdminToast(t('common.saved'), 'success');
+    }).catch(function (err) {
+        showAdminToast(t('common.save_failed', { error: err.message }), 'error');
+    }).finally(function () {
+        btn.disabled = false;
+    });
+}
+
 function initSettingsPage() {
     document.getElementById('settingGoogleSearchRequiresLogin').addEventListener('change', function () {
         toggleGoogleSearchRequiresLogin(this);

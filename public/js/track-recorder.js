@@ -20,8 +20,14 @@
     // The only tunable lever this plugin's API exposes for battery/update
     // frequency (see capacitor-bridge.js/todo.md) - three user-chosen
     // presets rather than one fixed value, persisted like any other
-    // preference (settings.js).
-    const TRACK_DISTANCE_FILTER_PRESETS = { precise: 20, balanced: 50, battery: 100 };
+    // preference (settings.js). The meter values themselves are now
+    // admin-configurable (/admin/settings, SettingsController/
+    // SettingsRepository) rather than hardcoded here - templates/app.php
+    // injects the current values as window.YTAN_TRACK_DISTANCE_FILTER_PRESETS,
+    // same pattern as window.YTAN_GOOGLE_SEARCH_REQUIRES_LOGIN. The literal
+    // object here is only a fallback for the (should-never-happen) case of
+    // that global being missing.
+    const TRACK_DISTANCE_FILTER_PRESETS = window.YTAN_TRACK_DISTANCE_FILTER_PRESETS || { precise: 20, balanced: 50, battery: 100 };
     // Always applied to a finished recording (see simplifyTrackPoints()) -
     // starts with a few meters of tolerance to drop redundant
     // near-collinear points, then escalates until the point count fits
