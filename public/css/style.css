@@ -190,6 +190,18 @@ hr {
      event, not a CSS-driven container resize like this one. */
   height: calc(100% - var(--top-banner-offset));
   display: none;
+  /* iOS (Safari and Chrome - both WebKit under the hood) has its own native
+     long-press gesture on an <img> (Google Maps tiles are plain <img>
+     elements) that opens a "Save Image"/"Copy" callout - confirmed on a real
+     iOS Chrome device that this wins the race against map-core.js's own JS
+     long-press timer (initLongPressTouchTracking()), showing the native
+     sheet instead of our context menu. That JS mechanism already has a
+     fallback for the DOM 'contextmenu' event firing early, but this native
+     callout is a separate WebKit UI path that doesn't go through
+     'contextmenu' at all, so preventDefault() there can't stop it. Disabling
+     the callout here is the actual fix, same technique already used on
+     .track-recording-badge for the same reason. */
+  -webkit-touch-callout: none;
 }
 
 /* Persistent "please update the app" notice, templates/app.php -
