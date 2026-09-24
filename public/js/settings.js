@@ -125,7 +125,19 @@ function loadSettings() {
     var settingsString = getCookie('settings');
 
     if (settingsString != '') {
-        settings = Object.assign({}, settings, JSON.parse(settingsString));
+        // A malformed/corrupted "settings" cookie (e.g. left over from an
+        // incompatible older version, or hand-edited) must not crash
+        // initMap() outright via an uncaught JSON.parse() - same defensive
+        // reasoning as applyStoredTheme() below uses for the exact same
+        // cookie. On failure, `settings` simply keeps its already-
+        // initialized defaults (map-core.js's own `settings` object
+        // literal) rather than merging anything - every line below then
+        // reads from those defaults.
+        try {
+            settings = Object.assign({}, settings, JSON.parse(settingsString));
+        } catch (err) {
+            log('loadSettings() failed to parse the settings cookie - using defaults', LOG_WARN, err);
+        }
 
         document.getElementById('detail0').checked = settings['detail0'];
         document.getElementById('detail1').checked = settings['detail1'];

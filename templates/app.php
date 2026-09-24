@@ -10,6 +10,20 @@
     <script>window.YTAN_TRACK_DISTANCE_FILTER_PRESETS = <?= json_encode($trackDistanceFilterPresets) ?>;</script>
     <script>window.YTAN_LOCALE = "<?= htmlspecialchars($translator->locale(), ENT_QUOTES) ?>";</script>
     <script>window.YTAN_TRANSLATIONS = <?= json_encode($translator->all(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;</script>
+    <!-- Must be declared before applyStoredTheme() runs below (right after
+         <body> opens) - that call's own catch block logs via log()
+         (settings.js), which reads this global. It used to be declared much
+         later instead (in the main bootstrap <script>, well after </body>'s
+         opening splash-screen script), which worked only as long as
+         applyStoredTheme()'s try block never actually threw; a genuinely
+         malformed/corrupted "settings" cookie hits that catch block and
+         crashes on "logLevel is not defined" instead of just logging a
+         warning - the exception then aborts the rest of that inline
+         <script>, so initSplashScreen() (the very next statement) never
+         runs either, leaving the splash screen stuck forever. Matches the
+         pattern templates/partials/admin-shell-header.php already used
+         correctly. -->
+    <script>let logLevel = <?= (int) $logLevel ?>;</script>
 
     <script src="./lib/measuretool-googlemap-v3/gmaps-measuretool.umd.js?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/measuretool-googlemap-v3/gmaps-measuretool.umd.js') ?>"></script>
     <script src="./lib/marked/marked.min.js?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/marked/marked.min.js') ?>"></script>
@@ -491,7 +505,8 @@
     </div>
 
     <script>
-      let logLevel = <?= (int) $logLevel ?>;
+      // logLevel is now declared in <head> (see its own comment there) -
+      // needed before applyStoredTheme() runs, further up, not here.
 
       // applyStoredTheme() already ran earlier, right after <body> opened
       // (see the splash screen script above) - not repeated here.

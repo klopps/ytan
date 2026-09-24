@@ -14,6 +14,16 @@ let pendingRouteRecordingMeta = null;
 // even failed or succeeded.
 let routeSaveInProgress = false;
 
+// Keyed by a new route's local placeholder id (offline-sync.js's
+// generateLocalId(), negative) - saveRoute() records {tourId, tourName}
+// here when Tour Mode is active at the moment a brand-new route is created,
+// since the route doesn't have a real server id yet to attach to a tour
+// with (see addSavedRouteToMap()'s id > 0 guard). reconcileRouteLocalId()
+// consumes the entry once the real id comes back from sync and performs the
+// actual attach then, using the tour captured HERE rather than whatever
+// Tour Mode happens to be active by the time sync completes.
+let pendingNewRouteTourAttachments = {};
+
 /**
  * "3:24 h" / "48 min" - used by showRouteInfoWindow() for a GPS-recorded
  * route's recording_duration_seconds.
@@ -231,21 +241,29 @@ function closeRouteEditWindow() {
 
 /**
  * Inserts a brand-new (never-before-saved) route into routes[]/the map -
- * shared by saveRoute()'s own success handler (id === null branch) and
- * track-recorder.js's uploadPendingTrack(), which reaches this same "just
- * got a server id back for a brand-new route" moment via a completely
- * different call path (a background sync, not a live saveRoute() call).
+ * shared by three callers: saveRoute()'s own local-first path (routeData.id
+ * is still a negative offline-sync.js placeholder there, not a real id
+ * yet), track-recorder.js's uploadPendingTrack(), and restoreRouteFromServer()
+ * (the latter two already have the real server-assigned id at this point,
+ * reached via a background sync rather than a live saveRoute() call).
+ *
+ * The `routeData.id > 0` guard below is what makes this safe to share: only
+ * a real id can be attached to a tour server-side (POST /tours/{id}/routes
+ * 400s on anything else), so saveRoute()'s not-yet-synced placeholder-id
+ * case is deliberately skipped here rather than firing early with a
+ * doomed-to-fail id - reconcileRouteLocalId() performs the attach for that
+ * case instead, once sync actually hands back the real id (see
+ * pendingNewRouteTourAttachments above).
  *
  * @param {object} routeData Full route payload, points already a plain
- *   array (not the JSON string saveRoute()/uploadPendingTrack() POST) and
- *   id already the server-assigned one.
+ *   array (not the JSON string saveRoute()/uploadPendingTrack() POST).
  * @returns {number} the new index in routes[]
  */
 function addSavedRouteToMap(routeData) {
     var index = routes.push(routeData) - 1;
     log('new index: ' + index, LOG_INFO);
 
-    if (activeTourModeId !== null) {
+    if (activeTourModeId !== null && routeData.id > 0) {
         addNewRouteToActiveTour(routeData.id);
     }
 
@@ -355,6 +373,14 @@ function saveRoute(i) {
         expected_updated_at: previousUpdatedAt
     });
     var localRouteData = Object.assign({}, routeData, { id: clientId, points: points });
+
+    // Captured now (not read again once sync actually completes) so a Tour
+    // Mode change/exit in between doesn't silently redirect - or drop - the
+    // attach; see reconcileRouteLocalId() and pendingNewRouteTourAttachments'
+    // own doc comment above.
+    if (isNew && activeTourModeId !== null) {
+        pendingNewRouteTourAttachments[clientId] = { tourId: activeTourModeId, tourName: activeTourModeName };
+    }
 
     var index;
     if (isNew) {
@@ -473,6 +499,12 @@ function removeRouteOverlayAt(i) {
  * create already uses. serverData is the full re-fetched row the API
  * always responds with (points still JSON-encoded, like any other route
  * fetch - parsed here same as everywhere else in this file).
+ *
+ * Also called for a plain edit's sync (clientId already the real id there -
+ * see uploadPendingChange()), which is why the pendingNewRouteTourAttachments
+ * lookup below is safe unconditionally: only saveRoute()'s new-route path
+ * ever populates it, always keyed by a negative placeholder id, so an
+ * edit's real, positive clientId can never match an entry.
  */
 function reconcileRouteLocalId(clientId, realId, serverData) {
     var index = routes.findIndex(function (r) { return r && r.id === clientId; });
@@ -483,6 +515,12 @@ function reconcileRouteLocalId(clientId, realId, serverData) {
     serverData.points = JSON.parse(serverData.points);
     routes[index] = serverData;
     createRoute(index);
+
+    var pendingTourAttachment = pendingNewRouteTourAttachments[clientId];
+    if (pendingTourAttachment) {
+        delete pendingNewRouteTourAttachments[clientId];
+        attachRouteToTour(realId, pendingTourAttachment.tourId, pendingTourAttachment.tourName);
+    }
 }
 
 /**
@@ -1119,6 +1157,16 @@ function showRouteContextMenu(event, i) {
                 content += '<div class="contextMenuItem" onClick="routeContextMenuAddToTour(' + i + ');"><i class="material-icons-round">playlist_add</i>' + t('route.context.add_to_tour') + '</div>';
             }
 
+            // Same gating as tour-admin.js's "Share" button on the tour
+            // detail screen (tour.public == 1) - a private route's data is
+            // technically still fetchable by a direct GET /routes/{id} (no
+            // assertCanView() there, same pre-existing inconsistency the
+            // Share Tour feature already left alone), but offering a share
+            // link for something not meant to be public would be misleading.
+            if (routes[i].public == 1) {
+                content += '<div class="contextMenuItem" onClick="shareRoute(' + i + ');"><i class="material-icons-round">share</i>' + t('route.context.share') + '</div>';
+            }
+
             content +=
                 '<div class="contextMenuItem" onClick="routeContextMenuRemoveRoute(' + i + ');"><i class="material-icons-round">delete</i>' + t('route.context.delete_route') + '</div>' +
                 '<div class="contextMenuItem" onClick="closeContextMenu();"><i class="material-icons-round">close</i>' + t('common.cancel') + '</div>'
@@ -1173,6 +1221,44 @@ function routeContextMenuAddToTour(i) {
 function routeContextMenuRemoveRoute(i) {
     closeContextMenu();
     removeRoute(i);
+}
+
+/**
+ * "Share" item in a route's right-click context menu (public routes only,
+ * see showRouteContextMenu()) - builds a link that, when opened, zooms/pans
+ * the map to fit this one route (see the "?route=" param handling in
+ * map-core.js's initMap()/fitMapToRoutePoints()). Mirrors tour-admin.js's
+ * shareTour() (Web Share API / clipboard-copy fallback, CapacitorBridge
+ * first inside the native Android shell) rather than introducing a shared
+ * helper for what's currently three near-identical functions (shareMap(),
+ * shareTour(), this one) - each already has its own slightly different
+ * share text and no behavioral logic worth deduplicating. Unlike shareTour()
+ * (a plain button on the Tours panel), this is itself a context-menu item,
+ * so - like every other item in showRouteContextMenu() - it closes the menu
+ * first rather than leaving it open behind whatever share UI comes next.
+ *
+ * @param {number} i index of the route in routes[]
+ */
+function shareRoute(i) {
+    closeContextMenu();
+    var routeUrl = window.location.origin + window.location.pathname + '?route=' + routes[i].id;
+
+    if (typeof CapacitorBridge !== 'undefined' && CapacitorBridge.isAvailable()) {
+        CapacitorBridge.shareLink(routeUrl, 'YTAN', t('route.context.share_text', { name: routes[i].name }))
+            .then(() => log('shareRoute(' + i + ') - successfull', LOG_INFO))
+            .catch((error) => log('shareRoute(' + i + ') - error', LOG_ERROR, error));
+    } else if (navigator.share) {
+        navigator.share({
+            title: 'YTAN',
+            text: t('route.context.share_text', { name: routes[i].name }),
+            url: routeUrl,
+        })
+            .then(() => log('shareRoute(' + i + ') - successfull', LOG_INFO))
+            .catch((error) => log('shareRoute(' + i + ') - error', LOG_ERROR, error));
+    } else {
+        copyTextToClipboard(routeUrl);
+        showToast(t('map.link_copied'), 'success');
+    }
 }
 
 function showRouteInfoWindow(event, i) {
@@ -1365,15 +1451,35 @@ function addRouteToTourFromPopupAsNewTour(i) {
 }
 
 /**
+ * Auto-attaches a just-created route (real server id required - see
+ * addSavedRouteToMap()'s id > 0 guard) to a tour, with the same success/
+ * failure toasts either way. Factored out of addNewRouteToActiveTour() so
+ * reconcileRouteLocalId() can reach it with a tour captured earlier (not
+ * necessarily still the active one) via pendingNewRouteTourAttachments.
+ *
+ * Named attachRouteToTour(), not addRouteToTour() - tour-admin.js already
+ * defines a global addRouteToTour(routeId) of its own (the Tours panel's
+ * route-membership manager, a completely different, purely local buffer
+ * edit with no network call) - since nothing in this app is module-scoped,
+ * a same-named function here would have silently replaced it once
+ * tour-admin.js loads after route.js (see templates/app.php's script
+ * order), breaking that feature.
+ */
+function attachRouteToTour(routeId, tourId, tourName) {
+    Ytan.post('/tours/' + tourId + '/routes', { route_id: routeId }).then(() => {
+        showToast(t('route.added_to_active_tour', { tour: tourName }), 'success');
+    }).catch(err => showToast(t('route.active_tour_add_failed', { error: err.message }), 'error'));
+}
+
+/**
  * Auto-attaches a just-created route to the active Tour Mode tour
- * (tour.js's activeTourModeId/activeTourModeName) - saveRoute() calls this
- * right after a successful POST /routes, never on an edit (PUT) of an
- * existing route.
+ * (tour.js's activeTourModeId/activeTourModeName) - called by
+ * addSavedRouteToMap() when routeData already carries a real server id
+ * (a finished GPS-track upload, or a conflict-resolution restore), never
+ * on an edit (PUT) of an existing route.
  */
 function addNewRouteToActiveTour(routeId) {
-    Ytan.post('/tours/' + activeTourModeId + '/routes', { route_id: routeId }).then(() => {
-        showToast(t('route.added_to_active_tour', { tour: activeTourModeName }), 'success');
-    }).catch(err => showToast(t('route.active_tour_add_failed', { error: err.message }), 'error'));
+    attachRouteToTour(routeId, activeTourModeId, activeTourModeName);
 }
 
 function editRoute(i, lat, lng) {
@@ -1429,5 +1535,28 @@ function fitToRouteBounds() {
         new google.maps.LatLng(minLat, minLng),
         new google.maps.LatLng(maxLat, maxLng)
     );
+    map.fitBounds(bounds);
+}
+
+/**
+ * Zooms/pans the map to fit one specific route's points, without touching
+ * whatever's currently in routes[] - used for a shared-route link landing
+ * (map-core.js's initMap(), "?route=" param, mirrors the "?tour=" handling
+ * right above it there). Deliberately takes a plain points array rather
+ * than a routes[] index: the linked route may not even be part of routes[]
+ * yet (still loading async via getPublicRoutes()/getRoutesByUserId()), same
+ * reasoning as shareTour()'s landing fetching the tour directly by id
+ * instead of waiting on tours[].
+ *
+ * @param {Array<{lat: number, lng: number}>} points
+ */
+function fitMapToRoutePoints(points) {
+    if (!points || points.length === 0) {
+        return;
+    }
+    var bounds = new google.maps.LatLngBounds();
+    for (var p = 0; p < points.length; p++) {
+        bounds.extend(new google.maps.LatLng(points[p].lat, points[p].lng));
+    }
     map.fitBounds(bounds);
 }

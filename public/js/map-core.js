@@ -89,6 +89,14 @@ if (tourParam !== null && !isNaN(parseInt(tourParam))) {
     initialTourId = parseInt(tourParam);
 }
 
+// Shared-route link (route.js's shareRoute()) - handled at the end of
+// initMap() alongside the tour case above, once the map itself is ready.
+let initialRouteId = null;
+let routeParam = ytanUrl.searchParams.get("route");
+if (routeParam !== null && !isNaN(parseInt(routeParam))) {
+    initialRouteId = parseInt(routeParam);
+}
+
 let map;
 let mapInitialized = false; // set true at the end of initMap() - app.php's /auth/me callback checks this to tell whether it lost the race against Google Maps loading (see initMap()'s user.id !== null branch)
 let googleMapsScriptIsInjected = false;
@@ -915,6 +923,20 @@ function initMap() {
         }).catch(err => {
             log('shared tour link - tour ' + initialTourId + ' could not be loaded', LOG_WARN, err);
             showToast(t('tour_admin.share_link_tour_not_found'), 'error');
+        });
+    }
+
+    // Landing here from a shareRoute() link (route.js) - fetch the route
+    // directly by id (same reasoning as the tour case above: routes[] is
+    // still loading async via getPublicRoutes()/getRoutesByUserId() at this
+    // point) and zoom/pan the map to fit it. A 404 means the route was
+    // deleted (or made private) since the link was shared.
+    if (initialRouteId !== null) {
+        Ytan.get('/routes/' + initialRouteId).then(answer => {
+            fitMapToRoutePoints(JSON.parse(answer.data.points));
+        }).catch(err => {
+            log('shared route link - route ' + initialRouteId + ' could not be loaded', LOG_WARN, err);
+            showToast(t('route.context.share_link_route_not_found'), 'error');
         });
     }
 }
