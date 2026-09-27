@@ -100,6 +100,40 @@ function initWeatherWidget() {
     registerMapContextMenuItem('radar', 'radar.context_menu.open_windy_radar_item', openWindyRadarForLocation);
 }
 
+/**
+ * "Weather Forecast for Current Location" nav-drawer row - same panel as
+ * the map-context-menu item (openWeatherTimelineForLocation()), just for
+ * navigator.geolocation's current position instead of a point the user
+ * clicked. Mirrors map-core.js's own panToGeolocation() (same
+ * geolocationOptions, same navigator.geolocation guard) rather than
+ * introducing a second convention for "find the device's position".
+ * closeMenu() first - the weather panel's z-index sits below #sidemenu's
+ * (see CLAUDE.md's "every open-a-full-screen-panel-from-the-drawer trigger
+ * must call closeMenu() first" rule), so left open the drawer would cover
+ * the panel this then opens.
+ */
+function openWeatherForCurrentLocation() {
+    closeMenu();
+
+    if (!navigator.geolocation) {
+        showToast(t('weather.current_location.unsupported'), 'error');
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const latLng = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+            map.panTo(latLng);
+            openWeatherTimelineForLocation(latLng);
+        },
+        (err) => {
+            log('openWeatherForCurrentLocation() failed', LOG_WARN, err);
+            showToast(t('weather.current_location.failed'), 'error');
+        },
+        geolocationOptions
+    );
+}
+
 function openWindyForLocation(latLng) {
     const lat = latLng.lat().toFixed(4);
     const lng = latLng.lng().toFixed(4);
