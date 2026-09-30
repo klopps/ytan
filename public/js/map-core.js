@@ -898,12 +898,113 @@ function initMap() {
 
     map.setClickableIcons(true);
 
-    myPositionMarker = new google.maps.Marker({
-        position: {lat: 0, lng: 0},
-        icon: new google.maps.MarkerImage('markers/location.svg', null, null, null, new google.maps.Size(30,30)),
-        map: map
-    });
+    // Declared here (inside initMap(), not at map-core.js's top level) since
+    // its "extends google.maps.OverlayView" clause evaluates google.maps
+    // immediately, at class-definition time, not lazily on first use - a
+    // top-level class declaration would throw "google is not defined" the
+    // moment map-core.js itself loads in <head>, long before the Maps API
+    // script has been injected (loadGoogleMaps(), only after GDPR consent).
+    // The existing SectorLightOverlay/DashedLineOverlay classes sidestep the
+    // same issue by living in their own lib files added to config.js's
+    // injectScripts, only injected post-Maps-load; inlining this tiny class
+    // here instead avoids a whole extra file for ~50 lines used in one spot.
+    //
+    // Replaces the old static-icon google.maps.Marker for the "my location"
+    // pin (todo.md "Pan to geo location") - a plain Marker can only show a
+    // bitmap icon, but the requested pulse effect needs a real DOM element
+    // to run a CSS animation on. Mirrors just enough of Marker's own API
+    // (setPosition()/setVisible()) that panToGeolocation() didn't need to
+    // change. The div is drawn into Maps' own overlayMouseTarget pane - the
+    // pane the official custom-overlay example uses - so it still receives
+    // click events like a normal marker.
+    class PulsingPositionMarker extends google.maps.OverlayView {
+        constructor() {
+            super();
+            this.position = null;
+            this.visible = false;
+            this.div = null;
+        }
+
+        onAdd() {
+            const div = document.createElement('div');
+            div.className = 'pulse-container';
+            div.innerHTML = '<div class="pulse-wave"></div><div class="pulse-core"></div>';
+            div.style.display = 'none';
+            div.addEventListener('click', () => this.showInfo());
+            this.div = div;
+            this.getPanes().overlayMouseTarget.appendChild(div);
+        }
+
+        draw() {
+            if (!this.div || !this.position) {
+                return;
+            }
+            const point = this.getProjection().fromLatLngToDivPixel(this.position);
+            if (!point) {
+                return;
+            }
+            // Centers the 20x20 .pulse-container on the point.
+            this.div.style.left = (point.x - 10) + 'px';
+            this.div.style.top = (point.y - 10) + 'px';
+            this.div.style.display = this.visible ? 'block' : 'none';
+        }
+
+        onRemove() {
+            if (this.div) {
+                this.div.remove();
+                this.div = null;
+            }
+        }
+
+        setPosition(pos) {
+            this.position = new google.maps.LatLng(pos.lat, pos.lng);
+            this.draw();
+        }
+
+        setVisible(visible) {
+            this.visible = visible;
+            this.draw();
+        }
+
+        /**
+         * Click handler for the pulsing marker (todo.md: "a pop-up should
+         * appear showing the coordinates ... and the option to remove the
+         * pulsating marker"). Reuses the shared global infoWindow and the
+         * same .infoWindowElement/.infoWindowBottom/.button markup
+         * POI/Route/Area edit popups already use, rather than introducing a
+         * fourth popup style.
+         */
+        showInfo() {
+            if (!this.position) {
+                return;
+            }
+            const coords = formatCoordinates(this.position.lat(), this.position.lng());
+            const content = '<div class="infoWindowElement">' +
+                '<div>' + t('map.my_location.coordinates') + '</div>' +
+                '<h3>' + coords + '</h3>' +
+                '<div class="infoWindowBottom">' +
+                '<button class="button" onClick="myPositionMarker.setVisible(false); infoWindow.close();">' + t('common.remove') + '</button>' +
+                '</div>' +
+                '</div>';
+            infoWindow.setPosition(this.position);
+            infoWindow.setContent(content);
+            infoWindow.open(map);
+        }
+    }
+
+    myPositionMarker = new PulsingPositionMarker();
+    myPositionMarker.setMap(map);
     myPositionMarker.setVisible(false);
+
+    // positionGotoMyLocationButton() needs Maps' own Street View pegman
+    // control (".gm-svpc") to actually exist in the DOM first - 'idle' (not
+    // 'tilesloaded') is the first event that's reliably true for controls
+    // too. Also re-run on resize (control margins are viewport-dependent on
+    // mobile) and whenever editMode() re-enables streetViewControl (that
+    // removes+recreates the pegman element, so an earlier measurement is
+    // stale by then).
+    google.maps.event.addListenerOnce(map, 'idle', positionGotoMyLocationButton);
+    window.addEventListener('resize', positionGotoMyLocationButton);
 
     initWeatherWidget(); // weather.js - registers its "Weather data for this location" map context menu item
     initPoiMapContextMenu(); // poi.js - registers its "Create POI" map context menu item
@@ -974,6 +1075,33 @@ function handleLocationError(browserHasGeolocation, infoWindow, pos) {
     );
     infoWindow.open(map);
 }
+
+/**
+ * Aligns #gotomylocation directly above Maps' own Street View pegman
+ * control (todo.md "Pan to geo location") by reading the pegman's actual
+ * rendered position (".gm-svpc", Maps' internal class name for it) instead
+ * of a hardcoded pixel guess that would drift if Maps ever changes that
+ * control's size/margins - the same live-getBoundingClientRect() approach
+ * showSecondToolbar() (ui.js) already uses for #secondToolbar. A no-op if
+ * either element isn't there yet (pegman not rendered, or button not yet
+ * shown pre-GDPR-consent).
+ */
+function positionGotoMyLocationButton() {
+    const btn = document.getElementById('gotomylocation');
+    const pegman = document.querySelector('.gm-svpc');
+    if (!btn || !pegman) {
+        return;
+    }
+
+    const parent = btn.offsetParent || document.body;
+    const parentRect = parent.getBoundingClientRect();
+    const pegmanRect = pegman.getBoundingClientRect();
+    const gap = 8;
+
+    btn.style.bottom = Math.round(parentRect.bottom - pegmanRect.top + gap) + 'px';
+    btn.style.right = Math.round(parentRect.right - pegmanRect.right) + 'px';
+}
+
 
 /**
  * Re-evaluates whether Google search is allowed for the current session.
@@ -1469,6 +1597,10 @@ function editMode(mode) {
             streetViewControl: true,
             clickableIcons: true
         });
+        // streetViewControl: true recreates the pegman control element, so
+        // #gotomylocation's earlier position (measured off the old one) is
+        // now stale.
+        positionGotoMyLocationButton();
     }
 }
 

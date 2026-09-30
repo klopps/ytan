@@ -39,6 +39,8 @@
   --color-overlay-strong: rgba(0,0,0,0.35);
   --font-display: 'Sora', sans-serif;
   --font-body: 'Plus Jakarta Sans', sans-serif;
+  --color-location: #ff0000;
+  --color-location-pulse: #ffffff;
 
   /* 0px until #appUpdateBanner is shown - ui.js's setAppUpdateRequired()
      then sets this to the banner's own live-measured rendered height, the
@@ -2933,7 +2935,13 @@ img.wsi {
 
 #gotomylocation {
   position: absolute;
-  bottom: 270px;
+  /* Fallback only - positionGotoMyLocationButton() (map-core.js) overrides
+     bottom/right inline once Maps' own Street View pegman control
+     (".gm-svpc") has actually rendered, so this button always sits directly
+     above it (todo.md "Pan to geo location") regardless of viewport size.
+     This value is just what's shown for the brief moment before that first
+     measurement (map 'idle' event) lands. */
+  bottom: 80px;
   right: 10px;
   width: 40px;
   height: 40px;
@@ -2957,6 +2965,48 @@ img.wsi {
   margin-right: auto;
   cursor: pointer;
   text-shadow: 0 0 4px var(--color-bg-panel);
+}
+
+/* Pulsing "my location" marker (todo.md "Pan to geo location") - drawn by
+   map-core.js's PulsingPositionMarker (a custom OverlayView, same technique
+   as SectorLightOverlay/DashedLineOverlay) rather than a plain
+   google.maps.Marker image icon, since only a real DOM element can run a
+   CSS animation. */
+.pulse-container {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.pulse-core {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-color: var(--color-location);
+  border-radius: 50%;
+  z-index: 2;
+}
+
+.pulse-wave {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-color: var(--color-location-pulse);
+  border-radius: 50%;
+  z-index: 1;
+  animation: pulse-wave-effect 2s infinite linear;
+}
+
+@keyframes pulse-wave-effect {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(3);
+    opacity: 0;
+  }
 }
 
 #legal {

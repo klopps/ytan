@@ -443,6 +443,7 @@
     "confirm_dialog.captcha_message": "Diese Route ist Teil einer oder mehrerer Touren. Um das Löschen zu bestätigen, lösen Sie bitte: {question}",
     "map.link_copied": "Link in die Zwischenablage kopiert",
     "map.share_text": "Diese Karte auf YTAN ansehen",
+    "map.my_location.coordinates": "Ihre Position:",
     "common.failed_to_load_content": "Laden des Inhalts fehlgeschlagen.",
     "error.auth.invalid_credentials": "Ungültiger Benutzername oder ungültiges Passwort.",
     "error.auth.link_expired": "Dieser Link ist ungültig oder abgelaufen.",
