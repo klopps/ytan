@@ -972,7 +972,11 @@ function initMap() {
          * pulsating marker"). Reuses the shared global infoWindow and the
          * same .infoWindowElement/.infoWindowBottom/.button markup
          * POI/Route/Area edit popups already use, rather than introducing a
-         * fourth popup style.
+         * fourth popup style. The "Weather forecast" button calls the same
+         * openWeatherTimelineForLocation() (weather.js) the map's own
+         * right-click context menu item ("Weather data for this location")
+         * already uses - it takes a plain google.maps.LatLng, which
+         * this.position already is, so no conversion is needed.
          */
         showInfo() {
             if (!this.position) {
@@ -983,6 +987,7 @@ function initMap() {
                 '<div>' + t('map.my_location.coordinates') + '</div>' +
                 '<h3>' + coords + '</h3>' +
                 '<div class="infoWindowBottom">' +
+                '<button class="button" onClick="infoWindow.close(); openWeatherTimelineForLocation(myPositionMarker.position);">' + t('map.my_location.weather_forecast') + '</button>&nbsp;' +
                 '<button class="button" onClick="myPositionMarker.setVisible(false); infoWindow.close();">' + t('common.remove') + '</button>' +
                 '</div>' +
                 '</div>';
