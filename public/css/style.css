@@ -2400,6 +2400,16 @@ img.wsi {
   font-size: 16px;
 }
 
+/* Google's InfoWindow programmatically focus()es the first focusable
+   element in its content right after opening (its own accessibility
+   behavior, same root cause already documented for .gm-ui-hover-effect
+   above) - this button is now that first element, so without this it shows
+   the browser's default focus ring on every open, reported as looking like
+   the button is stuck "selected". Same suppression, same reasoning. */
+.my-location-copy-btn:focus {
+  outline: none;
+}
+
 /* Required attribution for reverse-geocoded place names (Nominatim/OSM's
    ODbL license) - only shown once a place name actually came back and is
    displayed in the title, since that's the moment OSM data is genuinely

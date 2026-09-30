@@ -450,7 +450,7 @@
     "map.link_copied": "Link in die Zwischenablage kopiert",
     "map.share_text": "Diese Karte auf YTAN ansehen",
     "map.my_location.coordinates": "Ihre Position:",
-    "map.my_location.weather_forecast": "Wettervorhersage für diesen Standort",
+    "map.my_location.weather_forecast": "Wetter für Standort",
     "map.my_location.copy_coordinates": "Koordinaten kopieren",
     "map.my_location.coordinates_copied": "Koordinaten in die Zwischenablage kopiert",
     "common.failed_to_load_content": "Laden des Inhalts fehlgeschlagen.",
