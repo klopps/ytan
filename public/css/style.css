@@ -2362,6 +2362,44 @@ img.wsi {
   font-size: 16px;
 }
 
+/* "Copy coordinates" icon button, current-location popup (todo.md "Copy
+   coordinates") - placed directly after the coordinates via this flex row
+   (map-core.js's PulsingPositionMarker.showInfo()), not in the popup's
+   .infoWindowBottom action row below it. Same round icon-only button shape
+   as .weather-timeline-reload-btn above, kept as its own class rather than
+   reusing that one - unrelated features, see CLAUDE.md's "styling one
+   shouldn't affect the other" convention already followed by e.g. the
+   user-admin-panel's own .admin-user-form classes. */
+.my-location-coords-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.my-location-copy-btn {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--color-text-faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.my-location-copy-btn:hover {
+  background-color: var(--color-bg-subtle);
+  color: var(--color-accent);
+}
+
+.my-location-copy-btn .material-icons-round {
+  font-size: 16px;
+}
+
 /* Required attribution for reverse-geocoded place names (Nominatim/OSM's
    ODbL license) - only shown once a place name actually came back and is
    displayed in the title, since that's the moment OSM data is genuinely

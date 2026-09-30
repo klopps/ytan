@@ -451,6 +451,8 @@
     "map.share_text": "Check out this map on YTAN",
     "map.my_location.coordinates": "Your position:",
     "map.my_location.weather_forecast": "Weather forecast for this location",
+    "map.my_location.copy_coordinates": "Copy coordinates",
+    "map.my_location.coordinates_copied": "Coordinates copied to clipboard",
     "common.failed_to_load_content": "Failed to load content.",
     "error.auth.invalid_credentials": "Invalid username or password.",
     "error.auth.link_expired": "This link is invalid or has expired.",

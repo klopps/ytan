@@ -977,7 +977,14 @@ function initMap() {
          * openWeatherTimelineForLocation() (weather.js) the map's own
          * right-click context menu item ("Weather data for this location")
          * already uses - it takes a plain google.maps.LatLng, which
-         * this.position already is, so no conversion is needed.
+         * this.position already is, so no conversion is needed. The "Copy
+         * coordinates" button (todo.md "Copy coordinates") reuses the same
+         * copyTextToClipboard() + showToast() pattern shareMap()/
+         * route.js's shareRoute()/tour-admin.js's shareTour() already use
+         * for their own clipboard-copy fallback, rather than a fifth way of
+         * doing the same thing - copies the exact string already shown
+         * above it, in whatever coordinate format (DD/MM/DMS) the user has
+         * chosen.
          */
         showInfo() {
             if (!this.position) {
@@ -986,7 +993,19 @@ function initMap() {
             const coords = formatCoordinates(this.position.lat(), this.position.lng());
             const content = '<div class="infoWindowElement">' +
                 '<div>' + t('map.my_location.coordinates') + '</div>' +
+                '<div class="my-location-coords-row">' +
                 '<h3>' + coords + '</h3>' +
+                // Icon-only, not a labeled .button like Weather/Remove
+                // below - placed directly after the coordinates themselves
+                // (todo.md "Der Button sollte HINTER den Koordinaten
+                // positioniert sein"), not in the action row. content_copy
+                // is Material Icons Round's own "copy" glyph (already used
+                // for the same action in tour-admin.js's tour-copy row) -
+                // kept on that vendored icon font rather than pulling in
+                // Bootstrap Icons (only loaded for the AdminLTE /admin/*
+                // pages, never the map SPA) for a glyph the app already has.
+                '<button type="button" class="my-location-copy-btn" onClick="myPositionMarker.copyCoordinates();" aria-label="' + t('map.my_location.copy_coordinates') + '" title="' + t('map.my_location.copy_coordinates') + '"><i class="material-icons-round">content_copy</i></button>' +
+                '</div>' +
                 '<div class="infoWindowBottom">' +
                 '<button class="button" onClick="infoWindow.close(); openWeatherTimelineForLocation(myPositionMarker.position);">' + t('map.my_location.weather_forecast') + '</button>&nbsp;' +
                 '<button class="button" onClick="myPositionMarker.setVisible(false); infoWindow.close();">' + t('common.remove') + '</button>' +
@@ -995,6 +1014,25 @@ function initMap() {
             infoWindow.setPosition(this.position);
             infoWindow.setContent(content);
             infoWindow.open(map);
+        }
+
+        /**
+         * "Copy coordinates" button's click handler (todo.md). A method
+         * here (called via "myPositionMarker.copyCoordinates()" in the
+         * inline onClick above) rather than inlining the already-formatted
+         * coords string straight into that attribute - formatCoordinates()
+         * can return a "°" character, and the attribute itself is
+         * double-quoted, so a second, differently-quoted string built into
+         * it (e.g. via JSON.stringify()) risks colliding with that
+         * delimiter; recomputing from this.position here instead sidesteps
+         * the whole quoting problem.
+         */
+        copyCoordinates() {
+            if (!this.position) {
+                return;
+            }
+            copyTextToClipboard(formatCoordinates(this.position.lat(), this.position.lng()));
+            showToast(t('map.my_location.coordinates_copied'), 'success');
         }
     }
 
