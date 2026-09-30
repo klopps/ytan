@@ -831,7 +831,12 @@ function showRouteLabels(i) {
         }
     }
 
-    const LABEL_FONTSIZE = 12;
+    // todo.md "Font size for distance information" - user-configurable
+    // (Preferences screen slider, map-core.js's editRouteLabelFontSize()),
+    // clamped there against the admin-configured
+    // window.YTAN_ROUTE_LABEL_FONT_SIZE_RANGE, so it's already a safe value
+    // by the time it's read here.
+    const LABEL_FONTSIZE = settings.routeLabelFontSize;
     const LABEL_OFFSET = -10;
 
     var distance = 0;
@@ -880,8 +885,16 @@ function showRouteLabels(i) {
                     map: map,
                     labelContent: '<span style="color: green">' + formatDistance(distanceFromStart, settings.unit) + ' </span> | <span style="color: red">' + formatDistance(distanceToEnd, settings.unit) + '</span>',
                     labelClass: "routeLabel",
-                    labelStyle: { opacity: 1.0 },
                 });
+                // This vendored MarkerWithLabel build has no "labelStyle"
+                // option (checked its source - unrecognized constructor
+                // properties are silently dropped, not applied) - the only
+                // way to reach the actual label <div> is its own
+                // "labelElement" getter, then set the inline style directly.
+                // Overrides .routeLabel's own CSS font-size (an inline style
+                // always wins) with the actual, user-configurable size (see
+                // LABEL_FONTSIZE's own comment above).
+                label.labelElement.style.fontSize = LABEL_FONTSIZE + "px";
 
                 routes[i].labels.push(label);
 
@@ -920,8 +933,10 @@ function showRouteLabels(i) {
             map: map,
             labelContent: '<span style="color: green">' + formatDistance(routes[i].length, settings.unit) + ' </span> | <span style="color: red">0m</span>',
             labelClass: "routeLabel",
-            labelStyle: { opacity: 1.0 },
         });
+        // See the identical comment at the other MarkerWithLabel call above
+        // - labelStyle isn't a real option in this vendored build.
+        lastLabel.labelElement.style.fontSize = LABEL_FONTSIZE + "px";
 
         routes[i].labels.push(lastLabel);
     }

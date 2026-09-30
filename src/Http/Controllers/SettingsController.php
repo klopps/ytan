@@ -42,4 +42,20 @@ final class SettingsController extends BaseController
 
         return $this->json($response, ['data' => ['precise' => $precise, 'balanced' => $balanced, 'battery' => $battery]]);
     }
+
+    public function updateRouteLabelFontSizeRange(Request $request, Response $response): Response
+    {
+        $this->requireAdmin($request);
+        $body = $this->jsonBody($request);
+        $min = filter_var($body['min'] ?? null, FILTER_VALIDATE_INT);
+        $max = filter_var($body['max'] ?? null, FILTER_VALIDATE_INT);
+
+        if ($min === false || $max === false || $min < 1 || $max > 255 || $min >= $max) {
+            throw new ValidationException('min and max must be whole numbers of pixels, with min less than max.');
+        }
+
+        $this->settings->setRouteLabelFontSizeRange($min, $max);
+
+        return $this->json($response, ['data' => ['min' => $min, 'max' => $max]]);
+    }
 }

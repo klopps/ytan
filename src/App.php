@@ -288,6 +288,7 @@ final class App
 
         $app->put('/api/v1/settings/google-search-requires-login', [$settingsController, 'updateGoogleSearchRequiresLogin']);
         $app->put('/api/v1/settings/track-distance-filter', [$settingsController, 'updateTrackDistanceFilterPresets']);
+        $app->put('/api/v1/settings/route-label-font-size-range', [$settingsController, 'updateRouteLabelFontSizeRange']);
 
         $app->get('/', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $settingsRepository, $translator) {
             ob_start();
@@ -295,6 +296,7 @@ final class App
             $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
             $googleSearchRequiresLogin = $settingsRepository->googleSearchRequiresLogin();
             $trackDistanceFilterPresets = $settingsRepository->trackDistanceFilterPresets();
+            $routeLabelFontSizeRange = $settingsRepository->routeLabelFontSizeRange();
             $appVersion = 'dev';
             $versionFile = $rootDir . '/VERSION';
             if (is_file($versionFile)) {
@@ -461,6 +463,7 @@ final class App
             $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
             $googleSearchRequiresLogin = $settingsRepository->googleSearchRequiresLogin();
             $trackDistanceFilterPresets = $settingsRepository->trackDistanceFilterPresets();
+            $routeLabelFontSizeRange = $settingsRepository->routeLabelFontSizeRange();
             require $rootDir . '/templates/admin-settings.php';
             $res->getBody()->write(ob_get_clean());
 

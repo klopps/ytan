@@ -50,4 +50,32 @@ final class SettingsRepository
         $stmt = $this->db->prepare('UPDATE app_settings SET track_distance_filter_precise_m = ?, track_distance_filter_balanced_m = ?, track_distance_filter_battery_m = ? WHERE id = 1');
         $stmt->execute([$precise, $balanced, $battery]);
     }
+
+    /**
+     * Min/max bounds (in px) for the Preferences screen's route-label font
+     * size slider (todo.md "Font size for distance information") - the
+     * slider itself is a per-user setting (settings.routeLabelFontSize,
+     * settings.js's cookie), but its allowed range is site-wide and
+     * admin-configurable via /admin/settings, same
+     * "hardcoded constant -> admin-configurable via app_settings" pattern as
+     * trackDistanceFilterPresets() above.
+     *
+     * @return array{min: int, max: int}
+     */
+    public function routeLabelFontSizeRange(): array
+    {
+        $stmt = $this->db->query('SELECT route_label_font_size_min, route_label_font_size_max FROM app_settings WHERE id = 1');
+        $row = $stmt->fetch();
+
+        return [
+            'min' => (int) $row['route_label_font_size_min'],
+            'max' => (int) $row['route_label_font_size_max'],
+        ];
+    }
+
+    public function setRouteLabelFontSizeRange(int $min, int $max): void
+    {
+        $stmt = $this->db->prepare('UPDATE app_settings SET route_label_font_size_min = ?, route_label_font_size_max = ? WHERE id = 1');
+        $stmt->execute([$min, $max]);
+    }
 }

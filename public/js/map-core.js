@@ -602,7 +602,8 @@ var settings = { // muss wegen JSON.stringify() ein Objekt sein
     theme: THEME_LIGHT,
     windUnit: WIND_UNIT_KMH,
     coordinateFormat: COORDINATE_FORMAT_DD,
-    smoothRoutes: true // Routen mit abgerundeten statt eckigen Segmenten darstellen (Bearbeitungsmodus bleibt immer exakt)
+    smoothRoutes: true, // Routen mit abgerundeten statt eckigen Segmenten darstellen (Bearbeitungsmodus bleibt immer exakt)
+    routeLabelFontSize: 12 // px, todo.md "Font size for distance information" - route.js's showRouteLabels() reads this instead of a hardcoded constant; admin-configurable min/max via window.YTAN_ROUTE_LABEL_FONT_SIZE_RANGE
 };
 
 let language = window.navigator.userLanguage || window.navigator.language;
@@ -1534,6 +1535,61 @@ function updateCoordinateFormatExample() {
     if (el) {
         el.textContent = formatCoordinates(COORDINATE_FORMAT_EXAMPLE_LAT, COORDINATE_FORMAT_EXAMPLE_LNG);
     }
+}
+
+// Example "distance from start | distance to end" pair the Preferences
+// screen's route-label font-size slider previews - chosen to match the
+// static placeholder markup already in app.php (2.4km/9.8km at the default
+// unit), same reasoning updateUnitExample()/updateCoordinateFormatExample()
+// document for their own examples: the HTML default already renders
+// correctly for a first-time visitor with no settings cookie, so no JS call
+// is needed until the user actually changes something.
+const ROUTE_LABEL_FONT_SIZE_EXAMPLE_FROM_START_METERS = 2400;
+const ROUTE_LABEL_FONT_SIZE_EXAMPLE_TO_END_METERS = 9800;
+
+/**
+ * Route-label font-size slider (todo.md "Font size for distance
+ * information") - the slider's oninput handler. Only updates the live
+ * example's font-size and text, deliberately not settings.routeLabelFontSize
+ * itself/renewVisibleRouteLabels()/saveSettings() - those are comparatively
+ * expensive (redrawing every visible route's labels, writing the settings
+ * cookie) and 'input' fires continuously while dragging, unlike 'change'
+ * (editRouteLabelFontSize() below), which only fires once the slider is
+ * released/stepped.
+ */
+function previewRouteLabelFontSize(fontSize) {
+    var el = document.getElementById('routeLabelFontSizeExampleValue');
+    if (el) {
+        el.style.fontSize = fontSize + 'px';
+    }
+}
+
+function editRouteLabelFontSize(element) {
+    var value = parseInt(element.value, 10);
+    if (!isNaN(value)) {
+        settings.routeLabelFontSize = value;
+    }
+    updateRouteLabelFontSizeExample();
+    renewVisibleRouteLabels();
+    saveSettings();
+}
+
+/**
+ * Keeps the live example in the "Preferences" screen (nav-menu.js) in sync
+ * with the current route-label font size - called from loadSettings() (on
+ * boot, if a settings cookie exists) and editRouteLabelFontSize() (on
+ * commit), same pattern as updateUnitExample()/updateCoordinateFormatExample()
+ * above. Rebuilds the same two-colour markup showRouteLabels() (route.js)
+ * itself uses for a point label, not just the font-size, so the preview is
+ * an actual rendering of that markup rather than a lookalike.
+ */
+function updateRouteLabelFontSizeExample() {
+    var el = document.getElementById('routeLabelFontSizeExampleValue');
+    if (!el) {
+        return;
+    }
+    el.style.fontSize = settings.routeLabelFontSize + 'px';
+    el.innerHTML = '<span style="color: green">' + formatDistance(ROUTE_LABEL_FONT_SIZE_EXAMPLE_FROM_START_METERS, settings.unit) + ' </span> | <span style="color: red">' + formatDistance(ROUTE_LABEL_FONT_SIZE_EXAMPLE_TO_END_METERS, settings.unit) + '</span>';
 }
 
 /**

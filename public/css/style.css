@@ -3907,6 +3907,12 @@ input[type="color"] {
 }
 
 .routeLabel {
+  /* Overridden inline per marker (route.js's showRouteLabels(), via
+     MarkerWithLabel's labelStyle) with the user's own Preferences-screen
+     choice (todo.md "Font size for distance information") - this 12px is
+     only the fallback for the split second before that inline style is
+     set, and matches the app-wide default in map-core.js's settings
+     object. */
   font-size: 12px;
   font-weight: bold;
   color: black;
@@ -4127,6 +4133,22 @@ input[type="color"] {
   background: var(--color-bg-panel);
   color: var(--color-accent);
   box-shadow: var(--shadow-soft);
+}
+
+/* Route-label font-size slider (Preferences screen, todo.md "Font size for
+   distance information") - a plain native <input type="range">, not a
+   custom-built component: sliders are one of the many element types
+   "Standards für alle Gestaltungselemente festlegen" (todo.md) still hasn't
+   designed a house style for, so this only gets the same 16px side gutter
+   every other Preferences control already uses plus accent-color (which
+   themes a native range input's thumb/track for free, no per-browser
+   thumb/track pseudo-element overrides needed) rather than a bespoke look
+   that a later design pass would likely replace anyway. */
+.nav-slider {
+  display: block;
+  width: calc(100% - 32px);
+  margin: 0 16px 16px 16px;
+  accent-color: var(--color-accent);
 }
 
 .nav-menu-list {

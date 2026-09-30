@@ -8,6 +8,7 @@
     <script>window.YTAN_API_BASE = "<?= htmlspecialchars($baseUrl, ENT_QUOTES) ?>/api/v1";</script>
     <script>window.YTAN_GOOGLE_SEARCH_REQUIRES_LOGIN = <?= $googleSearchRequiresLogin ? 'true' : 'false' ?>;</script>
     <script>window.YTAN_TRACK_DISTANCE_FILTER_PRESETS = <?= json_encode($trackDistanceFilterPresets) ?>;</script>
+    <script>window.YTAN_ROUTE_LABEL_FONT_SIZE_RANGE = <?= json_encode($routeLabelFontSizeRange) ?>;</script>
     <script>window.YTAN_LOCALE = "<?= htmlspecialchars($translator->locale(), ENT_QUOTES) ?>";</script>
     <script>window.YTAN_TRANSLATIONS = <?= json_encode($translator->all(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;</script>
     <!-- Must be declared before applyStoredTheme() runs below (right after
@@ -288,6 +289,17 @@
               <input type="radio" id="routesmoothing2" name="routesmoothingselector" onclick="editRouteSmoothing(this)" value="straight"><label for="routesmoothing2"><?= $t('app.route_smoothing.straight') ?></label>
             </div>
           </form>
+          <p class="nav-field-label"><?= $t('app.preferences.route_label_font_size') ?></p>
+          <input type="range" id="routeLabelFontSize" class="nav-slider"
+                 min="<?= (int) $routeLabelFontSizeRange['min'] ?>" max="<?= (int) $routeLabelFontSizeRange['max'] ?>" step="1" value="12"
+                 oninput="previewRouteLabelFontSize(this.value)" onchange="editRouteLabelFontSize(this)">
+          <div class="nav-example-card">
+            <div>
+              <div class="nav-example-value" id="routeLabelFontSizeExampleValue" style="font-size: 12px;"><span style="color: green">2.4km </span> | <span style="color: red">9.8km</span></div>
+              <div class="nav-example-caption"><?= $t('app.preferences.route_label_font_size_example_caption') ?></div>
+            </div>
+            <i class="material-icons-round">text_fields</i>
+          </div>
           <p class="nav-field-label"><?= $t('app.preferences.language') ?></p>
           <form name="language">
             <div class="nav-segmented">

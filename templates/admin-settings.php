@@ -42,4 +42,27 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
         <button type="button" class="btn btn-primary mt-3" id="settingTrackFilterSaveBtn" onclick="saveTrackDistanceFilterPresets();"><?= $t('common.save') ?></button>
     </div>
 </div>
+<div class="card mt-3">
+    <div class="card-body">
+        <h2 class="h6"><?= $t('admin.settings.route_label_font_size_title') ?></h2>
+        <p class="text-muted small"><?= $t('admin.settings.route_label_font_size_hint') ?></p>
+        <div class="row g-3">
+            <div class="col-sm-4">
+                <label for="settingRouteLabelFontSizeMin" class="form-label"><?= $t('admin.settings.route_label_font_size_min') ?></label>
+                <div class="input-group">
+                    <input type="number" min="1" max="255" step="1" class="form-control" id="settingRouteLabelFontSizeMin" value="<?= (int) $routeLabelFontSizeRange['min'] ?>">
+                    <span class="input-group-text">px</span>
+                </div>
+            </div>
+            <div class="col-sm-4">
+                <label for="settingRouteLabelFontSizeMax" class="form-label"><?= $t('admin.settings.route_label_font_size_max') ?></label>
+                <div class="input-group">
+                    <input type="number" min="1" max="255" step="1" class="form-control" id="settingRouteLabelFontSizeMax" value="<?= (int) $routeLabelFontSizeRange['max'] ?>">
+                    <span class="input-group-text">px</span>
+                </div>
+            </div>
+        </div>
+        <button type="button" class="btn btn-primary mt-3" id="settingRouteLabelFontSizeSaveBtn" onclick="saveRouteLabelFontSizeRange();"><?= $t('common.save') ?></button>
+    </div>
+</div>
 <?php require $rootDir . '/templates/partials/admin-shell-footer.php'; ?>

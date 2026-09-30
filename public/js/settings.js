@@ -110,6 +110,8 @@ function saveSettings() {
     settings['routesmoothing2'] = document.getElementById('routesmoothing2').checked;
     settings['smoothRoutes'] = settings['routesmoothing1'] ? true : false;
 
+    settings['routeLabelFontSize'] = parseInt(document.getElementById('routeLabelFontSize').value, 10);
+
     settings['theme'] = [THEME_LIGHT, THEME_DARK].includes(settings['theme']) ? settings['theme'] : THEME_LIGHT;
 
     settings['zoom'] = map.getZoom();
@@ -196,6 +198,18 @@ function loadSettings() {
         if (!settings['routesmoothing1'] && !settings['routesmoothing2']) {
             document.getElementById('routesmoothing1').checked = true;
         }
+
+        // Clamped against the admin-configured range (window.
+        // YTAN_ROUTE_LABEL_FONT_SIZE_RANGE, src/App.php) rather than the
+        // slider's own min/max attributes directly - an admin could have
+        // narrowed that range after this cookie was saved with a
+        // now-out-of-bounds value, which a plain assignment to the input's
+        // .value would just silently clip to the nearest bound without ever
+        // correcting settings.routeLabelFontSize itself.
+        var routeLabelFontSizeRange = window.YTAN_ROUTE_LABEL_FONT_SIZE_RANGE || { min: 8, max: 20 };
+        settings['routeLabelFontSize'] = Math.min(Math.max(settings['routeLabelFontSize'], routeLabelFontSizeRange.min), routeLabelFontSizeRange.max);
+        document.getElementById('routeLabelFontSize').value = settings['routeLabelFontSize'];
+        updateRouteLabelFontSizeExample();
 
         if (settings['theme'] === THEME_DARK) {
             document.documentElement.dataset.theme = THEME_DARK;
