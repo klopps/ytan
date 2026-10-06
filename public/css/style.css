@@ -3402,6 +3402,33 @@ p.LighthouseCharacteristic {
   float: left;
 }
 
+/* "Send to watch" icon in a route's InfoWindow (watch.js) - accent-colored
+   once this route is the one currently on the watch. */
+.watch-route-icon {
+  margin-left: 12px;
+  cursor: pointer;
+}
+
+.lefthalf .watch-route-icon:first-child {
+  margin-left: 0;
+}
+
+.watch-route-icon.is-current {
+  color: var(--color-accent);
+}
+
+.watch-token-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.watch-token-row input {
+  flex: 1;
+  min-width: 0;
+  font-family: monospace;
+}
+
 .righthalf {
   margin-left: 50%
 }

@@ -86,6 +86,27 @@ configured or a Static Maps request fails.
 `tour_publish`/`tour_manage`/`tour_copy`/`route_view_recording` (each `0`
 or `1`), plus the shared `limit`/`offset` from Pagination above.
 
+## Garmin watch
+
+For the sideloaded Connect IQ data field in `watch/`. All but the last
+endpoint require a logged-in user (JWT).
+
+- `GET /watch` → `{"data": {"has_token", "route": {"id", "name"} | null, "unit"}}`
+- `POST /watch/token` → `201 {"data": {"token"}}` - a new 32-hex-char watch
+  key, shown only in this response (stored as SHA-256 hash). Replaces and
+  invalidates any previous key.
+- `DELETE /watch/token` - unpair; the device endpoint then answers 401.
+- `PUT /watch/route` `{"route_id", "unit": "metric"|"nautical"}` - the route
+  the watch shows. Must be the caller's own, public, or the caller is admin.
+- `DELETE /watch/route`
+- `GET /watch/device/route` with header `X-Watch-Token: <key>` (no JWT) →
+  compact payload **without** the `data` wrapper:
+  `{"v": "<version>", "n": "<name>", "u": "m"|"n", "p": [lat0, lng0, lat1, lng1, ...]}`
+  with coordinates as integers in 1e-5 degrees, simplified to at most 250
+  points. `"v"` changes when the route or the selection changes; an empty
+  `"p"` (and `"v": "none"`) means no route is selected or the selected route
+  is no longer visible to the user. Unknown key → 401.
+
 ## WSI (wind shelter indicator)
 
 `GET /wsi/{code}` where `code` is a 16-character string of `0`/`1`/`2` (one

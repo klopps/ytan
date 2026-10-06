@@ -43,6 +43,9 @@ a fork of PESR. It runs in the browser, as an installable PWA, and as an
   available.
 - **Offline use**: map data is cached locally; POIs, routes and areas
   created or changed offline are queued and synced later.
+- **Garmin watch** (Fenix 6/7, sideloaded data field in `watch/`): send a
+  route to the watch and see bearing and distance to the next waypoint
+  while paddling — see `bin\build-watch.bat`.
 
 **Personalization**
 - German and English UI, light and dark theme.

@@ -1,0 +1,7 @@
+// Template only - bin\build-watch.bat writes the real (gitignored) Config.mc
+// with the server URL and your personal watch key before every build.
+(:background)
+module YtanConfig {
+    const SERVER_URL = "https://ytan.pesr.org";
+    const WATCH_TOKEN = "paste-your-watch-key-here";
+}

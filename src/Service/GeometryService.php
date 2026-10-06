@@ -65,6 +65,55 @@ final class GeometryService
     }
 
     /**
+     * Douglas-Peucker: drops vertices closer than $toleranceMeters to the
+     * line between their kept neighbors. First and last vertex always stay.
+     * Iterative (explicit stack) so a long GPS recording can't hit PHP's
+     * recursion limits.
+     *
+     * @param list<array{lat:float,lng:float}> $points
+     * @return list<array{lat:float,lng:float}>
+     */
+    public static function simplifyPolyline(array $points, float $toleranceMeters): array
+    {
+        $count = count($points);
+        if ($count < 3) {
+            return array_values($points);
+        }
+
+        $keep = array_fill(0, $count, false);
+        $keep[0] = true;
+        $keep[$count - 1] = true;
+        $stack = [[0, $count - 1]];
+
+        while ($stack !== []) {
+            [$start, $end] = array_pop($stack);
+            $maxDistance = 0.0;
+            $maxIndex = -1;
+            for ($i = $start + 1; $i < $end; $i++) {
+                $distance = self::distancePointToSegmentMeters($points[$i], $points[$start], $points[$end]);
+                if ($distance > $maxDistance) {
+                    $maxDistance = $distance;
+                    $maxIndex = $i;
+                }
+            }
+            if ($maxIndex !== -1 && $maxDistance > $toleranceMeters) {
+                $keep[$maxIndex] = true;
+                $stack[] = [$start, $maxIndex];
+                $stack[] = [$maxIndex, $end];
+            }
+        }
+
+        $result = [];
+        foreach ($points as $i => $point) {
+            if ($keep[$i]) {
+                $result[] = $point;
+            }
+        }
+
+        return $result;
+    }
+
+    /**
      * True if $point is within $meters of any segment of $polyline (or of
      * any single point, if $polyline has fewer than 2 vertices).
      */

@@ -40,6 +40,9 @@ Thumbs.db
 *.aab
 # Published APK + version.json, uploaded straight to the server by bin\publish-app.bat
 /public/app/
+# Garmin data field: generated config with the personal watch key, build output
+/watch/source/Config.mc
+/watch/bin/
 
 # Kartenbilder für Touren-Dokumente
 storage/static-maps-cache/*

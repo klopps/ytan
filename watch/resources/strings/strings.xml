@@ -1,0 +1,10 @@
+<strings>
+    <string id="AppName">YTAN Waypoint</string>
+    <string id="Label">YTAN</string>
+    <string id="NoRoute">No route</string>
+    <string id="NoGps">No GPS</string>
+    <string id="Finish">Finish</string>
+    <string id="FinishReached">Finish reached</string>
+    <string id="BadToken">Watch key?</string>
+    <string id="UnitNauticalMiles">nm</string>
+</strings>

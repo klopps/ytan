@@ -1,0 +1,3 @@
+project.manifest = manifest.xml
+# Watch build: no simulated GPS (see YtanNavField.simulatedLocation()).
+base.excludeAnnotations = simulator

@@ -49,8 +49,29 @@ $password = $_ENV['DB_PASSWORD'] ?? '';
 // composer test-db / composer test workflow CLAUDE.md documents.
 $server = new PDO(sprintf('mysql:host=%s;port=%s;charset=utf8mb4', $host, $port), $username, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 $exists = (bool) $server->query('SHOW DATABASES LIKE ' . $server->quote(E2E_DB_NAME))->fetchColumn();
+
+// A later migration (picked up by ytan_test via `composer test-db`) would
+// otherwise never reach an already-existing ytan_e2e - it then failed with
+// "Unknown column" errors. Any difference in the column layout between the
+// two schemas means: throw ytan_e2e away and clone it again.
+if ($exists) {
+    $layout = $server->prepare(
+        "SELECT GROUP_CONCAT(CONCAT(TABLE_NAME, '.', COLUMN_NAME, ':', COLUMN_TYPE) ORDER BY TABLE_NAME, COLUMN_NAME SEPARATOR ',')
+         FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ?"
+    );
+    $server->exec('SET SESSION group_concat_max_len = 1000000');
+    $layout->execute(['ytan_test']);
+    $testLayout = $layout->fetchColumn();
+    $layout->execute([E2E_DB_NAME]);
+    if ($layout->fetchColumn() !== $testLayout) {
+        fwrite(STDERR, '[reset-e2e-db] schema differs from ytan_test - recreating ' . E2E_DB_NAME . "\n");
+        $server->exec('DROP DATABASE `' . E2E_DB_NAME . '`');
+        $exists = false;
+    }
+}
+
 if (!$exists) {
-    fwrite(STDERR, '[reset-e2e-db] first run on this machine - creating ' . E2E_DB_NAME . " from ytan_test's structure\n");
+    fwrite(STDERR, '[reset-e2e-db] creating ' . E2E_DB_NAME . " from ytan_test's structure\n");
     $server->exec('CREATE DATABASE `' . E2E_DB_NAME . '` CHARACTER SET utf8mb4');
     $source = new PDO(sprintf('mysql:host=%s;port=%s;dbname=ytan_test;charset=utf8mb4', $host, $port), $username, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
     $target = new PDO(sprintf('mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4', $host, $port, E2E_DB_NAME), $username, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
@@ -91,6 +112,12 @@ if ($poitypeCount === 0) {
     }
     fwrite(STDERR, '[reset-e2e-db] seeded ' . count($rows) . " poitype rows from the dev DB\n");
 }
+
+// app_settings is a single-row table seeded by a migration (009), which the
+// structure-only clone doesn't carry - without the row, SettingsRepository
+// prints PHP warnings above the page, pushing the map down and making every
+// pixel-offset click in the specs miss. All columns have defaults.
+$pdo->exec('INSERT IGNORE INTO app_settings (id) VALUES (1)');
 
 // --- 2. The e2e test user: upsert so re-running is idempotent and the
 // password/rights are always reset to the known, expected values.

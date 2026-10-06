@@ -86,6 +86,7 @@ tar -C "%ROOT_DIR%" ^
     --exclude="vendor" ^
     --exclude="node_modules" ^
     --exclude="android" ^
+    --exclude="watch" ^
     --exclude="assets" ^
     --exclude="docs" ^
     --exclude="tests" ^

@@ -1329,10 +1329,13 @@ function showRouteInfoWindow(event, i) {
         if (routes[i].user_id == user.id) {
             content +=
             '<div class="infoWindowBottom">' +
-                '<div class="lefthalf"><i class="material-icons-round" title="' + t('route.context.add_to_tour') + '" onClick="toggleAddToTourMenu(' + i + ');">playlist_add</i></div>' +
+                '<div class="lefthalf"><i class="material-icons-round" title="' + t('route.context.add_to_tour') + '" onClick="toggleAddToTourMenu(' + i + ');">playlist_add</i>' + watchRouteIconHtml(i) + '</div>' +
                 '<div class="routeEdit"><i class="material-icons-round" onClick="editRoute(' + i + ', ' + event.latLng.lat() + ', ' + event.latLng.lng() +');">edit</i></div>' +
             '</div>' +
             '<div id="addToTourMenu" class="addToTourMenu" style="display:none;"></div>';
+        } else if (isWatchPaired()) {
+            // Someone else's (public) route - the watch is the only action.
+            content += '<div class="infoWindowBottom"><div class="lefthalf">' + watchRouteIconHtml(i) + '</div></div>';
         }
     }
 

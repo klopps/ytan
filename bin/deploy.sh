@@ -47,6 +47,7 @@ tar -C "$ROOT_DIR" \
     --exclude='.env' \
     --exclude='.claude' \
     --exclude='vendor' \
+    --exclude='watch' \
     --exclude='public/images/wsi/*.svg' \
     --exclude='public/app' \
     -cf - . | tar -C "$BUILD_DIR" -xf -

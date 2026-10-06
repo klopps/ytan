@@ -45,6 +45,7 @@ function showUserWindow() {
             pendingEmailNotice +
             '<button id="userEditProfileBtn" class="nav-btn-secondary" type="button" onClick="showEditProfileForm();"><i class="material-icons-round">edit</i>&nbsp;' + t('user.edit_profile_button') + '</button>' +
             '<button id="userChangePasswordBtn" class="nav-btn-secondary" type="button" onClick="showChangePasswordForm();"><i class="material-icons-round">lock</i>&nbsp;' + t('user.change_password_button') + '</button>' +
+            '<button id="userWatchBtn" class="nav-btn-secondary" type="button" onClick="showWatchSection();"><i class="material-icons-round">watch</i>&nbsp;' + t('watch.title') + '</button>' +
             '<button id="userLogoutBtn" class="nav-btn-secondary nav-btn-danger" type="button" onClick="logoutUser()"><i class="material-icons-round">logout</i>&nbsp;' + t('user.logout_button') + '</button>' +
             '<div id="userWindowSub"></div>'
         ;
@@ -250,6 +251,7 @@ function logoutUser() {
 
     Ytan.setToken(null);
     user = initUser();
+    watchStatus = null;
     sessionStorage.removeItem('user');
     closeUserWindow();
     cancelEditRoute();
@@ -315,6 +317,7 @@ function loginUser() {
         updatePendingChangesMenuVisibility();
         updateGoogleSearchAllowed();
         enablePoiButton();
+        loadWatchStatus();
     }).catch(err => {
         document.getElementById('userLoginUsername').disabled = false;
         document.getElementById('userLoginPassword').disabled = false;

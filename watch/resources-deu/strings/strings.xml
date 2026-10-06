@@ -1,0 +1,10 @@
+<strings>
+    <string id="AppName">YTAN Wegpunkt</string>
+    <string id="Label">YTAN</string>
+    <string id="NoRoute">Keine Route</string>
+    <string id="NoGps">Kein GPS</string>
+    <string id="Finish">Ziel</string>
+    <string id="FinishReached">Ziel erreicht</string>
+    <string id="BadToken">Uhr-Schlüssel?</string>
+    <string id="UnitNauticalMiles">sm</string>
+</strings>

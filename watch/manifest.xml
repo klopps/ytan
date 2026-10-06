@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<!-- YTAN waypoint data field for Garmin watches (Connect IQ). Sideloaded, not
+     published in the Connect IQ Store - build with bin\build-watch.bat. -->
+<iq:manifest version="3" xmlns:iq="http://www.garmin.com/xml/connectiq">
+    <iq:application id="cf4d0fb907f43f140f869d4f3b338b09" type="datafield" name="@Strings.AppName" entry="YtanWatchApp" launcherIcon="@Drawables.LauncherIcon" minApiLevel="3.2.0">
+        <iq:products>
+            <iq:product id="fenix6"/>
+            <iq:product id="fenix6pro"/>
+            <iq:product id="fenix6s"/>
+            <iq:product id="fenix6spro"/>
+            <iq:product id="fenix6xpro"/>
+            <iq:product id="fenix7"/>
+            <iq:product id="fenix7s"/>
+            <iq:product id="fenix7x"/>
+            <iq:product id="fenix7pro"/>
+            <iq:product id="fenix7spro"/>
+            <iq:product id="fenix7xpro"/>
+        </iq:products>
+        <iq:permissions>
+            <iq:uses-permission id="Background"/>
+            <iq:uses-permission id="Communications"/>
+            <!-- Without it Activity.Info.currentLocation is always null. -->
+            <iq:uses-permission id="Positioning"/>
+        </iq:permissions>
+        <iq:languages>
+            <iq:language>eng</iq:language>
+            <iq:language>deu</iq:language>
+        </iq:languages>
+        <iq:barrels/>
+    </iq:application>
+</iq:manifest>

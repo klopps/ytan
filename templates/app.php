@@ -55,6 +55,7 @@
     <script src="./js/tour.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/tour.js') ?>"></script>
     <script src="./js/tour-admin.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/tour-admin.js') ?>"></script>
     <script src="./js/user.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/user.js') ?>"></script>
+    <script src="./js/watch.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/watch.js') ?>"></script>
     <!-- admin-user.js moved to /admin/users (templates/admin-users.php) -
          no longer part of the main SPA's script chain. -->
 
@@ -570,6 +571,7 @@
           updateAdminMenuVisibility();
           updatePendingChangesMenuVisibility();
           updateGoogleSearchAllowed();
+          loadWatchStatus();
 
           // initMap() (map-core.js) is racing this same fetch - if it
           // already ran (loadGoogleMaps() above, and this took the slower

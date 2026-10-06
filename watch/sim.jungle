@@ -1,0 +1,4 @@
+project.manifest = manifest.xml
+# Simulator build (bin\sim-watch.bat): without a GPS fix the data field
+# fast-forwards a simulated position along the route.
+base.excludeAnnotations = device

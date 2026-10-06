@@ -53,6 +53,8 @@ use Ytan\Service\Weather\SmhiWeatherProvider;
 use Ytan\Service\Weather\WeatherRegionResolver;
 use Ytan\Service\WeatherService;
 use Ytan\Service\WsiRenderer;
+use Ytan\Domain\Watch\WatchLinkRepository;
+use Ytan\Http\Controllers\WatchController;
 
 final class App
 {
@@ -162,6 +164,7 @@ final class App
             )
         );
         $geocodingController = new GeocodingController($geocodingService);
+        $watchController = new WatchController(new WatchLinkRepository($pdo), $routeRepository);
 
         $app = AppFactory::create();
 
@@ -285,6 +288,13 @@ final class App
 
         $app->get('/api/v1/weather', [$weatherController, 'show']);
         $app->get('/api/v1/geocode/reverse', [$geocodingController, 'reverse']);
+
+        $app->get('/api/v1/watch', [$watchController, 'status']);
+        $app->post('/api/v1/watch/token', [$watchController, 'createToken']);
+        $app->delete('/api/v1/watch/token', [$watchController, 'deleteToken']);
+        $app->put('/api/v1/watch/route', [$watchController, 'setRoute']);
+        $app->delete('/api/v1/watch/route', [$watchController, 'clearRoute']);
+        $app->get('/api/v1/watch/device/route', [$watchController, 'deviceRoute']);
 
         $app->put('/api/v1/settings/google-search-requires-login', [$settingsController, 'updateGoogleSearchRequiresLogin']);
         $app->put('/api/v1/settings/track-distance-filter', [$settingsController, 'updateTrackDistanceFilterPresets']);
