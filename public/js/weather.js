@@ -159,8 +159,8 @@ function openWindyRadarForLocation(latLng) {
 // Kept so the strip can be redrawn (formatWindSpeed()/windSpeedColor()
 // react to hour.wind_speed the same way, only the unit changes) without a
 // fresh fetch when the user switches the wind-speed unit in Preferences -
-// see refreshOpenWeatherTimelineWindUnit(), called from map-core.js's
-// editWindUnit().
+// see refreshOpenWeatherTimeline(), called from map-core.js's
+// editWindUnit()/editWindDirectionDisplay().
 let lastWeatherTimelineData = null;
 
 // Marks the exact point the open timeline is for - same plain-marker
@@ -298,11 +298,12 @@ function closeWeatherTimeline() {
 }
 
 /**
- * Called from map-core.js's editWindUnit() whenever the Preferences wind
- * unit changes. Only redraws (no re-fetch, no "no marine data" flicker)
- * and only if the panel is actually open and already holds real data.
+ * Called from map-core.js's editWindUnit()/editWindDirectionDisplay()
+ * whenever a weather-related preference changes. Only redraws (no re-fetch,
+ * no "no marine data" flicker) and only if the panel is actually open and
+ * already holds real data.
  */
-function refreshOpenWeatherTimelineWindUnit() {
+function refreshOpenWeatherTimeline() {
     if (!lastWeatherTimelineData) {
         return;
     }
@@ -618,7 +619,8 @@ function weatherRowLabelsHTML(hasMarineData) {
         '<div class="rl r-temp"><svg><use href="#ic-thermo"/></svg>' + escapeHTML(t('weather.row.temperature')) + ' <span class="rl-unit">&deg;C</span></div>' +
         '<div class="rl r-rain"><svg><use href="#ic-drop"/></svg>' + escapeHTML(t('weather.row.precipitation')) + ' <span class="rl-unit">mm</span></div>' +
         '<div class="rl r-wind"><svg><use href="#ic-flag"/></svg>' + escapeHTML(t('weather.row.wind')) + ' <span class="rl-unit">' + escapeHTML(windUnit) + '</span></div>' +
-        '<div class="rl r-gust"><svg><use href="#ic-gust"/></svg>' + escapeHTML(t('weather.row.gusts')) + ' <span class="rl-unit">' + escapeHTML(windUnit) + '</span></div>';
+        '<div class="rl r-gust"><svg><use href="#ic-gust"/></svg>' + escapeHTML(t('weather.row.gusts')) + ' <span class="rl-unit">' + escapeHTML(windUnit) + '</span></div>' +
+        '<div class="rl r-dir"><svg><use href="#ic-direction"/></svg>' + escapeHTML(t('weather.row.direction')) + '</div>';
     if (hasMarineData) {
         html += '<div class="rl r-wave"><svg><use href="#ic-wave"/></svg>' + escapeHTML(t('weather.row.wave')) + ' <span class="rl-unit">m</span></div>';
         html += '<div class="rl r-tide"><svg><use href="#ic-tide"/></svg>' + escapeHTML(t('weather.row.tide')) + '</div>';
@@ -694,17 +696,7 @@ function buildWeatherHourColumn(hour, hourDate, hasMarineData) {
     windRow.className = 'r-wind';
     if (!noData) {
         windRow.style.backgroundColor = windSpeedColor(hour.wind_speed);
-        // Open-Meteo's wind_direction is the standard meteorological "from"
-        // bearing (0deg/360deg = wind blowing FROM the north) - our ic-arrow glyph
-        // points straight up at 0deg rotation, so rotating by the raw value
-        // would point the arrow AT the direction the wind comes from, not
-        // where it's actually going. +180deg flips it to a flow/"blowing
-        // toward" arrow instead, matching Windy's own arrows (verified live
-        // against windy.com for this exact coordinate/time: their glyph's own
-        // rest orientation points down, and they rotate by the raw value with
-        // no offset - mathematically the same flow bearing this +180deg
-        // produces from an up-pointing glyph).
-        windRow.innerHTML = '<svg style="transform:rotate(' + (hour.wind_direction + 180) + 'deg)"><use href="#ic-arrow"/></svg>' + escapeHTML(formatWindSpeedValue(hour.wind_speed, settings.windUnit));
+        windRow.textContent = formatWindSpeedValue(hour.wind_speed, settings.windUnit);
     }
     col.appendChild(windRow);
 
@@ -715,6 +707,22 @@ function buildWeatherHourColumn(hour, hourDate, hasMarineData) {
         gustRow.textContent = formatWindSpeedValue(hour.wind_gusts, settings.windUnit);
     }
     col.appendChild(gustRow);
+
+    const dirRow = document.createElement('div');
+    dirRow.className = 'r-dir';
+    if (!noData && hour.wind_direction !== null && hour.wind_direction !== undefined) {
+        // Open-Meteo's wind_direction is the meteorological "from" bearing:
+        // the abbreviation names where the wind comes FROM, while the
+        // up-pointing arrow is rotated +180deg to show where it blows TO
+        // (Windy's convention, verified live).
+        if (settings.windDirectionDisplay === WIND_DIRECTION_ARROW) {
+            dirRow.innerHTML = '<svg style="transform:rotate(' + (hour.wind_direction + 180) + 'deg)"><use href="#ic-wind-arrow"/></svg>';
+            dirRow.title = compassAbbreviation(hour.wind_direction);
+        } else {
+            dirRow.textContent = compassAbbreviation(hour.wind_direction);
+        }
+    }
+    col.appendChild(dirRow);
 
     if (hasMarineData && hour.wave_height !== null) {
         const waveRow = document.createElement('div');
@@ -738,7 +746,17 @@ function buildWeatherHourColumn(hour, hourDate, hasMarineData) {
 
 // Row heights in DOM order, mirroring the CSS heights in style.css - used
 // to compute where the tide curve's row starts (sum of every row above it).
-const WEATHER_ROW_HEIGHTS = { time: 20, icon: 22, temp: 30, rain: 18, wind: 22, gust: 22, wave: 18, tide: 34 };
+const WEATHER_ROW_HEIGHTS = { time: 20, icon: 22, temp: 30, rain: 18, wind: 22, gust: 22, dir: 18, wave: 18, tide: 34 };
+
+/**
+ * 16-point compass abbreviation (22.5deg sectors centered on each point) -
+ * localized via weather.compass.0..15 (DE uses O for Ost, EN uses E).
+ * @param {number} degrees
+ */
+function compassAbbreviation(degrees) {
+    const index = Math.round((((degrees % 360) + 360) % 360) / 22.5) % 16;
+    return t('weather.compass.' + index);
+}
 
 function pad2(n) {
     return String(n).padStart(2, '0');
@@ -809,7 +827,8 @@ function interpolateTideExtremum(points, i) {
  */
 function buildWeatherTideCurve(points, totalWidth) {
     const rowTop = WEATHER_ROW_HEIGHTS.time + WEATHER_ROW_HEIGHTS.icon + WEATHER_ROW_HEIGHTS.temp +
-        WEATHER_ROW_HEIGHTS.rain + WEATHER_ROW_HEIGHTS.wind + WEATHER_ROW_HEIGHTS.gust + WEATHER_ROW_HEIGHTS.wave;
+        WEATHER_ROW_HEIGHTS.rain + WEATHER_ROW_HEIGHTS.wind + WEATHER_ROW_HEIGHTS.gust + WEATHER_ROW_HEIGHTS.dir +
+        WEATHER_ROW_HEIGHTS.wave;
     const rowHeight = WEATHER_ROW_HEIGHTS.tide;
     const padding = 3; // keeps the curve's own peaks/troughs off the row's top/bottom edge
     // Label baseline distance from its dot, toward the row's center - a

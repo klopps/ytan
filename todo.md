@@ -1,16 +1,5 @@
 # Offene Punkte
 
-## APK Deployment and APK Update
-- The current Android app should be deployed at public/app/ytan.apk, exactly as described in the System Cookbook.
-- In the menu, the app version should be displayed after the WebApp version, separated by “ / ”.
-- On Android systems only, a menu item labeled “Install YTAN App” should appear in the PWA and web version under Settings or Administration as a link to the APK. (If the PWA and/or the web version can detect that the app is already installed, this message should not appear.)
-- In the app only: If a new version of the app is available, a notification and an update button should appear upon launch. In the menu, under “Settings” or “Administration,” the message “Install Update to v<version number>” should be displayed prominently (e.g., using a contrasting text color and bold font). Clicking it installs the update.
-This is modeled after the update functionality in the System Cookbook.
-
-**Status (2026-10-06): code done, release/on-device test still open.** Ported from `c:\dev\www\kochbuch`: `AppUpdatePlugin.java` (downloads the APK only via HTTPS from the app's own server host, progress events, opens Android's installer; `REQUEST_INSTALL_PACKAGES`), `bin/publish-app.bat [test]` (uploads the *release* APK to `public/app/ytan.apk`, then `version.json` from `bin/app-version-json.php`, version read from the APK itself via `aapt2`), `public/js/native-app.js` (app: "v<web> / <app>" version line, update banner on start, bold accent-colored "Install update to v…" row below Preferences/Administration; browser/PWA on Android: "Install YTAN App", hidden when `navigator.getInstalledRelatedApps()` reports the app - via `related_applications` in `site.webmanifest` + `asset_statements` in the app manifest - or when no APK is published on that host). `public/app/` is gitignored and excluded from all deploy scripts so a deploy never overwrites the published APK/`version.json`. Verified in a mobile-viewport browser with mocked Capacitor plugins. **Still open:** run `bin\build-app-release.bat` + `bin\publish-app.bat`, first install on the device (older APKs without `AppUpdatePlugin` only get the download link), then a second release to test the update from inside the app; verify `getInstalledRelatedApps()` with the app installed.
-
-
-
 ## Standards für alle Gestaltungselemente festlegen
 
 An verschiedenen Stellen sind die Gestaltungselemente wie Buttons, Inputfelder, Schalter, Hinweistexte etc. unterschiedlich gestaltet. Das muss einheitlich gestaltet werden. Dazu soll im Admin-Bereich eine Beispielseite aufgebaut werden, auf der möglichst alle Elemente vertreten sind, um die Gestaltung vergleichen zu können und schließlich anzugleichen. Ein Vorbild ist das Bootstrap Cheatsheet. Es kann sein, dass einige der folgenden Elemente noch gar nicht zum Einsatz kommen.

@@ -273,6 +273,13 @@
               <input type="radio" id="windunit4" name="windunitselector" onclick="editWindUnit(this)" value="kn"><label for="windunit4"><?= $t('app.wind_unit.kn') ?></label>
             </div>
           </form>
+          <p class="nav-field-label"><?= $t('app.preferences.wind_direction') ?></p>
+          <form name="winddirection">
+            <div class="nav-segmented">
+              <input type="radio" id="winddirection1" name="winddirectionselector" onclick="editWindDirectionDisplay(this)" value="text"><label for="winddirection1"><?= $t('app.wind_direction.text') ?></label>
+              <input type="radio" id="winddirection2" name="winddirectionselector" onclick="editWindDirectionDisplay(this)" value="arrow" checked><label for="winddirection2"><?= $t('app.wind_direction.arrow') ?></label>
+            </div>
+          </form>
           <p class="nav-field-label"><?= $t('app.preferences.coordinate_format') ?></p>
           <form name="coordformat">
             <div class="nav-segmented">
@@ -507,7 +514,8 @@
       <symbol id="ic-drop" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.2S5.5 10.8 5.5 15a6.5 6.5 0 0013 0c0-4.2-6.5-11.8-6.5-11.8z"/></symbol>
       <symbol id="ic-flag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 21V4M6 4h12l-3.2 4L18 12H6"/></symbol>
       <symbol id="ic-gust" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h11a2.5 2.5 0 100-5M3 13h15a2.5 2.5 0 110 5M3 18h9"/></symbol>
-      <symbol id="ic-arrow" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l5 9.5-5-2.6-5 2.6z"/><path d="M12 22V9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/></symbol>
+      <symbol id="ic-wind-arrow" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l7.5 9h-4.75v11h-5.5V11H4.5z"/></symbol>
+      <symbol id="ic-direction" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3.5 10.5L20.5 3.5l-7 17-2.2-7.8z"/></symbol>
       <symbol id="ic-wave" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 15c1.6 0 1.6-2 3.2-2s1.6 2 3.2 2 1.6-2 3.2-2 1.6 2 3.2 2 1.6-2 3.2-2 1.6 2 3.2 2M2 19.5c1.6 0 1.6-2 3.2-2s1.6 2 3.2 2 1.6-2 3.2-2 1.6 2 3.2 2 1.6-2 3.2-2 1.6 2 3.2 2"/></symbol>
       <symbol id="ic-tide" viewBox="0 0 24 24"><path d="M15 3.3a5 5 0 106 6.1A6 6 0 0115 3.3z" fill="currentColor"/><path d="M2 18.5c1.6 0 1.6-2.2 3.2-2.2s1.6 2.2 3.2 2.2 1.6-2.2 3.2-2.2 1.6 2.2 3.2 2.2 1.6-2.2 3.2-2.2 1.6 2.2 3.2 2.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></symbol>
     </svg>

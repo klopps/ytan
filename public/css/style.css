@@ -39,6 +39,7 @@
   --color-overlay-strong: rgba(0,0,0,0.35);
   --font-display: 'Sora', sans-serif;
   --font-body: 'Plus Jakarta Sans', sans-serif;
+  --font-condensed: 'Barlow Condensed', sans-serif;
   --color-location: #ff0000;
   --color-location-pulse: #ffffff;
 
@@ -2747,6 +2748,8 @@ img.wsi {
 .weather-timeline-row-labels .r-wind { height: 22px; flex-shrink: 0; }
 .weather-timeline-hour-col .r-gust,
 .weather-timeline-row-labels .r-gust { height: 22px; flex-shrink: 0; }
+.weather-timeline-hour-col .r-dir,
+.weather-timeline-row-labels .r-dir { height: 18px; flex-shrink: 0; }
 .weather-timeline-hour-col .r-wave,
 .weather-timeline-row-labels .r-wave { height: 18px; flex-shrink: 0; }
 .weather-timeline-hour-col .r-tide,
@@ -2884,15 +2887,27 @@ img.wsi {
   text-shadow: 0 1px 1.5px rgba(0,0,0,0.35);
 }
 
-.weather-timeline-hour-col .r-wind svg {
-  width: 8px;
-  height: 8px;
-  flex-shrink: 0;
-  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3));
-}
-
 .weather-timeline-hour-col .r-gust {
   opacity: 0.68;
+}
+
+/* Wind direction: plain compass abbreviation (where the wind comes from),
+   condensed so "WNW" fits the 26px hour column. */
+.weather-timeline-hour-col .r-dir {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-condensed);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+/* Alternative display (Preferences > wind direction > arrow): a solid
+   block arrow pointing where the wind blows to. */
+.weather-timeline-hour-col .r-dir svg {
+  width: 14px;
+  height: 14px;
 }
 
 /* Below this width the route-manager's handle/remove/add icons (15-21px,

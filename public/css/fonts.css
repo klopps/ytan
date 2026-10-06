@@ -32,6 +32,14 @@
     src: url('../fonts/plus-jakarta-sans-v12-latin-700.woff2') format('woff2');
 }
 
+/* barlow-condensed-600 - latin (weather timeline's wind-direction abbreviations) */
+@font-face {
+    font-family: 'Barlow Condensed';
+    font-style: normal;
+    font-weight: 600;
+    src: url('../fonts/barlow-condensed-v13-latin-600.woff2') format('woff2');
+}
+
 /* sora-600 - latin */
 @font-face {
     font-family: 'Sora';

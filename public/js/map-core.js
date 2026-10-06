@@ -14,6 +14,8 @@ const WIND_UNIT_BFT = 'bft';
 const WIND_UNIT_MS = 'ms';
 const WIND_UNIT_KMH = 'kmh';
 const WIND_UNIT_KN = 'kn';
+const WIND_DIRECTION_TEXT = 'text'; // Wetter-Zeitleiste: Kürzel (WNW) ...
+const WIND_DIRECTION_ARROW = 'arrow'; // ... oder Pfeil in Strömungsrichtung
 const COORDINATE_FORMAT_DD = 'dd'; // Dezimalgrad, z.B. 54.32330° N
 const COORDINATE_FORMAT_MM = 'mm'; // Grad + Dezimalminuten, z.B. 54° 19.398' N
 const COORDINATE_FORMAT_DMS = 'dms'; // Grad, Minuten, Sekunden, z.B. 54° 19' 24" N
@@ -601,6 +603,7 @@ var settings = { // muss wegen JSON.stringify() ein Objekt sein
     unit: METRIC,
     theme: THEME_LIGHT,
     windUnit: WIND_UNIT_KMH,
+    windDirectionDisplay: WIND_DIRECTION_ARROW,
     coordinateFormat: COORDINATE_FORMAT_DD,
     smoothRoutes: true, // Routen mit abgerundeten statt eckigen Segmenten darstellen (Bearbeitungsmodus bleibt immer exakt)
     routeLabelFontSize: 12 // px, todo.md "Font size for distance information" - route.js's showRouteLabels() reads this instead of a hardcoded constant; admin-configurable min/max via window.YTAN_ROUTE_LABEL_FONT_SIZE_RANGE
@@ -1527,7 +1530,7 @@ function editRouteSmoothing(element) {
  * Preferences screen's 4th wind-speed unit choice (Bft/m/s/km/h/kn) - only
  * consumed by the weather timeline (weather.js) so far, unlike unit
  * (metric/nautical) which affects route/area distance labels everywhere.
- * refreshOpenWeatherTimelineWindUnit() lives in weather.js, loaded right
+ * refreshOpenWeatherTimeline() lives in weather.js, loaded right
  * after this file - same forward-reference pattern editUnit() above
  * already uses for renewVisibleRouteLabels() (route.js, also loaded
  * later), safe because both are only ever called from a user-triggered
@@ -1538,7 +1541,15 @@ function editWindUnit(element) {
         settings.windUnit = element.value;
     }
     saveSettings();
-    refreshOpenWeatherTimelineWindUnit();
+    refreshOpenWeatherTimeline();
+}
+
+function editWindDirectionDisplay(element) {
+    if ([WIND_DIRECTION_TEXT, WIND_DIRECTION_ARROW].includes(element.value)) {
+        settings.windDirectionDisplay = element.value;
+    }
+    saveSettings();
+    refreshOpenWeatherTimeline();
 }
 
 /**

@@ -95,6 +95,10 @@ function saveSettings() {
         settings['windUnit'] = WIND_UNIT_KMH;
     }
 
+    settings['winddirection1'] = document.getElementById('winddirection1').checked;
+    settings['winddirection2'] = document.getElementById('winddirection2').checked;
+    settings['windDirectionDisplay'] = settings['winddirection1'] ? WIND_DIRECTION_TEXT : WIND_DIRECTION_ARROW;
+
     settings['coordformat1'] = document.getElementById('coordformat1').checked;
     settings['coordformat2'] = document.getElementById('coordformat2').checked;
     settings['coordformat3'] = document.getElementById('coordformat3').checked;
@@ -179,6 +183,14 @@ function loadSettings() {
         // leaving the whole segmented control looking unselected.
         if (!settings['windunit1'] && !settings['windunit2'] && !settings['windunit3'] && !settings['windunit4']) {
             document.getElementById('windunit3').checked = true;
+        }
+
+        document.getElementById('winddirection1').checked = settings['winddirection1'];
+        document.getElementById('winddirection2').checked = settings['winddirection2'];
+        // Same fallback pattern as windunit1-4 above - default to the arrow.
+        if (!settings['winddirection1'] && !settings['winddirection2']) {
+            document.getElementById('winddirection2').checked = true;
+            settings['windDirectionDisplay'] = WIND_DIRECTION_ARROW;
         }
 
         document.getElementById('coordformat1').checked = settings['coordformat1'];
