@@ -396,7 +396,9 @@ function addPoiClusterMarker(position, count, bounds) {
         icon: ' ', // no default pin - the label below is the whole visual
         labelContent: '<div class="poiClusterBubble" style="width:' + size + 'px;height:' + size + 'px;">' + count + '</div>',
         labelClass: 'poiClusterLabel',
-        labelAnchor: new google.maps.Point(size / 2, size / 2),
+        // This markerWithLabel version ADDS labelAnchor to the label's
+        // top-left (v1 subtracted it) - negative half-size centers the bubble.
+        labelAnchor: new google.maps.Point(-size / 2, -size / 2),
     });
 
     google.maps.event.addListener(marker, 'click', function () {
