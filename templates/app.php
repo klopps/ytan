@@ -459,7 +459,10 @@
            else in the panel comes after this one bordered header box). -->
       <div class="weather-timeline-header">
         <div class="weather-timeline-header-row">
-          <span id="weatherTimelineTitle" class="weather-timeline-title"></span>
+          <div class="weather-timeline-title-block">
+            <span id="weatherTimelineTitle" class="weather-timeline-title"></span>
+            <span id="weatherTimelineCoords" class="weather-timeline-coords"></span>
+          </div>
           <div class="weather-timeline-close" onclick="closeWeatherTimeline();" aria-label="<?= htmlspecialchars($t('weather.widget.close_aria_label'), ENT_QUOTES) ?>"><i class="material-icons-round">close</i></div>
         </div>
         <!-- Filled by weather.js's weatherFormatFetchedAt() once data

@@ -2302,10 +2302,22 @@ img.wsi {
   justify-content: space-between;
 }
 
+.weather-timeline-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
 .weather-timeline-title {
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 14px;
+  color: var(--color-text);
+}
+
+.weather-timeline-coords {
+  font-size: 11px;
   color: var(--color-text);
 }
 

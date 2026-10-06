@@ -277,14 +277,14 @@ function reloadWeatherTimeline() {
 }
 
 function setWeatherTimelineTitle(lat, lng, placeName) {
-    const coords = formatCoordinates(lat, lng);
     // Literal keys at each t() call site (not a key held in a variable) -
     // TranslationUsageScanner.php finds usages via a regex over t('...'
     // literals, so a computed/variable key here would make the /translate
     // admin tool wrongly report the key as unused.
     document.getElementById('weatherTimelineTitle').textContent = placeName
-        ? t('weather.timeline.title_with_place', { place: placeName, coords: coords })
-        : t('weather.timeline.title', { coords: coords });
+        ? t('weather.timeline.title_with_place', { place: placeName })
+        : t('weather.timeline.title');
+    document.getElementById('weatherTimelineCoords').textContent = formatCoordinates(lat, lng);
 }
 
 function closeWeatherTimeline() {
