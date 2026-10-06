@@ -4,8 +4,58 @@ Paddle. Eat. Sleep. Repeat.
 
 YTAN is a web application for planning kayak touring trips (points of
 interest, routes, tours and areas on a map), rebuilt from the ground up as
-a fork of PESR. It's designed so a future Android/iOS app can be built
-against the same backend.
+a fork of PESR. It runs in the browser, as an installable PWA, and as an
+**Android app** (see [Android app](#android-app) below).
+
+## Features
+
+**Map & content**
+- **POIs** in 17 types (camps, landing sites, drinking water, danger zones,
+  portages, lighthouses and sea marks, …), each type
+  toggleable; clustered into count bubbles when zoomed out. Camps can carry
+  a *wind shelter indicator*, edited on a tappable compass dial.
+- **Routes** drawn on the map with live distance labels (optionally
+  smoothed), **areas** as polygons. POIs, routes and areas can have photos
+  (compressed client-side).
+- Create and edit everything directly on the map; right-click / long-press
+  context menus on the map and on POIs, routes and areas.
+- **Search** for places (Google) or the app's own POIs; share a map view or
+  route as a link; pan to your current location and copy its coordinates.
+
+**Tours**
+- Group routes into **tours** with description, tags and photos; search and
+  filter by name, creator or length; reorder member routes.
+- **Tour mode** shows only a tour's routes on the map; tours can be
+  published, copied and shared via link.
+- **Tour document**: a printable PDF with photos, description and the
+  member routes.
+
+**Weather**
+- Hourly forecast for any point on the map or your current location
+  ([Open-Meteo](https://open-meteo.com/)): temperature, rain, wind, gusts,
+  wind direction, waves, tide curve, sunrise/sunset, a week overview with
+  frost and thunderstorm hints.
+- Rain radar for the current map view (opens [Windy](https://www.windy.com/)).
+
+**On the water (Android app)**
+- **GPS track recording** in the background with the screen locked;
+  recordings are stored locally and saved as routes once a connection is
+  available.
+- **Offline use**: map data is cached locally; POIs, routes and areas
+  created or changed offline are queued and synced later.
+
+**Personalization**
+- German and English UI, light and dark theme.
+- Metric or nautical distances; wind in Bft, m/s, km/h or kn; coordinates as
+  decimal degrees, degrees/minutes or degrees/minutes/seconds; route label
+  font size.
+
+**Accounts & administration**
+- User accounts with invite and password-reset e-mails; private and public
+  content.
+- Fine-grained rights (create/publish/manage/copy tours, view recording
+  details), managed in an admin area that also holds site settings, an
+  in-browser translation editor and an orphaned-image cleanup tool.
 
 ## Architecture
 
@@ -19,10 +69,12 @@ against the same backend.
   monolithic script.
 - **Database**: MySQL/MariaDB, schema in `database/migrations/*.sql`,
   applied with `bin/migrate.php` (no external migration tool required).
-- **Mobile**: there is currently no native app. Any future Android/iOS client
-  should talk to the same `/api/v1` REST API described in `docs/API.md`
-  rather than embedding a webview — the API returns plain JSON and uses
-  stateless bearer tokens, so it isn't tied to the web session model.
+- **Android app**: a [Capacitor 8](https://capacitorjs.com/) shell
+  (`android/`, plus the repo-root `package.json`/`capacitor.config.json`)
+  that loads the live site in a WebView and adds native capabilities the
+  browser can't provide — see [Android app](#android-app). There is no iOS
+  app. Because the API returns plain JSON with stateless bearer tokens, a
+  fully native client could still talk to `/api/v1` directly.
 
 ## Local setup
 
@@ -41,6 +93,52 @@ Then open `http://localhost:8000/`.
 with `php -r "echo bin2hex(random_bytes(32));"`); `MAPS_API_KEY` is a Google
 Maps JavaScript API key restricted to your domain (get a new one for YTAN,
 don't reuse PESR's).
+
+## Android app
+
+The app (`org.pesr.ytan`) does not bundle a copy of the frontend: its
+WebView loads `https://ytan.pesr.org/` live (`capacitor.config.json`'s
+`server.url`), so web changes reach app users with a normal deploy — a new
+APK is only needed when `android/` or `capacitor.config.json` change.
+
+What the native shell adds on top of the web app:
+
+- **Background GPS route recording** with the screen locked
+  (`@capacitor-community/background-geolocation`, plus the app-local
+  `LocationPermissionsPlugin`) — the main reason the app exists, since
+  browsers throttle geolocation in the background.
+- **File downloads and sharing** via Android's share sheet
+  (`@capacitor/filesystem`, `@capacitor/share`), which a WebView can't do on
+  its own.
+- **Offline start page** (`public/offline.html`) when launched without a
+  connection.
+- **In-app updates**: the app compares its own version (`AppInfoPlugin`) with
+  `public/app/version.json` on start and installs a newer APK itself
+  (`AppUpdatePlugin`).
+
+The JS side lives in `public/js/capacitor-bridge.js` and
+`public/js/native-app.js`; both are no-ops in a normal browser.
+
+**Distribution**: not via the Play Store. The signed release APK is published
+at `/app/ytan.apk` on the server, and Android users of the web version see an
+"Install YTAN App" entry in the menu. Updates only install over an APK signed
+with the same release key.
+
+**Building and releasing** (Windows, JDK 21 required — Android Studio's
+bundled JBR breaks Gradle):
+
+```bat
+bin\build-app-release.bat      &rem signed .apk + .aab, needs android\keystore.properties
+bin\publish-app.bat            &rem upload APK + version.json to ytan.pesr.org
+bin\publish-app.bat test       &rem ... or to test.pesr.org
+```
+
+The version lives in `android/app/build.gradle` (`versionCode` =
+major\*10000 + minor\*100 + patch — no leading zeros, Groovy reads those as
+octal; `versionName`). The git pre-commit hook bumps it automatically
+whenever a commit touches `android/`. The app sends its `versionCode` as an
+`X-App-Version` header; setting `MIN_APP_VERSION_CODE` in `.env` makes the
+backend block writes from older builds and show an "update required" notice.
 
 ## Notable differences from PESR
 
