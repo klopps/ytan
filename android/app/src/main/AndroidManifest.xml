@@ -27,6 +27,12 @@
             android:grantUriPermissions="true">
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
         </provider>
+
+        <!-- Declares the YTAN websites as related to this app, so the web
+             version's navigator.getInstalledRelatedApps() (native-app.js,
+             paired with site.webmanifest's related_applications) can tell
+             the app is already installed and hide "Install YTAN App". -->
+        <meta-data android:name="asset_statements" android:resource="@string/asset_statements" />
     </application>
 
     <!-- Permissions -->
@@ -51,4 +57,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+
+    <!-- In-app update (AppUpdatePlugin): lets the app hand a downloaded
+         update APK to Android's installer. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 </manifest>

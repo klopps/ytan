@@ -25,6 +25,8 @@ if git diff --cached --name-only | grep -q '^android/'; then
         # comment above the field itself) - re-deriving versionName from
         # the bumped code, rather than parsing/incrementing the "x.y.z"
         # string separately, guarantees the two can never drift apart.
+        # Strip leading zeros - $((...)) would read e.g. 00604 as octal.
+        staged_code="$(echo "$staged_code" | sed 's/^0*//')"
         new_code=$((staged_code + 1))
         major=$((new_code / 10000))
         minor=$(((new_code % 10000) / 100))

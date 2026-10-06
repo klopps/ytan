@@ -42,6 +42,10 @@ const CapacitorBridge = (function () {
     // may be absent on a build predating this feature (todo.md "App-
     // Backend-Kompatibilität"), guarded in getAppVersionCode() below.
     const AppInfo = window.Capacitor.Plugins.AppInfo;
+    // App-local plugin (AppUpdatePlugin.java) - absent on APKs built before
+    // the in-app update existed; native-app.js falls back to a download
+    // link for those.
+    const AppUpdate = window.Capacitor.Plugins.AppUpdate;
 
     /**
      * With android.useLegacyBridge:true (capacitor.config.json - required to
@@ -164,29 +168,70 @@ const CapacitorBridge = (function () {
     // appVersionHeader() awaits this on every single API request - the
     // installed APK's versionCode can't change during a running session,
     // so one native round trip is enough.
-    let appVersionCodePromise = null;
+    let appInfoPromise = null;
 
     /**
-     * @returns {Promise<?number>} the installed APK's versionCode (see
-     * android/app/build.gradle) via the app-local AppInfo plugin, or null
-     * if that plugin is absent (a build predating it) or the native call
-     * fails - callers should treat null as "unknown" and NOT report a
-     * version, matching checkLocationPermissionStatus()'s fail-open
-     * convention above rather than assuming incompatibility.
+     * @returns {Promise<?{versionCode: number, versionName: string}>} the
+     * installed APK's version (android/app/build.gradle) via the app-local
+     * AppInfo plugin, or null if that plugin is absent (a build predating
+     * it) or the native call fails - callers should treat null as "unknown",
+     * matching checkLocationPermissionStatus()'s fail-open convention above.
      */
-    function getAppVersionCode() {
+    function getAppInfo() {
         if (!AppInfo) {
             return Promise.resolve(null);
         }
-        if (!appVersionCodePromise) {
-            appVersionCodePromise = Promise.resolve(AppInfo.getInfo()).then(function (info) {
-                return (info && typeof info.versionCode !== 'undefined') ? Number(info.versionCode) : null;
+        if (!appInfoPromise) {
+            appInfoPromise = Promise.resolve(AppInfo.getInfo()).then(function (info) {
+                if (!info || typeof info.versionCode === 'undefined') {
+                    return null;
+                }
+                return { versionCode: Number(info.versionCode), versionName: info.versionName || '' };
             }).catch(function (err) {
-                log('getAppVersionCode() failed', LOG_ERROR, err);
+                log('getAppInfo() failed', LOG_ERROR, err);
                 return null;
             });
         }
-        return appVersionCodePromise;
+        return appInfoPromise;
+    }
+
+    /**
+     * @returns {Promise<?number>} the installed APK's versionCode, or null
+     * if unknown - callers should NOT report a version then rather than
+     * assuming incompatibility.
+     */
+    function getAppVersionCode() {
+        return getAppInfo().then(function (info) {
+            return info ? info.versionCode : null;
+        });
+    }
+
+    function canSelfUpdate() {
+        return !!AppUpdate;
+    }
+
+    /**
+     * Downloads the APK at `url` (must be HTTPS on the app's own server host,
+     * enforced natively) and opens Android's installer for it. Resolves once
+     * the installer is showing; Android replaces the app on the user's
+     * confirmation.
+     * @param {string} url
+     * @param {function(number): void} onProgress download percentage
+     */
+    async function downloadAndInstallUpdate(url, onProgress) {
+        if (!AppUpdate) {
+            throw new Error('AppUpdate plugin not available');
+        }
+        const listener = await Promise.resolve(AppUpdate.addListener('downloadProgress', function (event) {
+            onProgress(event.percent);
+        }));
+        try {
+            await Promise.resolve(AppUpdate.downloadAndInstall({ url: url }));
+        } finally {
+            if (listener && typeof listener.remove === 'function') {
+                listener.remove();
+            }
+        }
     }
 
     return {
@@ -197,6 +242,9 @@ const CapacitorBridge = (function () {
         openAppSettings: openAppSettings,
         saveAndShareFile: saveAndShareFile,
         shareLink: shareLink,
+        getAppInfo: getAppInfo,
         getAppVersionCode: getAppVersionCode,
+        canSelfUpdate: canSelfUpdate,
+        downloadAndInstallUpdate: downloadAndInstallUpdate,
     };
 })();

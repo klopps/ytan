@@ -4,4 +4,8 @@
     <string name="title_activity_main">YTAN</string>
     <string name="package_name">org.pesr.ytan</string>
     <string name="custom_url_scheme">org.pesr.ytan</string>
+    <string name="asset_statements" translatable="false">
+        [{\"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": {\"namespace\": \"web\", \"site\": \"https://ytan.pesr.org\"}},
+         {\"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": {\"namespace\": \"web\", \"site\": \"https://test.pesr.org\"}}]
+    </string>
 </resources>

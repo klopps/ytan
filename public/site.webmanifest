@@ -18,5 +18,11 @@
     ],
     "theme_color": "#60609F",
     "background_color": "#ffffff",
-    "display": "standalone"
+    "display": "standalone",
+    "related_applications": [
+        {
+            "platform": "play",
+            "id": "org.pesr.ytan"
+        }
+    ]
 }

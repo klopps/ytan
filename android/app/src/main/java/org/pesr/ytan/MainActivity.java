@@ -14,12 +14,13 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        // LocationPermissionsPlugin/AppInfoPlugin are app-local source (not
+        // LocationPermissionsPlugin/AppInfoPlugin/AppUpdatePlugin are app-local source (not
         // npm packages under node_modules), so unlike @capacitor-community/
         // background-geolocation they aren't auto-registered by `cap sync`
         // - must be registered here before super.onCreate().
         registerPlugin(LocationPermissionsPlugin.class);
         registerPlugin(AppInfoPlugin.class);
+        registerPlugin(AppUpdatePlugin.class);
         super.onCreate(savedInstanceState);
 
         // See OfflineAwareWebViewClient: covers later navigation failures

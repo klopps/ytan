@@ -48,6 +48,7 @@ tar -C "$ROOT_DIR" \
     --exclude='.claude' \
     --exclude='vendor' \
     --exclude='public/images/wsi/*.svg' \
+    --exclude='public/app' \
     -cf - . | tar -C "$BUILD_DIR" -xf -
 
 echo "==> Installing production dependencies (composer install --no-dev)"

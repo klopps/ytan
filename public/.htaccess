@@ -1,3 +1,16 @@
+# Android app download (bin\publish-app.bat uploads public/app/ytan.apk):
+# without the proper type, Apache serves it as a generic binary and Chrome
+# on Android may not offer to install it.
+AddType application/vnd.android.package-archive .apk
+
+# version.json drives the in-app update check (native-app.js) - must never
+# be served stale from an HTTP cache.
+<IfModule mod_headers.c>
+    <FilesMatch "^version\.json$">
+        Header set Cache-Control "no-cache"
+    </FilesMatch>
+</IfModule>
+
 RewriteEngine On
 
 # If the request maps to a real file or directory (css/js/images/...), serve it directly.

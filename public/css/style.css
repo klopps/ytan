@@ -4147,6 +4147,111 @@ input[type="color"] {
   text-align: center;
 }
 
+/* "Install update to vX" drawer row (native-app.js) - deliberately loud. */
+.nav-menu-row.nav-menu-row-highlight,
+.nav-menu-row.nav-menu-row-highlight .nav-menu-row-icon {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+/* App-start "new app version available" notice (native-app.js). Below the
+   drawer/panels (z-index 10/11) so opening either covers it. */
+/* Download progress bar (native-app.js renderDownloadState()) - only shown
+   while .is-downloading; in the drawer row it sits under the label, in the
+   banner along its bottom edge. */
+.app-update-progress {
+  display: none;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-bg-subtle);
+  overflow: hidden;
+}
+
+.is-downloading .app-update-progress {
+  display: block;
+}
+
+.app-update-progress-bar {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--color-accent);
+  transition: width 0.2s linear;
+}
+
+#appUpdateMenuRow .app-update-progress {
+  margin-top: 6px;
+}
+
+.app-new-version-banner .app-update-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 0;
+}
+
+.app-new-version-banner-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.app-new-version-banner {
+  overflow: hidden;
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 8px 10px 14px;
+  box-sizing: border-box;
+  background: var(--color-bg-panel);
+  color: var(--color-text);
+  border-radius: 12px;
+  box-shadow: var(--shadow-soft);
+  font-size: 13px;
+}
+
+.app-new-version-banner-icon {
+  color: var(--color-accent);
+  font-size: 22px;
+  flex: none;
+}
+
+.app-new-version-banner-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.app-new-version-banner-btn {
+  flex: none;
+  min-height: 36px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 18px;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.app-new-version-banner-close {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--color-text-faint);
+  cursor: pointer;
+}
+
 .nav-segmented {
   display: flex;
   background: var(--color-bg-subtle);

@@ -38,6 +38,8 @@ Thumbs.db
 /android/.cxx/
 *.apk
 *.aab
+# Published APK + version.json, uploaded straight to the server by bin\publish-app.bat
+/public/app/
 
 # Kartenbilder für Touren-Dokumente
 storage/static-maps-cache/*

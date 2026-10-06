@@ -42,6 +42,7 @@
     <script src="./js/toast.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/toast.js') ?>"></script>
     <script src="./js/photo-upload.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/photo-upload.js') ?>"></script>
     <script src="./js/capacitor-bridge.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/capacitor-bridge.js') ?>"></script>
+    <script src="./js/native-app.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/native-app.js') ?>"></script>
     <script src="./js/splashscreen.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/splashscreen.js') ?>"></script>
     <script src="./js/confirm-dialog.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/confirm-dialog.js') ?>"></script>
     <script src="./js/nav-menu.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/nav-menu.js') ?>"></script>
@@ -174,6 +175,11 @@
             <li><button type="button" class="nav-menu-row" onclick="showUserWindow();"><i class="material-icons-round nav-menu-row-icon">account_circle</i><span class="nav-menu-row-labels"><?= $t('app.nav.profile') ?><span class="nav-menu-row-sub" id="profileRowSub"><?= $t('app.nav.not_signed_in') ?></span></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
             <li><button type="button" class="nav-menu-row" onclick="navMenuGoTo('preferences');"><i class="material-icons-round nav-menu-row-icon">tune</i><span class="nav-menu-row-labels"><?= $t('app.nav.preferences') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
             <li id="adminMenuBtn" style="display:none;"><button type="button" class="nav-menu-row" onclick="window.location.href='<?= $baseUrl ?>/admin';"><i class="material-icons-round nav-menu-row-icon">settings</i><span class="nav-menu-row-labels"><?= $t('app.nav.administration') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
+            <!-- Both hidden by default, shown by native-app.js: the install
+                 row only in a browser/PWA on Android without the app, the
+                 update row only inside the app when a newer APK exists. -->
+            <li id="appInstallMenuRow" style="display:none;"><button type="button" class="nav-menu-row"><i class="material-icons-round nav-menu-row-icon">android</i><span class="nav-menu-row-labels"><?= $t('app.nav.install_app') ?><span class="nav-menu-row-sub"></span></span></button></li>
+            <li id="appUpdateMenuRow" style="display:none;"><button type="button" class="nav-menu-row nav-menu-row-highlight" onclick="NativeApp.installUpdate();"><i class="material-icons-round nav-menu-row-icon">system_update</i><span class="nav-menu-row-labels"><span class="app-update-row-label"></span><span class="app-update-progress"><span class="app-update-progress-bar"></span></span></span></button></li>
           </ul>
 
           <div class="nav-divider"></div>
