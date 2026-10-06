@@ -6,6 +6,8 @@ import Toybox.Lang;
 import Toybox.Math;
 import Toybox.Position;
 import Toybox.System;
+import Toybox.Time;
+import Toybox.Time.Gregorian;
 import Toybox.WatchUi;
 
 // Shows bearing (degrees, true north) and distance to the next waypoint of
@@ -27,6 +29,20 @@ class YtanNavField extends WatchUi.DataField {
     ];
     const ARRIVAL_RADIUS_M = 50.0d;
     const LOOKAHEAD_SEGMENTS = 10;
+    const INFO_FONT = Graphics.FONT_SMALL;
+    const NAME_FONT = Graphics.FONT_XTINY;
+    // Space between bearing and distance in their shared row.
+    const VALUE_GAP = 14;
+    // Scalable condensed system font for the values (fenix 7 and newer).
+    const CONDENSED_FACE = "RobotoCondensedBold";
+    const ETA_FONT = Graphics.FONT_SMALL;
+    // A value row is its visible digits plus this much breathing room.
+    const VALUE_ROW_FACTOR = 1.1d;
+    // ETA: speed smoothed over ~5 minutes of paddling; below ~1 km/h counts
+    // as a pause and doesn't change it. Shown after 30 s of paddling.
+    const SPEED_WINDOW_S = 300.0d;
+    const PAUSE_SPEED_MS = 0.28d;
+    const MIN_MOVING_S = 30.0d;
     const SKIP_MARGIN_M = 50.0d;
     // Share of the field height kept free at an edge touching the bezel.
     const EDGE_INSET = 0.07d;
@@ -37,20 +53,29 @@ class YtanNavField extends WatchUi.DataField {
     private var _nautical = false;
     private var _lats = null; // Array of Double, degrees
     private var _lngs = null;
+    private var _remainFrom = null; // route length from waypoint i to the finish, meters
+    private var _speed = null; // smoothed speed, m/s
+    private var _movingSeconds = 0.0d;
+    private var _lastTimer = null;
     private var _next = -1; // index of the next waypoint, -1 = not determined yet
     private var _error = null;
 
     // What onUpdate() draws, set by compute(): either a status text, or
     // bearing + distance.
     private var _label = "";
+    private var _clock = "";
+    private var _heartRate = "--";
     private var _routeName = "";
     private var _waypoints = "";
     private var _status = null;
     private var _bearing = "";
     private var _distance = "";
     private var _distanceUnit = "";
+    private var _toFinish = "";
+    private var _eta = "";
 
     private var _strLabel;
+    private var _strEta;
     private var _strNoRoute;
     private var _strNoGps;
     private var _strFinish;
@@ -67,6 +92,7 @@ class YtanNavField extends WatchUi.DataField {
         _strFinishReached = WatchUi.loadResource(Rez.Strings.FinishReached);
         _strBadToken = WatchUi.loadResource(Rez.Strings.BadToken);
         _strNm = WatchUi.loadResource(Rez.Strings.UnitNauticalMiles);
+        _strEta = WatchUi.loadResource(Rez.Strings.Eta);
         _label = _strLabel;
         _status = _strNoRoute;
 
@@ -85,6 +111,9 @@ class YtanNavField extends WatchUi.DataField {
         }
         _version = version;
         _next = -1;
+        _speed = null;
+        _movingSeconds = 0.0d;
+        _lastTimer = null;
         var name = data["n"];
         _routeName = name instanceof String ? name : "";
 
@@ -103,6 +132,13 @@ class YtanNavField extends WatchUi.DataField {
         }
         _lats = lats;
         _lngs = lngs;
+
+        var remain = new Array<Double>[count];
+        remain[count - 1] = 0.0d;
+        for (var i = count - 2; i >= 0; i--) {
+            remain[i] = remain[i + 1] + distanceMeters(lats[i], lngs[i], lats[i + 1], lngs[i + 1]);
+        }
+        _remainFrom = remain;
     }
 
     // A failed sync only matters if there is nothing to navigate with yet,
@@ -118,6 +154,9 @@ class YtanNavField extends WatchUi.DataField {
     function compute(info) {
         _label = _strLabel;
         _waypoints = "";
+        _clock = clockText();
+        var heartRate = info.currentHeartRate;
+        _heartRate = heartRate != null ? heartRate.toString() : "--";
         if (_error != null) {
             _status = _error;
             return;
@@ -127,13 +166,16 @@ class YtanNavField extends WatchUi.DataField {
             return;
         }
         var location = info.currentLocation;
+        var speed = info.currentSpeed;
         if (location == null) {
             location = simulatedLocation();
+            speed = simulatedSpeed();
         }
         if (location == null) {
             _status = _strNoGps;
             return;
         }
+        updateSpeed(speed);
         var position = location.toDegrees();
         var lat = position[0].toDouble();
         var lng = position[1].toDouble();
@@ -166,7 +208,108 @@ class YtanNavField extends WatchUi.DataField {
         _waypoints = (_next + 1) + "/" + count;
         _status = null;
         _bearing = bearingDegrees(lat, lng, _lats[_next], _lngs[_next]).format("%03d");
-        setDistance(distanceMeters(lat, lng, _lats[_next], _lngs[_next]));
+        var toNext = distanceMeters(lat, lng, _lats[_next], _lngs[_next]);
+        var next = formatDistance(toNext);
+        _distance = next[0];
+        _distanceUnit = next[1];
+        var remaining = toNext + _remainFrom[_next];
+        var finish = formatDistance(remaining);
+        _toFinish = finish[0] + " " + finish[1];
+        _eta = etaText(remaining);
+    }
+
+    // Exponential moving average over ~SPEED_WINDOW_S of paddling - at the
+    // start over the time paddled so far, so the first sample doesn't
+    // dominate. Pauses (and gaps, e.g. activity paused) leave it unchanged.
+    private function updateSpeed(speed) {
+        var now = System.getTimer();
+        var dt = _lastTimer == null ? 0.0d : (now - _lastTimer) / 1000.0d;
+        _lastTimer = now;
+        if (speed == null || speed < PAUSE_SPEED_MS || dt <= 0.0d || dt > 10.0d) {
+            return;
+        }
+        _movingSeconds += dt;
+        var window = _movingSeconds < SPEED_WINDOW_S ? _movingSeconds : SPEED_WINDOW_S;
+        var alpha = dt / window;
+        _speed = _speed == null ? speed.toDouble() : _speed + alpha * (speed - _speed);
+    }
+
+    // "15:42 (1:23 h)" for the remaining route distance in meters - the
+    // "ETA " prefix is added in onUpdate() only where there is room for it.
+    private function etaText(remaining) {
+        if (_speed == null || _movingSeconds < MIN_MOVING_S) {
+            return "--:--";
+        }
+        var seconds = (remaining / _speed).toNumber();
+        if (seconds > 86400) {
+            return "--";
+        }
+        var arrival = Gregorian.info(Time.now().add(new Time.Duration(seconds)), Time.FORMAT_SHORT);
+        return formatClock(arrival.hour, arrival.min) + " (" + formatDuration(seconds) + ")";
+    }
+
+    // Draws the first [text, font] variant that fits maxWidth - so a row
+    // degrades step by step (smaller font, shorter text) instead of being
+    // cut off; only if none fits, `fallback` is shortened with "...".
+    private function drawFirstFitting(dc, cx, cy, maxWidth, variants, fallback) {
+        for (var i = 0; i < variants.size(); i++) {
+            var text = variants[i][0];
+            var font = variants[i][1];
+            if (dc.getTextWidthInPixels(text, font) <= maxWidth) {
+                dc.drawText(cx, cy, font, text, Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+                return;
+            }
+        }
+        dc.drawText(cx, cy, Graphics.FONT_XTINY, fitText(dc, fallback, Graphics.FONT_XTINY, maxWidth),
+            Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+    }
+
+    private function formatDuration(seconds) {
+        var minutes = (seconds + 59) / 60;
+        if (minutes < 60) {
+            return minutes + " min";
+        }
+        return (minutes / 60) + ":" + (minutes % 60).format("%02d") + " h";
+    }
+
+    // Time of day, 12/24 h as set on the watch.
+    private function clockText() {
+        var time = System.getClockTime();
+        return formatClock(time.hour, time.min);
+    }
+
+    private function formatClock(hour, min) {
+        if (!System.getDeviceSettings().is24Hour) {
+            hour = hour % 12;
+            if (hour == 0) {
+                hour = 12;
+            }
+        }
+        return hour + ":" + min.format("%02d");
+    }
+
+    // "14:32  [heart] 128", centered at (cx, cy). The heart is drawn, since
+    // not every Garmin font has a heart glyph.
+    private function drawInfoRow(dc, cx, cy) {
+        var gap = 14;
+        var heartSize = (Graphics.getFontAscent(INFO_FONT) * 0.6d).toNumber();
+        var clockWidth = dc.getTextWidthInPixels(_clock, INFO_FONT);
+        var hrWidth = dc.getTextWidthInPixels(_heartRate, INFO_FONT);
+        var total = clockWidth + gap + heartSize + 4 + hrWidth;
+        var x = cx - total / 2;
+        dc.drawText(x, cy, INFO_FONT, _clock, Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
+        x += clockWidth + gap;
+        drawHeart(dc, x, cy, heartSize);
+        dc.drawText(x + heartSize + 4, cy, INFO_FONT, _heartRate, Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
+    }
+
+    // Filled heart of the given width, vertically centered on cy.
+    private function drawHeart(dc, x, cy, size) {
+        var r = size / 4;
+        var top = cy - size / 2 + r;
+        dc.fillCircle(x + r, top, r);
+        dc.fillCircle(x + size - r, top, r);
+        dc.fillPolygon([[x, top], [x + size, top], [x + size / 2, cy + size / 2]]);
     }
 
     // Waypoint reached (or passed via a shortcut): one short buzz and the
@@ -219,6 +362,8 @@ class YtanNavField extends WatchUi.DataField {
         var insetBottom = (flags & OBSCURE_BOTTOM) != 0 ? inset : 0;
 
         dc.drawText(width / 2, insetTop, Graphics.FONT_XTINY, _label, Graphics.TEXT_JUSTIFY_CENTER);
+        var infoHeight = Graphics.getFontHeight(INFO_FONT);
+        drawInfoRow(dc, width / 2, insetTop + labelHeight + infoHeight / 2);
 
         // Waypoint counter on its own line at the bottom, mirroring the label.
         var hasWaypoints = !"".equals(_waypoints);
@@ -226,7 +371,7 @@ class YtanNavField extends WatchUi.DataField {
             dc.drawText(width / 2, height - insetBottom - labelHeight, Graphics.FONT_XTINY, _waypoints, Graphics.TEXT_JUSTIFY_CENTER);
         }
 
-        var top = insetTop + labelHeight;
+        var top = insetTop + labelHeight + infoHeight;
         var area = height - top - insetBottom - (hasWaypoints ? labelHeight : 0);
         if (_status != null) {
             dc.drawText(width / 2, top + area / 2, Graphics.FONT_MEDIUM, _status,
@@ -234,34 +379,75 @@ class YtanNavField extends WatchUi.DataField {
             return;
         }
 
-        // Route name between the two values - the widest part of a round
-        // display. Small font if the whole name fits, else the smallest
-        // font, shortened with "..." if it still doesn't.
-        var nameFont = Graphics.FONT_SMALL;
-        var nameHeight = 0;
-        var name = "";
-        if (!"".equals(_routeName)) {
-            var nameWidth = usableWidth(width, height, top + area / 2, Graphics.getFontHeight(nameFont));
-            if (dc.getTextWidthInPixels(_routeName, nameFont) > nameWidth) {
-                nameFont = Graphics.FONT_XTINY;
-            }
-            name = fitText(dc, _routeName, nameFont, nameWidth);
-            nameHeight = Graphics.getFontHeight(nameFont);
+        // Route name at the top, bearing + distance side by side in the
+        // middle, ETA and distance to finish at the bottom.
+        var nameHeight = "".equals(_routeName) ? 0 : textHeight(NAME_FONT);
+        var textRow = textHeight(ETA_FONT);
+        var font = pickFont(dc, width, height, top, area, nameHeight, textRow);
+        var unitFont = font == Graphics.FONT_SMALL ? Graphics.FONT_XTINY : Graphics.FONT_SMALL;
+        var rows = layoutRows(top, area, nameHeight, textRow);
+        var cx = width / 2;
+        if (nameHeight > 0) {
+            var name = fitText(dc, _routeName, NAME_FONT, usableWidth(width, height, rows[0], nameHeight));
+            dc.drawText(cx, rows[0], NAME_FONT, name, Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
         }
 
-        // The two values share the rest; one font for both, so they look
-        // like a pair.
-        var lineHeight = (area - nameHeight) / 2;
-        var cy1 = top + lineHeight / 2;
-        var cy2 = top + lineHeight + nameHeight + lineHeight / 2;
-        var font = pickFont(dc, width, height, lineHeight, cy1, cy2);
-        var unitFont = font == Graphics.FONT_SMALL ? Graphics.FONT_XTINY : Graphics.FONT_SMALL;
-        drawValue(dc, width / 2, cy1, _bearing, "°", true, font, unitFont);
-        if (nameHeight > 0) {
-            dc.drawText(width / 2, top + lineHeight + nameHeight / 2, nameFont, name,
-                Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        var bearingWidth = valueWidth(dc, _bearing, "°", font, unitFont);
+        var x = cx - (bearingWidth + VALUE_GAP + valueWidth(dc, _distance, _distanceUnit, font, unitFont)) / 2;
+        var dark = background != Graphics.COLOR_BLACK;
+        dc.setColor(dark ? Graphics.COLOR_DK_BLUE : Graphics.COLOR_BLUE, Graphics.COLOR_TRANSPARENT);
+        drawValueAt(dc, x, rows[1], _bearing, "°", true, font, unitFont);
+        dc.setColor(dark ? Graphics.COLOR_DK_GREEN : Graphics.COLOR_GREEN, Graphics.COLOR_TRANSPARENT);
+        drawValueAt(dc, x + bearingWidth + VALUE_GAP, rows[1], _distance, _distanceUnit, false, font, unitFont);
+        dc.setColor(foreground, Graphics.COLOR_TRANSPARENT);
+
+        var eta = _strEta + " " + _eta;
+        drawFirstFitting(dc, cx, rows[2], usableWidth(width, height, rows[2], textRow),
+            [[eta, ETA_FONT], [eta, Graphics.FONT_XTINY], [_eta, Graphics.FONT_XTINY]], _eta);
+        drawToFinish(dc, cx, rows[3], usableWidth(width, height, rows[3], textRow));
+    }
+
+    // Distance to the finish behind a drawn finish flag, normal font if it
+    // fits, else the smallest.
+    private function drawToFinish(dc, cx, cy, maxWidth) {
+        var font = ETA_FONT;
+        var flag = (Graphics.getFontAscent(font) * 0.7d).toNumber();
+        if (flag + 6 + dc.getTextWidthInPixels(_toFinish, font) > maxWidth) {
+            font = Graphics.FONT_XTINY;
+            flag = (Graphics.getFontAscent(font) * 0.7d).toNumber();
         }
-        drawValue(dc, width / 2, cy2, _distance, _distanceUnit, false, font, unitFont);
+        var x = cx - (flag + 6 + dc.getTextWidthInPixels(_toFinish, font)) / 2;
+        drawFlag(dc, x, cy, flag);
+        dc.drawText(x + flag + 6, cy, font, _toFinish, Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
+    }
+
+    // Finish flag of the given height, left edge at x, centered on cy.
+    private function drawFlag(dc, x, cy, size) {
+        var top = cy - size / 2;
+        dc.setPenWidth(2);
+        dc.drawLine(x + 1, top, x + 1, top + size);
+        dc.fillPolygon([[x + 2, top], [x + size, top + size / 4], [x + 2, top + size / 2]]);
+        dc.setPenWidth(1);
+    }
+
+    // Vertical centers of [name, values, ETA, distance to finish]: the
+    // route name hugs the info row at the top, ETA and distance to finish
+    // sit right above the waypoint counter, and the values get all the
+    // height in between.
+    private function layoutRows(top, area, nameHeight, textRow) {
+        var bottom = top + area;
+        return [
+            top + nameHeight / 2,
+            (top + nameHeight + bottom - 2 * textRow) / 2,
+            bottom - textRow - textRow / 2,
+            bottom - textRow / 2
+        ];
+    }
+
+    // Visible height of a text font (ascent + descent, without the extra
+    // line spacing getFontHeight() includes).
+    private function textHeight(font) {
+        return Graphics.getFontAscent(font) + Graphics.getFontDescent(font);
     }
 
     // Simulator build only (watch\sim.jungle, bin\sim-watch.bat): without a
@@ -300,23 +486,86 @@ class YtanNavField extends WatchUi.DataField {
         return null;
     }
 
-    // The largest font in which both values (plus units) fit their line.
-    private function pickFont(dc, width, height, lineHeight, cy1, cy2) {
+    // Matches simulatedLocation()'s step per compute() call (~1 s).
+    (:simulator)
+    private function simulatedSpeed() {
+        return _simLat == null ? null : SIM_STEP_M;
+    }
+
+    (:device)
+    private function simulatedSpeed() {
+        return null;
+    }
+
+    // The value font: the scalable condensed system font where the watch has
+    // one (sized to exactly fill the row), else the largest fixed number
+    // font for which bearing + distance side by side fit their row.
+    private function pickFont(dc, width, height, top, area, nameHeight, textRow) {
+        var rows = layoutRows(top, area, nameHeight, textRow);
+        var valuesHeight = area - nameHeight - 2 * textRow;
+        var condensed = pickCondensed(dc, width, height, rows[1], valuesHeight);
+        if (condensed != null) {
+            return condensed;
+        }
         for (var i = 0; i < NUMBER_FONTS.size(); i++) {
             var font = NUMBER_FONTS[i];
             var unitFont = font == Graphics.FONT_SMALL ? Graphics.FONT_XTINY : Graphics.FONT_SMALL;
             // Visible digits, not the padded font cell, have to fit.
             var glyphHeight = digitHeight(font);
-            if (glyphHeight > lineHeight * 0.85d) {
+            if (glyphHeight * VALUE_ROW_FACTOR > valuesHeight) {
                 continue;
             }
-            if (valueWidth(dc, _bearing, "°", font, unitFont) > usableWidth(width, height, cy1, glyphHeight)
-                || valueWidth(dc, _distance, _distanceUnit, font, unitFont) > usableWidth(width, height, cy2, glyphHeight)) {
+            var both = valueWidth(dc, _bearing, "°", font, unitFont) + VALUE_GAP
+                + valueWidth(dc, _distance, _distanceUnit, font, unitFont);
+            if (both > usableWidth(width, height, rows[1], glyphHeight)) {
                 continue;
             }
             return font;
         }
         return Graphics.FONT_SMALL;
+    }
+
+    // Scalable system font (Connect IQ 4.2+, e.g. fenix 7): measured once at
+    // 100 px, then scaled so the digits fill the row's height - or its
+    // width, whichever is tighter. null where the watch has no such font.
+    private var _probeFont = null;
+    private var _condensedFont = null;
+    private var _condensedSize = 0;
+
+    private function pickCondensed(dc, width, height, cy, valuesHeight) {
+        if (!(Graphics has :getVectorFont)) {
+            return null;
+        }
+        if (_probeFont == null) {
+            _probeFont = Graphics.getVectorFont({ :face => CONDENSED_FACE, :size => 100 });
+            if (_probeFont == null) {
+                return null;
+            }
+        }
+        var unitFont = Graphics.FONT_SMALL;
+        var digitPerPx = digitHeight(_probeFont) / 100.0d;
+        var widthPerPx = (dc.getTextWidthInPixels(_bearing, _probeFont) + dc.getTextWidthInPixels(_distance, _probeFont)) / 100.0d;
+        var fixed = dc.getTextWidthInPixels("°", unitFont) + dc.getTextWidthInPixels(_distanceUnit, unitFont) + 4 + VALUE_GAP;
+        var size = valuesHeight / VALUE_ROW_FACTOR / digitPerPx;
+        // The usable width depends on the row's height on a round display -
+        // a couple of rounds settle it.
+        for (var i = 0; i < 3; i++) {
+            var byWidth = (usableWidth(width, height, cy, size * digitPerPx) - fixed) / widthPerPx;
+            if (byWidth < size) {
+                size = byWidth;
+            }
+        }
+        // Even sizes only, so a changing value doesn't rebuild the font
+        // every second.
+        var px = (size.toNumber() / 2) * 2;
+        if (px < 12) {
+            return null;
+        }
+        if (px != _condensedSize) {
+            _condensedFont = Graphics.getVectorFont({ :face => CONDENSED_FACE, :size => px });
+            _condensedSize = px;
+        }
+        return _condensedFont;
     }
 
     // On a round display a full-screen field loses its corners: the visible
@@ -362,14 +611,13 @@ class YtanNavField extends WatchUi.DataField {
         return dc.getTextWidthInPixels(value, font) + 2 + dc.getTextWidthInPixels(unit, unitFont);
     }
 
-    // Number and unit centered together at (cx, cy). The degree sign sits
-    // at the top of the digits; a distance unit shares their baseline. The
-    // number is drawn by its top edge so its baseline (top + ascent) is
-    // known exactly - number fonts carry a lot of padding, so estimating it
-    // from the vertical center put the unit far too low.
-    private function drawValue(dc, cx, cy, value, unit, unitAtTop, font, unitFont) {
+    // Number and unit starting at x, vertically centered on cy. The degree
+    // sign sits at the top of the digits; a distance unit shares their
+    // baseline. The number is drawn by its top edge so its baseline (top +
+    // ascent) is known exactly - number fonts carry a lot of padding, so
+    // estimating it from the vertical center put the unit far too low.
+    private function drawValueAt(dc, x, cy, value, unit, unitAtTop, font, unitFont) {
         var valueWidthPx = dc.getTextWidthInPixels(value, font);
-        var x = cx - valueWidth(dc, value, unit, font, unitFont) / 2;
         // Center the visible digits (not the padded font cell) on cy.
         var digits = digitHeight(font);
         var baseline = cy + digits / 2;
@@ -383,10 +631,13 @@ class YtanNavField extends WatchUi.DataField {
         }
     }
 
-    // Digits fill about 72% of a font's ascent (checked in the simulator);
-    // the rest is padding above them.
+    // Digits fill about 72% of a fixed number font's ascent - the rest is
+    // padding above them - and 91% of the scalable condensed font's (both
+    // measured in the simulator; 0.91 puts the degree sign's top exactly
+    // level with the digits').
     private function digitHeight(font) {
-        return (Graphics.getFontAscent(font) * 0.72d).toNumber();
+        var ratio = (Graphics has :VectorFont && font instanceof Graphics.VectorFont) ? 0.91d : 0.72d;
+        return (Graphics.getFontAscent(font) * ratio).toNumber();
     }
 
     // At start: the end of the route segment closest to the current position
@@ -500,18 +751,17 @@ class YtanNavField extends WatchUi.DataField {
         return (degrees + 0.5d).toNumber() % 360;
     }
 
-    private function setDistance(meters) {
+    // [number, unit]: m below 1 km, then km (2 decimals below 10 km) - or
+    // nautical miles, as set in YTAN.
+    private function formatDistance(meters) {
         if (_nautical) {
             var nm = meters / 1852.0d;
-            _distance = nm.format(nm < 10.0d ? "%.2f" : "%.1f");
-            _distanceUnit = _strNm;
-        } else if (meters < 1000.0d) {
-            _distance = meters.toNumber().toString();
-            _distanceUnit = "m";
-        } else {
-            var km = meters / 1000.0d;
-            _distance = km.format(km < 10.0d ? "%.2f" : "%.1f");
-            _distanceUnit = "km";
+            return [nm.format(nm < 10.0d ? "%.2f" : "%.1f"), _strNm];
         }
+        if (meters < 1000.0d) {
+            return [meters.toNumber().toString(), "m"];
+        }
+        var km = meters / 1000.0d;
+        return [km.format(km < 10.0d ? "%.2f" : "%.1f"), "km"];
     }
 }
