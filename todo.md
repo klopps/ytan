@@ -1,7 +1,5 @@
 # Offene Punkte
 
-## Garmin: Formatierung ETA-Zeile
-Die Restzeit bis zur Ankunft in Klammern hinter der ETA soll immer im Format hh:mm mitfolgendem "h" dargstellt werden. Beispiel: "ETA 14:25 (1:21 h)". Die Zeile soll zentriert werden.
 
 ## Garmin-Datenfeld auf der Uhr überprüfen
 
@@ -11,8 +9,9 @@ Das Connect-IQ-Datenfeld (`watch/`) ist gebaut, läuft im Simulator und hat auf 
 - ETA (Glättung, Pausen) samt Standard-Durchschnittsgeschwindigkeit aus dem Profil.
 - Kompassring: Blickrichtung im Stand (Kompass, Kalibrierung) und in Fahrt, Lesbarkeit der Dreiecke.
 - Textfarben aus Profil > Garmin-Uhr (auch auf fenix6 mit wenig Farben) und Verhalten bei hellem Hintergrund.
-- Untere Zeile "gefahren | Reststrecke" (`|→ 821 m   12.6 km →|`, Pfeile als Pixel-Bitmaps `watch/assets/*.png` (18x10 und 14x8), in Textfarbe punktweise gezeichnet; `info.elapsedDistance` der Aktivität): zählt sie ab Aktivitätsbeginn und bleibt in Pausen stehen? Passt sie bei langen Werten (bis ca. 100 km) und auf der fenix6?
+- Untere Zeile "gefahren | Reststrecke" (`|→ 821 m   12.6 km →|`, vor der ersten zurückgelegten Strecke `0 m`, Pfeile als Pixel-Bitmaps `watch/assets/*.png` (18x10 und 14x8), in Textfarbe punktweise gezeichnet; `info.elapsedDistance` der Aktivität): zählt sie ab Aktivitätsbeginn und bleibt in Pausen stehen? Passt sie bei langen Werten (bis ca. 100 km) und auf der fenix6?
 - Anzeige ohne GPS-Fix bzw. am Ziel: zeigt jetzt zusätzlich den Routennamen (im Simulator geprüft).
+- Sync-Status im Label (2026-10-07, nach "Route kommt nicht an, alte Route bleibt stehen" - Server und Uhr-Code im Simulator gegen Production in Ordnung, Route kam später ohne weiteres Zutun doch an - vermutlich lag es an der Verbindung Uhr → Handy direkt nach dem Neukoppeln; ein Fehler dort wird verschluckt, weil eine gespeicherte Route Fehler verdeckt): "YTAN" nur, solange der letzte erfolgreiche Abruf < 11 min her ist, sonst "YTAN <Code>" (letzter Fehler, negativ = Garmin-Communications-Code, z. B. -104 Handy nicht erreichbar) bzw. "YTAN ?" (noch kein Abruf fertig). Auf der Uhr prüfen und die eigentliche Ursache anhand des Codes klären.
 - fenix6-Build insgesamt (nur kompiliert, nie auf der Uhr gewesen).
 - Voraussetzung: Migrationen 027/028 und die neue API sind auf Production deployt, die Uhr mit `bin\build-watch.bat - GERÄT` neu gebaut.
 

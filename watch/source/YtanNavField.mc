@@ -83,6 +83,8 @@ class YtanNavField extends WatchUi.DataField {
     const ARROW_LARGE_HEIGHT = 10;
     const ARROW_SMALL_WIDTH = 14;
     const ARROW_SMALL_HEIGHT = 8;
+    // Two missed fetches (every 5 minutes) plus slack.
+    const SYNC_STALE_SECONDS = 660;
     const EARTH_RADIUS_M = 6371000.0d;
     const DEG = 0.017453292519943295d; // PI / 180
 
@@ -98,6 +100,11 @@ class YtanNavField extends WatchUi.DataField {
     private var _lastTimer = null;
     private var _next = -1; // index of the next waypoint, -1 = not determined yet
     private var _error = null;
+    // Sync health for the label: when the last fetch succeeded (epoch
+    // seconds, kept in Storage as "synced") and the code of the latest
+    // failed fetch in this session (null = none).
+    private var _syncedAt = null;
+    private var _syncCode = null;
 
     // What onUpdate() draws, set by compute(): either a status text, or
     // bearing + distance.
@@ -113,7 +120,7 @@ class YtanNavField extends WatchUi.DataField {
     private var _distance = "";
     private var _distanceUnit = "";
     private var _toFinish = "";
-    private var _traveled = "--";
+    private var _traveled = "";
     private var _eta = "";
 
     private var _strLabel;
@@ -142,6 +149,14 @@ class YtanNavField extends WatchUi.DataField {
         if (stored instanceof Dictionary) {
             setRoute(stored);
         }
+        var synced = Application.Storage.getValue("synced");
+        _syncedAt = synced instanceof Number ? synced : null;
+    }
+
+    // A fetch succeeded (the route may be unchanged).
+    function setSynced(at as Number) as Void {
+        _syncedAt = at;
+        _syncCode = null;
     }
 
     function setRoute(data as Dictionary) as Void {
@@ -191,6 +206,7 @@ class YtanNavField extends WatchUi.DataField {
     // A failed sync only matters if there is nothing to navigate with yet,
     // or the watch key itself was rejected.
     function setSyncError(code) {
+        _syncCode = code;
         if (code == 401) {
             _error = _strBadToken;
         } else if (_lats == null) {
@@ -203,8 +219,21 @@ class YtanNavField extends WatchUi.DataField {
         return _colors[element * 2 + (onDark ? 0 : 1)];
     }
 
+    // "YTAN" while syncs are current. Once the last successful fetch is
+    // older than SYNC_STALE_SECONDS (or there never was one), the label says
+    // so - otherwise a stored route would hide that no update gets through:
+    // "YTAN -104" with the code of the latest failure (negative = Garmin's
+    // Communications error codes, e.g. phone not reachable), "YTAN ?" if no
+    // fetch has finished yet.
+    private function syncLabel() {
+        if (_syncedAt != null && Time.now().value() - _syncedAt < SYNC_STALE_SECONDS) {
+            return _strLabel;
+        }
+        return _strLabel + " " + (_syncCode != null ? _syncCode.toString() : "?");
+    }
+
     function compute(info) {
-        _label = _strLabel;
+        _label = syncLabel();
         _waypoints = "";
         _clock = clockText();
         var heartRate = info.currentHeartRate;
@@ -278,12 +307,9 @@ class YtanNavField extends WatchUi.DataField {
         var remaining = toNext + _remainFrom[_next];
         var finish = formatDistance(remaining);
         _toFinish = finish[0] + " " + finish[1];
-        if (elapsed == null) {
-            _traveled = "--";
-        } else {
-            var traveled = formatDistance(elapsed);
-            _traveled = traveled[0] + " " + traveled[1];
-        }
+        // Null before the activity has covered any distance: show 0.
+        var traveled = formatDistance(elapsed == null ? 0.0d : elapsed);
+        _traveled = traveled[0] + " " + traveled[1];
         _eta = etaText(remaining);
     }
 

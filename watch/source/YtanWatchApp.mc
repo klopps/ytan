@@ -59,9 +59,12 @@ class YtanWatchApp extends Application.AppBase {
             }
             return;
         }
+        var now = Time.now().value();
         Application.Storage.setValue("route", data);
+        Application.Storage.setValue("synced", now);
         if (_field != null) {
             _field.setRoute(data);
+            _field.setSynced(now);
         }
         WatchUi.requestUpdate();
     }

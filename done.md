@@ -1,6 +1,9 @@
 # Erledigt
 
 
+## Garmin: Formatierung ETA-Zeile
+Die Restzeit bis zur Ankunft in Klammern hinter der ETA soll immer im Format hh:mm mitfolgendem "h" dargstellt werden. Beispiel: "ETA 14:25 (1:21 h)". Die Zeile soll zentriert werden.
+
 ## Anzeige der Routenlänge bei Routenbearbeitung (2026-10-07)
 
 ~~Wenn man eine neue Route anlegt oder eine Route bearbeitet, soll in der secondTools die Gesamtlänge der Route angezeigt und während der Bearbeitung fortlaufend aktualisiert werden. Um dafür den Platz zu haben, soll das second-toolbar-icon entfallen.~~
