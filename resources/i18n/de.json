@@ -597,6 +597,7 @@
     "watch.send_route": "Auf Uhr senden",
     "watch.route_is_current": "Diese Route ist auf der Uhr (erneut senden)",
     "watch.route_sent": "\"{name}\" wurde an die Uhr gesendet. Sie übernimmt die Route beim Start der Aktivität, bei laufender Aktivität innerhalb von 5 Minuten.",
+    "watch.route_sent_now": "\"{name}\" wurde an die Uhr gesendet und ist in wenigen Sekunden dort.",
     "watch.route_not_synced": "Diese Route ist noch nicht auf dem Server gespeichert. Sende sie an die Uhr, sobald wieder eine Verbindung besteht.",
     "watch.colors_title": "Farben auf der Uhr",
     "watch.colors_dark": "Dunkler Hintergrund",

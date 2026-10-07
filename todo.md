@@ -1,9 +1,9 @@
 # Offene Punkte
 
-
 ## Garmin-Datenfeld auf der Uhr überprüfen
 
 Das Connect-IQ-Datenfeld (`watch/`) ist gebaut, läuft im Simulator und hat auf der echten Uhr (fenix7pro) bereits Route und Anzeige geliefert (Details und Verlauf in done.md, "Routeninformationen auf Garmin Smartwatch"). Noch **nicht auf einer echten Uhr geprüft**:
+- Weckruf aus der Android-App (2026-10-07, done.md "Routen an Garmin Smartwatches schneller übertragen"): nach "An Garmin-Uhr senden" in der YTAN-App (neue APK mit `GarminWatchPlugin`, aktuelles JS auf dem Server, neuer Uhr-Build) Toast "... ist in wenigen Sekunden dort" und die Route ist wirklich nach Sekunden auf der Uhr - bei laufender Aktivität, auch wenn eine andere Datenseite sichtbar ist. Im Browser/PWA weiter der alte Toast und der 5-Minuten-Weg.
 - Hinweise: Vibration + Ton je Wegpunkt, drei lange Vibrationen + Erfolgston + "Ziel erreicht"-Einblendung am Ziel.
 - Abkürzungserkennung (`skipAhead()`) und Startwahl bei Rundtouren auf echter Fahrt.
 - ETA (Glättung, Pausen) samt Standard-Durchschnittsgeschwindigkeit aus dem Profil.

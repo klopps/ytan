@@ -597,6 +597,7 @@
     "watch.send_route": "Send to watch",
     "watch.route_is_current": "This route is on the watch (send again)",
     "watch.route_sent": "\"{name}\" was sent to the watch. It picks up the route when the activity starts, or within 5 minutes if it is already running.",
+    "watch.route_sent_now": "\"{name}\" was sent to the watch and will be there in a few seconds.",
     "watch.route_not_synced": "This route isn't saved on the server yet. Send it to the watch once you're back online.",
     "watch.colors_title": "Colors on the watch",
     "watch.colors_dark": "Dark background",

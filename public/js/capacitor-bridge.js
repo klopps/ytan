@@ -46,6 +46,10 @@ const CapacitorBridge = (function () {
     // the in-app update existed; native-app.js falls back to a download
     // link for those.
     const AppUpdate = window.Capacitor.Plugins.AppUpdate;
+    // App-local plugin (GarminWatchPlugin.java) - absent on APKs built
+    // before the watch wake-up existed; wakeGarminWatch() then resolves
+    // null and the watch gets the route at its regular 5-minute fetch.
+    const GarminWatch = window.Capacitor.Plugins.GarminWatch;
 
     /**
      * With android.useLegacyBridge:true (capacitor.config.json - required to
@@ -206,6 +210,27 @@ const CapacitorBridge = (function () {
         });
     }
 
+    /**
+     * Wakes the YTAN Garmin data field through Garmin Connect so it fetches
+     * its route now instead of at its next 5-minute slot.
+     * @returns {Promise<?{sent: number, devices: number, reason: ?string}>}
+     * the plugin's answer (sent = watches that confirmed it), or null if the
+     * plugin is absent or the call fails. Never rejects - the watch's own
+     * regular fetch is always the fallback.
+     */
+    function wakeGarminWatch() {
+        if (!GarminWatch) {
+            return Promise.resolve(null);
+        }
+        return Promise.resolve(GarminWatch.wake()).then(function (result) {
+            log('wakeGarminWatch()', LOG_DEBUG, result);
+            return result || null;
+        }).catch(function (err) {
+            log('wakeGarminWatch() failed', LOG_ERROR, err);
+            return null;
+        });
+    }
+
     function canSelfUpdate() {
         return !!AppUpdate;
     }
@@ -246,5 +271,6 @@ const CapacitorBridge = (function () {
         getAppVersionCode: getAppVersionCode,
         canSelfUpdate: canSelfUpdate,
         downloadAndInstallUpdate: downloadAndInstallUpdate,
+        wakeGarminWatch: wakeGarminWatch,
     };
 })();

@@ -160,6 +160,8 @@ function submitDefaultSpeed() {
 
     Ytan.put('/auth/default-speed', { default_speed_kmh: kmh }).then(answer => {
         showToast(t(answer.data.default_speed_kmh === null ? 'user.default_speed_cleared' : 'user.default_speed_saved'), 'success');
+        // The watch's ETA uses it (watch.js) - let it fetch the new value now.
+        wakeWatch();
         showDefaultSpeedForm();
     }).catch(err => {
         showToast(apiErrorMessage(err), 'error');

@@ -19,16 +19,24 @@ class YtanWatchApp extends Application.AppBase {
     }
 
     function getInitialView() {
-        // Fetch right away when the activity opens, if Garmin allows it (at
-        // least 5 minutes since the last fetch) - otherwise the first route
-        // would only arrive one full interval later. The one-off event
-        // switches to the periodic schedule once its result arrives.
+        // Fetch as early as Garmin allows when the activity opens: right away
+        // if the last fetch was at least 5 minutes ago, else exactly 5
+        // minutes after it - a periodic registration would count its first
+        // interval from now, so reopening the activity shortly after a fetch
+        // could cost up to 5 more minutes. The one-off event switches to the
+        // periodic schedule once its result arrives.
         var last = Background.getLastTemporalEventTime();
         var now = Time.now();
         if (last == null || now.subtract(last).value() >= SYNC_INTERVAL_SECONDS) {
             Background.registerForTemporalEvent(now);
         } else {
-            registerPeriodicSync();
+            Background.registerForTemporalEvent(last.add(new Time.Duration(SYNC_INTERVAL_SECONDS)));
+        }
+        // Lets the YTAN Android app wake the background process right after
+        // a route was sent (YtanSyncService.onPhoneAppMessage()); the
+        // 5-minute fetch above stays as the fallback for everything else.
+        if (Background has :registerForPhoneAppMessageEvent) {
+            Background.registerForPhoneAppMessageEvent();
         }
         _field = new YtanNavField();
         return [_field];

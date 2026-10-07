@@ -13,7 +13,21 @@ class YtanSyncService extends System.ServiceDelegate {
         ServiceDelegate.initialize();
     }
 
+    // Every 5 minutes (and once when the activity opens), see YtanWatchApp.
     function onTemporalEvent() {
+        fetchRoute();
+    }
+
+    // A wake-up from the YTAN Android app (GarminWatchPlugin, Connect IQ
+    // Mobile SDK) right after a route was sent in YTAN: fetch now instead of
+    // at the next 5-minute slot. The message itself carries nothing - the
+    // server stays the only source of the route, so both ways deliver the
+    // same payload.
+    function onPhoneAppMessage(msg) {
+        fetchRoute();
+    }
+
+    private function fetchRoute() {
         Communications.makeWebRequest(
             YtanConfig.SERVER_URL + "/api/v1/watch/device/route",
             null,

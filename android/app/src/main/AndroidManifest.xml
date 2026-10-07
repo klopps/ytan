@@ -61,4 +61,10 @@
     <!-- In-app update (AppUpdatePlugin): lets the app hand a downloaded
          update APK to Android's installer. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <!-- GarminWatchPlugin: Android 11+ package visibility - the Connect IQ
+         Mobile SDK reaches the watch through the Garmin Connect app. -->
+    <queries>
+        <package android:name="com.garmin.android.apps.connectmobile" />
+    </queries>
 </manifest>

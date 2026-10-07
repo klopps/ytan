@@ -28,6 +28,21 @@ function isWatchPaired() {
 }
 
 /**
+ * In the YTAN Android app: wakes the data field through Garmin Connect
+ * (capacitor-bridge.js's wakeGarminWatch()), so it fetches what was just
+ * changed within seconds instead of at its next 5-minute slot.
+ * @returns {Promise<boolean>} true if at least one watch confirmed it;
+ * false in a browser/PWA, on an app build without the plugin, or whenever
+ * it didn't get through - the watch's regular fetch still delivers then.
+ */
+function wakeWatch() {
+    if (!isWatchPaired() || !CapacitorBridge.isAvailable()) {
+        return Promise.resolve(false);
+    }
+    return CapacitorBridge.wakeGarminWatch().then((result) => !!result && result.sent > 0);
+}
+
+/**
  * Icon for a route's InfoWindow (route.js's showRouteInfoWindow()) - only
  * offered once a watch is paired, otherwise it would just be clutter.
  */
@@ -49,8 +64,12 @@ function sendRouteToWatch(i) {
     }
     Ytan.put('/watch/route', { route_id: route.id, unit: settings.unit }).then((answer) => {
         watchStatus = answer.data;
-        showToast(t('watch.route_sent', { name: route.name }), 'success');
         document.querySelectorAll('.watch-route-icon').forEach((icon) => icon.classList.add('is-current'));
+        // The toast waits for the wake-up (a second or two in the app,
+        // immediate elsewhere) so it can say when the route will arrive.
+        return wakeWatch().then((woke) => {
+            showToast(t(woke ? 'watch.route_sent_now' : 'watch.route_sent', { name: route.name }), 'success');
+        });
     }).catch((err) => {
         showToast(translateApiError(err.data) || err.message, 'error');
     });
@@ -148,12 +167,14 @@ function saveWatchColors() {
     });
     Ytan.put('/watch/colors', { colors: colors }).then(() => {
         showToast(t('watch.colors_saved'), 'success');
+        wakeWatch();
     }).catch((err) => showToast(translateApiError(err.data) || err.message, 'error'));
 }
 
 function resetWatchColors() {
     Ytan.del('/watch/colors').then(() => {
         showToast(t('watch.colors_reset_done'), 'success');
+        wakeWatch();
         showWatchSection();
     }).catch((err) => showToast(translateApiError(err.data) || err.message, 'error'));
 }
@@ -187,5 +208,8 @@ function unpairWatch() {
 }
 
 function clearWatchRoute() {
-    Ytan.del('/watch/route').then(() => showWatchSection()).catch((err) => showToast(err.message, 'error'));
+    Ytan.del('/watch/route').then(() => {
+        wakeWatch();
+        showWatchSection();
+    }).catch((err) => showToast(err.message, 'error'));
 }
