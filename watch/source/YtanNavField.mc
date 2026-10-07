@@ -39,22 +39,46 @@ class YtanNavField extends WatchUi.DataField {
     // A value row is its visible digits plus this much breathing room.
     const VALUE_ROW_FACTOR = 1.1d;
     // ETA: speed smoothed over ~5 minutes of paddling; below ~1 km/h counts
-    // as a pause and doesn't change it. Shown after 30 s of paddling.
+    // as a pause and doesn't change it. Shown after 30 s of paddling - or
+    // right away if the user set a default speed in YTAN (payload "s"), which
+    // then hands over to the measured speed linearly over those 5 minutes.
     const SPEED_WINDOW_S = 300.0d;
     const PAUSE_SPEED_MS = 0.28d;
     const MIN_MOVING_S = 30.0d;
     const SKIP_MARGIN_M = 50.0d;
     // Share of the field height kept free at an edge touching the bezel.
     const EDGE_INSET = 0.07d;
+    // Compass markers (north, next waypoint) on the bezel of a full-screen
+    // round field: triangle size as a share of the width.
+    const MARKER_SIZE = 0.05d;
+    // Text colors as 0xRRGGBB, [element][background]:
+    //  - bearing (also the waypoint marker),
+    //  - distance,
+    //  - other text,
+    //  - north marker
+    // each on a dark and on a light background. These are the defaults; YTAN's profile can
+    // override them (payload "c", same order, see WatchColors.php).
+    const COLOR_BEARING = 0;
+    const COLOR_DISTANCE = 1;
+    const COLOR_TEXT = 2;
+    const COLOR_NORTH = 3;
+    const DEFAULT_COLORS = [
+        0x20C0FF, 0x0000C0,
+        0x80ff80, 0x008000,
+        0xFFFFFF, 0x000000,
+        0xFF0000, 0xFF0000
+    ];
     const EARTH_RADIUS_M = 6371000.0d;
     const DEG = 0.017453292519943295d; // PI / 180
 
+    private var _colors = DEFAULT_COLORS;
     private var _version = null;
     private var _nautical = false;
     private var _lats = null; // Array of Double, degrees
     private var _lngs = null;
     private var _remainFrom = null; // route length from waypoint i to the finish, meters
-    private var _speed = null; // smoothed speed, m/s
+    private var _speed = null; // smoothed measured speed, m/s
+    private var _priorSpeed = null; // the user's default speed from YTAN, m/s
     private var _movingSeconds = 0.0d;
     private var _lastTimer = null;
     private var _next = -1; // index of the next waypoint, -1 = not determined yet
@@ -69,6 +93,8 @@ class YtanNavField extends WatchUi.DataField {
     private var _waypoints = "";
     private var _status = null;
     private var _bearing = "";
+    private var _bearingDeg = 0; // true bearing to the next waypoint, degrees
+    private var _heading = null; // where the watch points, radians from true north
     private var _distance = "";
     private var _distanceUnit = "";
     private var _toFinish = "";
@@ -104,6 +130,11 @@ class YtanNavField extends WatchUi.DataField {
 
     function setRoute(data as Dictionary) as Void {
         _error = null;
+        // Colors apply even when the route itself is unchanged.
+        var colors = data["c"];
+        _colors = colors instanceof Array && colors.size() == DEFAULT_COLORS.size() ? colors : DEFAULT_COLORS;
+        var prior = data["s"];
+        _priorSpeed = (prior instanceof Number || prior instanceof Float || prior instanceof Double) && prior > 0 ? prior.toDouble() : null;
         var version = data["v"] as String?;
         _nautical = "n".equals(data["u"]);
         if (version != null && version.equals(_version)) {
@@ -151,6 +182,11 @@ class YtanNavField extends WatchUi.DataField {
         }
     }
 
+    // Color of an element on the current background.
+    private function colorOf(element, onDark) {
+        return _colors[element * 2 + (onDark ? 0 : 1)];
+    }
+
     function compute(info) {
         _label = _strLabel;
         _waypoints = "";
@@ -167,9 +203,16 @@ class YtanNavField extends WatchUi.DataField {
         }
         var location = info.currentLocation;
         var speed = info.currentSpeed;
+        // True-north heading: the compass when standing still, GPS course
+        // when moving (Garmin picks), so it also works at a standstill.
+        var heading = info.currentHeading;
         if (location == null) {
             location = simulatedLocation();
             speed = simulatedSpeed();
+            heading = simulatedHeading();
+        }
+        if (heading != null) {
+            _heading = heading;
         }
         if (location == null) {
             _status = _strNoGps;
@@ -207,7 +250,8 @@ class YtanNavField extends WatchUi.DataField {
 
         _waypoints = (_next + 1) + "/" + count;
         _status = null;
-        _bearing = bearingDegrees(lat, lng, _lats[_next], _lngs[_next]).format("%03d");
+        _bearingDeg = bearingDegrees(lat, lng, _lats[_next], _lngs[_next]);
+        _bearing = _bearingDeg.format("%03d");
         var toNext = distanceMeters(lat, lng, _lats[_next], _lngs[_next]);
         var next = formatDistance(toNext);
         _distance = next[0];
@@ -234,13 +278,31 @@ class YtanNavField extends WatchUi.DataField {
         _speed = _speed == null ? speed.toDouble() : _speed + alpha * (speed - _speed);
     }
 
+    // The speed the ETA uses: the measured one (once there are 30 s of it),
+    // or - with a default speed set - the default, handing over to the
+    // measurement as the paddled time approaches SPEED_WINDOW_S.
+    private function effectiveSpeed() {
+        if (_priorSpeed == null) {
+            return (_speed == null || _movingSeconds < MIN_MOVING_S) ? null : _speed;
+        }
+        if (_speed == null) {
+            return _priorSpeed;
+        }
+        var weight = _movingSeconds / SPEED_WINDOW_S;
+        if (weight > 1.0d) {
+            weight = 1.0d;
+        }
+        return _priorSpeed * (1.0d - weight) + _speed * weight;
+    }
+
     // "15:42 (1:23 h)" for the remaining route distance in meters - the
     // "ETA " prefix is added in onUpdate() only where there is room for it.
     private function etaText(remaining) {
-        if (_speed == null || _movingSeconds < MIN_MOVING_S) {
+        var speed = effectiveSpeed();
+        if (speed == null) {
             return "--:--";
         }
-        var seconds = (remaining / _speed).toNumber();
+        var seconds = (remaining / speed).toNumber();
         if (seconds > 86400) {
             return "--";
         }
@@ -346,13 +408,21 @@ class YtanNavField extends WatchUi.DataField {
 
     function onUpdate(dc as Graphics.Dc) as Void {
         var background = getBackgroundColor();
-        var foreground = background == Graphics.COLOR_BLACK ? Graphics.COLOR_WHITE : Graphics.COLOR_BLACK;
+        var onDark = background == Graphics.COLOR_BLACK;
+        var foreground = colorOf(COLOR_TEXT, onDark);
         dc.setColor(foreground, background);
         dc.clear();
         dc.setColor(foreground, Graphics.COLOR_TRANSPARENT);
 
         var width = dc.getWidth();
         var height = dc.getHeight();
+        if (_heading != null && isFullScreenRound(width, height)) {
+            drawMarker(dc, width, height, -_heading, colorOf(COLOR_NORTH, onDark));
+            if (_status == null) {
+                drawMarker(dc, width, height, _bearingDeg * DEG - _heading, colorOf(COLOR_BEARING, onDark));
+            }
+            dc.setColor(foreground, Graphics.COLOR_TRANSPARENT);
+        }
         var labelHeight = Graphics.getFontHeight(Graphics.FONT_XTINY);
 
         // Keep label and counter off the bezel where the field touches it.
@@ -394,10 +464,9 @@ class YtanNavField extends WatchUi.DataField {
 
         var bearingWidth = valueWidth(dc, _bearing, "°", font, unitFont);
         var x = cx - (bearingWidth + VALUE_GAP + valueWidth(dc, _distance, _distanceUnit, font, unitFont)) / 2;
-        var dark = background != Graphics.COLOR_BLACK;
-        dc.setColor(dark ? Graphics.COLOR_DK_BLUE : Graphics.COLOR_BLUE, Graphics.COLOR_TRANSPARENT);
+        dc.setColor(colorOf(COLOR_BEARING, onDark), Graphics.COLOR_TRANSPARENT);
         drawValueAt(dc, x, rows[1], _bearing, "°", true, font, unitFont);
-        dc.setColor(dark ? Graphics.COLOR_DK_GREEN : Graphics.COLOR_GREEN, Graphics.COLOR_TRANSPARENT);
+        dc.setColor(colorOf(COLOR_DISTANCE, onDark), Graphics.COLOR_TRANSPARENT);
         drawValueAt(dc, x + bearingWidth + VALUE_GAP, rows[1], _distance, _distanceUnit, false, font, unitFont);
         dc.setColor(foreground, Graphics.COLOR_TRANSPARENT);
 
@@ -457,6 +526,7 @@ class YtanNavField extends WatchUi.DataField {
     const SIM_STEP_M = 30.0d;
     private var _simLat = null;
     private var _simLng = null;
+    private var _simHeading = null;
 
     (:simulator)
     private function simulatedLocation() {
@@ -470,6 +540,9 @@ class YtanNavField extends WatchUi.DataField {
         }
         var target = _next < 0 ? 0 : (_next >= count ? count - 1 : _next);
         var distance = distanceMeters(_simLat, _simLng, _lats[target], _lngs[target]);
+        // Pointing 35 degrees off the course, so the waypoint marker visibly
+        // differs from "straight ahead".
+        _simHeading = bearingDegrees(_simLat, _simLng, _lats[target], _lngs[target]) * DEG - 0.61d;
         if (distance > 0.0d) {
             var fraction = SIM_STEP_M / distance;
             if (fraction > 1.0d) {
@@ -494,6 +567,16 @@ class YtanNavField extends WatchUi.DataField {
 
     (:device)
     private function simulatedSpeed() {
+        return null;
+    }
+
+    (:simulator)
+    private function simulatedHeading() {
+        return _simHeading;
+    }
+
+    (:device)
+    private function simulatedHeading() {
         return null;
     }
 
@@ -568,16 +651,50 @@ class YtanNavField extends WatchUi.DataField {
         return _condensedFont;
     }
 
+    private function isFullScreenRound(width, height) {
+        var settings = System.getDeviceSettings();
+        return settings.screenShape == System.SCREEN_SHAPE_ROUND
+            && width == settings.screenWidth && height == settings.screenHeight;
+    }
+
+    private function markerSize(width) {
+        return (width * MARKER_SIZE).toNumber();
+    }
+
+    // Ring width taken by the markers, including a small gap to the text.
+    private function markerDepth(width) {
+        return markerSize(width) + 5;
+    }
+
+    // Triangle on the bezel, pointing at the center; `angle` in radians
+    // clockwise from the top of the screen.
+    private function drawMarker(dc, width, height, angle, color) {
+        var size = markerSize(width);
+        var ux = Math.sin(angle);
+        var uy = -Math.cos(angle);
+        var outer = width / 2.0d - 1;
+        var inner = outer - size;
+        var half = size * 0.6d;
+        var cx = width / 2.0d;
+        var cy = height / 2.0d;
+        dc.setColor(color, Graphics.COLOR_TRANSPARENT);
+        dc.fillPolygon([
+            [(cx + ux * outer - uy * half).toNumber(), (cy + uy * outer + ux * half).toNumber()],
+            [(cx + ux * outer + uy * half).toNumber(), (cy + uy * outer - ux * half).toNumber()],
+            [(cx + ux * inner).toNumber(), (cy + uy * inner).toNumber()]
+        ]);
+    }
+
     // On a round display a full-screen field loses its corners: the visible
     // width of a text line is the circle's chord at the line's outer edge.
     // Smaller fields only know which sides touch the bezel, so they just
     // keep a margin there.
     private function usableWidth(width, height, cy, glyphHeight) {
-        var settings = System.getDeviceSettings();
-        if (settings.screenShape == System.SCREEN_SHAPE_ROUND
-            && width == settings.screenWidth && height == settings.screenHeight) {
-            var r = width / 2.0d;
-            var dy = (cy - r).abs() + glyphHeight / 2.0d;
+        if (isFullScreenRound(width, height)) {
+            // The compass markers take the outermost ring.
+            var center = width / 2.0d;
+            var r = center - markerDepth(width);
+            var dy = (cy - center).abs() + glyphHeight / 2.0d;
             if (dy >= r) {
                 return 0;
             }

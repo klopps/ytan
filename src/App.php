@@ -222,6 +222,8 @@ final class App
 
         $app->post('/api/v1/auth/login', [$authController, 'login']);
         $app->get('/api/v1/auth/me', [$authController, 'me']);
+        $app->get('/api/v1/auth/default-speed', [$authController, 'defaultSpeed']);
+        $app->put('/api/v1/auth/default-speed', [$authController, 'setDefaultSpeed']);
         $app->post('/api/v1/auth/forgot-password', [$authController, 'forgotPassword']);
         $app->post('/api/v1/auth/set-password', [$authController, 'setPassword']);
         $app->put('/api/v1/auth/password', [$authController, 'changePassword']);
@@ -294,6 +296,8 @@ final class App
         $app->delete('/api/v1/watch/token', [$watchController, 'deleteToken']);
         $app->put('/api/v1/watch/route', [$watchController, 'setRoute']);
         $app->delete('/api/v1/watch/route', [$watchController, 'clearRoute']);
+        $app->put('/api/v1/watch/colors', [$watchController, 'setColors']);
+        $app->delete('/api/v1/watch/colors', [$watchController, 'resetColors']);
         $app->get('/api/v1/watch/device/route', [$watchController, 'deviceRoute']);
 
         $app->put('/api/v1/settings/google-search-requires-login', [$settingsController, 'updateGoogleSearchRequiresLogin']);

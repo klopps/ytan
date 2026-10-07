@@ -164,6 +164,88 @@ final class WatchControllerTest extends ControllerTestCase
         $this->sendToWatch($userId, $routeId, 'furlongs');
     }
 
+    private function putColors(int $userId, mixed $colors): array
+    {
+        $request = $this->request('PUT', '/api/v1/watch/colors', $this->authPayload($userId), ['colors' => $colors]);
+
+        return $this->decode($this->controller->setColors($request, $this->response()));
+    }
+
+    public function testDeviceGetsTheDefaultColorsUntilConfigured(): void
+    {
+        $userId = $this->createUser();
+        $token = $this->createToken($userId);
+
+        // bearing, distance, text, north - each dark background, light background.
+        $this->assertSame(
+            [0x20c0ff, 0x0000c0, 0x80ff80, 0x008000, 0xffffff, 0x000000, 0xff0000, 0xff0000],
+            $this->deviceRoute($token)['c']
+        );
+    }
+
+    public function testConfiguredColorsReachTheDeviceAndPartialInputKeepsTheRest(): void
+    {
+        $userId = $this->createUser();
+        $token = $this->createToken($userId);
+
+        $status = $this->putColors($userId, ['distance' => ['dark' => '#FFAA00'], 'north' => ['light' => '#112233']])['data'];
+        $this->assertSame('#ffaa00', $status['colors']['distance']['dark']);
+        $this->assertSame('#008000', $status['colors']['distance']['light']);
+        $this->assertSame('#20c0ff', $status['default_colors']['bearing']['dark']);
+
+        $this->assertSame(
+            [0x20c0ff, 0x0000c0, 0xffaa00, 0x008000, 0xffffff, 0x000000, 0xff0000, 0x112233],
+            $this->deviceRoute($token)['c']
+        );
+    }
+
+    public function testChangingColorsDoesNotChangeTheRouteVersion(): void
+    {
+        $userId = $this->createUser();
+        $routeId = $this->createRoute($userId, ['points' => $this->points()]);
+        $token = $this->createToken($userId);
+        $this->sendToWatch($userId, $routeId);
+        // A new version would restart the watch's navigation at the first waypoint.
+        $this->pdo->exec("UPDATE watch_link SET updated_at = '2026-01-01 12:00:00' WHERE user_id = " . $userId);
+        $before = $this->deviceRoute($token)['v'];
+
+        $this->putColors($userId, ['text' => ['dark' => '#00ff00']]);
+
+        $this->assertSame($before, $this->deviceRoute($token)['v']);
+    }
+
+    public function testColorsCanBeSavedBeforeAWatchIsPairedAndReset(): void
+    {
+        $userId = $this->createUser();
+
+        $this->putColors($userId, ['text' => ['light' => '#222222']]);
+        $this->assertSame('#222222', $this->decode($this->controller->status($this->request('GET', '/api/v1/watch', $this->authPayload($userId)), $this->response()))['data']['colors']['text']['light']);
+
+        $reset = $this->decode($this->controller->resetColors($this->request('DELETE', '/api/v1/watch/colors', $this->authPayload($userId)), $this->response()))['data'];
+        $this->assertSame(\Ytan\Service\WatchColors::DEFAULTS, $reset['colors']);
+    }
+
+    public function testInvalidColorsAreRejected(): void
+    {
+        $userId = $this->createUser();
+
+        foreach ([
+            ['text' => ['dark' => 'red']],
+            ['text' => ['dark' => '#fff']],
+            ['text' => ['dark' => 123456]],
+            ['text' => ['grey' => '#ffffff']],
+            ['title' => ['dark' => '#ffffff']],
+            'text',
+        ] as $invalid) {
+            try {
+                $this->putColors($userId, $invalid);
+                $this->fail('Accepted ' . json_encode($invalid));
+            } catch (ValidationException) {
+                $this->addToAssertionCount(1);
+            }
+        }
+    }
+
     public function testStatusRequiresLogin(): void
     {
         $this->expectException(UnauthorizedException::class);

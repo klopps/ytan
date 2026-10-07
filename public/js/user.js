@@ -45,6 +45,7 @@ function showUserWindow() {
             pendingEmailNotice +
             '<button id="userEditProfileBtn" class="nav-btn-secondary" type="button" onClick="showEditProfileForm();"><i class="material-icons-round">edit</i>&nbsp;' + t('user.edit_profile_button') + '</button>' +
             '<button id="userChangePasswordBtn" class="nav-btn-secondary" type="button" onClick="showChangePasswordForm();"><i class="material-icons-round">lock</i>&nbsp;' + t('user.change_password_button') + '</button>' +
+            '<button id="userDefaultSpeedBtn" class="nav-btn-secondary" type="button" onClick="showDefaultSpeedForm();"><i class="material-icons-round">speed</i>&nbsp;' + t('user.default_speed_button') + '</button>' +
             '<button id="userWatchBtn" class="nav-btn-secondary" type="button" onClick="showWatchSection();"><i class="material-icons-round">watch</i>&nbsp;' + t('watch.title') + '</button>' +
             '<button id="userLogoutBtn" class="nav-btn-secondary nav-btn-danger" type="button" onClick="logoutUser()"><i class="material-icons-round">logout</i>&nbsp;' + t('user.logout_button') + '</button>' +
             '<div id="userWindowSub"></div>'
@@ -122,6 +123,46 @@ function submitChangePassword() {
         message.style.color = 'var(--color-danger)';
         message.textContent = apiErrorMessage(err);
         document.getElementById('userChangePasswordSaveBtn').disabled = false;
+    });
+}
+
+/**
+ * The user's usual paddling speed (stored in km/h, shown in the unit chosen
+ * in the app): the Garmin watch's ETA starts from it until it has measured
+ * speeds of its own. Empty or 0 = not set. Not password-gated like the
+ * profile edit, since it is a preference.
+ */
+const KMH_PER_KNOT = 1.852;
+
+function showDefaultSpeedForm() {
+    var sub = document.getElementById('userWindowSub');
+    var knots = settings.unit === NAUTICAL;
+    sub.innerHTML = '<div class="nav-divider"></div><div class="nav-form-message">' + t('watch.loading') + '</div>';
+
+    Ytan.get('/auth/default-speed').then(answer => {
+        var kmh = answer.data.default_speed_kmh;
+        var shown = kmh === null ? '' : (knots ? kmh / KMH_PER_KNOT : kmh).toFixed(1);
+        sub.innerHTML =
+            '<div class="nav-divider"></div>' +
+            '<div class="nav-field"><label for="userDefaultSpeed">' + t('user.default_speed_label', { unit: knots ? 'kn' : 'km/h' }) + '</label>' +
+            '<input id="userDefaultSpeed" type="number" inputmode="decimal" min="0" step="0.1" value="' + shown + '"></div>' +
+            '<div class="nav-form-message">' + t('user.default_speed_hint') + '</div>' +
+            '<button id="userDefaultSpeedSaveBtn" class="nav-btn-primary" type="button" onClick="submitDefaultSpeed();"><i class="material-icons-round">check</i>&nbsp;' + t('common.save') + '</button>' +
+            '<span class="nav-link-small" onclick="document.getElementById(\'userWindowSub\').innerHTML=\'\';">' + t('common.cancel') + '</span>';
+    }).catch(err => {
+        sub.innerHTML = '<div class="nav-divider"></div><div class="nav-form-message">' + apiErrorMessage(err) + '</div>';
+    });
+}
+
+function submitDefaultSpeed() {
+    var value = parseFloat(document.getElementById('userDefaultSpeed').value);
+    var kmh = isNaN(value) ? null : (settings.unit === NAUTICAL ? value * KMH_PER_KNOT : value);
+
+    Ytan.put('/auth/default-speed', { default_speed_kmh: kmh }).then(answer => {
+        showToast(t(answer.data.default_speed_kmh === null ? 'user.default_speed_cleared' : 'user.default_speed_saved'), 'success');
+        showDefaultSpeedForm();
+    }).catch(err => {
+        showToast(apiErrorMessage(err), 'error');
     });
 }
 

@@ -12,6 +12,8 @@ Stateless JWT bearer tokens (no server-side session). Include
 |---|---|---|---|---|
 | POST | `/auth/login` | - | `{username, password}` | Returns `{token, expires_at, user}` |
 | GET | `/auth/me` | required | - | Returns the decoded token payload |
+| GET | `/auth/default-speed` | required | - | `{data: {default_speed_kmh: number\|null}}` |
+| PUT | `/auth/default-speed` | required | `{default_speed_kmh}` | Usual paddling speed in km/h (0.5-30, one decimal) for the watch's initial ETA; empty/0/null clears it |
 
 There is no `/auth/logout` endpoint: since tokens are stateless, "logging
 out" just means the client discards the token it's holding.
@@ -91,7 +93,7 @@ or `1`), plus the shared `limit`/`offset` from Pagination above.
 For the sideloaded Connect IQ data field in `watch/`. All but the last
 endpoint require a logged-in user (JWT).
 
-- `GET /watch` → `{"data": {"has_token", "route": {"id", "name"} | null, "unit"}}`
+- `GET /watch` → `{"data": {"has_token", "route": {"id", "name"} | null, "unit", "colors", "default_colors"}}`
 - `POST /watch/token` → `201 {"data": {"token"}}` - a new 32-hex-char watch
   key, shown only in this response (stored as SHA-256 hash). Replaces and
   invalidates any previous key.
@@ -99,13 +101,23 @@ endpoint require a logged-in user (JWT).
 - `PUT /watch/route` `{"route_id", "unit": "metric"|"nautical"}` - the route
   the watch shows. Must be the caller's own, public, or the caller is admin.
 - `DELETE /watch/route`
+- `PUT /watch/colors` `{"colors": {"bearing"|"distance"|"text"|"north": {"dark": "#rrggbb", "light": "#rrggbb"}}}` -
+  the data field's text colors on a dark and on a light watch background
+  (bearing = direction value and waypoint marker, text = all other text).
+  Anything left out keeps its default; returns the status like `GET /watch`.
+  Unlike changing the route this does not change `"v"`.
+- `DELETE /watch/colors` - back to the default colors.
 - `GET /watch/device/route` with header `X-Watch-Token: <key>` (no JWT) →
   compact payload **without** the `data` wrapper:
-  `{"v": "<version>", "n": "<name>", "u": "m"|"n", "p": [lat0, lng0, lat1, lng1, ...]}`
+  `{"v": "<version>", "n": "<name>", "u": "m"|"n", "p": [lat0, lng0, lat1, lng1, ...], "c": [...]}`
   with coordinates as integers in 1e-5 degrees, simplified to at most 250
   points. `"v"` changes when the route or the selection changes; an empty
   `"p"` (and `"v": "none"`) means no route is selected or the selected route
-  is no longer visible to the user. Unknown key → 401.
+  is no longer visible to the user. `"c"` is the color set as eight 0xRRGGBB
+  integers: bearing, distance, text, north, each dark then light background.
+  `"s"` (only if the user set one) is the default paddling speed in m/s for
+  the initial ETA.
+  Unknown key → 401.
 
 ## WSI (wind shelter indicator)
 

@@ -179,6 +179,20 @@ final class UserRepository
         $this->db->prepare('DELETE FROM user WHERE id = ?')->execute([$id]);
     }
 
+    public function getDefaultSpeed(int $id): ?float
+    {
+        $stmt = $this->db->prepare('SELECT default_speed_kmh FROM user WHERE id = ?');
+        $stmt->execute([$id]);
+        $value = $stmt->fetchColumn();
+
+        return $value === false || $value === null ? null : (float) $value;
+    }
+
+    public function setDefaultSpeed(int $id, ?float $kmh): void
+    {
+        $this->db->prepare('UPDATE user SET default_speed_kmh = ? WHERE id = ?')->execute([$kmh, $id]);
+    }
+
     public function updatePassword(int $id, string $passwordHash): void
     {
         $stmt = $this->db->prepare('UPDATE user SET password = ? WHERE id = ?');

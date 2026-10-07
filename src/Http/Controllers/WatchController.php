@@ -11,6 +11,7 @@ use Ytan\Domain\Watch\WatchLinkRepository;
 use Ytan\Exception\ForbiddenException;
 use Ytan\Exception\UnauthorizedException;
 use Ytan\Exception\ValidationException;
+use Ytan\Service\WatchColors;
 use Ytan\Service\WatchRoutePayload;
 
 /**
@@ -84,6 +85,23 @@ final class WatchController extends BaseController
         return $this->json($response, ['data' => $this->statusData((int) $auth['sub'])]);
     }
 
+    public function setColors(Request $request, Response $response): Response
+    {
+        $auth = $this->requireAuthUser($request);
+        $colors = WatchColors::normalize($this->jsonBody($request)['colors'] ?? null);
+        $this->links->setColors((int) $auth['sub'], json_encode($colors));
+
+        return $this->json($response, ['data' => $this->statusData((int) $auth['sub'])]);
+    }
+
+    public function resetColors(Request $request, Response $response): Response
+    {
+        $auth = $this->requireAuthUser($request);
+        $this->links->setColors((int) $auth['sub'], null);
+
+        return $this->json($response, ['data' => $this->statusData((int) $auth['sub'])]);
+    }
+
     /**
      * Polled by the watch. Returns the compact WatchRoutePayload shape
      * directly (no {"data": ...} wrapper) - every byte counts there.
@@ -106,7 +124,14 @@ final class WatchController extends BaseController
             }
         }
 
-        return $this->json($response, WatchRoutePayload::build($route, (string) $link['unit'], (string) $link['updated_at']));
+        $payload = WatchRoutePayload::build($route, (string) $link['unit'], (string) $link['updated_at']);
+        $payload['c'] = WatchColors::flatten(WatchColors::effective($link['colors']));
+        // Usual speed (m/s) for the ETA until the watch has measured its own.
+        if ($link['default_speed_kmh'] !== null) {
+            $payload['s'] = round((float) $link['default_speed_kmh'] / 3.6, 2);
+        }
+
+        return $this->json($response, $payload);
     }
 
     private function canView(array $route, int $userId, bool $isAdmin): bool
@@ -127,6 +152,8 @@ final class WatchController extends BaseController
             'has_token' => $link !== null && $link['token_hash'] !== null,
             'route' => $route,
             'unit' => $link['unit'] ?? 'metric',
+            'colors' => WatchColors::effective($link['colors'] ?? null),
+            'default_colors' => WatchColors::DEFAULTS,
         ];
     }
 }

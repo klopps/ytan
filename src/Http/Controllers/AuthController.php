@@ -13,6 +13,9 @@ use Ytan\Service\MailService;
 
 final class AuthController extends BaseController
 {
+    private const MIN_SPEED_KMH = 0.5;
+    private const MAX_SPEED_KMH = 30;
+
     public function __construct(
         private readonly AuthService $authService,
         private readonly UserRepository $users,
@@ -43,6 +46,35 @@ final class AuthController extends BaseController
         $auth['pending_email_expires_at'] = $pending['expires_at'] ?? null;
 
         return $this->json($response, ['data' => $auth]);
+    }
+
+    public function defaultSpeed(Request $request, Response $response): Response
+    {
+        $auth = $this->requireAuthUser($request);
+
+        return $this->json($response, ['data' => ['default_speed_kmh' => $this->users->getDefaultSpeed((int) $auth['sub'])]]);
+    }
+
+    /**
+     * The user's usual paddling speed (km/h, 0.5-30, one decimal), used for
+     * the watch's initial ETA. Empty/0/null clears it. Not password-gated
+     * like updateProfile(): it is a preference, not an account credential.
+     */
+    public function setDefaultSpeed(Request $request, Response $response): Response
+    {
+        $auth = $this->requireAuthUser($request);
+        $raw = $this->jsonBody($request)['default_speed_kmh'] ?? null;
+
+        $speed = null;
+        if ($raw !== null && $raw !== '' && $raw != 0) {
+            if (!is_numeric($raw) || $raw < self::MIN_SPEED_KMH || $raw > self::MAX_SPEED_KMH) {
+                throw new ValidationException('The default speed must be between 0.5 and 30 km/h.', 'auth.default_speed_invalid');
+            }
+            $speed = round((float) $raw, 1);
+        }
+        $this->users->setDefaultSpeed((int) $auth['sub'], $speed);
+
+        return $this->json($response, ['data' => ['default_speed_kmh' => $speed]]);
     }
 
     /**

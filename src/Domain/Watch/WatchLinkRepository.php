@@ -26,12 +26,13 @@ final class WatchLinkRepository
     }
 
     /**
-     * @return array|null the link row plus the owning user's is_admin flag
+     * @return array|null the link row plus the owning user's is_admin flag and
+     *                    default_speed_kmh
      */
     public function findByToken(string $token): ?array
     {
         $stmt = $this->db->prepare(
-            'SELECT watch_link.*, user.is_admin FROM watch_link JOIN user ON user.id = watch_link.user_id WHERE watch_link.token_hash = ?'
+            'SELECT watch_link.*, user.is_admin, user.default_speed_kmh FROM watch_link JOIN user ON user.id = watch_link.user_id WHERE watch_link.token_hash = ?'
         );
         $stmt->execute([self::hashToken($token)]);
         $row = $stmt->fetch();
@@ -66,6 +67,19 @@ final class WatchLinkRepository
     public function clearRoute(int $userId): void
     {
         $this->db->prepare('UPDATE watch_link SET route_id = NULL WHERE user_id = ?')->execute([$userId]);
+    }
+
+    /**
+     * Stores the colors JSON (NULL = defaults). updated_at is deliberately
+     * kept as it is: it is part of the route version the watch compares, and
+     * a color change must not restart its navigation.
+     */
+    public function setColors(int $userId, ?string $colorsJson): void
+    {
+        $stmt = $this->db->prepare(
+            'INSERT INTO watch_link (user_id, colors) VALUES (?, ?) ON DUPLICATE KEY UPDATE colors = VALUES(colors), updated_at = updated_at'
+        );
+        $stmt->execute([$userId, $colorsJson]);
     }
 
     public static function hashToken(string $token): string

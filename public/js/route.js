@@ -1182,6 +1182,10 @@ function showRouteContextMenu(event, i) {
                 content += '<div class="contextMenuItem" onClick="shareRoute(' + i + ');"><i class="material-icons-round">share</i>' + t('route.context.share') + '</div>';
             }
 
+            if (isWatchPaired()) {
+                content += '<div class="contextMenuItem" onClick="routeContextMenuSendToWatch(' + i + ');"><i class="material-icons-round">watch</i>' + t('route.context.send_to_watch') + '</div>';
+            }
+
             content +=
                 '<div class="contextMenuItem" onClick="routeContextMenuRemoveRoute(' + i + ');"><i class="material-icons-round">delete</i>' + t('route.context.delete_route') + '</div>' +
                 '<div class="contextMenuItem" onClick="closeContextMenu();"><i class="material-icons-round">close</i>' + t('common.cancel') + '</div>'
@@ -1231,6 +1235,11 @@ function routeContextMenuAddToTour(i) {
     google.maps.event.addListenerOnce(routeInfoWindow, 'domready', function() {
         toggleAddToTourMenu(i);
     });
+}
+
+function routeContextMenuSendToWatch(i) {
+    closeContextMenu();
+    sendRouteToWatch(i);
 }
 
 function routeContextMenuRemoveRoute(i) {

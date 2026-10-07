@@ -92,6 +92,10 @@ function showWatchSection(newToken) {
             }
         }
 
+        if (status.has_token) {
+            html += watchColorsHtml(status);
+        }
+
         html += '<button type="button" class="nav-btn-secondary" onclick="createWatchToken();"><i class="material-icons-round">vpn_key</i>&nbsp;' +
             escapeHTML(status.has_token ? t('watch.regenerate_token') : t('watch.create_token')) + '</button>';
         if (status.has_token) {
@@ -99,6 +103,59 @@ function showWatchSection(newToken) {
         }
         sub.innerHTML = html;
     });
+}
+
+/**
+ * The data field's text colors, per element and per watch background
+ * (status.colors: {element: {dark, light}}, see WatchColors.php). Each cell
+ * previews its color on the background it is meant for - black or white no
+ * matter the app theme, since that is the watch's, not the app's.
+ */
+const WATCH_COLOR_ELEMENTS = [
+    { key: 'bearing', sample: '221°' },
+    { key: 'distance', sample: '311 m' },
+    { key: 'text', sample: 'ETA 6:52' },
+    { key: 'north', sample: '▲' },
+];
+
+function watchColorsHtml(status) {
+    let html = '<div class="nav-divider"></div><p class="nav-field-label">' + escapeHTML(t('watch.colors_title')) + '</p>' +
+        '<div class="watch-colors">' +
+        '<span></span><span class="watch-colors-head">' + escapeHTML(t('watch.colors_dark')) + '</span>' +
+        '<span class="watch-colors-head">' + escapeHTML(t('watch.colors_light')) + '</span>';
+    WATCH_COLOR_ELEMENTS.forEach((element) => {
+        html += '<span>' + escapeHTML(t('watch.color_' + element.key)) + '</span>';
+        ['dark', 'light'].forEach((background) => {
+            const color = escapeHTML(status.colors[element.key][background]);
+            html += '<label class="watch-color-cell is-' + background + '">' +
+                '<span class="watch-color-sample" style="color:' + color + '">' + escapeHTML(element.sample) + '</span>' +
+                '<input type="color" data-element="' + element.key + '" data-background="' + background + '" value="' + color + '" ' +
+                'oninput="this.previousElementSibling.style.color = this.value;"></label>';
+        });
+    });
+    html += '</div>' +
+        '<div class="nav-form-message">' + escapeHTML(t('watch.colors_hint')) + '</div>' +
+        '<button type="button" class="nav-btn-secondary" onclick="saveWatchColors();"><i class="material-icons-round">palette</i>&nbsp;' + escapeHTML(t('watch.colors_save')) + '</button>' +
+        '<span class="nav-link-small" onclick="resetWatchColors();">' + escapeHTML(t('watch.colors_reset')) + '</span>';
+    return html;
+}
+
+function saveWatchColors() {
+    const colors = {};
+    document.querySelectorAll('.watch-colors input[type="color"]').forEach((input) => {
+        colors[input.dataset.element] = colors[input.dataset.element] || {};
+        colors[input.dataset.element][input.dataset.background] = input.value;
+    });
+    Ytan.put('/watch/colors', { colors: colors }).then(() => {
+        showToast(t('watch.colors_saved'), 'success');
+    }).catch((err) => showToast(translateApiError(err.data) || err.message, 'error'));
+}
+
+function resetWatchColors() {
+    Ytan.del('/watch/colors').then(() => {
+        showToast(t('watch.colors_reset_done'), 'success');
+        showWatchSection();
+    }).catch((err) => showToast(translateApiError(err.data) || err.message, 'error'));
 }
 
 function copyWatchToken() {
