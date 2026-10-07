@@ -1,6 +1,12 @@
 # Erledigt
 
 
+## Anzeige der Routenlänge bei Routenbearbeitung (2026-10-07)
+
+~~Wenn man eine neue Route anlegt oder eine Route bearbeitet, soll in der secondTools die Gesamtlänge der Route angezeigt und während der Bearbeitung fortlaufend aktualisiert werden. Um dafür den Platz zu haben, soll das second-toolbar-icon entfallen.~~
+
+Gelöst (2026-10-07): Die zweite Toolbar (`showSecondToolbar('routeButton')`, `ui.js`) zeigt beim Anlegen und Bearbeiten einer Route statt des Routen-Symbols die Gesamtlänge (`#secondToolbarLength`, Format wie die Routenbeschriftungen über `formatDistance(measureTool.length, settings.unit)`, also m/km bzw. nm). `updateSecondToolbarLength()` läuft beim Aufbau der Toolbar und bei jedem `measure_change` des `measureTool` (Listener in `map-core.js`, neben `updateMeasureToolLabelVisibility`) - das Ereignis feuert bei jedem gesetzten, verschobenen oder entfernten Stützpunkt; der erste Punkt zeigt weiter "0.0km", ab dem zweiten die Länge. Nach Rückfrage entfällt das Symbol nur bei Routen: POI ("CANCEL") und Area ("END EDITING") behalten ihres, dort gibt es nichts anzuzeigen. Platz: Der Längen-Chip (`.second-toolbar-length`, 13px, tabellarische Ziffern gegen Springen) ist breiter als das 36px-Symbol; auf 390px Breite endet die Toolbar bei x=52 und überdeckt den Menü-Knopf (bis x≈48) nicht - bei noch schmaleren Displays (360px) wird es eng, wie es vorher schon war (END EDITING ist unverändert). Der Track-Recorder, der dieselbe Toolbar nutzt, bekommt die Länge damit ebenfalls. Im Browser mobil und Desktop geprüft (neue Route mit drei Klicks: 46,9 km → 126,4 km; Bearbeiten einer vorhandenen Route zeigt die gespeicherte Länge; nautisch 68,3 nm), Playwright-Suite 9/9 grün. Keine Backend-Änderung.
+
 ## Routeinformationen auf Garmin Smartwatch (Fenix 7) (2026-10-06/07)
 
 ~~Bei aktivem Routemodus, soll auf eine Garmin Fenix (mindestens Fenix 6) oder anderen Garmin Smartwatch die Richtung in Grad und die Entfernung zum nächsten Wegpunkt angezeigt werden können. Wie kann das realisiert werden? Mache Vorschläge.~~

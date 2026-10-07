@@ -834,6 +834,7 @@ function initMap() {
     // zoom-based visibility right as soon as there's something to apply it
     // to, without needing a call at every measureTool.start() call site.
     measureTool.addListener('measure_change', updateMeasureToolLabelVisibility);
+    measureTool.addListener('measure_change', updateSecondToolbarLength);
 
     if (zoomParam == null) {
         if (Number.isInteger(settings['zoom'])) {

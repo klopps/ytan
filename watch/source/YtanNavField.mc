@@ -444,6 +444,15 @@ class YtanNavField extends WatchUi.DataField {
         var top = insetTop + labelHeight + infoHeight;
         var area = height - top - insetBottom - (hasWaypoints ? labelHeight : 0);
         if (_status != null) {
+            // With a route loaded (no GPS yet, or finished) the status still
+            // says which route this is, in the same spot as in normal view.
+            if (_error == null && _lats != null && !"".equals(_routeName)) {
+                var statusNameHeight = textHeight(NAME_FONT);
+                var nameRow = layoutRows(top, area, statusNameHeight, textHeight(ETA_FONT))[0];
+                dc.drawText(width / 2, nameRow, NAME_FONT,
+                    fitText(dc, _routeName, NAME_FONT, usableWidth(width, height, nameRow, statusNameHeight)),
+                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+            }
             dc.drawText(width / 2, top + area / 2, Graphics.FONT_MEDIUM, _status,
                 Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
             return;

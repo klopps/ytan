@@ -1,8 +1,5 @@
 # Offene Punkte
 
-## Anzeige der Routenlänge bei Routenbearbeitung
-Wenn man eine neue Route anlegt oder eine Route bearbeitet, soll in der secondTools die Gesamtlänge der Route angezeigt und während der Bearbeitung fortlaufend aktualisiert werden. Um dafür den Platz zu haben, soll das second-toolbar-icon entfallen.
-
 ## Garmin-Datenfeld auf der Uhr überprüfen
 
 Das Connect-IQ-Datenfeld (`watch/`) ist gebaut, läuft im Simulator und hat auf der echten Uhr (fenix7pro) bereits Route und Anzeige geliefert (Details und Verlauf in done.md, "Routeninformationen auf Garmin Smartwatch"). Noch **nicht auf einer echten Uhr geprüft**:
@@ -11,6 +8,7 @@ Das Connect-IQ-Datenfeld (`watch/`) ist gebaut, läuft im Simulator und hat auf 
 - ETA (Glättung, Pausen) samt Standard-Durchschnittsgeschwindigkeit aus dem Profil.
 - Kompassring: Blickrichtung im Stand (Kompass, Kalibrierung) und in Fahrt, Lesbarkeit der Dreiecke.
 - Textfarben aus Profil > Garmin-Uhr (auch auf fenix6 mit wenig Farben) und Verhalten bei hellem Hintergrund.
+- Anzeige ohne GPS-Fix bzw. am Ziel: zeigt jetzt zusätzlich den Routennamen (im Simulator geprüft).
 - fenix6-Build insgesamt (nur kompiliert, nie auf der Uhr gewesen).
 - Voraussetzung: Migrationen 027/028 und die neue API sind auf Production deployt, die Uhr mit `bin\build-watch.bat - GERÄT` neu gebaut.
 

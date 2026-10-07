@@ -4001,6 +4001,17 @@ input[type="color"] {
   flex-shrink: 0;
 }
 
+.second-toolbar-length {
+  min-width: 48px;
+  padding: 0 0 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .second-toolbar-icon svg {
   width: 19px;
   height: 19px;

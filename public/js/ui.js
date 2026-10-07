@@ -341,13 +341,33 @@ function showSecondToolbar(elementId) {
     };
     var label = labels[elementId];
 
+    // A route shows its running total length instead of the type icon (the
+    // length is what you want to see while drawing; the toolbar's context is
+    // obvious from the route being drawn).
+    var lead = elementId === 'routeButton'
+        ? '<div id="secondToolbarLength" class="second-toolbar-length" title="' + label.title + '"></div>'
+        : '<div class="second-toolbar-icon" title="' + label.title + '">' + TOOLBAR_ICON_SVG[elementId] + '</div>';
     secondToolbar.innerHTML =
-        '<div class="second-toolbar-icon" title="' + label.title + '">' + TOOLBAR_ICON_SVG[elementId] + '</div>' +
+        lead +
         '<button type="button" class="second-toolbar-end-btn" onclick="' + label.onclick + '">' + label.action + '</button>';
+    updateSecondToolbarLength();
 
     var editToolbarRect = document.getElementById('editToolbar').getBoundingClientRect();
     secondToolbar.style.right = (editToolbarRect.width + 10 + 8) + 'px';
     secondToolbar.style.display = "flex";
+}
+
+/**
+ * Refreshes the route length shown in the second toolbar from measureTool -
+ * called when the toolbar is built and on every measureTool 'measure_change'
+ * (map-core.js), i.e. each added/moved/removed vertex. A no-op while the
+ * toolbar isn't showing a route.
+ */
+function updateSecondToolbarLength() {
+    var element = document.getElementById('secondToolbarLength');
+    if (element && measureTool) {
+        element.textContent = formatDistance(measureTool.length || 0, settings.unit);
+    }
 }
 
 function hideSecondToolbar() {
