@@ -33,6 +33,8 @@ class YtanNavField extends WatchUi.DataField {
     const NAME_FONT = Graphics.FONT_XTINY;
     // Space between bearing and distance in their shared row.
     const VALUE_GAP = 14;
+    // Gap between the middle of the bottom row and each of its two values.
+    const TRAVEL_GAP = 8;
     // Scalable condensed system font for the values (fenix 7 and newer).
     const CONDENSED_FACE = "RobotoCondensedBold";
     const ETA_FONT = Graphics.FONT_SMALL;
@@ -68,6 +70,19 @@ class YtanNavField extends WatchUi.DataField {
         0xFFFFFF, 0x000000,
         0xFF0000, 0xFF0000
     ];
+    // The two arrow symbols of the bottom row, hand-made pixel bitmaps
+    // (watch/assets/*.png, 18x10 and 14x8): one hex digit per pixel, row by
+    // row, 0 = transparent .. F = opaque. They are drawn pixel by pixel in
+    // the text color, blended with the (black or white) background, so they
+    // follow the configured color and stay anti-aliased.
+    const ARROW_FROM_START_LARGE = "FA0000000000870000FA0000000001CF7000FA00000000001CF700FA000000000001CF70FECCCCCCCCCCCCDFF8FECCCCCCCCCCCCDFF7FA000000000001CF70FA00000000001CF700FA0000000001CF7000FA0000000000870000";
+    const ARROW_TO_END_LARGE = "00000000004B1000AF00000000008FC100AF000000000008FC10AF0000000000008FC1AFCCCCCCCCCCCCCFFCBFCCCCCCCCCCCCCFFCBF0000000000008FC1AF000000000008FC10AF00000000008FC100AF00000000004B1000AF";
+    const ARROW_FROM_START_SMALL = "F4000000069000F400000005F800F4000000005F80FBAAAAAAAAADF8FBAAAAAAAAADF8F4000000005F80F400000005F800F4000000069000";
+    const ARROW_TO_END_SMALL = "00000000A5004F000000008F404F0000000009F44FAAAAAAAAAAFF8FAAAAAAAAAAFF8F0000000009F44F000000009F404F00000000A5004F";
+    const ARROW_LARGE_WIDTH = 18;
+    const ARROW_LARGE_HEIGHT = 10;
+    const ARROW_SMALL_WIDTH = 14;
+    const ARROW_SMALL_HEIGHT = 8;
     const EARTH_RADIUS_M = 6371000.0d;
     const DEG = 0.017453292519943295d; // PI / 180
 
@@ -98,6 +113,7 @@ class YtanNavField extends WatchUi.DataField {
     private var _distance = "";
     private var _distanceUnit = "";
     private var _toFinish = "";
+    private var _traveled = "--";
     private var _eta = "";
 
     private var _strLabel;
@@ -206,10 +222,13 @@ class YtanNavField extends WatchUi.DataField {
         // True-north heading: the compass when standing still, GPS course
         // when moving (Garmin picks), so it also works at a standstill.
         var heading = info.currentHeading;
+        // Distance covered in this activity, as counted by the watch itself.
+        var elapsed = info.elapsedDistance;
         if (location == null) {
             location = simulatedLocation();
             speed = simulatedSpeed();
             heading = simulatedHeading();
+            elapsed = simulatedElapsedDistance();
         }
         if (heading != null) {
             _heading = heading;
@@ -259,6 +278,12 @@ class YtanNavField extends WatchUi.DataField {
         var remaining = toNext + _remainFrom[_next];
         var finish = formatDistance(remaining);
         _toFinish = finish[0] + " " + finish[1];
+        if (elapsed == null) {
+            _traveled = "--";
+        } else {
+            var traveled = formatDistance(elapsed);
+            _traveled = traveled[0] + " " + traveled[1];
+        }
         _eta = etaText(remaining);
     }
 
@@ -327,11 +352,9 @@ class YtanNavField extends WatchUi.DataField {
     }
 
     private function formatDuration(seconds) {
+        // Always hh:mm h, e.g. "01:40 h" or "00:05 h".
         var minutes = (seconds + 59) / 60;
-        if (minutes < 60) {
-            return minutes + " min";
-        }
-        return (minutes / 60) + ":" + (minutes % 60).format("%02d") + " h";
+        return (minutes / 60).format("%02d") + ":" + (minutes % 60).format("%02d") + " h";
     }
 
     // Time of day, 12/24 h as set on the watch.
@@ -482,33 +505,87 @@ class YtanNavField extends WatchUi.DataField {
         var eta = _strEta + " " + _eta;
         drawFirstFitting(dc, cx, rows[2], usableWidth(width, height, rows[2], textRow),
             [[eta, ETA_FONT], [eta, Graphics.FONT_XTINY], [_eta, Graphics.FONT_XTINY]], _eta);
-        drawToFinish(dc, cx, rows[3], usableWidth(width, height, rows[3], textRow));
+        drawTraveledAndFinish(dc, cx, rows[3], usableWidth(width, height, rows[3], textRow), foreground, background);
     }
 
-    // Distance to the finish behind a drawn finish flag, normal font if it
-    // fits, else the smallest.
-    private function drawToFinish(dc, cx, cy, maxWidth) {
+    // One row around the middle: "|-> 821 m" ends TRAVEL_GAP left of it
+    // (distance covered since the start), "12.6 km ->|" starts TRAVEL_GAP
+    // right of it (distance left to the finish). Each side has to
+    // fit half the usable width: normal font, small font, then without the
+    // space before the unit; if even that doesn't fit, the small one is drawn.
+    private function drawTraveledAndFinish(dc, cx, cy, maxWidth, foreground, background) {
+        var room = maxWidth / 2 - TRAVEL_GAP;
         var font = ETA_FONT;
-        var flag = (Graphics.getFontAscent(font) * 0.7d).toNumber();
-        if (flag + 6 + dc.getTextWidthInPixels(_toFinish, font) > maxWidth) {
-            font = Graphics.FONT_XTINY;
-            flag = (Graphics.getFontAscent(font) * 0.7d).toNumber();
+        var compact = false;
+        var traveled = _traveled;
+        var toFinish = _toFinish;
+        var arrow = 0;
+        for (var step = 0; step < 4; step++) {
+            font = step == 0 ? ETA_FONT : Graphics.FONT_XTINY;
+            compact = step >= 2;
+            traveled = compact ? withoutSpace(_traveled) : _traveled;
+            toFinish = compact ? withoutSpace(_toFinish) : _toFinish;
+            arrow = step == 3 ? ARROW_SMALL_WIDTH : ARROW_LARGE_WIDTH;
+            var widest = dc.getTextWidthInPixels(traveled, font);
+            var other = dc.getTextWidthInPixels(toFinish, font);
+            if (other > widest) {
+                widest = other;
+            }
+            if (arrow + 3 + widest <= room) {
+                break;
+            }
         }
-        var x = cx - (flag + 6 + dc.getTextWidthInPixels(_toFinish, font)) / 2;
-        drawFlag(dc, x, cy, flag);
-        dc.drawText(x + flag + 6, cy, font, _toFinish, Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
+
+        var left = cx - TRAVEL_GAP - (arrow + 3 + dc.getTextWidthInPixels(traveled, font));
+        drawArrow(dc, left, cy, arrow == ARROW_SMALL_WIDTH, false, foreground, background);
+        var textTop = cy + digitHeight(font) / 2 - Graphics.getFontAscent(font);
+        dc.drawText(left + arrow + 3, textTop, font, traveled, Graphics.TEXT_JUSTIFY_LEFT);
+
+        // The finish symbol goes behind its value, the start symbol in front.
+        var right = cx + TRAVEL_GAP;
+        dc.drawText(right, textTop, font, toFinish, Graphics.TEXT_JUSTIFY_LEFT);
+        drawArrow(dc, right + dc.getTextWidthInPixels(toFinish, font) + 3, cy, arrow == ARROW_SMALL_WIDTH, true, foreground, background);
     }
 
-    // Finish flag of the given height, left edge at x, centered on cy.
-    private function drawFlag(dc, x, cy, size) {
-        var top = cy - size / 2;
-        dc.setPenWidth(2);
-        dc.drawLine(x + 1, top, x + 1, top + size);
-        dc.fillPolygon([[x + 2, top], [x + size, top + size / 4], [x + 2, top + size / 2]]);
-        dc.setPenWidth(1);
+    private function withoutSpace(text) {
+        var space = text.find(" ");
+        return space == null ? text : text.substring(0, space) + text.substring(space + 1, text.length());
     }
 
-    // Vertical centers of [name, values, ETA, distance to finish]: the
+    // Arrow bitmap (the small one if `small`), left edge at x, vertically
+    // centered on cy, with the bar at its tip (toEnd) or at its start. Each
+    // pixel is the text color mixed into the background by its opacity.
+    private function drawArrow(dc, x, cy, small, toEnd, foreground, background) {
+        var data = small
+            ? (toEnd ? ARROW_TO_END_SMALL : ARROW_FROM_START_SMALL)
+            : (toEnd ? ARROW_TO_END_LARGE : ARROW_FROM_START_LARGE);
+        var width = small ? ARROW_SMALL_WIDTH : ARROW_LARGE_WIDTH;
+        var height = small ? ARROW_SMALL_HEIGHT : ARROW_LARGE_HEIGHT;
+        var top = cy - height / 2;
+        var digits = data.toCharArray();
+        for (var i = 0; i < digits.size(); i++) {
+            var code = digits[i].toNumber();
+            var level = code <= 57 ? code - 48 : code - 55;
+            if (level > 0) {
+                dc.setColor(level == 15 ? foreground : mixColors(foreground, background, level), Graphics.COLOR_TRANSPARENT);
+                dc.drawPoint(x + i % width, top + i / width);
+            }
+        }
+        dc.setColor(foreground, Graphics.COLOR_TRANSPARENT);
+    }
+
+    // `foreground` at `level`/15 opacity over `background` (both 0xRRGGBB).
+    private function mixColors(foreground, background, level) {
+        var mixed = 0;
+        for (var shift = 16; shift >= 0; shift -= 8) {
+            var f = (foreground >> shift) & 0xFF;
+            var b = (background >> shift) & 0xFF;
+            mixed = (mixed << 8) | ((b * (15 - level) + f * level + 7) / 15);
+        }
+        return mixed;
+    }
+
+    // Vertical centers of [name, values, ETA, traveled + distance to finish]: the
     // route name hugs the info row at the top, ETA and distance to finish
     // sit right above the waypoint counter, and the values get all the
     // height in between.
@@ -536,6 +613,7 @@ class YtanNavField extends WatchUi.DataField {
     private var _simLat = null;
     private var _simLng = null;
     private var _simHeading = null;
+    private var _simTraveled = 0.0d;
 
     (:simulator)
     private function simulatedLocation() {
@@ -559,6 +637,7 @@ class YtanNavField extends WatchUi.DataField {
             }
             _simLat += (_lats[target] - _simLat) * fraction;
             _simLng += (_lngs[target] - _simLng) * fraction;
+            _simTraveled += fraction < 1.0d ? SIM_STEP_M : distance;
         }
         return new Position.Location({ :latitude => _simLat, :longitude => _simLng, :format => :degrees });
     }
@@ -576,6 +655,16 @@ class YtanNavField extends WatchUi.DataField {
 
     (:device)
     private function simulatedSpeed() {
+        return null;
+    }
+
+    (:simulator)
+    private function simulatedElapsedDistance() {
+        return _simLat == null ? null : _simTraveled;
+    }
+
+    (:device)
+    private function simulatedElapsedDistance() {
         return null;
     }
 

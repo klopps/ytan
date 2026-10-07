@@ -1,5 +1,8 @@
 # Offene Punkte
 
+## Garmin: Formatierung ETA-Zeile
+Die Restzeit bis zur Ankunft in Klammern hinter der ETA soll immer im Format hh:mm mitfolgendem "h" dargstellt werden. Beispiel: "ETA 14:25 (1:21 h)". Die Zeile soll zentriert werden.
+
 ## Garmin-Datenfeld auf der Uhr überprüfen
 
 Das Connect-IQ-Datenfeld (`watch/`) ist gebaut, läuft im Simulator und hat auf der echten Uhr (fenix7pro) bereits Route und Anzeige geliefert (Details und Verlauf in done.md, "Routeninformationen auf Garmin Smartwatch"). Noch **nicht auf einer echten Uhr geprüft**:
@@ -8,6 +11,7 @@ Das Connect-IQ-Datenfeld (`watch/`) ist gebaut, läuft im Simulator und hat auf 
 - ETA (Glättung, Pausen) samt Standard-Durchschnittsgeschwindigkeit aus dem Profil.
 - Kompassring: Blickrichtung im Stand (Kompass, Kalibrierung) und in Fahrt, Lesbarkeit der Dreiecke.
 - Textfarben aus Profil > Garmin-Uhr (auch auf fenix6 mit wenig Farben) und Verhalten bei hellem Hintergrund.
+- Untere Zeile "gefahren | Reststrecke" (`|→ 821 m   12.6 km →|`, Pfeile als Pixel-Bitmaps `watch/assets/*.png` (18x10 und 14x8), in Textfarbe punktweise gezeichnet; `info.elapsedDistance` der Aktivität): zählt sie ab Aktivitätsbeginn und bleibt in Pausen stehen? Passt sie bei langen Werten (bis ca. 100 km) und auf der fenix6?
 - Anzeige ohne GPS-Fix bzw. am Ziel: zeigt jetzt zusätzlich den Routennamen (im Simulator geprüft).
 - fenix6-Build insgesamt (nur kompiliert, nie auf der Uhr gewesen).
 - Voraussetzung: Migrationen 027/028 und die neue API sind auf Production deployt, die Uhr mit `bin\build-watch.bat - GERÄT` neu gebaut.
