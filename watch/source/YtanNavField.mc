@@ -98,6 +98,12 @@ class YtanNavField extends WatchUi.DataField {
     private var _priorSpeed = null; // the user's default speed from YTAN, m/s
     private var _movingSeconds = 0.0d;
     private var _lastTimer = null;
+    // Time spent paddling (above PAUSE_SPEED_MS) in this activity - unlike
+    // _movingSeconds not restarted by a new route.
+    private var _paddledSeconds = 0.0d;
+    // Shown under "Finish": [label, value] rows for distance, total time and
+    // moving time, frozen when the finish is reached (null = not yet).
+    private var _summary = null;
     private var _next = -1; // index of the next waypoint, -1 = not determined yet
     private var _error = null;
     // Sync health for the label: when the last fetch succeeded (epoch
@@ -129,6 +135,9 @@ class YtanNavField extends WatchUi.DataField {
     private var _strNoGps;
     private var _strFinish;
     private var _strFinishReached;
+    private var _strSummaryDistance;
+    private var _strSummaryTotal;
+    private var _strSummaryMoving;
     private var _strBadToken;
     private var _strNm;
 
@@ -139,6 +148,9 @@ class YtanNavField extends WatchUi.DataField {
         _strNoGps = WatchUi.loadResource(Rez.Strings.NoGps);
         _strFinish = WatchUi.loadResource(Rez.Strings.Finish);
         _strFinishReached = WatchUi.loadResource(Rez.Strings.FinishReached);
+        _strSummaryDistance = WatchUi.loadResource(Rez.Strings.SummaryDistance);
+        _strSummaryTotal = WatchUi.loadResource(Rez.Strings.SummaryTotal);
+        _strSummaryMoving = WatchUi.loadResource(Rez.Strings.SummaryMoving);
         _strBadToken = WatchUi.loadResource(Rez.Strings.BadToken);
         _strNm = WatchUi.loadResource(Rez.Strings.UnitNauticalMiles);
         _strEta = WatchUi.loadResource(Rez.Strings.Eta);
@@ -176,6 +188,7 @@ class YtanNavField extends WatchUi.DataField {
         _speed = null;
         _movingSeconds = 0.0d;
         _lastTimer = null;
+        _summary = null;
         var name = data["n"];
         _routeName = name instanceof String ? name : "";
 
@@ -293,6 +306,9 @@ class YtanNavField extends WatchUi.DataField {
         if (_next >= count) {
             _waypoints = count + "/" + count;
             _status = _strFinish;
+            if (_summary == null) {
+                _summary = finishSummary(elapsed, info.elapsedTime);
+            }
             return;
         }
 
@@ -313,6 +329,19 @@ class YtanNavField extends WatchUi.DataField {
         _eta = etaText(remaining);
     }
 
+    // Rows for the finish view: distance covered in the activity, total time
+    // since the activity started (pauses included, as the watch counts it;
+    // left out if unknown) and the time actually spent paddling.
+    private function finishSummary(elapsedDistance, elapsedTimeMs) {
+        var distance = formatDistance(elapsedDistance == null ? 0.0d : elapsedDistance);
+        var rows = [[_strSummaryDistance, distance[0] + " " + distance[1]]];
+        if (elapsedTimeMs != null && elapsedTimeMs > 0) {
+            rows.add([_strSummaryTotal, formatDuration(elapsedTimeMs / 1000)]);
+        }
+        rows.add([_strSummaryMoving, formatDuration(_paddledSeconds.toNumber())]);
+        return rows;
+    }
+
     // Exponential moving average over ~SPEED_WINDOW_S of paddling - at the
     // start over the time paddled so far, so the first sample doesn't
     // dominate. Pauses (and gaps, e.g. activity paused) leave it unchanged.
@@ -324,6 +353,7 @@ class YtanNavField extends WatchUi.DataField {
             return;
         }
         _movingSeconds += dt;
+        _paddledSeconds += dt;
         var window = _movingSeconds < SPEED_WINDOW_S ? _movingSeconds : SPEED_WINDOW_S;
         var alpha = dt / window;
         _speed = _speed == null ? speed.toDouble() : _speed + alpha * (speed - _speed);
@@ -495,12 +525,17 @@ class YtanNavField extends WatchUi.DataField {
         if (_status != null) {
             // With a route loaded (no GPS yet, or finished) the status still
             // says which route this is, in the same spot as in normal view.
+            var statusNameHeight = 0;
             if (_error == null && _lats != null && !"".equals(_routeName)) {
-                var statusNameHeight = textHeight(NAME_FONT);
+                statusNameHeight = textHeight(NAME_FONT);
                 var nameRow = layoutRows(top, area, statusNameHeight, textHeight(ETA_FONT))[0];
                 dc.drawText(width / 2, nameRow, NAME_FONT,
                     fitText(dc, _routeName, NAME_FONT, usableWidth(width, height, nameRow, statusNameHeight)),
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+            }
+            if (_status == _strFinish && _summary != null) {
+                drawFinishSummary(dc, width, height, top + statusNameHeight, area - statusNameHeight);
+                return;
             }
             dc.drawText(width / 2, top + area / 2, Graphics.FONT_MEDIUM, _status,
                 Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
@@ -571,6 +606,25 @@ class YtanNavField extends WatchUi.DataField {
         var right = cx + TRAVEL_GAP;
         dc.drawText(right, textTop, font, toFinish, Graphics.TEXT_JUSTIFY_LEFT);
         drawArrow(dc, right + dc.getTextWidthInPixels(toFinish, font) + 3, cy, arrow == ARROW_SMALL_WIDTH, true, foreground, background);
+    }
+
+    // "Finish" with the summary rows (finishSummary()) below it, as one
+    // block centered in the given area. Each row: "Label value" in the ETA
+    // font, else the smallest font, else just the value.
+    private function drawFinishSummary(dc, width, height, top, area) {
+        var statusHeight = textHeight(Graphics.FONT_MEDIUM);
+        var rowHeight = textHeight(ETA_FONT) + 2;
+        var y = top + (area - statusHeight - _summary.size() * rowHeight) / 2;
+        dc.drawText(width / 2, y + statusHeight / 2, Graphics.FONT_MEDIUM, _status,
+            Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        y += statusHeight;
+        for (var i = 0; i < _summary.size(); i++) {
+            var cy = y + rowHeight / 2;
+            var text = _summary[i][0] + " " + _summary[i][1];
+            drawFirstFitting(dc, width / 2, cy, usableWidth(width, height, cy, rowHeight),
+                [[text, ETA_FONT], [text, Graphics.FONT_XTINY], [_summary[i][1], Graphics.FONT_XTINY]], _summary[i][1]);
+            y += rowHeight;
+        }
     }
 
     private function withoutSpace(text) {

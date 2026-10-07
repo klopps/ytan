@@ -5,6 +5,9 @@
     <string id="NoGps">No GPS</string>
     <string id="Finish">Finish</string>
     <string id="FinishReached">Finish reached</string>
+    <string id="SummaryDistance">Distance</string>
+    <string id="SummaryTotal">Total</string>
+    <string id="SummaryMoving">Moving</string>
     <string id="Eta">ETA</string>
     <string id="BadToken">Watch key?</string>
     <string id="UnitNauticalMiles">nm</string>
