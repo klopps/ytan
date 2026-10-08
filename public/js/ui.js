@@ -40,7 +40,7 @@ function panelClosed() {
 
 /**
  * Map search box (magnifying-glass toggle -> input backed by
- * AutocompleteService/own-POI search, see map-core.js). Collapsing clears
+ * AutocompleteSuggestion/own-POI search, see map-core.js). Collapsing clears
  * the typed text and the results dropdown, but leaves a dropped search
  * marker in place, since the marker represents the last found result
  * independent of whether the box is expanded.

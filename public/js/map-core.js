@@ -112,8 +112,6 @@ let areaEditWindow;
 let areaInfoWindow;
 let poiMarker;
 let myPositionMarker;
-let autocompleteService;
-let placesService;
 let searchMarker;
 let searchInfoWindow;
 let googlePredictions = [];
@@ -797,8 +795,6 @@ function initMap() {
 
     initLongPressTouchTracking();
 
-    autocompleteService = new google.maps.places.AutocompleteService();
-    placesService = new google.maps.places.PlacesService(map);
     searchInfoWindow = new google.maps.InfoWindow({
         pixelOffset: new google.maps.Size(16, 16) // nudge the remove-X to the marker's upper right instead of straight above it
     });
@@ -1164,9 +1160,14 @@ function updateGoogleSearchAllowed() {
 /**
  * Search dropdown combining own-POI matches (filtered client-side from the
  * already-loaded `pois` array) and Google Places predictions, fetched via
- * the data-only AutocompleteService rather than the SearchBox widget so we
- * can render both lists ourselves behind a single mode toggle instead of
- * fighting Google's self-positioned pac-container for screen space.
+ * the data-only AutocompleteSuggestion (Places API (New) - it replaced the
+ * legacy AutocompleteService/PlacesService, which Google no longer offers
+ * to new customers and only bug-fixes for major regressions) rather than
+ * the PlaceAutocompleteElement widget, so we can render both lists ourselves
+ * behind a single mode toggle instead of fighting a Google-positioned
+ * dropdown for screen space. Needs "Places API (New)" enabled for the Maps
+ * API key in the Google Cloud console - a separate API from the legacy
+ * "Places API".
  */
 function handleSearchInput() {
     const query = document.getElementById('mapSearchInput').value.trim();
@@ -1203,15 +1204,38 @@ function handleSearchInput() {
             searchSessionToken = new google.maps.places.AutocompleteSessionToken();
         }
 
-        autocompleteService.getPlacePredictions(
-            { input: query, bounds: map.getBounds(), sessionToken: searchSessionToken },
-            (predictions, status) => {
-                googlePredictions = (status === google.maps.places.PlacesServiceStatus.OK && predictions) ? predictions : [];
-                lastQueriedGoogleText = query;
-                renderSearchDropdown();
-            }
-        );
+        fetchGooglePredictions(query);
     }, 200);
+}
+
+/**
+ * One AutocompleteSuggestion request; the result list is a list of
+ * PlacePrediction objects (text, placeId, toPlace()). Biased - not
+ * restricted - to the visible map area, like the old AutocompleteService
+ * call's `bounds`.
+ */
+async function fetchGooglePredictions(query) {
+    const request = { input: query, sessionToken: searchSessionToken };
+    const bounds = map.getBounds();
+    if (bounds) {
+        request.locationBias = bounds;
+    }
+
+    let predictions = [];
+    try {
+        const { suggestions } = await google.maps.places.AutocompleteSuggestion.fetchAutocompleteSuggestions(request);
+        predictions = suggestions.map(suggestion => suggestion.placePrediction).filter(Boolean);
+    } catch (err) {
+        log('fetchGooglePredictions() failed', LOG_ERROR, err);
+    }
+
+    // A slower answer for an older query must not overwrite a newer one.
+    if (document.getElementById('mapSearchInput').value.trim() !== query) {
+        return;
+    }
+    googlePredictions = predictions;
+    lastQueriedGoogleText = query;
+    renderSearchDropdown();
 }
 
 function setSearchMode(mode) {
@@ -1278,12 +1302,12 @@ function renderSearchDropdown() {
             const item = document.createElement('li');
 
             const label = document.createElement('span');
-            label.textContent = prediction.description;
+            label.textContent = prediction.text.toString();
             item.appendChild(label);
 
             item.addEventListener('mousedown', (event) => {
                 event.preventDefault();
-                selectGooglePrediction(prediction.place_id, prediction.description);
+                selectGooglePrediction(prediction);
             });
             list.appendChild(item);
         });
@@ -1322,25 +1346,33 @@ function resetSearchState() {
     lastQueriedGoogleText = null;
 }
 
-function selectGooglePrediction(placeId, description) {
-    const sessionToken = searchSessionToken;
-
+/**
+ * toPlace() keeps the prediction's session token, so this fetchFields()
+ * call closes the billed Autocomplete session (resetSearchState() then
+ * starts a fresh one for the next search).
+ */
+async function selectGooglePrediction(prediction) {
     resetSearchState();
-    document.getElementById('mapSearchInput').value = description;
+    document.getElementById('mapSearchInput').value = prediction.text.toString();
 
-    placesService.getDetails({ placeId: placeId, fields: ['name', 'geometry'], sessionToken: sessionToken }, (place, status) => {
-        if (status !== google.maps.places.PlacesServiceStatus.OK || !place || !place.geometry) return;
+    try {
+        const place = prediction.toPlace();
+        await place.fetchFields({ fields: ['displayName', 'location', 'viewport'] });
+        if (!place.location) return;
         showSearchResultOnMap(place);
-    });
+    } catch (err) {
+        log('selectGooglePrediction() failed', LOG_ERROR, err);
+    }
 }
 
+/** @param {google.maps.places.Place} place with displayName/location/viewport fetched */
 function showSearchResultOnMap(place) {
     clearSearchMarker();
 
     searchMarker = new google.maps.Marker({
-        position: place.geometry.location,
+        position: place.location,
         map: map,
-        title: place.name
+        title: place.displayName || ''
     });
 
     searchInfoWindow.setContent(
@@ -1348,10 +1380,10 @@ function showSearchResultOnMap(place) {
     );
     searchInfoWindow.open(map, searchMarker);
 
-    if (place.geometry.viewport) {
-        map.fitBounds(place.geometry.viewport);
+    if (place.viewport) {
+        map.fitBounds(place.viewport);
     } else {
-        map.setCenter(place.geometry.location);
+        map.setCenter(place.location);
         map.setZoom(17);
     }
 }

@@ -1,5 +1,18 @@
 # Erledigt
 
+## Warning zu google.maps.places.PlacesService (2026-10-08)
+~~google.maps.places.PlacesService muss durch google.maps.places.Place ersetzt werden.~~
+
+~~Warning im Browser:~~
+~~`places.js:763 As of March 1st, 2025, google.maps.places.PlacesService is not available to new customers. Please use google.maps.places.Place instead. At this time, google.maps.places.PlacesService is not scheduled to be discontinued, but google.maps.places.Place is recommended over google.maps.places.PlacesService. While google.maps.places.PlacesService will continue to receive bug fixes for any major regressions, existing bugs in google.maps.places.PlacesService will not be addressed. At least 12 months notice will be given before support is discontinued. Please see https://developers.google.com/maps/legacy for additional details and https://developers.google.com/maps/documentation/javascript/places-migration-overview for the migration guide.`~~
+
+Gelöst (2026-10-08): Die Kartensuche (`map-core.js`) nutzt jetzt Places API (New):
+- **Vorschläge:** `google.maps.places.AutocompleteSuggestion.fetchAutocompleteSuggestions()` statt `AutocompleteService.getPlacePredictions()` (neue Funktion `fetchGooglePredictions()`), mit demselben `AutocompleteSessionToken` und `locationBias` = sichtbarer Kartenausschnitt (wie vorher `bounds`: gewichtet, nicht beschränkt). Die Liste besteht jetzt aus `PlacePrediction`-Objekten (`text.toString()`, `toPlace()`). Neu: eine verspätete Antwort für eine ältere Eingabe überschreibt keine neuere mehr.
+- **Auswahl:** `placePrediction.toPlace()` + `place.fetchFields({fields: ['displayName', 'location', 'viewport']})` statt `PlacesService.getDetails()` - `toPlace()` trägt das Sitzungs-Token weiter, der Abruf schließt also wie bisher die abgerechnete Sitzung ab. `showSearchResultOnMap()` liest `place.location`/`place.viewport`/`place.displayName`.
+- Die globalen `autocompleteService`/`placesService` sind entfernt; an Laden der Maps-Bibliotheken (`libraries=geometry,places`) ändert sich nichts.
+- **Voraussetzung:** "Places API (New)" ist eine eigene API in der Google Cloud Console und musste für das Projekt aktiviert werden (vorher 403 "has not been used in project ... or it is disabled"); vom Nutzer am 2026-10-08 aktiviert. Bei API-Beschränkungen eines Schlüssels muss sie dort erlaubt sein - gilt auch für einen evtl. eigenen Production-Schlüssel.
+- Geprüft im Browser (390x660): "Schleswig Dom" liefert Vorschläge, Auswahl "Dom zu Schleswig (Turm)" setzt den Marker mit Titel und zoomt auf 17 (Ort ohne Ausschnitt), "Flensburg" springt auf den Stadtausschnitt (Zoom 11); danach ist die Sitzung beendet. Die PlacesService-Warnung erscheint nicht mehr; übrig ist nur die Marker-Warnung (neuer todo-Punkt "Warning zu google.maps.Marker").
+
 ## Waypoints beim GPX-Import als POIs (2026-10-08)
 ~~Enthält eine GPX-Datei beim Import Waypoints die in mindestens einem der Felder <name> und <desc> Werte enthalten, so sollen diese auf Wunsch (checkbox "Mit Wegpunkten als POIs importieren") als POIs mit importiert werden können. Haben wir keinen Namen, aber eine Beschreibung, so soll als Name "IMPORT: " + erste 20 Zeichen der Beschreibung verwendet werden. Es soll immer der POI-Typ 0 verwendet werden. Zum Testen kann tests\testdata\kanutour1.gpx verwendet werden.~~
 
