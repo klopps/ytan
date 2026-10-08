@@ -25,6 +25,7 @@ use Ytan\Http\Controllers\AreaController;
 use Ytan\Http\Controllers\AuthController;
 use Ytan\Http\Controllers\GeocodingController;
 use Ytan\Http\Controllers\GpxExportController;
+use Ytan\Http\Controllers\GpxImportController;
 use Ytan\Http\Controllers\PoiController;
 use Ytan\Http\Controllers\RouteController;
 use Ytan\Http\Controllers\SettingsController;
@@ -36,6 +37,7 @@ use Ytan\Http\Controllers\WsiController;
 use Ytan\Http\Middleware\AppVersionMiddleware;
 use Ytan\Http\Middleware\AuthMiddleware;
 use Ytan\Http\Middleware\CorsMiddleware;
+use Ytan\Service\GpxImportService;
 use Ytan\Service\AuthService;
 use Ytan\Service\CaptchaService;
 use Ytan\Service\CurlJsonHttpClient;
@@ -151,6 +153,7 @@ final class App
         $settingsRepository = new SettingsRepository($pdo);
         $settingsController = new SettingsController($settingsRepository);
         $gpxExportController = new GpxExportController($routeRepository, $tourRepository, $settingsRepository, $appName);
+        $gpxImportController = new GpxImportController($routeRepository, $tourRepository, $poiRepository, new GpxImportService(), $pdo);
         $translationController = new TranslationController(
             new TranslationRepository($rootDir . '/resources/i18n'),
             new TranslationUsageScanner($rootDir)
@@ -271,6 +274,8 @@ final class App
         $app->put('/api/v1/tours/{id}/images/order', [$tourController, 'reorderImages']);
         $app->get('/api/v1/tours/{id}/document', [$tourController, 'document']);
         $app->get('/api/v1/tours/{id}/gpx', [$gpxExportController, 'tourGpx']);
+        $app->post('/api/v1/gpx/preview', [$gpxImportController, 'preview']);
+        $app->post('/api/v1/gpx/import', [$gpxImportController, 'import']);
 
         $app->get('/api/v1/areas', [$areaController, 'index']);
         $app->get('/api/v1/areas/{id}', [$areaController, 'show']);

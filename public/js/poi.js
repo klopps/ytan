@@ -533,7 +533,10 @@ function showPoiInfoWindow(event, i, marker) {
         }
 
         content += '<h3>' + pois[i].name + '</h3>';
-        content +=  marked.parse(pois[i].description);
+        // || '': description/url may be NULL in the database (e.g. POIs
+        // imported before GpxImportService::toPoi() stored '') -
+        // marked.parse(null) throws.
+        content +=  marked.parse(pois[i].description || '');
         content += '<div class="infoWindowCoordinates"><i class="material-icons-round">navigation</i>' + formatCoordinates(Number.parseFloat(pois[i].latitude), Number.parseFloat(pois[i].longitude)) + '</div>';
 
         // Lighthouse
@@ -553,7 +556,7 @@ function showPoiInfoWindow(event, i, marker) {
         }
 
         content += '<div class="infoWindowBottom">';
-        if (pois[i].url !== '') {
+        if (pois[i].url) {
             content += '<div class="lefthalf"><a href="' + pois[i].url + '" target="_blank"><i class="material-icons-round">info</i>&nbsp;' + t('common.info') + '</a></div>';
         }
 
@@ -823,14 +826,14 @@ function initPoiEditWindow(i) {
         '</div>' +
         '<div class="infoWindowElement">' +
             '<label for="editPoiDescription">' + t('poi.edit.description_label') + '</label><br>' +
-            '<textarea id="editPoiDescription" rows="5"  oninput="validatePoiEditForm();"placeholder="' + t('poi.edit.description_placeholder') + '">' + poi.description + '</textarea>' +
+            '<textarea id="editPoiDescription" rows="5"  oninput="validatePoiEditForm();"placeholder="' + t('poi.edit.description_placeholder') + '">' + (poi.description || '') + '</textarea>' +
         '</div>' +
         '<div id="infoWindowElement" class="infoWindowElement">' +
             '<div class="leftCol">' +
                 '<label for="editPoiUrl">' + t('poi.edit.url_label') + '</label>' +
             '</div>' +
             '<div class="rightCol">' +
-                '<input id="editPoiURL" type="text" maxlength="300" oninput="validatePoiEditForm();" placeholder="https://www.mypoi.tld" title="' + t('poi.edit.url_title') + '" value="' + poi.url + '">' +
+                '<input id="editPoiURL" type="text" maxlength="300" oninput="validatePoiEditForm();" placeholder="https://www.mypoi.tld" title="' + t('poi.edit.url_title') + '" value="' + (poi.url || '') + '">' +
             '</div>' +
         '</div>' +
         '<div id="editPoiWSIContainer" class="infoWindowElement"' + styleWsi +'>' +

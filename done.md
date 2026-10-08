@@ -1,5 +1,59 @@
 # Erledigt
 
+## Waypoints beim GPX-Import als POIs (2026-10-08)
+~~Enthält eine GPX-Datei beim Import Waypoints die in mindestens einem der Felder <name> und <desc> Werte enthalten, so sollen diese auf Wunsch (checkbox "Mit Wegpunkten als POIs importieren") als POIs mit importiert werden können. Haben wir keinen Namen, aber eine Beschreibung, so soll als Name "IMPORT: " + erste 20 Zeichen der Beschreibung verwendet werden. Es soll immer der POI-Typ 0 verwendet werden. Zum Testen kann tests\testdata\kanutour1.gpx verwendet werden.~~
+
+Gelöst (2026-10-08):
+- **Einlesen** (`GpxImportService::parse()`): zusätzlich jeder `<wpt>` direkt unter `<gpx>` mit gültigen Koordinaten und Name und/oder Beschreibung (Wegpunkte ohne beides werden übergangen). `toPoi()` macht daraus die POI-Daten: Typ `WAYPOINT_POI_TYPE` = 0 ("Allgemeine Ortsmarkierungen"), Name des Wegpunkts - ohne Namen "IMPORT: " + die ersten 20 Zeichen der Beschreibung (ein Leerzeichen am Ende abgeschnitten) -, Beschreibung, Koordinaten. Die Vorschau liefert `waypoints: [{index, name}]` mit genau diesen Namen.
+- **Dialog** (`gpx-import.js`): unter den Track-Optionen die Checkbox "Mit Wegpunkten als POIs importieren (n)", standardmäßig aus, darunter aufklappbar ("Wegpunkte anzeigen") die Namen. Der Button nennt die POIs mit ("1 Route importieren + 25 POIs"). Eine Datei nur mit Wegpunkten lässt sich ebenfalls importieren (dann ist die Checkbox vorbelegt, Button "25 POIs importieren"). Der Privat-Hinweis nennt jetzt auch POIs; nach dem Import "25 POIs importiert." und die POIs der Karte werden neu geladen.
+- **Server** (`GpxImportController`, neu mit `PoiRepository`): `import_waypoints: true` legt alle diese Wegpunkte als private POIs an, in derselben Transaktion wie Routen/Tour; mit ihm darf `tracks` leer sein. Antwort zusätzlich `pois` (Anzahl).
+- **Nachtrag (Fehler):** Die ersten importierten POIs hatten `description`/`url` = NULL - Klick darauf warf `marked(): input parameter is undefined or null` (`poi.js` `showPoiInfoWindow()`), der Bearbeiten-Dialog zeigte in beiden Feldern "null", und eine NULL-URL hätte einen "Info"-Link auf "null" erzeugt. Behoben doppelt: `toPoi()` liefert jetzt `''` für beide (wie ein im Editor gespeicherter POI), und `poi.js` behandelt NULL wie `''` (Infofenster, Info-Link nur bei gesetzter URL, Bearbeiten-Dialog) - so bleiben auch die schon importierten POIs ohne Datenänderung benutzbar. Im Browser mit einem POI geprüft, dessen beide Felder testweise auf null gesetzt waren.
+- Nebenbei: die Doku nennt jetzt die vom Nutzer gesetzte Obergrenze von 500 Punkten je importierter Route (`MAX_POINTS`, Starttoleranz 5 m) statt der früheren 1000.
+- Geprüft: PHPUnit grün (394 Tests; neu u. a. Wegpunkte mit/ohne Name/Beschreibung samt Namensregel, Einlesen der echten Wikiloc-Datei `tests/testdata/kanutour1.gpx` (1 Track mit 1188 Punkten, 25 Wegpunkte), POIs nur auf Wunsch, Typ 0 und privat, Datei nur mit Wegpunkten). Im Browser (390x660) mit `kanutour1.gpx`: Checkbox aus, nach Anhaken "1 Route importieren + 25 POIs", Import ergab 1 private Route (458 Wegpunkte, 85,8 km) und 25 private POIs vom Typ 0 mit den Namen aus der Datei; Testdaten danach gelöscht.
+
+## Import von GPX-Daten (2026-10-08)
+~~Es sollen GPX 1.1 Daten importiert werden können. Nach dem Einlesen der Daten werden diese Angezeigt:~~
+~~- Daten der obersten Ebene wie Name <name>, Beschreibung <desc>, Datum und Uhrzeit <time>.~~
+~~- Liste der Tracks mit  Name <name>, Beschreibung <desc> (ggfs. gekürzt), Datum und Uhrzeit <time>.~~
+
+~~Man kann nun alle oder einzelne Tracks auswählen (checkbox vorne) und anschließend entscheiden, ob die gewählten Tracks~~
+~~- zu einer Route zusammengefasst werden sollen,~~
+~~- einzeln, nacheinander als einzelne Routen erfasst werden und~~
+~~- ggfs. die einzelnen Routen zu einer Tour zusammengefasst werden sollen.~~
+
+~~Es gibt die Möglichkeit mit einem Klick alle Tracks an- und abzuwählen.~~
+
+~~Wenn die GPX-Datei nur einen Track enthält:~~
+~~- Fehlen bei einem Track alle oder einzelne Daten wie Name, Beschreibung oder Datum/Uhrzeit <time>, sollen diese Daten von der obersten Ebene (sofern vorhanden) übernommen werden.~~
+
+~~Nach dem Import als Tour leitet ein Button "Tourdetails" zur Detailseite der Tour.~~
+
+~~Nach dem Import als EINE Route, also entweder nur ein Track oder zusammenführen von mehreren Tracks zu nur einer Route, wird eine Button "Route anzeigen" eingeblendet. Klickt man diesen an, wird die Karte auf diese Route gezoomt und diese Route ausgewählt, so dass die Wegpunkte und Entfernungsbeschriftung dargestellt wird, so als ob die Route manuell angeklickt worden ist. Alle anderen Routen werden abgewählt.~~
+
+Gelöst (2026-10-08) - Entscheidungen des Nutzers: Einstieg über eine Drawer-Zeile; Rechte wie beim Anlegen (jeder Angemeldete, Tour nur mit `tour_create`); alles privat, aber mit deutlichem Hinweis; auch `<rte>` einlesen; Zeitstempel als Aufzeichnung übernehmen.
+- **Ablauf:** Drawer-Zeile "GPX importieren" (nur angemeldet) öffnet das Vollbild-Panel `#gpximportmenu` (`public/js/gpx-import.js`, Muster wie das Touren-Panel). Der Browser liest die Datei nur; ihr Text geht an `POST /gpx/preview` und beim Import erneut an `POST /gpx/import` (`GpxImportController`) - nichts wird zwischengespeichert.
+- **Vorschau:** Name/Beschreibung/Zeit der Datei, ein deutlicher Hinweis "alles wird privat angelegt", darunter jeder `<trk>`/`<rte>` mit Checkbox (Name oder "Track n" und direkt dahinter die Zahl der Wegpunkte - "(60 Wegpunkte)", bei Tracks über 1000 Punkten auch, wie viele davon als Route bleiben: "(2.500 Wegpunkte, als Route 141)", Feld `route_point_count` der Vorschau; Nachtrag auf Wunsch des Nutzers -, Beschreibung auf 120 Zeichen gekürzt, Zeit des ersten Punkts, Länge, Kennzeichnung "GPX-Route" für `<rte>`), "Alle auswählen" (auch halb gesetzt bei Teilauswahl). Ab zwei gewählten Tracks: "Einzelne Routen" / "Zu einer Route" und - nur mit `tour_create`, nur bei einzelnen Routen - "Die Routen zu einer Tour zusammenfassen". Der Button nennt, wie viele Routen entstehen. Bei nur einem Track übernimmt er fehlenden Namen/Beschreibung/Zeit von der Datei.
+- **Server** (`GpxImportService`): DOM-Parser, Elemente nach lokalem Namen (GPX 1.1 und 1.0), jede DOCTYPE wird abgelehnt (XXE/Entity-Expansion), max. 5 MB (JSON-kodiert muss es unter PHPs `post_max_size` von 8 MB bleiben), ungültige Punkte werden übersprungen, Segmente eines Tracks verbunden. Pro Route: erst nach Abstand ausgedünnt, dann Douglas-Peucker auf höchstens 1000 Punkte (`route.points` ist TEXT; reines Douglas-Peucker lief auf verrauschten GPS-Daten gegen O(n²) - 5.000 Zickzack-Punkte über eine Minute, jetzt 30.000 Punkte in 0,2 s), Länge aus den ungekürzten Punkten, Zeitstempel ergeben `recorded_at`/`recording_duration_seconds` (frühester Beginn bis spätester Endpunkt). "Zu einer Route": Name/Beschreibung der Datei, sonst des ersten Tracks; Tour: Name/Beschreibung der Datei, Routen in Dateireihenfolge. Bei einzelnen Routen bekommt jede eine eigene Farbe (`GpxImportService::ROUTE_COLORS`, 8 auf Satellit/Gelände gut unterscheidbare Farben der Reihe nach, beginnend mit der Standardfarbe `#BF409F`; Nachtrag auf Wunsch des Nutzers), eine zusammengeführte Route behält die Standardfarbe. Alles in einer Transaktion, alles privat.
+- **Ergebnis:** Erfolgsmeldung samt Privat-Hinweis; die Karte lädt die eigenen Routen neu. Bei einer Tour "Tourdetails" (öffnet die Detailansicht im Touren-Panel), bei genau einer Route "Route anzeigen" (zoomt auf die Route, blendet bei allen anderen die Beschriftung aus und zeigt ihre Wegpunkte/Entfernungen per `showRouteLabels()`, wie ein Klick).
+- Geprüft: PHPUnit grün (388 Tests; neu `GpxImportServiceTest` - u. a. Reihenfolge, `<rte>`, Übernahme von oben, eigener Export wieder eingelesen, DOCTYPE/XXE abgelehnt, Vereinfachung unter der Obergrenze - und `GpxImportControllerTest` - Login, merge/separate, Tour samt Reihenfolge und Gesamtlänge, `tour_create`-Pflicht, ungültige Auswahl). e2e-Suite grün (ein POI-Kontextmenü-Test schlug einmal per Timing fehl, im Wiederholungslauf grün). Im Browser (390x660) mit einer Testdatei (2 Tracks mit Zeiten, 1 `<rte>`): Vorschau, Teilauswahl, Tour aus 2 Etappen -> Tourdetails; 2 Tracks zu einer Route -> "Route anzeigen" mit Zoom und Beschriftung, privat, `recorded_at` aus den Zeiten. Testdaten danach gelöscht.
+
+## Garmin-Datenfeld auf der Uhr überprüfen (2026-10-08)
+~~Das Connect-IQ-Datenfeld (`watch/`) ist gebaut, läuft im Simulator und hat auf der echten Uhr (fenix7pro) bereits Route und Anzeige geliefert (Details und Verlauf in done.md, "Routeninformationen auf Garmin Smartwatch"). Noch **nicht auf einer echten Uhr geprüft**:~~
+~~- Weckruf aus der Android-App (2026-10-07, done.md "Routen an Garmin Smartwatches schneller übertragen"): nach "An Garmin-Uhr senden" in der YTAN-App (neue APK mit `GarminWatchPlugin`, aktuelles JS auf dem Server, neuer Uhr-Build) Toast "... ist in wenigen Sekunden dort" und die Route ist wirklich nach Sekunden auf der Uhr - bei laufender Aktivität, auch wenn eine andere Datenseite sichtbar ist. Im Browser/PWA weiter der alte Toast und der 5-Minuten-Weg.~~
+~~- Hinweise: Vibration + Ton je Wegpunkt, drei lange Vibrationen + Erfolgston + "Ziel erreicht"-Einblendung am Ziel.~~
+~~- Abkürzungserkennung (`skipAhead()`) und Startwahl bei Rundtouren auf echter Fahrt.~~
+~~- ETA (Glättung, Pausen) samt Standard-Durchschnittsgeschwindigkeit aus dem Profil.~~
+~~- Kompassring: Blickrichtung im Stand (Kompass, Kalibrierung) und in Fahrt, Lesbarkeit der Dreiecke.~~
+~~- Textfarben aus Profil > Garmin-Uhr (auch auf fenix6 mit wenig Farben) und Verhalten bei hellem Hintergrund.~~
+~~- Untere Zeile "gefahren | Reststrecke" (`|→ 821 m   12.6 km →|`, vor der ersten zurückgelegten Strecke `0 m`, Pfeile als Pixel-Bitmaps `watch/assets/*.png` (18x10 und 14x8), in Textfarbe punktweise gezeichnet; `info.elapsedDistance` der Aktivität): zählt sie ab Aktivitätsbeginn und bleibt in Pausen stehen? Passt sie bei langen Werten (bis ca. 100 km) und auf der fenix6?~~
+~~- Anzeige ohne GPS-Fix bzw. am Ziel: zeigt jetzt zusätzlich den Routennamen (im Simulator geprüft).~~
+~~- Sync-Status im Label (2026-10-07, nach "Route kommt nicht an, alte Route bleibt stehen" - Server und Uhr-Code im Simulator gegen Production in Ordnung, Route kam später ohne weiteres Zutun doch an - vermutlich lag es an der Verbindung Uhr → Handy direkt nach dem Neukoppeln; ein Fehler dort wird verschluckt, weil eine gespeicherte Route Fehler verdeckt): "YTAN" nur, solange der letzte erfolgreiche Abruf < 11 min her ist, sonst "YTAN <Code>" (letzter Fehler, negativ = Garmin-Communications-Code, z. B. -104 Handy nicht erreichbar) bzw. "YTAN ?" (noch kein Abruf fertig). Auf der Uhr prüfen und die eigentliche Ursache anhand des Codes klären.~~
+~~- Zielansicht (2026-10-07): unter "Ziel" die Zeilen "Strecke" (`info.elapsedDistance`), "Gesamt" (`info.elapsedTime`, Zeit seit Aktivitätsbeginn inkl. Pausen - nur wenn die Aktivität läuft, im Simulator ohne gestartete Aktivität daher nicht sichtbar) und "Fahrzeit" (eigene Zählung: Zeit über ~1 km/h, unabhängig von Auto-Pause, durch eine neue Route nicht zurückgesetzt); eingefroren beim Erreichen des Ziels. Im Simulator geprüft (Strecke + Fahrzeit). Auf der Uhr: stimmen die Werte, passen alle drei Zeilen?~~
+~~- fenix6-Build insgesamt (nur kompiliert, nie auf der Uhr gewesen).~~
+~~- Voraussetzung: Migrationen 027/028 und die neue API sind auf Production deployt, die Uhr mit `bin\build-watch.bat - GERÄT` neu gebaut.~~
+
+Gelöst (2026-10-08): Vom Nutzer auf der echten Uhr geprüft und als erledigt gemeldet - die Punkte der Prüfliste oben gelten damit als bestätigt. Einzelergebnisse (z. B. die Ursache des früheren Sync-Fehlers anhand des Codes im Label) wurden nicht gesondert festgehalten.
+
 ## Touren-Export als GPX 1.1 (2026-10-08)
 ~~Ist ein Export von Touren mit mehreren Routen in eine GPX-Datei unterzubringen möglich?~~
 

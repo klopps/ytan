@@ -55,6 +55,7 @@
     <script src="./js/area.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/area.js') ?>"></script>
     <script src="./js/tour.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/tour.js') ?>"></script>
     <script src="./js/tour-admin.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/tour-admin.js') ?>"></script>
+    <script src="./js/gpx-import.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/gpx-import.js') ?>"></script>
     <script src="./js/user.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/user.js') ?>"></script>
     <script src="./js/watch.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/watch.js') ?>"></script>
     <!-- admin-user.js moved to /admin/users (templates/admin-users.php) -
@@ -169,6 +170,9 @@
           <ul class="nav-menu-list">
             <li><button type="button" class="nav-menu-row" onclick="navMenuGoTo('pois');"><i class="material-icons-round nav-menu-row-icon">place</i><span class="nav-menu-row-labels"><?= $t('app.nav.pois') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
             <li><button type="button" class="nav-menu-row" onclick="openTourAdminMenu();"><i class="material-icons-round nav-menu-row-icon">tour</i><span class="nav-menu-row-labels"><?= $t('app.nav.tours') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
+            <!-- Signed in only - shown by user.js/gpx-import.js's
+                 updateGpxImportMenuVisibility(). -->
+            <li id="gpxImportMenuRow" style="display:none;"><button type="button" class="nav-menu-row" onclick="openGpxImportMenu();"><i class="material-icons-round nav-menu-row-icon">file_upload</i><span class="nav-menu-row-labels"><?= $t('app.nav.gpx_import') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
             <!-- Native Capacitor shell only - hidden by default, shown by
                  track-recorder.js's initTrackRecorder() (no-op in a normal
                  browser/PWA, matching capacitor-bridge.js's own guard). -->
@@ -430,6 +434,19 @@
       </div>
     </div>
 
+    <!-- GPX IMPORT (gpx-import.js: file -> preview/track selection ->
+         result), same full-screen panel pattern as the Tours panel. -->
+    <div id="gpximportmenu" class="cookiemenu">
+      <div class="cm_content cm_content-compact">
+        <div class="cm-panel-header">
+          <button type="button" class="nav-back" onclick="closeGpxImportMenu();"><i class="material-icons-round">arrow_back</i></button>
+          <h2 class="cm-panel-title"><?= $t('app.nav.gpx_import') ?></h2>
+        </div>
+        <div id="gpximportmenu-body"></div>
+        <div class="panel-logo"></div>
+      </div>
+    </div>
+
     <!-- TOUR MODE BADGE - shown on the main map while a tour is active
          (see tour.js: activateTourMode()/exitTourMode()). Positioned below
          the sidemenu-toggle/map-search row so it never overlaps them, and
@@ -592,6 +609,7 @@
           updateProfileRowLabel();
           updateAdminMenuVisibility();
           updatePendingChangesMenuVisibility();
+          updateGpxImportMenuVisibility();
           updateGoogleSearchAllowed();
           loadWatchStatus();
 

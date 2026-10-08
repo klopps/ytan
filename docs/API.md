@@ -70,6 +70,29 @@ route is public, or has
 (`GpxExportController`).
 Area body: `name, description, public, points (JSON-encoded array of {lat,lng}), color, opacity, zindex`.
 
+## GPX import
+
+Both take `{"gpx": "<file content>"}` (max. 5 MB) and require a logged-in
+user (`GpxImportController`); nothing is stored between the two calls.
+
+`POST /gpx/preview` - `{name, desc, time, tracks: [{index, kind ("trk"|"rte"),
+name, desc, time, point_count, route_point_count, length}]}` - `route_point_count`
+is what the track keeps as a separate route (lower than `point_count` once
+simplified) (times UTC ISO 8601, length in
+meters), plus `waypoints: [{index, name}]` (the POI names they would get).
+With a single track, its missing name/desc/time come from the file.
+
+`POST /gpx/import` - additionally `tracks` (indices), `mode` (`"merge"`: one
+route from the chosen tracks in file order, `"separate"`: one route each)
+and `create_tour` (separate only, needs `tour_create`/admin) and
+`import_waypoints` (every `<wpt>` with a name/desc becomes a private POI of
+type 0, name "IMPORT: " + 20 characters of the description if it has none;
+with it, `tracks` may be empty). Creates
+everything private (separate routes in alternating colors from
+`GpxImportService::ROUTE_COLORS`), points simplified to at most 500, `recorded_at`/
+`recording_duration_seconds` from point times if present. 201 with
+`{routes: [{id, name}], tour: {id, name}|null, pois: <count>}`.
+
 ## Tours
 
 `GET /tours?scope=public|mine|mine_public`, `GET /tours/{id}`. `GET /tours`

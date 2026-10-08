@@ -338,6 +338,7 @@ function logoutUser() {
     updateProfileRowLabel();
     updateAdminMenuVisibility();
     updatePendingChangesMenuVisibility();
+    updateGpxImportMenuVisibility();
     updateGoogleSearchAllowed();
     resetSearchState();
     deleteRoutes();
@@ -395,6 +396,7 @@ function loginUser() {
         updateProfileRowLabel();
         updateAdminMenuVisibility();
         updatePendingChangesMenuVisibility();
+        updateGpxImportMenuVisibility();
         updateGoogleSearchAllowed();
         enablePoiButton();
         loadWatchStatus();

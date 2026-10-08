@@ -1,21 +1,5 @@
 # Offene Punkte
 
-## Garmin-Datenfeld auf der Uhr überprüfen
-
-Das Connect-IQ-Datenfeld (`watch/`) ist gebaut, läuft im Simulator und hat auf der echten Uhr (fenix7pro) bereits Route und Anzeige geliefert (Details und Verlauf in done.md, "Routeninformationen auf Garmin Smartwatch"). Noch **nicht auf einer echten Uhr geprüft**:
-- Weckruf aus der Android-App (2026-10-07, done.md "Routen an Garmin Smartwatches schneller übertragen"): nach "An Garmin-Uhr senden" in der YTAN-App (neue APK mit `GarminWatchPlugin`, aktuelles JS auf dem Server, neuer Uhr-Build) Toast "... ist in wenigen Sekunden dort" und die Route ist wirklich nach Sekunden auf der Uhr - bei laufender Aktivität, auch wenn eine andere Datenseite sichtbar ist. Im Browser/PWA weiter der alte Toast und der 5-Minuten-Weg.
-- Hinweise: Vibration + Ton je Wegpunkt, drei lange Vibrationen + Erfolgston + "Ziel erreicht"-Einblendung am Ziel.
-- Abkürzungserkennung (`skipAhead()`) und Startwahl bei Rundtouren auf echter Fahrt.
-- ETA (Glättung, Pausen) samt Standard-Durchschnittsgeschwindigkeit aus dem Profil.
-- Kompassring: Blickrichtung im Stand (Kompass, Kalibrierung) und in Fahrt, Lesbarkeit der Dreiecke.
-- Textfarben aus Profil > Garmin-Uhr (auch auf fenix6 mit wenig Farben) und Verhalten bei hellem Hintergrund.
-- Untere Zeile "gefahren | Reststrecke" (`|→ 821 m   12.6 km →|`, vor der ersten zurückgelegten Strecke `0 m`, Pfeile als Pixel-Bitmaps `watch/assets/*.png` (18x10 und 14x8), in Textfarbe punktweise gezeichnet; `info.elapsedDistance` der Aktivität): zählt sie ab Aktivitätsbeginn und bleibt in Pausen stehen? Passt sie bei langen Werten (bis ca. 100 km) und auf der fenix6?
-- Anzeige ohne GPS-Fix bzw. am Ziel: zeigt jetzt zusätzlich den Routennamen (im Simulator geprüft).
-- Sync-Status im Label (2026-10-07, nach "Route kommt nicht an, alte Route bleibt stehen" - Server und Uhr-Code im Simulator gegen Production in Ordnung, Route kam später ohne weiteres Zutun doch an - vermutlich lag es an der Verbindung Uhr → Handy direkt nach dem Neukoppeln; ein Fehler dort wird verschluckt, weil eine gespeicherte Route Fehler verdeckt): "YTAN" nur, solange der letzte erfolgreiche Abruf < 11 min her ist, sonst "YTAN <Code>" (letzter Fehler, negativ = Garmin-Communications-Code, z. B. -104 Handy nicht erreichbar) bzw. "YTAN ?" (noch kein Abruf fertig). Auf der Uhr prüfen und die eigentliche Ursache anhand des Codes klären.
-- Zielansicht (2026-10-07): unter "Ziel" die Zeilen "Strecke" (`info.elapsedDistance`), "Gesamt" (`info.elapsedTime`, Zeit seit Aktivitätsbeginn inkl. Pausen - nur wenn die Aktivität läuft, im Simulator ohne gestartete Aktivität daher nicht sichtbar) und "Fahrzeit" (eigene Zählung: Zeit über ~1 km/h, unabhängig von Auto-Pause, durch eine neue Route nicht zurückgesetzt); eingefroren beim Erreichen des Ziels. Im Simulator geprüft (Strecke + Fahrzeit). Auf der Uhr: stimmen die Werte, passen alle drei Zeilen?
-- fenix6-Build insgesamt (nur kompiliert, nie auf der Uhr gewesen).
-- Voraussetzung: Migrationen 027/028 und die neue API sind auf Production deployt, die Uhr mit `bin\build-watch.bat - GERÄT` neu gebaut.
-
 ## Standards für alle Gestaltungselemente festlegen
 
 An verschiedenen Stellen sind die Gestaltungselemente wie Buttons, Inputfelder, Schalter, Hinweistexte etc. unterschiedlich gestaltet. Das muss einheitlich gestaltet werden. Dazu soll im Admin-Bereich eine Beispielseite aufgebaut werden, auf der möglichst alle Elemente vertreten sind, um die Gestaltung vergleichen zu können und schließlich anzugleichen. Ein Vorbild ist das Bootstrap Cheatsheet. Es kann sein, dass einige der folgenden Elemente noch gar nicht zum Einsatz kommen.
