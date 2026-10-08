@@ -260,6 +260,29 @@ final class TourRepository
         return $this->findById($tourId);
     }
 
+    /**
+     * Puts $newRouteId into the tour directly behind $afterRouteId (every
+     * later route moves back one place) - a split route's second part
+     * (RouteSplitController). Recalculates total_length.
+     */
+    public function insertRouteAfter(int $tourId, int $afterRouteId, int $newRouteId): void
+    {
+        $stmt = $this->db->prepare('SELECT sort_order FROM tour_route WHERE tour_id = ? AND route_id = ?');
+        $stmt->execute([$tourId, $afterRouteId]);
+        $after = $stmt->fetchColumn();
+        if ($after === false) {
+            $this->addRoute($tourId, $newRouteId);
+            return;
+        }
+
+        $this->db->prepare('UPDATE tour_route SET sort_order = sort_order + 1 WHERE tour_id = ? AND sort_order > ?')
+            ->execute([$tourId, (int) $after]);
+        $this->db->prepare('INSERT IGNORE INTO tour_route (tour_id, route_id, sort_order) VALUES (?, ?, ?)')
+            ->execute([$tourId, $newRouteId, (int) $after + 1]);
+
+        $this->recalculateTotalLength($tourId);
+    }
+
     public function removeRoute(int $tourId, int $routeId): array
     {
         $this->findById($tourId); // 404s if missing

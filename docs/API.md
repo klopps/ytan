@@ -59,6 +59,16 @@ every other caller (including the route's own owner and anonymous
 requests) gets the route with these three keys removed entirely rather
 than nulled, so the payload shape itself doesn't reveal whether a route
 was recorded (see `RouteController::redactRecordingInfo()`).
+`POST /routes/{id}/split` - owner or admin; `{points: [{lat, lng}, ...]
+(the line as currently edited), index (an inner waypoint), name_suffixes:
+[s1, s2], expected_updated_at?}`. The route keeps waypoints 0..index with
+name + s1; a new route of the same owner gets index..end with name + s2 and
+everything else copied (description, public, color, recorded_at/
+recording_duration_seconds, copies of all photos) and follows the route in
+every tour. Lengths are computed server-side. 201 with
+`{routes: [{id, name, updated_at}, {id, name, updated_at}]}`
+(`RouteSplitController`).
+
 `GET /routes/{id}/gpx` - the route as a GPX 1.1 file (`application/gpx+xml`,
 as an attachment): one `<trk>` with the route's name/description and one
 `<trkpt lat lon>` per point (no times/elevations - a route has none).

@@ -3733,6 +3733,14 @@ p.LighthouseCharacteristic {
   color: var(--color-on-accent);
 }
 
+/* A question above the items (route.js's showRouteSplitMenu()). */
+.contextMenuTitle {
+  padding: 2px 4px 6px 4px;
+  font-weight: 600;
+  color: var(--color-text);
+  max-width: 220px;
+}
+
 
 
 /**

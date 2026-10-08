@@ -28,6 +28,21 @@ class RouteTool extends MeasureTool {
 }
 
 /**
+ * MeasureTool locks the map's gestures while a waypoint is being touched/
+ * dragged (gestureHandling 'none', scrollwheel off) and unlocks them only
+ * when that drag ends - end() does not. If editing ends while such a drag
+ * is still open (e.g. a route split from a waypoint long-press, route.js),
+ * the map stayed frozen: no panning, zooming or tapping. Called wherever
+ * this app ends or restarts MeasureTool. The app's map never sets these
+ * options itself, so the defaults are what to go back to.
+ */
+function unlockMapGestures() {
+    if (map) {
+        map.setOptions({ gestureHandling: 'auto', scrollwheel: true });
+    }
+}
+
+/**
  * Shows/hides MeasureTool's own per-segment and cumulative distance labels
  * depending on the current zoom (MEASURETOOL_LABEL_MIN_ZOOM, config.js) -
  * todo.md's "Darstellung der Track-Aufzeichnung". Unlike route.js's
@@ -357,6 +372,13 @@ function findLongPressTarget(clientX, clientY) {
     const touchPoint = new google.maps.Point(clientX - rect.left, clientY - rect.top);
     const touchLatLng = projection.fromContainerPixelToLatLng(touchPoint);
     const eventForHandler = { latLng: touchLatLng };
+
+    // An inner waypoint of the route being edited comes first - a long-press
+    // there offers to split the route (route.js).
+    const splitIndex = routeSplitWaypointAt(clientX, clientY);
+    if (splitIndex >= 0) {
+        return { handler: function () { showRouteSplitMenu(splitIndex); }, event: eventForHandler };
+    }
 
     let closestMarker = null;
     let closestMarkerDist = Infinity;
@@ -832,8 +854,15 @@ function initMap() {
     // every later geometry edit - a reliable hook for (re)applying our
     // zoom-based visibility right as soon as there's something to apply it
     // to, without needing a call at every measureTool.start() call site.
-    measureTool.addListener('measure_change', updateMeasureToolLabelVisibility);
-    measureTool.addListener('measure_change', updateSecondToolbarLength);
+    // MeasureTool keeps only ONE listener per event (gmaps-measuretool's
+    // addListener() is a Map.set()) - a second addListener() call silently
+    // replaced the first, so all reactions go through this one function.
+    measureTool.addListener('measure_change', function () {
+        updateMeasureToolLabelVisibility();
+        updateSecondToolbarLength();
+        restoreLineAfterSplitLongPress(); // route.js
+    });
+    initRouteSplitting(); // route.js - needs measureTool
 
     if (zoomParam == null) {
         if (Number.isInteger(settings['zoom'])) {

@@ -28,6 +28,7 @@ use Ytan\Http\Controllers\GpxExportController;
 use Ytan\Http\Controllers\GpxImportController;
 use Ytan\Http\Controllers\PoiController;
 use Ytan\Http\Controllers\RouteController;
+use Ytan\Http\Controllers\RouteSplitController;
 use Ytan\Http\Controllers\SettingsController;
 use Ytan\Http\Controllers\TourController;
 use Ytan\Http\Controllers\TranslationController;
@@ -153,6 +154,7 @@ final class App
         $settingsRepository = new SettingsRepository($pdo);
         $settingsController = new SettingsController($settingsRepository);
         $gpxExportController = new GpxExportController($routeRepository, $tourRepository, $settingsRepository, $appName);
+        $routeSplitController = new RouteSplitController($routeRepository, $tourRepository, $routeImageService, $pdo);
         $gpxImportController = new GpxImportController($routeRepository, $tourRepository, $poiRepository, new GpxImportService(), $pdo);
         $translationController = new TranslationController(
             new TranslationRepository($rootDir . '/resources/i18n'),
@@ -255,6 +257,7 @@ final class App
         $app->post('/api/v1/routes/{id}/images', [$routeController, 'uploadImage']);
         $app->get('/api/v1/routes/{id}/images', [$routeController, 'listImages']);
         $app->get('/api/v1/routes/{id}/gpx', [$gpxExportController, 'routeGpx']);
+        $app->post('/api/v1/routes/{id}/split', [$routeSplitController, 'split']);
         $app->get('/api/v1/routes/{id}/images/{imageId}', [$routeController, 'showImage']);
         $app->delete('/api/v1/routes/{id}/images/{imageId}', [$routeController, 'deleteImage']);
 

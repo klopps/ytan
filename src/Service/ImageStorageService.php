@@ -82,6 +82,31 @@ final class ImageStorageService
         return ['path' => $path, 'contents' => (string) file_get_contents($path)];
     }
 
+    /**
+     * Copies one stored file to another entity under a NEW random name (so
+     * deleting either copy later never touches the other) - used when a
+     * route is split and both parts keep its photos (RouteSplitController).
+     *
+     * @return ?string the new filename, null if the source file is missing
+     */
+    public function copy(int $fromEntityId, string $filename, int $toEntityId): ?string
+    {
+        $source = $this->entityDir($fromEntityId) . '/' . $filename;
+        if (!is_file($source)) {
+            return null;
+        }
+
+        $extension = pathinfo($filename, PATHINFO_EXTENSION);
+        $newFilename = bin2hex(random_bytes(16)) . ($extension !== '' ? '.' . $extension : '');
+        $dir = $this->entityDir($toEntityId);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0775, true);
+        }
+        copy($source, $dir . '/' . $newFilename);
+
+        return $newFilename;
+    }
+
     public function delete(int $entityId, string $filename): void
     {
         $path = $this->entityDir($entityId) . '/' . $filename;

@@ -216,6 +216,7 @@ function cancelEditRoute(i) {
 
     measureTool.index = null;
     measureTool.end();
+    unlockMapGestures();
     document.getElementById('routeButton').classList.remove('active');
     // Not just via closeRouteEditWindow() - that only re-enables the other
     // buttons if the naming/save window was actually open, but cancelling
@@ -1635,3 +1636,227 @@ function fitMapToRoutePoints(points) {
     }
     map.fitBounds(bounds);
 }
+
+
+/* ------------------------------------------------------- Route splitting */
+
+/**
+ * Splitting a route in two (todo.md "Teilen von Routen"): while an EXISTING
+ * route is being edited (measureTool.index set, see editRoute()), a
+ * right-click - or, on touch, a long-press (findLongPressTarget(),
+ * map-core.js) - on one of its inner waypoints offers to split it there.
+ * RouteSplitController does the actual work in one go: the route keeps
+ * waypoints 0..index as " (Teil 1)", a new route gets index..end as
+ * " (Teil 2)" with all other details and copies of the photos, and follows
+ * part 1 in every tour.
+ */
+const ROUTE_SPLIT_HIT_RADIUS_PX = 14;
+
+/**
+ * Index of the inner waypoint (not first/last) of the route being edited at
+ * these screen coordinates, or -1. Computed from measureTool.points and the
+ * map projection rather than MeasureTool's own SVG circles, so it doesn't
+ * depend on the vendored library's internals.
+ */
+function routeSplitWaypointAt(clientX, clientY) {
+    if (measureTool.index === null || typeof measureTool.index === 'undefined' || !routes[measureTool.index]
+        || !overlayProjection || !overlayProjection.getProjection()) {
+        return -1;
+    }
+    var points = measureTool.points || [];
+    if (points.length < 3) {
+        return -1;
+    }
+    var projection = overlayProjection.getProjection();
+    var rect = map.getDiv().getBoundingClientRect();
+    var best = -1;
+    var bestDist = ROUTE_SPLIT_HIT_RADIUS_PX;
+    for (var k = 1; k < points.length - 1; k++) {
+        var px = projection.fromLatLngToContainerPixel(new google.maps.LatLng(points[k].lat, points[k].lng));
+        var dist = Math.hypot(px.x - (clientX - rect.left), px.y - (clientY - rect.top));
+        if (dist <= bestDist) {
+            bestDist = dist;
+            best = k;
+        }
+    }
+    return best;
+}
+
+/**
+ * Both paths listen on the map container in the CAPTURE phase, so they run
+ * before MeasureTool and Maps:
+ * - Desktop right-click: handled here instead of Maps (whose own context
+ *   menu would open on top).
+ * - Touch long-press: MeasureTool's d3-drag swallows touchstart on its own
+ *   elements, so map-core.js's bubble-phase long-press tracking never sees
+ *   a touch on a waypoint - hence this own small timer. MeasureTool still
+ *   gets the touch and, on release, treats it as a tap (adds or removes a
+ *   waypoint); the line is then put back as it was when the menu opened.
+ */
+let routeSplitTouch = null; // {timer, x, y, fired, snapshot} of the current single-finger touch
+
+function initRouteSplitting() {
+    var mapDiv = map.getDiv();
+
+    mapDiv.addEventListener('contextmenu', function (domEvent) {
+        var index = routeSplitWaypointAt(domEvent.clientX, domEvent.clientY);
+        if (index < 0) {
+            return;
+        }
+        domEvent.preventDefault();
+        domEvent.stopPropagation();
+        showRouteSplitMenu(index);
+    }, true);
+
+    mapDiv.addEventListener('touchstart', function (domEvent) {
+        cancelRouteSplitTouch();
+        // A new touch is a deliberate new action - stop undoing changes.
+        routeSplitRestore = null;
+        if (domEvent.touches.length !== 1) {
+            return;
+        }
+        var touch = domEvent.touches[0];
+        var index = routeSplitWaypointAt(touch.clientX, touch.clientY);
+        if (index < 0) {
+            return;
+        }
+        var state = { x: touch.clientX, y: touch.clientY, fired: false, snapshot: null };
+        state.timer = setTimeout(function () {
+            state.fired = true;
+            showRouteSplitMenu(index);
+            // From now until the next touch, undo any change to the line:
+            // the only one possible is MeasureTool reacting to this very
+            // touch's release (the browser's synthetic click after it,
+            // which comes whenever the finger lifts).
+            if (routeSplitPending) {
+                routeSplitRestore = { snapshot: routeSplitPending.points };
+            }
+        }, LONG_PRESS_DURATION_MS);
+        routeSplitTouch = state;
+    }, { capture: true, passive: true });
+
+    mapDiv.addEventListener('touchmove', function (domEvent) {
+        if (!routeSplitTouch || routeSplitTouch.fired || domEvent.touches.length !== 1) {
+            return;
+        }
+        var touch = domEvent.touches[0];
+        if (Math.hypot(touch.clientX - routeSplitTouch.x, touch.clientY - routeSplitTouch.y) > LONG_PRESS_MOVE_TOLERANCE_PX) {
+            cancelRouteSplitTouch(); // a drag of the waypoint, not a long-press
+        }
+    }, { capture: true, passive: true });
+
+    // Lifted before the long-press time: just a tap, no menu.
+    mapDiv.addEventListener('touchend', cancelRouteSplitTouch, { capture: true, passive: true });
+    mapDiv.addEventListener('touchcancel', cancelRouteSplitTouch, { capture: true, passive: true });
+
+}
+
+/**
+ * Undoes the waypoint MeasureTool added/removed for a released waypoint
+ * long-press - called from map-core.js's single measure_change listener
+ * (MeasureTool keeps only one per event). end() + start(): start() alone,
+ * while already measuring, kept a point.
+ */
+function restoreLineAfterSplitLongPress() {
+    if (!routeSplitRestore) {
+        return;
+    }
+    var snapshot = routeSplitRestore.snapshot;
+    var now = measureTool.points || [];
+    var changed = now.length !== snapshot.length || now.some(function (p, k) {
+        return p.lat !== snapshot[k].lat || p.lng !== snapshot[k].lng;
+    });
+    if (!changed || measureTool.index === null || typeof measureTool.index === 'undefined') {
+        return;
+    }
+    routeSplitRestore = null;
+    var index = measureTool.index;
+    setTimeout(function () {
+        measureTool.end();
+        measureTool.start(snapshot);
+        measureTool.index = index;
+        unlockMapGestures();
+        // MeasureTool recalculates its length only later, without a
+        // measure_change for the toolbar - show the restored line's own.
+        var lengthLabel = document.getElementById('secondToolbarLength');
+        if (lengthLabel) {
+            lengthLabel.textContent = formatDistance(google.maps.geometry.spherical.computeLength(
+                snapshot.map(function (p) { return new google.maps.LatLng(p.lat, p.lng); })
+            ), settings.unit);
+        }
+    }, 0);
+}
+
+let routeSplitRestore = null; // {snapshot} from a waypoint long-press until the next touch
+
+function cancelRouteSplitTouch() {
+    if (routeSplitTouch && routeSplitTouch.timer) {
+        clearTimeout(routeSplitTouch.timer);
+    }
+    routeSplitTouch = null;
+}
+
+/**
+ * The points are captured right now - on touch, MeasureTool may still act
+ * on the finger lifting afterwards, so the split works on the line as it
+ * was when the menu opened.
+ */
+function showRouteSplitMenu(index) {
+    var points = measureTool.points.map(function (p) { return { lat: p.lat, lng: p.lng }; });
+    routeSplitPending = { routeIndex: measureTool.index, index: index, points: points };
+
+    contextMenu.setPosition(new google.maps.LatLng(points[index].lat, points[index].lng));
+    contextMenu.setContent(
+        '<div class="contextMenuTitle">' + t('route.split.question') + '</div>' +
+        '<div class="contextMenuItem" onClick="confirmRouteSplit();"><i class="material-icons-round">call_split</i>' + t('route.split.confirm') + '</div>' +
+        '<div class="contextMenuItem" onClick="closeContextMenu();"><i class="material-icons-round">close</i>' + t('common.cancel') + '</div>'
+    );
+    contextMenu.open(map);
+}
+
+let routeSplitPending = null;
+
+async function confirmRouteSplit() {
+    closeContextMenu();
+    var pending = routeSplitPending;
+    routeSplitPending = null;
+    if (!pending || measureTool.index !== pending.routeIndex) {
+        return;
+    }
+    var route = routes[pending.routeIndex];
+    if (!(route.id > 0)) {
+        // Created offline and not synced yet - the server doesn't know it.
+        showToast(t('route.split.not_synced'), 'warning');
+        return;
+    }
+
+    try {
+        var answer = await Ytan.post('/routes/' + route.id + '/split', {
+            points: pending.points,
+            index: pending.index,
+            name_suffixes: [t('route.split.suffix_1'), t('route.split.suffix_2')],
+            expected_updated_at: route.updated_at,
+        });
+        var parts = answer.data.routes;
+
+        // End the edit without restoring the old line (cancelEditRoute()
+        // would show routes[i] again) - the reload below draws both parts.
+        closeRouteEditWindow();
+        measureTool.index = null;
+        measureTool.end();
+        unlockMapGestures();
+        document.getElementById('routeButton').classList.remove('active');
+        hideSecondToolbar();
+        enableAreaButton();
+        enablePoiButton();
+        enableRouteButton();
+        editMode(false);
+
+        getRoutesByUserId(user.id);
+        getToursByUserId(user.id);
+        showToast(t('route.split.done', { first: decodeHtmlEntities(parts[0].name), second: decodeHtmlEntities(parts[1].name) }), 'success');
+    } catch (err) {
+        showToast(translateApiError(err.data) || err.message, 'error');
+    }
+}
+
