@@ -1,5 +1,15 @@
 # Erledigt
 
+## Touren-Export als GPX 1.1 (2026-10-08)
+~~Ist ein Export von Touren mit mehreren Routen in eine GPX-Datei unterzubringen möglich?~~
+
+Gelöst (2026-10-08): Ja - GPX 1.1 erlaubt beliebig viele `<trk>`. Umgesetzt nach den Entscheidungen des Nutzers (Rechte wie bei Routen, auf die Tour angewendet; ein Track pro Route):
+- **Endpunkt** `GET /api/v1/tours/{id}/gpx`: eine Datei, `<metadata>` mit Name/Beschreibung der Tour, danach ein `<trk>` je Route in Tour-Reihenfolge (`RouteRepository::findByTour()`, `tour_route.sort_order`), jeweils mit Routenname/-beschreibung. Eine Route ohne Punkte behält ihren (leeren) `<trkseg>`, damit die Etappenfolge erkennbar bleibt. `GpxExportService` hat dafür den Kern `buildTracks()` bekommen, `build()` für eine einzelne Route nutzt ihn mit; `filename()` nimmt jetzt Name + Präfix + Id (`tour-{id}`/`route-{id}` als Rückfall).
+- **Regel:** Tour sichtbar (öffentlich, eigene, Admin oder `tour_manage` - wie `TourController::assertCanView()`) **und** (Einstellung `gpx_export_public` an ODER Admin ODER öffentliche Tour + `export_routes_public` ODER eigene Tour + `export_routes_own`). Dann gehen **alle** Routen der Tour mit, auch private des Erstellers - so wie das Touren-PDF sie ohnehin zeigt. `tour_manage` allein reicht nicht (sieht private fremde Touren, braucht aber ein Export-Recht bzw. die Einstellung).
+- **Controller umbenannt:** `RouteExportController` → `GpxExportController` mit `routeGpx()` und `tourGpx()` (gemeinsame Rechte-Prüfung `mayExport()`, gemeinsame Antwort-Header), Test entsprechend `GpxExportControllerTest`.
+- **Frontend** (`tour-admin.js`): Button "GPX exportieren" (`file_download`) in der Tour-Detailansicht direkt nach "PDF herunterladen", nur wenn `canExportTour()` (spiegelt die Server-Regel) zutrifft; `downloadTourGpx()` wie `downloadTourDocument()` über `Ytan.fetchBlob()` + `downloadBlob()`, Dateiname aus dem Tournamen. Beschreibungen der beiden Rechte im Admin-Benutzerformular nennen jetzt auch Touren.
+- Geprüft: PHPUnit grün (372 Tests; neu u. a. Reihenfolge/Metadaten im Service-Test und 7 Tour-Fälle im Controller-Test), e2e `tours.spec.js` grün. Im Browser (390x660): Button in der Detailansicht der Tour "Faaborg to Rinstinge", Datei mit 3 `<trk>` in Tour-Reihenfolge, Download `Faaborg-to-Rinstinge.gpx`; ohne Anmeldung 403.
+
 ## Routen-Export als GPX 1.1 Datei (2026-10-08)
 ~~Routen sollen als GPX-1.1-Datei exportiert werden können. Wenn die entsprechenden Rechte vorliegen, soll das Kontextmenü einer Route dafür den Punkt "Route exportieren (GPX 1.1)" erhalten.~~
 

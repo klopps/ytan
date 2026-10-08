@@ -54,7 +54,31 @@ final class GpxExportServiceTest extends TestCase
 
     public function testFilenameKeepsLettersAndFallsBackToId(): void
     {
-        $this->assertSame('Große-Schlei-Runde.gpx', GpxExportService::filename(['id' => 7, 'name' => ' Große Schlei / Runde! ']));
-        $this->assertSame('route-7.gpx', GpxExportService::filename(['id' => 7, 'name' => '***']));
+        $this->assertSame('Große-Schlei-Runde.gpx', GpxExportService::filename(' Große Schlei / Runde! ', 'route', 7));
+        $this->assertSame('route-7.gpx', GpxExportService::filename('***', 'route', 7));
+        $this->assertSame('tour-3.gpx', GpxExportService::filename('', 'tour', 3));
+    }
+
+    public function testTourBecomesOneTrackPerRouteInOrderWithTourMetadata(): void
+    {
+        $gpx = GpxExportService::buildTracks('Schlei-Woche', 'Fünf Etappen', [
+            $this->route(['name' => 'Etappe 1']),
+            $this->route(['name' => 'Etappe 2', 'points' => '[]', 'description' => '']),
+        ], 'YTAN');
+
+        $doc = new \DOMDocument();
+        $this->assertTrue($doc->loadXML($gpx));
+        $xpath = new \DOMXPath($doc);
+        $xpath->registerNamespace('g', 'http://www.topografix.com/GPX/1/1');
+
+        $this->assertSame('Schlei-Woche', $xpath->evaluate('string(/g:gpx/g:metadata/g:name)'));
+        $this->assertSame('Fünf Etappen', $xpath->evaluate('string(/g:gpx/g:metadata/g:desc)'));
+        $tracks = $xpath->query('/g:gpx/g:trk');
+        $this->assertSame(2, $tracks->length);
+        $this->assertSame('Etappe 1', $xpath->evaluate('string(g:name)', $tracks->item(0)));
+        $this->assertSame('Etappe 2', $xpath->evaluate('string(g:name)', $tracks->item(1)));
+        // A route without points keeps its (empty) segment.
+        $this->assertSame(1, $xpath->query('g:trkseg', $tracks->item(1))->length);
+        $this->assertSame(0, $xpath->query('g:trkseg/g:trkpt', $tracks->item(1))->length);
     }
 }

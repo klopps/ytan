@@ -14,7 +14,7 @@ const TOUR_RIGHT_FIELDS = ['tour_create', 'tour_publish', 'tour_manage', 'tour_c
 // Rights that aren't about tours (route_view_recording, the right to see
 // who recorded a GPS-tracked route and when - see
 // RouteController::redactRecordingInfo() - and the two GPX export rights,
-// see RouteExportController) get their own bucket so the "Tour: "
+// see GpxExportController) get their own bucket so the "Tour: "
 // label prefix stays accurate and the two groups can be shown under separate
 // headings in the form (tour_rights_label vs. other_rights_label).
 const OTHER_RIGHT_FIELDS = ['route_view_recording', 'export_routes_own', 'export_routes_public'];

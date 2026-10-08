@@ -1213,7 +1213,7 @@ function showRouteContextMenu(event, i) {
 
 /**
  * Whether to offer "Export route (GPX 1.1)" - mirrors
- * RouteExportController::canExport(), which is the actual check. Every
+ * GpxExportController::routeGpx(), which is the actual check. Every
  * route on the map is already visible to the user (public, own, or all of
  * them for an admin), so only the rights/setting part needs checking here.
  * A route created offline and not synced yet has no server id to export.

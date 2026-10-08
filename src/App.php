@@ -24,9 +24,9 @@ use Ytan\Http\Controllers\AdminController;
 use Ytan\Http\Controllers\AreaController;
 use Ytan\Http\Controllers\AuthController;
 use Ytan\Http\Controllers\GeocodingController;
+use Ytan\Http\Controllers\GpxExportController;
 use Ytan\Http\Controllers\PoiController;
 use Ytan\Http\Controllers\RouteController;
-use Ytan\Http\Controllers\RouteExportController;
 use Ytan\Http\Controllers\SettingsController;
 use Ytan\Http\Controllers\TourController;
 use Ytan\Http\Controllers\TranslationController;
@@ -150,7 +150,7 @@ final class App
         $wsiController = new WsiController(new WsiRenderer($rootDir . '/public/images/wsi'));
         $settingsRepository = new SettingsRepository($pdo);
         $settingsController = new SettingsController($settingsRepository);
-        $routeExportController = new RouteExportController($routeRepository, $settingsRepository, $appName);
+        $gpxExportController = new GpxExportController($routeRepository, $tourRepository, $settingsRepository, $appName);
         $translationController = new TranslationController(
             new TranslationRepository($rootDir . '/resources/i18n'),
             new TranslationUsageScanner($rootDir)
@@ -251,7 +251,7 @@ final class App
         $app->delete('/api/v1/routes/{id}', [$routeController, 'delete']);
         $app->post('/api/v1/routes/{id}/images', [$routeController, 'uploadImage']);
         $app->get('/api/v1/routes/{id}/images', [$routeController, 'listImages']);
-        $app->get('/api/v1/routes/{id}/gpx', [$routeExportController, 'gpx']);
+        $app->get('/api/v1/routes/{id}/gpx', [$gpxExportController, 'routeGpx']);
         $app->get('/api/v1/routes/{id}/images/{imageId}', [$routeController, 'showImage']);
         $app->delete('/api/v1/routes/{id}/images/{imageId}', [$routeController, 'deleteImage']);
 
@@ -270,6 +270,7 @@ final class App
         $app->delete('/api/v1/tours/{id}/images/{imageId}', [$tourController, 'deleteImage']);
         $app->put('/api/v1/tours/{id}/images/order', [$tourController, 'reorderImages']);
         $app->get('/api/v1/tours/{id}/document', [$tourController, 'document']);
+        $app->get('/api/v1/tours/{id}/gpx', [$gpxExportController, 'tourGpx']);
 
         $app->get('/api/v1/areas', [$areaController, 'index']);
         $app->get('/api/v1/areas/{id}', [$areaController, 'show']);

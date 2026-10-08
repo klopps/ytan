@@ -122,6 +122,20 @@ function canCopyTours() {
 }
 
 /**
+ * Whether to offer "Export GPX" - mirrors GpxExportController::tourGpx()
+ * (the actual check) for a tour the user can already see: the site setting,
+ * admin, a public tour + export_routes_public, or an own tour +
+ * export_routes_own.
+ */
+function canExportTour(tour) {
+    if (window.YTAN_GPX_EXPORT_PUBLIC) return true;
+    if (user.id === null) return false;
+    return user.is_admin === true
+        || (!!user.export_routes_public && tour.public == 1)
+        || (!!user.export_routes_own && tour.user_id == user.id);
+}
+
+/**
  * Fetches a (possibly private) tour photo through the authenticated Blob
  * endpoint and points the given <img> at it - a plain <img src="..."> can't
  * attach the Bearer token a private tour's photo requires, see
@@ -385,6 +399,9 @@ function renderTourDetail(tour, routesInTour) {
         html += '<div class="button" onclick="deleteTourRow(' + tour.id + ');"><i class="material-icons-round">delete</i>&nbsp;' + t('common.delete') + '</div>';
     }
     html += '<div class="button" onclick="downloadTourDocument(' + tour.id + ');"><i class="material-icons-round">picture_as_pdf</i>&nbsp;' + t('tour_admin.download_document') + '</div>';
+    if (canExportTour(tour)) {
+        html += '<div class="button" data-name="' + escapeHTML(tour.name || '') + '" onclick="downloadTourGpx(' + tour.id + ', this.dataset.name);"><i class="material-icons-round">file_download</i>&nbsp;' + t('tour_admin.export_gpx') + '</div>';
+    }
 
     // Only a published tour has a meaningful shareable link - a private
     // one would 404 (or worse, leak content) for whoever opens it, since
@@ -1181,6 +1198,23 @@ async function downloadTourDocument(tourId) {
         await downloadBlob(blob, 'tour-' + tourId + '.pdf');
     } catch (err) {
         showToast(t('tour_admin.document_generation_failed', { error: err.message }), 'error');
+    }
+}
+
+/**
+ * "Export GPX" button on the tour detail screen (canExportTour()): one GPX
+ * 1.1 file with a track per route, in tour order. Same Blob download as
+ * downloadTourDocument(); the filename follows route.js's
+ * routeContextMenuExportGpx().
+ */
+async function downloadTourGpx(tourId, name) {
+    var base = decodeHtmlEntities(name || '').replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '').slice(0, 80);
+    try {
+        var blob = await Ytan.fetchBlob('/tours/' + tourId + '/gpx');
+        await downloadBlob(blob, (base || 'tour-' + tourId) + '.gpx');
+    } catch (err) {
+        log('downloadTourGpx(' + tourId + ') failed', LOG_ERROR, err);
+        showToast(t('tour_admin.export_gpx_failed'), 'error');
     }
 }
 

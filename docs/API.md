@@ -67,7 +67,7 @@ the site setting `gpx_export_public` is on (then for anyone, even
 anonymous), or the caller is admin, or has `export_routes_public` and the
 route is public, or has
 `export_routes_own` and owns the route; 403 otherwise
-(`RouteExportController`).
+(`GpxExportController`).
 Area body: `name, description, public, points (JSON-encoded array of {lat,lng}), color, opacity, zindex`.
 
 ## Tours
@@ -76,6 +76,14 @@ Area body: `name, description, public, points (JSON-encoded array of {lat,lng}),
 also takes `search` (matches name/description/creator username) and
 `min_length`/`max_length` (meters) filters, on top of the shared
 `limit`/`offset` from Pagination above.
+
+`GET /tours/{id}/gpx` - the tour as one GPX 1.1 file (`application/gpx+xml`,
+as an attachment): tour name/description in `<metadata>`, then one `<trk>`
+per route in tour order (`GET /routes/{id}/gpx`'s track shape), its
+creator's private routes included. Same rule as the route export, applied
+to the tour: visible (public tour, or owner/admin/tour_manage) and (site
+setting `gpx_export_public`, or admin, or public tour + `export_routes_public`,
+or own tour + `export_routes_own`); 403 otherwise (`GpxExportController`).
 
 `GET /tours/{id}/document?poi_radius=200` - generates and returns a PDF
 (`application/pdf`, as an attachment): a tour overview section (name, total

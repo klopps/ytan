@@ -28,7 +28,7 @@ final class SettingsRepository
     /**
      * "Allow GPX export for everyone (even signed out)": when set, anyone may
      * export every route they can see, independent of the export_routes_own/
-     * export_routes_public rights (RouteExportController::gpx()).
+     * export_routes_public rights (GpxExportController).
      */
     public function gpxExportPublic(): bool
     {
