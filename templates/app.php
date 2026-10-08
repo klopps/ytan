@@ -132,6 +132,11 @@
           <i class="material-icons-round">search</i>
         </button>
         <input type="text" id="mapSearchInput" class="map-search-input" placeholder="<?= htmlspecialchars($t('app.search.placeholder'), ENT_QUOTES) ?>" autocomplete="off">
+        <!-- Only shown while expanded - the same collapse as clicking the
+             magnifying glass again, which nobody recognized as "close". -->
+        <button id="mapSearchClose" type="button" onclick="toggleMapSearch()" aria-label="<?= htmlspecialchars($t('app.search.close'), ENT_QUOTES) ?>">
+          <i class="material-icons-round">close</i>
+        </button>
       </div>
       <div id="mapSearchDropdown" class="map-search-dropdown" hidden>
         <div id="mapSearchModeToggle" class="map-search-mode-toggle" hidden>

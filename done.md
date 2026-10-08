@@ -1,5 +1,10 @@
 # Erledigt
 
+## Das Suchfeld bleibt nach der Suche geöffnet (2026-10-08)
+~~Das Suchfeld bleibt nach der Suche geöffnet und es gibt keine Möglichkeit es zu schließen. Dadurch ist die Toolbar in der Mobilansicht dauerhaft verschwunden. Am Ende des Suchfeldes muss einen Schließen-Button geben.~~
+
+Gelöst (2026-10-08): Schließen ging bisher nur über einen zweiten Tipp auf die Lupe (`toggleMapSearch()`, `ui.js`) - das war nicht als "Schließen" erkennbar, und solange das Feld offen ist, blendet die Mobilansicht (< 640px) `#editToolbar` per `.hidden-for-search` aus. Neu: ein `close`-Button `#mapSearchClose` am Ende der Such-Pille (`templates/app.php`), nur im aufgeklappten Zustand sichtbar (`.map-search-container.expanded #mapSearchClose`, `style.css`, gleiche 40x40-Maße wie die Lupe), ruft dasselbe `toggleMapSearch()` auf: Feld zu, Text und Ergebnisliste geleert, Toolbar wieder da; ein gesetzter Suchmarker bleibt wie bisher stehen (eigenes Entfernen-X am Marker). Neuer Text `app.search.close` (DE "Suche schließen", EN "Close search") als `aria-label`. Geprüft im Browser (390x660): suchen, Ergebnis wählen, X schließt, Toolbar erscheint wieder.
+
 ## Gestaltung Profilmenü (2026-10-08)
 ~~Das Profilmenü soll umgebaut werden, so dass alle Inhalte des Menüs außer zum An- und Abmelden, in Untermenüs wandern, die durch ein <Menpunkt> + ">" symbolisiert werden. In den Untermenüs muss oben links vor dem Namen des Unternmenüs einen Pfeil nach links geben, um wieder ins Profilmenü zurückkehren zu können. Das Öffnen einen Untermenüs entspricht dem vom Verhalten her dem Öffnen des Profilmenüs selbst (Einschieben von rechts). Jedes sich öffnende Menü kann durch "Zurück" oder durch einen Abbrechen-Button am unteren Ende verlassen werden.~~
 

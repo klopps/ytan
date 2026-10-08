@@ -425,7 +425,8 @@ body.app-update-required #tourRouteManagerSaveBtn {
   transition: width 0.2s ease;
 }
 
-#mapSearchToggle {
+#mapSearchToggle,
+#mapSearchClose {
   flex: none;
   width: 40px;
   height: 40px;
@@ -463,7 +464,16 @@ body.app-update-required #tourRouteManagerSaveBtn {
 .map-search-container.expanded .map-search-input {
   width: 200px;
   opacity: 1;
-  padding-right: 14px;
+  padding-right: 4px;
+}
+
+#mapSearchClose {
+  display: none;
+  color: var(--color-text-secondary);
+}
+
+.map-search-container.expanded #mapSearchClose {
+  display: flex;
 }
 
 /* A single self-rendered panel for both Google predictions (from the

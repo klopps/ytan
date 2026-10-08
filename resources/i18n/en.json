@@ -5,6 +5,7 @@
     "app.nav.close_menu": "Close menu",
     "app.search.aria_label": "Search",
     "app.search.placeholder": "Search location…",
+    "app.search.close": "Close search",
     "app.map.label": "Map Display",
     "app.map.hybrid": "HYBRID",
     "app.map.terrain": "TERRAIN",
