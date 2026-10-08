@@ -7,6 +7,7 @@
 
     <script>window.YTAN_API_BASE = "<?= htmlspecialchars($baseUrl, ENT_QUOTES) ?>/api/v1";</script>
     <script>window.YTAN_GOOGLE_SEARCH_REQUIRES_LOGIN = <?= $googleSearchRequiresLogin ? 'true' : 'false' ?>;</script>
+    <script>window.YTAN_MAPS_ID = <?= json_encode($mapsId) ?>;</script>
     <script>window.YTAN_GPX_EXPORT_PUBLIC = <?= $gpxExportPublic ? 'true' : 'false' ?>;</script>
     <script>window.YTAN_TRACK_DISTANCE_FILTER_PRESETS = <?= json_encode($trackDistanceFilterPresets) ?>;</script>
     <script>window.YTAN_ROUTE_LABEL_FONT_SIZE_RANGE = <?= json_encode($routeLabelFontSizeRange) ?>;</script>
@@ -47,6 +48,7 @@
     <script src="./js/splashscreen.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/splashscreen.js') ?>"></script>
     <script src="./js/confirm-dialog.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/confirm-dialog.js') ?>"></script>
     <script src="./js/nav-menu.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/nav-menu.js') ?>"></script>
+    <script src="./js/marker.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/marker.js') ?>"></script>
     <script src="./js/map-core.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/map-core.js') ?>"></script>
     <script src="./js/weather.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/weather.js') ?>"></script>
     <script src="./js/poi.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/poi.js') ?>"></script>

@@ -317,6 +317,7 @@ final class App
         $app->get('/', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $settingsRepository, $translator) {
             ob_start();
             $mapsApiKey = $_ENV['MAPS_API_KEY'] ?? '';
+            $mapsId = $_ENV['MAPS_ID'] ?? '';
             $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
             $googleSearchRequiresLogin = $settingsRepository->googleSearchRequiresLogin();
             $gpxExportPublic = $settingsRepository->gpxExportPublic();

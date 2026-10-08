@@ -23,9 +23,9 @@ function showWsiMarkerByPoiId(id) {
 }
 
 function addWsiMarker(id, location, direction) {
-    const marker = new google.maps.Marker({
+    const marker = new YtanMarker({
         position: location,
-        icon: Ytan.wsiImageUrl(direction),
+        iconUrl: Ytan.wsiImageUrl(direction),
         id: id
     });
     wsiMarkers.push(marker);
@@ -439,6 +439,15 @@ function setAllPois(arrPois) {
 }
 
 /**
+ * Für Leuchttürme wird die Mitte des Markers auf die Position gesetzt
+ * (34x34-Icon), alle anderen POI-Icons stehen mit der unteren Mitte darauf
+ * (YtanMarker's default, null).
+ */
+function poiIconAnchor(poitypeId) {
+    return poitypeId == 14 ? new google.maps.Point(17, 17) : null;
+}
+
+/**
 * Löscht einen POI und setzt ihn neu.
 * Wird z.B. für Updates eines POIs benötigt.
 *
@@ -455,21 +464,13 @@ function setPoi(i) {
 
     var LatLng = new google.maps.LatLng(pois[i].latitude, pois[i].longitude);
 
-    var marker = new google.maps.Marker({
+    var marker = new YtanMarker({
         position: LatLng,
         title: pois[i].name,
-        icon: {
-            url: "markers/poi_" + pois[i].poitype_id + "_" + ICONSET + ".png",
-        },
+        iconUrl: "markers/poi_" + pois[i].poitype_id + "_" + ICONSET + ".png",
+        iconAnchor: poiIconAnchor(pois[i].poitype_id),
         zIndex: ZINDEX_POI
     });
-
-    // Für Leuchttürme wird die Mitte des Markers auf die Postion gesetzt
-    if (pois[i].poitype_id == 14) {
-        var markerOffsetX = 17;
-        var markerOffsetY = 17;
-        marker.icon.anchor = new google.maps.Point(markerOffsetX, markerOffsetY);
-    }
 
     if (settings["detail"+pois[i].poitype_id]) {
         marker.setMap(map);
@@ -570,7 +571,7 @@ function showPoiInfoWindow(event, i, marker) {
         });
 
         poiInfoWindows[i].setContent(content);
-        poiInfoWindows[i].open(map, marker);
+        poiInfoWindows[i].open({ map: map, anchor: marker.advanced });
     } else {
         closePoiInfoWindow(i);
     }
@@ -913,7 +914,13 @@ function initPoiEditWindow(i) {
 
     poiEditWindow.addListener('position_changed', function () {
         var pos = poiEditWindow.getPosition();
-        document.getElementById('poiCoordinates').innerHTML = '<i class="material-icons-round">navigation</i>' + formatCoordinates(pos.lat(), pos.lng());
+        var coordinates = document.getElementById('poiCoordinates');
+        // Anchored to an AdvancedMarkerElement (YtanMarker), this already
+        // fires inside open(), before the content is in the DOM - the
+        // initial coordinates are part of that content anyway.
+        if (coordinates && pos) {
+            coordinates.innerHTML = '<i class="material-icons-round">navigation</i>' + formatCoordinates(pos.lat(), pos.lng());
+        }
     });
 }
 
@@ -1178,17 +1185,16 @@ function addPoi(pos) {
 
     map.panTo(pos);
 
-    poiMarker = new google.maps.Marker({
+    poiMarker = new YtanMarker({
         position: pos,
         map: map,
         draggable: true,
-        type: 0,
-        icon: "markers/poi_0_" + ICONSET + ".png",
+        iconUrl: "markers/poi_0_" + ICONSET + ".png",
         id: null
     });
 
     hideSecondToolbar();
-    poiEditWindow.open(map, poiMarker);
+    poiEditWindow.open({ map: map, anchor: poiMarker.advanced });
 }
 
 /**
@@ -1209,12 +1215,12 @@ function editPoi(i) {
 
     initPoiEditWindow(i);
 
-    poiMarker = new google.maps.Marker({
+    poiMarker = new YtanMarker({
         position:  markers[id].position,
         map: map,
         draggable: true,
-        type: 0,
-        icon:  markers[id].icon,
+        iconUrl: markers[id].icon.url,
+        iconAnchor: markers[id].icon.anchor,
         id: id
     });
 
@@ -1225,7 +1231,7 @@ function editPoi(i) {
     });
 
     hideSecondToolbar();
-    poiEditWindow.open(map, poiMarker);
+    poiEditWindow.open({ map: map, anchor: poiMarker.advanced });
 }
 
 function cancelEditPoi(i) {
@@ -1533,7 +1539,8 @@ function changePoiType(event) {
         document.getElementById("editPoiLighthouseContainer").style.display = "none";
     }
 
-    poiMarker.setIcon("markers/poi_" + event.target.value + "_" + ICONSET + ".png")
+    poiMarker.iconAnchor = poiIconAnchor(event.target.value);
+    poiMarker.setIcon("markers/poi_" + event.target.value + "_" + ICONSET + ".png");
 
     // Showing/hiding the WSI or Lighthouse section just now can make the
     // InfoWindow noticeably taller - it grows upward from its fixed anchor

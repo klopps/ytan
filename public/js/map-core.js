@@ -363,7 +363,7 @@ function findLongPressTarget(clientX, clientY) {
 
     for (const candidate of longPressCandidates) {
         const overlay = candidate.overlay;
-        if (!(overlay instanceof google.maps.Marker) || !overlay.getMap() || !overlay.getPosition()) {
+        if (!(overlay instanceof YtanMarker) || !overlay.getMap() || !overlay.getPosition()) {
             continue;
         }
         const anchorPixel = projection.fromLatLngToContainerPixel(overlay.getPosition());
@@ -624,7 +624,7 @@ function loadGoogleMaps(APIKey) {
     injectGoogleMapsApiScript({
         key: APIKey,
         callback: 'initMap',
-        libraries: 'geometry,places',
+        libraries: 'geometry,places,marker',
         v: 'weekly',
         loading: 'async'
     });
@@ -775,7 +775,10 @@ function initMap() {
             position: google.maps.ControlPosition.TOP_LEFT,
             mapTypeIds: ["hybrid", "terrain", "satellite"],
         },
-        mapId: "DEMO_MAP_ID", // ggfs. eigene MapID generieren (https://developers.google.com/maps/documentation/get-map-id?hl=de)
+        // Required by AdvancedMarkerElement (marker.js's YtanMarker). From
+        // .env's MAPS_ID (templates/app.php); without one, Google's test ID
+        // DEMO_MAP_ID (https://developers.google.com/maps/documentation/get-map-id?hl=de).
+        mapId: window.YTAN_MAPS_ID || "DEMO_MAP_ID",
     });
 
     // A pending long-press (attachLongPressContextMenu() above) should not
@@ -1369,7 +1372,7 @@ async function selectGooglePrediction(prediction) {
 function showSearchResultOnMap(place) {
     clearSearchMarker();
 
-    searchMarker = new google.maps.Marker({
+    searchMarker = new YtanMarker({
         position: place.location,
         map: map,
         title: place.displayName || ''
@@ -1378,7 +1381,7 @@ function showSearchResultOnMap(place) {
     searchInfoWindow.setContent(
         '<div class="search-remove-badge" onclick="clearSearchMarker()" title="' + t('common.remove') + '"><i class="material-icons-round">close</i></div>'
     );
-    searchInfoWindow.open(map, searchMarker);
+    searchInfoWindow.open({ map: map, anchor: searchMarker.advanced });
 
     if (place.viewport) {
         map.fitBounds(place.viewport);

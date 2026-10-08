@@ -169,6 +169,14 @@ let lastWeatherTimelineData = null;
 // custom icon set of its own.
 let weatherLocationMarker = null;
 
+// The Material icon "cloud" (same glyph as the context-menu item), white, as
+// the weather location pin's glyph - PinElement takes an image URL there
+// (the icon font can't be used inside it).
+const WEATHER_MARKER_GLYPH_SRC = 'data:image/svg+xml,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#ffffff">' +
+    '<path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>'
+);
+
 // Bumped on every open; a reverse-geocoding answer only updates the title
 // if it's still the one for the CURRENT request - otherwise a slow lookup
 // for a previous location could overwrite the title after the user has
@@ -209,21 +217,14 @@ function openWeatherTimelineForLocation(latLng) {
     if (weatherLocationMarker) {
         weatherLocationMarker.setPosition(latLng);
     } else {
-        weatherLocationMarker = new google.maps.Marker({
+        weatherLocationMarker = new YtanMarker({
             position: latLng,
             map: map,
             title: t('weather.marker.title'),
             zIndex: ZINDEX_POI + 10, // above regular POI markers, so it's never hidden underneath one at the same spot
-            // Same 'cloud' glyph as the context-menu item, rendered via the
-            // vendored icon font as the pin's label instead of a plain dot -
-            // marks this specific pin as "the weather location", not just
-            // any location marker.
-            label: {
-                text: 'cloud',
-                fontFamily: 'Material Icons Round',
-                fontSize: '16px',
-                color: '#ffffff',
-            },
+            // A cloud instead of the plain dot - marks this specific pin as
+            // "the weather location", not just any location marker.
+            glyphSrc: WEATHER_MARKER_GLYPH_SRC,
         });
     }
 

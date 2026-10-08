@@ -35,9 +35,9 @@ test.describe('Context menus', () => {
     await settleMapAt(page, LAT, LNG, 15);
 
     // A POI marker's `position` LatLng maps to the BOTTOM-CENTER of its
-    // icon (setPoi()'s Marker only sets `icon: {url}`, no explicit
-    // `anchor` - that's the google.maps.Marker default for a plain-url
-    // icon), not its visual center - clicking exactly at the map's
+    // icon (setPoi()'s YtanMarker gets no iconAnchor for this type -
+    // marker.js, AdvancedMarkerElement's bottom-center default, the same
+    // as the old google.maps.Marker's), not its visual center - clicking exactly at the map's
     // center pixel (== the marker's LatLng pixel, since settleMapAt()
     // centered on it) lands just below the icon, on the empty map
     // underneath, and hits the generic map context menu instead. The

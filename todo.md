@@ -1,14 +1,5 @@
 # Offene Punkte
 
-## Warning zu google.maps.Marker
-
-`google.maps.Marker` muss durch `google.maps.marker.AdvancedMarkerElement` ersetzt werden.
-
-Warning im Browser (aufgefallen 2026-10-08 bei der Umstellung auf Places API (New), done.md "Warning zu google.maps.places.PlacesService"):
-`As of February 21st, 2024, google.maps.Marker is deprecated. Please use google.maps.marker.AdvancedMarkerElement instead. At this time, google.maps.Marker is not scheduled to be discontinued, but google.maps.marker.AdvancedMarkerElement is recommended over google.maps.Marker. While google.maps.Marker will continue to receive bug fixes for any major regressions, existing bugs ...`
-
-Betroffen (Stand 2026-10-08): `poi.js` (POI-Marker inkl. der eigenen Grid-Clusterung, Marker beim Anlegen/Bearbeiten eines POI - 4 Stellen), `map-core.js` (Suchmarker), `weather.js` (Standortmarker der Wetteransicht). Zu beachten: `AdvancedMarkerElement` braucht eine Map-ID (heute `mapId: "DEMO_MAP_ID"` in `map-core.js` - für Production eine eigene anlegen) und die Bibliothek `marker`; Icons werden als DOM-Element (`content`) statt per `icon: {url}` gesetzt, Ereignisse heißen anders (`gmp-click`), und die e2e-Specs klicken POI-Marker per Pixel-Offset (Anker unten-mittig, `context-menu.spec.js`) - der Anker kann sich ändern.
-
 ## Standards für alle Gestaltungselemente festlegen
 
 An verschiedenen Stellen sind die Gestaltungselemente wie Buttons, Inputfelder, Schalter, Hinweistexte etc. unterschiedlich gestaltet. Das muss einheitlich gestaltet werden. Dazu soll im Admin-Bereich eine Beispielseite aufgebaut werden, auf der möglichst alle Elemente vertreten sind, um die Gestaltung vergleichen zu können und schließlich anzugleichen. Ein Vorbild ist das Bootstrap Cheatsheet. Es kann sein, dass einige der folgenden Elemente noch gar nicht zum Einsatz kommen.
