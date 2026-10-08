@@ -43,16 +43,53 @@ function showUserWindow() {
                 '</div>' +
             '</div>' +
             pendingEmailNotice +
-            '<button id="userEditProfileBtn" class="nav-btn-secondary" type="button" onClick="showEditProfileForm();"><i class="material-icons-round">edit</i>&nbsp;' + t('user.edit_profile_button') + '</button>' +
-            '<button id="userChangePasswordBtn" class="nav-btn-secondary" type="button" onClick="showChangePasswordForm();"><i class="material-icons-round">lock</i>&nbsp;' + t('user.change_password_button') + '</button>' +
-            '<button id="userDefaultSpeedBtn" class="nav-btn-secondary" type="button" onClick="showDefaultSpeedForm();"><i class="material-icons-round">speed</i>&nbsp;' + t('user.default_speed_button') + '</button>' +
-            '<button id="userWatchBtn" class="nav-btn-secondary" type="button" onClick="showWatchSection();"><i class="material-icons-round">watch</i>&nbsp;' + t('watch.title') + '</button>' +
-            '<button id="userLogoutBtn" class="nav-btn-secondary nav-btn-danger" type="button" onClick="logoutUser()"><i class="material-icons-round">logout</i>&nbsp;' + t('user.logout_button') + '</button>' +
-            '<div id="userWindowSub"></div>'
+            '<ul class="nav-menu-list">' +
+                profileSubRowHtml('userEditProfileBtn', 'showEditProfileForm();', 'edit', t('user.edit_profile_button')) +
+                profileSubRowHtml('userChangePasswordBtn', 'showChangePasswordForm();', 'lock', t('user.change_password_button')) +
+                profileSubRowHtml('userDefaultSpeedBtn', 'showDefaultSpeedForm();', 'speed', t('user.default_speed_button')) +
+                profileSubRowHtml('userWatchBtn', 'showWatchSection();', 'watch', t('watch.title')) +
+            '</ul>' +
+            '<button id="userLogoutBtn" class="nav-btn-secondary nav-btn-danger" type="button" onClick="logoutUser()"><i class="material-icons-round">logout</i>&nbsp;' + t('user.logout_button') + '</button>'
         ;
     }
+    document.getElementById('userWindow').insertAdjacentHTML('beforeend', navCancelButtonHtml());
 
-    navMenuGoTo('profile');
+    if (navMenuStack[navMenuStack.length - 1] !== 'profile') {
+        navMenuGoTo('profile');
+    }
+}
+
+/**
+ * A row of the profile menu that opens one of its submenus (the
+ * "profile-sub" screen) - same look as the drawer's own rows.
+ */
+function profileSubRowHtml(id, onclick, icon, label) {
+    return '<li><button id="' + id + '" type="button" class="nav-menu-row" onclick="' + onclick + '">' +
+        '<i class="material-icons-round nav-menu-row-icon">' + icon + '</i>' +
+        '<span class="nav-menu-row-labels">' + label + '</span>' +
+        '<i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>';
+}
+
+/**
+ * Leaves the current drawer screen like its back arrow does - every
+ * profile screen ends with one, the bottom-of-the-screen alternative to
+ * the arrow at the top.
+ */
+function navCancelButtonHtml() {
+    return '<button type="button" class="nav-btn-secondary nav-cancel-btn" onclick="navMenuBack();">' + t('common.cancel') + '</button>';
+}
+
+/**
+ * Shows `html` in the profile submenu under `title`, sliding it in from the
+ * right unless it is already showing (a form re-rendering itself, e.g.
+ * the Garmin section after creating a key).
+ */
+function openProfileSub(title, html) {
+    document.getElementById('profileSubTitle').textContent = title;
+    document.getElementById('userWindowSub').innerHTML = html;
+    if (navMenuStack[navMenuStack.length - 1] !== 'profile-sub') {
+        navMenuGoTo('profile-sub');
+    }
 }
 
 function clickOnEnter(event, elementId) {
@@ -87,15 +124,14 @@ function goToForgotPassword() {
  * does require access to the account's email inbox.
  */
 function showChangePasswordForm() {
-    document.getElementById('userWindowSub').innerHTML =
-        '<div class="nav-divider"></div>' +
+    openProfileSub(t('user.change_password_button'),
         '<div class="nav-field"><label for="userChangePasswordCurrent">' + t('user.current_password_label') + '</label><div class="password-input-wrapper"><input id="userChangePasswordCurrent" type="password" autocomplete="current-password">' + passwordToggleButtonHtml('userChangePasswordCurrent') + '</div></div>' +
         '<div class="nav-field"><label for="userChangePasswordNew">' + t('user.new_password_label') + '</label><div class="password-input-wrapper"><input id="userChangePasswordNew" type="password" autocomplete="new-password">' + passwordToggleButtonHtml('userChangePasswordNew') + '</div></div>' +
         '<div class="nav-field"><label for="userChangePasswordConfirm">' + t('user.confirm_new_password_label') + '</label><div class="password-input-wrapper"><input id="userChangePasswordConfirm" type="password" autocomplete="new-password">' + passwordToggleButtonHtml('userChangePasswordConfirm') + '</div></div>' +
         '<div class="nav-form-message" id="userChangePasswordMessage"></div>' +
         '<button id="userChangePasswordSaveBtn" class="nav-btn-primary" type="button" onClick="submitChangePassword();"><i class="material-icons-round">check</i>&nbsp;' + t('user.save_password_button') + '</button>' +
-        '<span class="nav-link-small" onclick="document.getElementById(\'userWindowSub\').innerHTML=\'\';">' + t('common.cancel') + '</span>'
-    ;
+        navCancelButtonHtml()
+    );
 }
 
 function submitChangePassword() {
@@ -135,22 +171,21 @@ function submitChangePassword() {
 const KMH_PER_KNOT = 1.852;
 
 function showDefaultSpeedForm() {
-    var sub = document.getElementById('userWindowSub');
+    var title = t('user.default_speed_button');
     var knots = settings.unit === NAUTICAL;
-    sub.innerHTML = '<div class="nav-divider"></div><div class="nav-form-message">' + t('watch.loading') + '</div>';
+    openProfileSub(title, '<div class="nav-form-message">' + t('watch.loading') + '</div>' + navCancelButtonHtml());
 
     Ytan.get('/auth/default-speed').then(answer => {
         var kmh = answer.data.default_speed_kmh;
         var shown = kmh === null ? '' : (knots ? kmh / KMH_PER_KNOT : kmh).toFixed(1);
-        sub.innerHTML =
-            '<div class="nav-divider"></div>' +
+        openProfileSub(title,
             '<div class="nav-field"><label for="userDefaultSpeed">' + t('user.default_speed_label', { unit: knots ? 'kn' : 'km/h' }) + '</label>' +
             '<input id="userDefaultSpeed" type="number" inputmode="decimal" min="0" step="0.1" value="' + shown + '"></div>' +
             '<div class="nav-form-message">' + t('user.default_speed_hint') + '</div>' +
             '<button id="userDefaultSpeedSaveBtn" class="nav-btn-primary" type="button" onClick="submitDefaultSpeed();"><i class="material-icons-round">check</i>&nbsp;' + t('common.save') + '</button>' +
-            '<span class="nav-link-small" onclick="document.getElementById(\'userWindowSub\').innerHTML=\'\';">' + t('common.cancel') + '</span>';
+            navCancelButtonHtml());
     }).catch(err => {
-        sub.innerHTML = '<div class="nav-divider"></div><div class="nav-form-message">' + apiErrorMessage(err) + '</div>';
+        openProfileSub(title, '<div class="nav-form-message">' + apiErrorMessage(err) + '</div>' + navCancelButtonHtml());
     });
 }
 
@@ -176,16 +211,15 @@ function submitDefaultSpeed() {
  * the new address is clicked (see AuthService::updateProfile()).
  */
 function showEditProfileForm() {
-    document.getElementById('userWindowSub').innerHTML =
-        '<div class="nav-divider"></div>' +
+    openProfileSub(t('user.edit_profile_button'),
         '<div class="nav-field"><label for="userEditProfileFirstname">' + t('user.firstname_label') + '</label><input id="userEditProfileFirstname" type="text" value="' + user.firstname + '"></div>' +
         '<div class="nav-field"><label for="userEditProfileLastname">' + t('user.lastname_label') + '</label><input id="userEditProfileLastname" type="text" value="' + user.lastname + '"></div>' +
         '<div class="nav-field"><label for="userEditProfileEmail">' + t('user.email_label') + '</label><input id="userEditProfileEmail" type="email" value="' + user.email + '"></div>' +
         '<div class="nav-field"><label for="userEditProfileCurrentPassword">' + t('user.current_password_label') + '</label><div class="password-input-wrapper"><input id="userEditProfileCurrentPassword" type="password" autocomplete="current-password">' + passwordToggleButtonHtml('userEditProfileCurrentPassword') + '</div></div>' +
         '<div class="nav-form-message" id="userEditProfileMessage"></div>' +
         '<button id="userEditProfileSaveBtn" class="nav-btn-primary" type="button" onClick="submitEditProfile();"><i class="material-icons-round">check</i>&nbsp;' + t('user.save_profile_button') + '</button>' +
-        '<span class="nav-link-small" onclick="document.getElementById(\'userWindowSub\').innerHTML=\'\';">' + t('common.cancel') + '</span>'
-    ;
+        navCancelButtonHtml()
+    );
 }
 
 function submitEditProfile() {
@@ -221,6 +255,7 @@ function submitEditProfile() {
         );
 
         showUserWindow();
+        navMenuBack();
     }).catch(err => {
         message.style.color = 'var(--color-danger)';
         message.textContent = apiErrorMessage(err);

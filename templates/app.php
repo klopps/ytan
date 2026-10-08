@@ -361,6 +361,20 @@
         </div>
       </div>
 
+      <!-- PROFILE SUBMENU - one screen shared by every profile row (edit
+           profile, password, default speed, Garmin watch): user.js's
+           openProfileSub() sets the title and renders the form into
+           #userWindowSub, watch.js re-renders into it in place. -->
+      <div class="nav-screen nav-screen-off-right" data-nav-screen="profile-sub">
+        <div class="nav-screen-header">
+          <button type="button" class="nav-back" onclick="navMenuBack();"><i class="material-icons-round">arrow_back</i></button>
+          <h3 id="profileSubTitle"></h3>
+        </div>
+        <div class="nav-screen-body">
+          <div id="userWindowSub"></div>
+        </div>
+      </div>
+
     </div>
 
     <!-- COOKIE MENU ----------------------------------->

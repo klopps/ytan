@@ -76,23 +76,21 @@ function sendRouteToWatch(i) {
 }
 
 /**
- * "Garmin watch" sub-section of the profile screen (user.js's
- * showUserWindow() button), rendered into #userWindowSub like the
- * change-password/edit-profile forms.
+ * "Garmin watch" submenu of the profile screen (user.js's showUserWindow()
+ * row), rendered via openProfileSub() like the change-password/edit-profile
+ * forms - and re-rendered in place there after each action below.
  */
 function showWatchSection(newToken) {
-    const sub = document.getElementById('userWindowSub');
-    sub.innerHTML = '<div class="nav-divider"></div><div class="nav-form-message">' + escapeHTML(t('watch.loading')) + '</div>';
+    const title = t('watch.title');
+    openProfileSub(title, '<div class="nav-form-message">' + escapeHTML(t('watch.loading')) + '</div>' + navCancelButtonHtml());
 
     loadWatchStatus().then((status) => {
         if (!status) {
-            sub.innerHTML = '<div class="nav-divider"></div><div class="nav-form-message">' + escapeHTML(t('watch.load_failed')) + '</div>';
+            openProfileSub(title, '<div class="nav-form-message">' + escapeHTML(t('watch.load_failed')) + '</div>' + navCancelButtonHtml());
             return;
         }
 
-        let html = '<div class="nav-divider"></div>' +
-            '<p class="nav-field-label">' + escapeHTML(t('watch.title')) + '</p>' +
-            '<div class="nav-form-message">' + escapeHTML(status.has_token ? t('watch.paired') : t('watch.not_paired')) + '</div>';
+        let html = '<div class="nav-form-message">' + escapeHTML(status.has_token ? t('watch.paired') : t('watch.not_paired')) + '</div>';
 
         if (newToken) {
             html +=
@@ -120,7 +118,7 @@ function showWatchSection(newToken) {
         if (status.has_token) {
             html += '<button type="button" class="nav-btn-secondary nav-btn-danger" onclick="unpairWatch();"><i class="material-icons-round">link_off</i>&nbsp;' + escapeHTML(t('watch.unpair')) + '</button>';
         }
-        sub.innerHTML = html;
+        openProfileSub(title, html + navCancelButtonHtml());
     });
 }
 

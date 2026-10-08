@@ -4684,6 +4684,16 @@ input[type="color"] {
   filter: brightness(0.95);
 }
 
+/* "Cancel" at the bottom of every profile screen (user.js's
+   navCancelButtonHtml()), set apart from the screen's own buttons. */
+.nav-btn-secondary.nav-cancel-btn {
+  margin-top: 20px;
+}
+
+#userWindowSub {
+  padding-top: 8px;
+}
+
 .nav-field {
   margin: 0 16px 12px 16px;
 }
