@@ -26,6 +26,24 @@ final class SettingsRepository
     }
 
     /**
+     * "Allow GPX export for everyone (even signed out)": when set, anyone may
+     * export every route they can see, independent of the export_routes_own/
+     * export_routes_public rights (RouteExportController::gpx()).
+     */
+    public function gpxExportPublic(): bool
+    {
+        $stmt = $this->db->query('SELECT gpx_export_public FROM app_settings WHERE id = 1');
+
+        return (bool) $stmt->fetchColumn();
+    }
+
+    public function setGpxExportPublic(bool $enabled): void
+    {
+        $stmt = $this->db->prepare('UPDATE app_settings SET gpx_export_public = ? WHERE id = 1');
+        $stmt->execute([(int) $enabled]);
+    }
+
+    /**
      * The three distance-filter presets track-recorder.js offers when
      * starting a GPS recording (Capacitor background-geolocation's only
      * tunable lever for update frequency/battery use) - previously a

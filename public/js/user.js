@@ -385,6 +385,8 @@ function loginUser() {
         user.tour_manage  = !!answer.user.tour_manage;
         user.tour_copy    = !!answer.user.tour_copy;
         user.route_view_recording = !!answer.user.route_view_recording;
+        user.export_routes_own = !!answer.user.export_routes_own;
+        user.export_routes_public = !!answer.user.export_routes_public;
 
         sessionStorage.setItem('user', JSON.stringify(user));
         closeUserWindow();

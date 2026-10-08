@@ -1158,43 +1158,91 @@ function createRoute(i) {
 function showRouteContextMenu(event, i) {
     log('showRouteContextMenu(event, ' + i +')', LOG_DEBUG);
 
-    if (user.id !== null) {
-        if ((routes[i].user_id == user.id) || (user.is_admin === true)) {
-            log('Show contextMenu', LOG_DEBUG);
+    // Edit/delete/share/tour/watch stay owner-or-admin only; the GPX export
+    // has its own rights (canExportRoute()), so a visitor or a user who
+    // doesn't own the route may get a menu with just that item.
+    var canEdit = user.id !== null && ((routes[i].user_id == user.id) || (user.is_admin === true));
+    var canExport = canExportRoute(i);
+    if (!canEdit && !canExport) {
+        return;
+    }
 
-            contextMenuLastLatLng = event.latLng; // routeContextMenuAddToTour() reuses this to reposition routeInfoWindow
+    log('Show contextMenu', LOG_DEBUG);
 
-            var content =
-                '<div class="contextMenuItem" onClick="routeContextMenuEditRoute(' + i + ', null, null);"><i class="material-icons-round">edit</i>' + t('route.context.edit_route') + '</div>' +
-                '<div class="contextMenuItem" onClick="routeContextMenuEditInfo(' + i + ');"><i class="material-icons-round">description</i>' + t('route.context.edit_info') + '</div>';
+    contextMenuLastLatLng = event.latLng; // routeContextMenuAddToTour() reuses this to reposition routeInfoWindow
 
-            if (routes[i].user_id == user.id) {
-                content += '<div class="contextMenuItem" onClick="routeContextMenuAddToTour(' + i + ');"><i class="material-icons-round">playlist_add</i>' + t('route.context.add_to_tour') + '</div>';
-            }
+    var content = '';
+    if (canEdit) {
+        content +=
+            '<div class="contextMenuItem" onClick="routeContextMenuEditRoute(' + i + ', null, null);"><i class="material-icons-round">edit</i>' + t('route.context.edit_route') + '</div>' +
+            '<div class="contextMenuItem" onClick="routeContextMenuEditInfo(' + i + ');"><i class="material-icons-round">description</i>' + t('route.context.edit_info') + '</div>';
 
-            // Same gating as tour-admin.js's "Share" button on the tour
-            // detail screen (tour.public == 1) - a private route's data is
-            // technically still fetchable by a direct GET /routes/{id} (no
-            // assertCanView() there, same pre-existing inconsistency the
-            // Share Tour feature already left alone), but offering a share
-            // link for something not meant to be public would be misleading.
-            if (routes[i].public == 1) {
-                content += '<div class="contextMenuItem" onClick="shareRoute(' + i + ');"><i class="material-icons-round">share</i>' + t('route.context.share') + '</div>';
-            }
-
-            if (isWatchPaired()) {
-                content += '<div class="contextMenuItem" onClick="routeContextMenuSendToWatch(' + i + ');"><i class="material-icons-round">watch</i>' + t('route.context.send_to_watch') + '</div>';
-            }
-
-            content +=
-                '<div class="contextMenuItem" onClick="routeContextMenuRemoveRoute(' + i + ');"><i class="material-icons-round">delete</i>' + t('route.context.delete_route') + '</div>' +
-                '<div class="contextMenuItem" onClick="closeContextMenu();"><i class="material-icons-round">close</i>' + t('common.cancel') + '</div>'
-                ;
-
-            contextMenu.setPosition(event.latLng);
-            contextMenu.setContent(content);
-            contextMenu.open(map);
+        if (routes[i].user_id == user.id) {
+            content += '<div class="contextMenuItem" onClick="routeContextMenuAddToTour(' + i + ');"><i class="material-icons-round">playlist_add</i>' + t('route.context.add_to_tour') + '</div>';
         }
+
+        // Same gating as tour-admin.js's "Share" button on the tour
+        // detail screen (tour.public == 1) - a private route's data is
+        // technically still fetchable by a direct GET /routes/{id} (no
+        // assertCanView() there, same pre-existing inconsistency the
+        // Share Tour feature already left alone), but offering a share
+        // link for something not meant to be public would be misleading.
+        if (routes[i].public == 1) {
+            content += '<div class="contextMenuItem" onClick="shareRoute(' + i + ');"><i class="material-icons-round">share</i>' + t('route.context.share') + '</div>';
+        }
+
+        if (isWatchPaired()) {
+            content += '<div class="contextMenuItem" onClick="routeContextMenuSendToWatch(' + i + ');"><i class="material-icons-round">watch</i>' + t('route.context.send_to_watch') + '</div>';
+        }
+    }
+
+    if (canExport) {
+        content += '<div class="contextMenuItem" onClick="routeContextMenuExportGpx(' + i + ');"><i class="material-icons-round">file_download</i>' + t('route.context.export_gpx') + '</div>';
+    }
+
+    if (canEdit) {
+        content += '<div class="contextMenuItem" onClick="routeContextMenuRemoveRoute(' + i + ');"><i class="material-icons-round">delete</i>' + t('route.context.delete_route') + '</div>';
+    }
+
+    content += '<div class="contextMenuItem" onClick="closeContextMenu();"><i class="material-icons-round">close</i>' + t('common.cancel') + '</div>';
+
+    contextMenu.setPosition(event.latLng);
+    contextMenu.setContent(content);
+    contextMenu.open(map);
+}
+
+/**
+ * Whether to offer "Export route (GPX 1.1)" - mirrors
+ * RouteExportController::canExport(), which is the actual check. Every
+ * route on the map is already visible to the user (public, own, or all of
+ * them for an admin), so only the rights/setting part needs checking here.
+ * A route created offline and not synced yet has no server id to export.
+ */
+function canExportRoute(i) {
+    if (!(routes[i].id > 0)) {
+        return false;
+    }
+    if (window.YTAN_GPX_EXPORT_PUBLIC) {
+        return true;
+    }
+    if (user.id === null) {
+        return false;
+    }
+    return user.is_admin === true
+        || (!!user.export_routes_public && routes[i].public == 1)
+        || (!!user.export_routes_own && routes[i].user_id == user.id);
+}
+
+async function routeContextMenuExportGpx(i) {
+    closeContextMenu();
+    var route = routes[i];
+    var base = decodeHtmlEntities(route.name || '').replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '').slice(0, 80);
+    try {
+        var blob = await Ytan.fetchBlob('/routes/' + route.id + '/gpx');
+        await downloadBlob(blob, (base || 'route-' + route.id) + '.gpx');
+    } catch (err) {
+        log('routeContextMenuExportGpx(' + i + ') failed', LOG_ERROR, err);
+        showToast(t('route.context.export_gpx_failed'), 'error');
     }
 }
 

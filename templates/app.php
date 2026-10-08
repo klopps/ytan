@@ -7,6 +7,7 @@
 
     <script>window.YTAN_API_BASE = "<?= htmlspecialchars($baseUrl, ENT_QUOTES) ?>/api/v1";</script>
     <script>window.YTAN_GOOGLE_SEARCH_REQUIRES_LOGIN = <?= $googleSearchRequiresLogin ? 'true' : 'false' ?>;</script>
+    <script>window.YTAN_GPX_EXPORT_PUBLIC = <?= $gpxExportPublic ? 'true' : 'false' ?>;</script>
     <script>window.YTAN_TRACK_DISTANCE_FILTER_PRESETS = <?= json_encode($trackDistanceFilterPresets) ?>;</script>
     <script>window.YTAN_ROUTE_LABEL_FONT_SIZE_RANGE = <?= json_encode($routeLabelFontSizeRange) ?>;</script>
     <script>window.YTAN_LOCALE = "<?= htmlspecialchars($translator->locale(), ENT_QUOTES) ?>";</script>
@@ -582,6 +583,8 @@
           user.tour_manage = !!answer.data.tour_manage;
           user.tour_copy = !!answer.data.tour_copy;
           user.route_view_recording = !!answer.data.route_view_recording;
+          user.export_routes_own = !!answer.data.export_routes_own;
+          user.export_routes_public = !!answer.data.export_routes_public;
           user.pending_email = answer.data.pending_email;
           user.pending_email_expires_at = answer.data.pending_email_expires_at;
 

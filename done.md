@@ -1,5 +1,26 @@
 # Erledigt
 
+## Routen-Export als GPX 1.1 Datei (2026-10-08)
+~~Routen sollen als GPX-1.1-Datei exportiert werden können. Wenn die entsprechenden Rechte vorliegen, soll das Kontextmenü einer Route dafür den Punkt "Route exportieren (GPX 1.1)" erhalten.~~
+
+### Einstellungen
+~~Es soll eine neue globale Einstellung in admin/settings mit Pill-Switch und der Beschriftung "GPX-Export allen Nutzern (auch ohne Anmeldung) erlauben" geben. Ist diese gesetzt, ist die Funktion immer verfügbar, auch wenn der Nutzer nicht das Recht export_routes_own oder export_routes_public hat.~~
+
+### Rechte
+~~Unabhängig von der globalen Einstellungen dürfen Benutzer mit dem Recht~~
+~~- export_routes_own ihre eigenen Route exportieren~~
+~~- export_routes_visible alle für sie sichtbaren Routen exportieren.~~
+
+~~Nachtrag: Das Recht export_routes_visible muss geändert werden. Es soll export_routes_public heißen und das Recht einräumen, öffentliche Routen zu exportieren.~~
+
+Gelöst (2026-10-08):
+- **Endpunkt** `GET /api/v1/routes/{id}/gpx` im neuen `RouteExportController` (eigener Controller, weil er das `SettingsRepository` braucht, das `RouteController` nicht hat). Die Datei baut `GpxExportService`: GPX 1.1 mit `<metadata>` (Name, Exportzeit) und **einem Track** `<trk><trkseg><trkpt lat lon>` samt Name/Beschreibung - bewusst `<trk>` statt `<rte>`, weil Garmin Connect, Komoot, OsmAnd usw. einen Track zuverlässig als nachzufahrende Strecke importieren, während manche eine `<rte>` mit Hunderten Punkten als Liste von Abbiegepunkten lesen. Zeiten und Höhen gibt es pro Punkt nicht (eine Route speichert nur lat/lng). Koordinaten mit 7 Nachkommastellen; Antwort als `application/gpx+xml`-Anhang.
+- **Regel:** Die Route muss für den Aufrufer sichtbar sein (öffentlich, eigene oder Admin - wie bei den Routenfotos) **und** entweder die globale Einstellung ist an (dann für alle, auch ohne Anmeldung), oder Admin, oder öffentliche Route + `export_routes_public`, oder eigene Route + `export_routes_own`. Sonst 403. Private fremde Routen bleiben also auch mit eingeschalteter Einstellung gesperrt, und `export_routes_public` deckt auch die eigenen privaten Routen nicht ab (dafür ist `export_routes_own` da). Ursprünglich als `export_routes_visible` ("alle sichtbaren Routen") gebaut, noch am selben Tag vor dem ersten Commit auf Wunsch zu `export_routes_public` (nur öffentliche Routen) geändert - Migration 029 direkt angepasst, da nirgends deployt.
+- **Rechte** `export_routes_own`/`export_routes_public` (Migration `029_add_gpx_export_rights_and_setting.sql`, Muster wie `route_view_recording`): `UserRepository`, `UserController` (auch als Filter in der Benutzerliste), JWT-Claims (`AuthService::issueToken()`), Admin-Benutzerformular (`admin-user.js`, Gruppe "Weitere Berechtigungen" mit Beschreibungstext), Benutzerobjekt im Frontend (`helper.js`, `user.js`, `app.php`, `admin-auth.js`), Test-Hilfen und e2e-Seed. Admin hat beide implizit.
+- **Einstellung** `app_settings.gpx_export_public`: Pill-Switch "GPX-Export allen Nutzern (auch ohne Anmeldung) erlauben" in `/admin/settings` (speichert sofort per `PUT /settings/gpx-export-public`, wie der Google-Suche-Schalter; beide teilen sich jetzt `toggleSetting()` in `admin-settings.js`), an die Karte als `window.YTAN_GPX_EXPORT_PUBLIC`.
+- **Kontextmenü** (`route.js`): neuer Punkt "Route exportieren (GPX 1.1)" (`file_download`) vor "Route löschen". `showRouteContextMenu()` öffnete bisher nur für Eigentümer/Admin; jetzt auch für fremde Routen und ohne Anmeldung, sobald `canExportRoute()` (spiegelt die Server-Regel, nur für die Anzeige) zutrifft - dann mit nur diesem Punkt und "Abbrechen". Offline angelegte, noch nicht synchronisierte Routen werden nicht angeboten (keine Server-Id). Der Download läuft über `Ytan.fetchBlob()` + `downloadBlob()` (in der Android-App also über das Teilen-Menü, wie das Touren-PDF), Dateiname aus dem Routennamen; bei einem Fehler ein Toast.
+- Geprüft: PHPUnit grün (362 Tests, neu `GpxExportServiceTest`, `RouteExportControllerTest` mit allen Rechte-/Einstellungs-Kombinationen), e2e-Suite grün (9). Im Browser: Menüpunkt mit Symbol, Download als Admin (gültiges GPX, 170 Punkte), ohne Anmeldung 403 bzw. mit eingeschalteter Einstellung 200 (danach wieder ausgeschaltet), Admin-Benutzerformular mit den zwei neuen Schaltern (390 px).
+
 ## Das Suchfeld bleibt nach der Suche geöffnet (2026-10-08)
 ~~Das Suchfeld bleibt nach der Suche geöffnet und es gibt keine Möglichkeit es zu schließen. Dadurch ist die Toolbar in der Mobilansicht dauerhaft verschwunden. Am Ende des Suchfeldes muss einen Schließen-Button geben.~~
 

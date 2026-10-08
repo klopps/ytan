@@ -22,7 +22,7 @@ final class UserController extends BaseController
     ) {
     }
 
-    private const RIGHT_FIELDS = ['is_admin', 'tour_create', 'tour_publish', 'tour_manage', 'tour_copy', 'route_view_recording'];
+    private const RIGHT_FIELDS = ['is_admin', 'tour_create', 'tour_publish', 'tour_manage', 'tour_copy', 'route_view_recording', 'export_routes_own', 'export_routes_public'];
 
     public function index(Request $request, Response $response): Response
     {

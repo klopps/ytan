@@ -41,7 +41,7 @@ final class UserRepository
         return $user === false ? null : $user;
     }
 
-    private const RIGHT_COLUMNS = ['is_admin', 'tour_create', 'tour_publish', 'tour_manage', 'tour_copy', 'route_view_recording'];
+    private const RIGHT_COLUMNS = ['is_admin', 'tour_create', 'tour_publish', 'tour_manage', 'tour_copy', 'route_view_recording', 'export_routes_own', 'export_routes_public'];
 
     /**
      * @param array<string,mixed> $filters optional exact-match filters, one
@@ -53,7 +53,7 @@ final class UserRepository
     {
         [$where, $params] = $this->buildRightFilterWhere($filters);
 
-        $sql = 'SELECT id, username, email, firstname, lastname, is_admin, tour_create, tour_publish, tour_manage, tour_copy, route_view_recording FROM user';
+        $sql = 'SELECT id, username, email, firstname, lastname, is_admin, tour_create, tour_publish, tour_manage, tour_copy, route_view_recording, export_routes_own, export_routes_public FROM user';
         if ($where !== []) {
             $sql .= ' WHERE ' . implode(' AND ', $where);
         }
@@ -108,8 +108,8 @@ final class UserRepository
     public function create(array $data): array
     {
         $stmt = $this->db->prepare(
-            'INSERT INTO user (username, email, firstname, lastname, is_admin, tour_create, tour_publish, tour_manage, tour_copy, route_view_recording, password)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)'
+            'INSERT INTO user (username, email, firstname, lastname, is_admin, tour_create, tour_publish, tour_manage, tour_copy, route_view_recording, export_routes_own, export_routes_public, password)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)'
         );
 
         try {
@@ -124,6 +124,8 @@ final class UserRepository
                 (int) ($data['tour_manage'] ?? 0),
                 (int) ($data['tour_copy'] ?? 0),
                 (int) ($data['route_view_recording'] ?? 0),
+                (int) ($data['export_routes_own'] ?? 0),
+                (int) ($data['export_routes_public'] ?? 0),
             ]);
         } catch (PDOException $e) {
             if ($e->getCode() === '23000') {
@@ -147,7 +149,7 @@ final class UserRepository
         $merged = array_merge($existing, $data);
 
         $stmt = $this->db->prepare(
-            'UPDATE user SET username=?, email=?, firstname=?, lastname=?, is_admin=?, tour_create=?, tour_publish=?, tour_manage=?, tour_copy=?, route_view_recording=? WHERE id=?'
+            'UPDATE user SET username=?, email=?, firstname=?, lastname=?, is_admin=?, tour_create=?, tour_publish=?, tour_manage=?, tour_copy=?, route_view_recording=?, export_routes_own=?, export_routes_public=? WHERE id=?'
         );
 
         try {
@@ -162,6 +164,8 @@ final class UserRepository
                 (int) ($merged['tour_manage'] ?? 0),
                 (int) ($merged['tour_copy'] ?? 0),
                 (int) ($merged['route_view_recording'] ?? 0),
+                (int) ($merged['export_routes_own'] ?? 0),
+                (int) ($merged['export_routes_public'] ?? 0),
                 $id,
             ]);
         } catch (PDOException $e) {

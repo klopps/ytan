@@ -26,6 +26,7 @@ use Ytan\Http\Controllers\AuthController;
 use Ytan\Http\Controllers\GeocodingController;
 use Ytan\Http\Controllers\PoiController;
 use Ytan\Http\Controllers\RouteController;
+use Ytan\Http\Controllers\RouteExportController;
 use Ytan\Http\Controllers\SettingsController;
 use Ytan\Http\Controllers\TourController;
 use Ytan\Http\Controllers\TranslationController;
@@ -149,6 +150,7 @@ final class App
         $wsiController = new WsiController(new WsiRenderer($rootDir . '/public/images/wsi'));
         $settingsRepository = new SettingsRepository($pdo);
         $settingsController = new SettingsController($settingsRepository);
+        $routeExportController = new RouteExportController($routeRepository, $settingsRepository, $appName);
         $translationController = new TranslationController(
             new TranslationRepository($rootDir . '/resources/i18n'),
             new TranslationUsageScanner($rootDir)
@@ -249,6 +251,7 @@ final class App
         $app->delete('/api/v1/routes/{id}', [$routeController, 'delete']);
         $app->post('/api/v1/routes/{id}/images', [$routeController, 'uploadImage']);
         $app->get('/api/v1/routes/{id}/images', [$routeController, 'listImages']);
+        $app->get('/api/v1/routes/{id}/gpx', [$routeExportController, 'gpx']);
         $app->get('/api/v1/routes/{id}/images/{imageId}', [$routeController, 'showImage']);
         $app->delete('/api/v1/routes/{id}/images/{imageId}', [$routeController, 'deleteImage']);
 
@@ -301,6 +304,7 @@ final class App
         $app->get('/api/v1/watch/device/route', [$watchController, 'deviceRoute']);
 
         $app->put('/api/v1/settings/google-search-requires-login', [$settingsController, 'updateGoogleSearchRequiresLogin']);
+        $app->put('/api/v1/settings/gpx-export-public', [$settingsController, 'updateGpxExportPublic']);
         $app->put('/api/v1/settings/track-distance-filter', [$settingsController, 'updateTrackDistanceFilterPresets']);
         $app->put('/api/v1/settings/route-label-font-size-range', [$settingsController, 'updateRouteLabelFontSizeRange']);
 
@@ -309,6 +313,7 @@ final class App
             $mapsApiKey = $_ENV['MAPS_API_KEY'] ?? '';
             $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
             $googleSearchRequiresLogin = $settingsRepository->googleSearchRequiresLogin();
+            $gpxExportPublic = $settingsRepository->gpxExportPublic();
             $trackDistanceFilterPresets = $settingsRepository->trackDistanceFilterPresets();
             $routeLabelFontSizeRange = $settingsRepository->routeLabelFontSizeRange();
             $appVersion = 'dev';
@@ -476,6 +481,7 @@ final class App
             $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
             $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
             $googleSearchRequiresLogin = $settingsRepository->googleSearchRequiresLogin();
+            $gpxExportPublic = $settingsRepository->gpxExportPublic();
             $trackDistanceFilterPresets = $settingsRepository->trackDistanceFilterPresets();
             $routeLabelFontSizeRange = $settingsRepository->routeLabelFontSizeRange();
             require $rootDir . '/templates/admin-settings.php';

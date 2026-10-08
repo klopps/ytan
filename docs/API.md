@@ -59,6 +59,15 @@ every other caller (including the route's own owner and anonymous
 requests) gets the route with these three keys removed entirely rather
 than nulled, so the payload shape itself doesn't reveal whether a route
 was recorded (see `RouteController::redactRecordingInfo()`).
+`GET /routes/{id}/gpx` - the route as a GPX 1.1 file (`application/gpx+xml`,
+as an attachment): one `<trk>` with the route's name/description and one
+`<trkpt lat lon>` per point (no times/elevations - a route has none).
+Allowed if the route is visible to the caller (public, own, or admin) and
+the site setting `gpx_export_public` is on (then for anyone, even
+anonymous), or the caller is admin, or has `export_routes_public` and the
+route is public, or has
+`export_routes_own` and owns the route; 403 otherwise
+(`RouteExportController`).
 Area body: `name, description, public, points (JSON-encoded array of {lat,lng}), color, opacity, zindex`.
 
 ## Tours
@@ -85,7 +94,8 @@ configured or a Static Maps request fails.
 ## Users (admin only)
 
 `GET /users` - optional exact-match filters `is_admin`/`tour_create`/
-`tour_publish`/`tour_manage`/`tour_copy`/`route_view_recording` (each `0`
+`tour_publish`/`tour_manage`/`tour_copy`/`route_view_recording`/
+`export_routes_own`/`export_routes_public` (each `0`
 or `1`), plus the shared `limit`/`offset` from Pagination above.
 
 ## Garmin watch

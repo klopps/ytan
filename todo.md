@@ -1,7 +1,5 @@
 # Offene Punkte
 
-## Universelle Garmin-App zur Routennavigation
-
 ## Garmin-Datenfeld auf der Uhr überprüfen
 
 Das Connect-IQ-Datenfeld (`watch/`) ist gebaut, läuft im Simulator und hat auf der echten Uhr (fenix7pro) bereits Route und Anzeige geliefert (Details und Verlauf in done.md, "Routeninformationen auf Garmin Smartwatch"). Noch **nicht auf einer echten Uhr geprüft**:

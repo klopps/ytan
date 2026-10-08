@@ -11,18 +11,19 @@
  */
 
 const TOUR_RIGHT_FIELDS = ['tour_create', 'tour_publish', 'tour_manage', 'tour_copy'];
-// Rights that aren't about tours (currently just route_view_recording, the
-// right to see who recorded a GPS-tracked route and when - see
-// RouteController::redactRecordingInfo()) get their own bucket so the "Tour: "
+// Rights that aren't about tours (route_view_recording, the right to see
+// who recorded a GPS-tracked route and when - see
+// RouteController::redactRecordingInfo() - and the two GPX export rights,
+// see RouteExportController) get their own bucket so the "Tour: "
 // label prefix stays accurate and the two groups can be shown under separate
 // headings in the form (tour_rights_label vs. other_rights_label).
-const OTHER_RIGHT_FIELDS = ['route_view_recording'];
+const OTHER_RIGHT_FIELDS = ['route_view_recording', 'export_routes_own', 'export_routes_public'];
 // "Admin" is an app-wide right, so it's left bare; the four tour_* fields are
 // specifically about tours and are labelled "Tour: ..." everywhere they're
 // shown (this table's badges, the filter panel below) so that's never
 // ambiguous - "Create"/"Publish"/"Manage"/"Copy" alone read as generic
 // permissions otherwise.
-const USER_RIGHT_LABELS = { is_admin: t('admin_user.right_admin'), tour_create: t('admin_user.right_tour_create'), tour_publish: t('admin_user.right_tour_publish'), tour_manage: t('admin_user.right_tour_manage'), tour_copy: t('admin_user.right_tour_copy'), route_view_recording: t('admin_user.right_route_view_recording') };
+const USER_RIGHT_LABELS = { is_admin: t('admin_user.right_admin'), tour_create: t('admin_user.right_tour_create'), tour_publish: t('admin_user.right_tour_publish'), tour_manage: t('admin_user.right_tour_manage'), tour_copy: t('admin_user.right_tour_copy'), route_view_recording: t('admin_user.right_route_view_recording'), export_routes_own: t('admin_user.right_export_routes_own'), export_routes_public: t('admin_user.right_export_routes_public') };
 // Shown as small helper text under each switch in userFormHtml() (see
 // formCheckRow()'s optional 4th param) - exact semantics taken straight from
 // the backend checks these rights actually gate (TourController's
@@ -38,6 +39,8 @@ const USER_RIGHT_DESCRIPTIONS = {
     tour_manage: t('admin_user.tour_manage_desc'),
     tour_copy: t('admin_user.tour_copy_desc'),
     route_view_recording: t('admin_user.route_view_recording_desc'),
+    export_routes_own: t('admin_user.export_routes_own_desc'),
+    export_routes_public: t('admin_user.export_routes_public_desc'),
 };
 const USER_ADMIN_NEW_BUTTON_HTML = '<button type="button" class="btn btn-primary btn-sm" onclick="showUserCreateForm();"><i class="bi bi-person-plus me-1"></i>' + t('admin_user.new_user') + '</button>';
 let adminUserFilters = {}; // { is_admin: 1, tour_manage: 1, ... } - AND'ed together, see loadUserList()
@@ -301,7 +304,7 @@ function formCheckRow(id, checked, label, description) {
 }
 
 function userFormHtml(u) {
-    u = u || { id: null, username: '', email: '', firstname: '', lastname: '', is_admin: false, tour_create: false, tour_publish: false, tour_manage: false, tour_copy: false, route_view_recording: false };
+    u = u || { id: null, username: '', email: '', firstname: '', lastname: '', is_admin: false, tour_create: false, tour_publish: false, tour_manage: false, tour_copy: false, route_view_recording: false, export_routes_own: false, export_routes_public: false };
 
     var saveCall = u.id === null ? 'saveNewUser()' : 'saveEditedUser(' + u.id + ')';
     var hint = u.id === null
@@ -335,6 +338,8 @@ function userFormHtml(u) {
         formCheckRow('userFormTourCopy', u.tour_copy, t('admin_user.tour_copy_label'), USER_RIGHT_DESCRIPTIONS.tour_copy) +
         '<p class="fw-bold small text-secondary mt-3 mb-2">' + t('admin_user.other_rights_label') + '</p>' +
         formCheckRow('userFormRouteViewRecording', u.route_view_recording, t('admin_user.route_view_recording_label'), USER_RIGHT_DESCRIPTIONS.route_view_recording) +
+        formCheckRow('userFormExportRoutesOwn', u.export_routes_own, t('admin_user.export_routes_own_label'), USER_RIGHT_DESCRIPTIONS.export_routes_own) +
+        formCheckRow('userFormExportRoutesPublic', u.export_routes_public, t('admin_user.export_routes_public_label'), USER_RIGHT_DESCRIPTIONS.export_routes_public) +
         '<div class="mt-3">' +
             '<button id="userFormSaveBtn" class="btn btn-primary" type="button" onclick="' + saveCall + '">' + t('common.save') + '</button>&nbsp;' +
             '<button class="btn btn-outline-secondary" type="button" onclick="closeUserForm();">' + t('common.cancel') + '</button>' +
@@ -374,6 +379,8 @@ function readUserForm() {
         tour_manage: document.getElementById('userFormTourManage').checked,
         tour_copy: document.getElementById('userFormTourCopy').checked,
         route_view_recording: document.getElementById('userFormRouteViewRecording').checked,
+        export_routes_own: document.getElementById('userFormExportRoutesOwn').checked,
+        export_routes_public: document.getElementById('userFormExportRoutesPublic').checked,
     };
 }
 

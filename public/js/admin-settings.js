@@ -1,13 +1,25 @@
 /**
- * Logic for /admin/settings (templates/admin-settings.php) - currently just
- * the site-wide "Google search requires login" toggle, moved here (from
- * the /admin dashboard) so future site-wide settings have a dedicated home
- * instead of crowding the dashboard.
+ * Logic for /admin/settings (templates/admin-settings.php) - the site-wide
+ * settings: on/off switches saved immediately (Google search requires
+ * login, GPX export for everyone) and the track-filter/font-size value
+ * groups with their own Save buttons.
  */
 
 function toggleGoogleSearchRequiresLogin(checkbox) {
+    toggleSetting(checkbox, '/settings/google-search-requires-login');
+}
+
+function toggleGpxExportPublic(checkbox) {
+    toggleSetting(checkbox, '/settings/gpx-export-public');
+}
+
+/**
+ * Saves one on/off site setting right away; reverts the switch if the
+ * request fails.
+ */
+function toggleSetting(checkbox, path) {
     var enabled = checkbox.checked;
-    Ytan.put('/settings/google-search-requires-login', { enabled: enabled }).then(function () {
+    Ytan.put(path, { enabled: enabled }).then(function () {
         showAdminToast(t('common.saved'), 'success');
     }).catch(function (err) {
         checkbox.checked = !enabled;
@@ -51,6 +63,9 @@ function saveRouteLabelFontSizeRange() {
 function initSettingsPage() {
     document.getElementById('settingGoogleSearchRequiresLogin').addEventListener('change', function () {
         toggleGoogleSearchRequiresLogin(this);
+    });
+    document.getElementById('settingGpxExportPublic').addEventListener('change', function () {
+        toggleGpxExportPublic(this);
     });
 }
 

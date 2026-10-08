@@ -194,6 +194,8 @@ final class AuthService
             'tour_manage' => (bool) ($user['tour_manage'] ?? false),
             'tour_copy' => (bool) ($user['tour_copy'] ?? false),
             'route_view_recording' => (bool) ($user['route_view_recording'] ?? false),
+            'export_routes_own' => (bool) ($user['export_routes_own'] ?? false),
+            'export_routes_public' => (bool) ($user['export_routes_public'] ?? false),
             'iat' => time(),
             'exp' => $expiresAt,
         ], $this->jwtSecret, 'HS256');

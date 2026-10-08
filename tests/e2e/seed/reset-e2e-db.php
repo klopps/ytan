@@ -128,8 +128,8 @@ $userId = $existingId->fetchColumn();
 
 if ($userId === false) {
     $insertUser = $pdo->prepare(
-        'INSERT INTO user (username, email, password, firstname, lastname, is_admin, tour_create, tour_publish, tour_manage, tour_copy, route_view_recording)
-         VALUES (:username, :email, :password, :firstname, :lastname, 1, 1, 1, 1, 1, 1)'
+        'INSERT INTO user (username, email, password, firstname, lastname, is_admin, tour_create, tour_publish, tour_manage, tour_copy, route_view_recording, export_routes_own, export_routes_public)
+         VALUES (:username, :email, :password, :firstname, :lastname, 1, 1, 1, 1, 1, 1, 1, 1)'
     );
     $insertUser->execute([
         'username' => E2E_USERNAME,
@@ -143,7 +143,7 @@ if ($userId === false) {
 } else {
     $userId = (int) $userId;
     $updateUser = $pdo->prepare(
-        'UPDATE user SET password = :password, is_admin = 1, tour_create = 1, tour_publish = 1, tour_manage = 1, tour_copy = 1, route_view_recording = 1 WHERE id = :id'
+        'UPDATE user SET password = :password, is_admin = 1, tour_create = 1, tour_publish = 1, tour_manage = 1, tour_copy = 1, route_view_recording = 1, export_routes_own = 1, export_routes_public = 1 WHERE id = :id'
     );
     $updateUser->execute(['password' => $passwordHash, 'id' => $userId]);
     fwrite(STDERR, "[reset-e2e-db] reset existing e2e test user #$userId\n");

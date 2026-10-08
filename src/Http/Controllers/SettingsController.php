@@ -24,6 +24,15 @@ final class SettingsController extends BaseController
         return $this->json($response, ['data' => ['google_search_requires_login' => $enabled]]);
     }
 
+    public function updateGpxExportPublic(Request $request, Response $response): Response
+    {
+        $this->requireAdmin($request);
+        $enabled = (bool) ($this->jsonBody($request)['enabled'] ?? false);
+        $this->settings->setGpxExportPublic($enabled);
+
+        return $this->json($response, ['data' => ['gpx_export_public' => $enabled]]);
+    }
+
     public function updateTrackDistanceFilterPresets(Request $request, Response $response): Response
     {
         $this->requireAdmin($request);

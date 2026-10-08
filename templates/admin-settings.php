@@ -10,6 +10,10 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
             <input class="form-check-input" type="checkbox" role="switch" id="settingGoogleSearchRequiresLogin" <?= $googleSearchRequiresLogin ? 'checked' : '' ?>>
             <label class="form-check-label" for="settingGoogleSearchRequiresLogin"><?= $t('admin.settings.google_search_requires_login') ?></label>
         </div>
+        <div class="form-check form-switch mt-2">
+            <input class="form-check-input" type="checkbox" role="switch" id="settingGpxExportPublic" <?= $gpxExportPublic ? 'checked' : '' ?>>
+            <label class="form-check-label" for="settingGpxExportPublic"><?= $t('admin.settings.gpx_export_public') ?></label>
+        </div>
     </div>
 </div>
 <div class="card mt-3">
