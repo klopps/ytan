@@ -21,7 +21,7 @@ REM node_modules/ + package.json/package-lock.json + capacitor.config.json
 REM (root-level npm/Capacitor tooling, unrelated to the PHP app's own
 REM composer dependencies), assets/ (Capacitor app icon/splash source
 REM images), tests/ (PHPUnit + the self-contained Playwright e2e project,
-REM including ITS OWN node_modules/), docs/, .githooks/, .phpunit.cache/,
+REM including ITS OWN node_modules/), docs/API.md (docs/user, the user guide, ships), .githooks/, .phpunit.cache/,
 REM .playwright-mcp/ (Claude/Playwright MCP tool scratch output - gitignored
 REM but not tar-ignored, so it would otherwise ship whatever happens to be
 REM sitting in the working tree at deploy time).
@@ -88,7 +88,7 @@ tar -C "%ROOT_DIR%" ^
     --exclude="android" ^
     --exclude="watch" ^
     --exclude="assets" ^
-    --exclude="docs" ^
+    --exclude="docs/API.md" ^
     --exclude="tests" ^
     --exclude="capacitor.config.json" ^
     --exclude="package.json" ^
