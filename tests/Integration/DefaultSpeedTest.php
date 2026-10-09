@@ -13,6 +13,7 @@ use Ytan\Http\Controllers\AuthController;
 use Ytan\Http\Controllers\WatchController;
 use Ytan\Service\AuthService;
 use Ytan\Service\MailService;
+use Ytan\Service\WatchKeyVault;
 
 /**
  * The user's default paddling speed (profile) and how it reaches the watch
@@ -92,7 +93,7 @@ final class DefaultSpeedTest extends ControllerTestCase
     public function testWatchGetsTheSpeedInMetersPerSecondOnlyWhenSet(): void
     {
         $userId = $this->createUser();
-        $watch = new WatchController(new WatchLinkRepository($this->pdo), new RouteRepository($this->pdo));
+        $watch = new WatchController(new WatchLinkRepository($this->pdo), new RouteRepository($this->pdo), new WatchKeyVault('test-secret'));
         $token = $this->decode($watch->createToken($this->request('POST', '/api/v1/watch/token', $this->authPayload($userId)), $this->response()))['data']['token'];
         $device = fn () => json_decode((string) $watch->deviceRoute($this->request('GET', '/api/v1/watch/device/route')->withHeader('X-Watch-Token', $token), $this->response())->getBody(), true);
 

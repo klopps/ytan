@@ -12,8 +12,15 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 /**
  * App-local plugin (same convention as AppInfoPlugin) that wakes the YTAN
@@ -28,6 +35,12 @@ import java.util.List;
  * of the route. Everything here is best effort - if Garmin Connect is
  * missing, no watch is connected or a send fails, wake() still resolves
  * (sent: 0) and the watch picks the route up at its next regular fetch.
+ *
+ * send({payload}) goes one step further: the message carries the route
+ * payload itself (the one GET /watch/payload returns for the signed-in user,
+ * src/Service/WatchRoutePayload.php), so a watch build needs no watch key for
+ * this path - the app's login is what says whose route it is. The data field
+ * (YtanSyncService.onPhoneAppMessage()) takes such a message as the route.
  *
  * Proven on a real fenix 7X before this was built (todo.md "Routen an
  * Garmin Smartwatches schneller übertragen"): the SDK accepts the sideloaded
@@ -51,10 +64,35 @@ public class GarminWatchPlugin extends Plugin {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     /**
+     * Lets the JS side tell an APK with send() from an older one (calling a
+     * method the plugin doesn't have rejects there).
+     */
+    @PluginMethod
+    public void available(PluginCall call) {
+        JSObject answer = new JSObject();
+        answer.put("send", true);
+        call.resolve(answer);
+    }
+
+    /**
+     * Sends the route payload ({payload: {v, n, u, p, c, s?}}) to the watch -
+     * same answer and best-effort behavior as wake().
+     */
+    @PluginMethod
+    public void send(PluginCall call) {
+        if (call.getObject("payload") == null) {
+            call.reject("payload missing");
+            return;
+        }
+        wake(call);
+    }
+
+    /**
      * Resolves {sent, devices, reason?}: sent = number of connected watches
      * that confirmed the message, devices = number of connected watches;
      * reason is set when nothing could be sent (e.g. "no_device",
-     * "sdk_GARMIN_CONNECT_MOBILE_NOT_INSTALLED"). Never rejects.
+     * "sdk_GARMIN_CONNECT_MOBILE_NOT_INSTALLED"). Never rejects. Without a
+     * payload in the call the message is the plain "sync" wake-up.
      */
     @PluginMethod
     public void wake(PluginCall call) {
@@ -120,14 +158,53 @@ public class GarminWatchPlugin extends Plugin {
         WakeResult result = new WakeResult(call, devices.size());
         mainHandler.postDelayed(result::finish, WAKE_TIMEOUT_MS);
         IQApp app = new IQApp(WATCH_APP_ID);
+        Object message = "sync";
+        JSObject payload = call.getObject("payload");
+        if (payload != null) {
+            try {
+                message = toMessage(payload);
+            } catch (JSONException e) {
+                resolveNothingSent(call, devices.size(), "payload_" + e.getClass().getSimpleName());
+                return;
+            }
+        }
         for (IQDevice device : devices) {
             try {
-                connectIQ.sendMessage(device, app, "sync", (d, a, status) ->
+                connectIQ.sendMessage(device, app, message, (d, a, status) ->
                     result.answer(status == ConnectIQ.IQMessageStatus.SUCCESS));
             } catch (Exception e) {
                 result.answer(false);
             }
         }
+    }
+
+    /**
+     * JSON -> what the Connect IQ SDK serializes for the watch: Map, List,
+     * String, number, Boolean (a JSONObject itself isn't accepted).
+     */
+    private static Object toMessage(Object value) throws JSONException {
+        if (value instanceof JSONObject) {
+            JSONObject object = (JSONObject) value;
+            Map<String, Object> map = new HashMap<>();
+            Iterator<String> keys = object.keys();
+            while (keys.hasNext()) {
+                String key = keys.next();
+                map.put(key, toMessage(object.get(key)));
+            }
+            return map;
+        }
+        if (value instanceof JSONArray) {
+            JSONArray array = (JSONArray) value;
+            List<Object> list = new ArrayList<>();
+            for (int i = 0; i < array.length(); i++) {
+                list.add(toMessage(array.get(i)));
+            }
+            return list;
+        }
+        if (value == JSONObject.NULL) {
+            return null;
+        }
+        return value;
     }
 
     private static void resolveNothingSent(PluginCall call, int devices, String reason) {

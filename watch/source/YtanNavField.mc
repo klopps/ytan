@@ -239,7 +239,9 @@ class YtanNavField extends WatchUi.DataField {
     // Communications error codes, e.g. phone not reachable), "YTAN ?" if no
     // fetch has finished yet.
     private function syncLabel() {
-        if (_syncedAt != null && Time.now().value() - _syncedAt < SYNC_STALE_SECONDS) {
+        // A build without a key never fetches, so "last sync" says nothing -
+        // the route comes from the app whenever the user sends it.
+        if (!YtanKey.present() || _syncedAt != null && Time.now().value() - _syncedAt < SYNC_STALE_SECONDS) {
             return _strLabel;
         }
         return _strLabel + " " + (_syncCode != null ? _syncCode.toString() : "?");

@@ -9,7 +9,10 @@ use Ytan\Domain\Watch\WatchLinkRepository;
 use Ytan\Exception\ForbiddenException;
 use Ytan\Exception\UnauthorizedException;
 use Ytan\Exception\ValidationException;
+use Ytan\Exception\NotFoundException;
 use Ytan\Http\Controllers\WatchController;
+use Ytan\Service\WatchKeyVault;
+use Ytan\Service\WatchSettingsFile;
 
 final class WatchControllerTest extends ControllerTestCase
 {
@@ -18,7 +21,7 @@ final class WatchControllerTest extends ControllerTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->controller = new WatchController(new WatchLinkRepository($this->pdo), new RouteRepository($this->pdo));
+        $this->controller = new WatchController(new WatchLinkRepository($this->pdo), new RouteRepository($this->pdo), new WatchKeyVault('test-secret'));
     }
 
     private function points(): string
@@ -244,6 +247,136 @@ final class WatchControllerTest extends ControllerTestCase
                 $this->addToAssertionCount(1);
             }
         }
+    }
+
+    private function appPayload(int $userId, array $authOverrides = []): array
+    {
+        $response = $this->controller->payload($this->request('GET', '/api/v1/watch/payload', $this->authPayload($userId, $authOverrides)), $this->response());
+
+        return json_decode((string) $response->getBody(), true);
+    }
+
+    public function testAppPayloadNeedsNoKeyAndEqualsWhatTheKeyServes(): void
+    {
+        $userId = $this->createUser();
+        $routeId = $this->createRoute($userId, ['name' => 'Schlei', 'points' => $this->points()]);
+        $this->sendToWatch($userId, $routeId, 'nautical');
+        $this->pdo->exec('UPDATE user SET default_speed_kmh = 7.2 WHERE id = ' . $userId);
+        $token = $this->createToken($userId);
+
+        $fromApp = $this->appPayload($userId);
+
+        // Same "v": the watch must not restart its navigation when the app's
+        // message and its own key-based fetch both deliver.
+        $this->assertSame($this->deviceRoute($token), $fromApp);
+        $this->assertSame('Schlei', $fromApp['n']);
+        $this->assertSame('n', $fromApp['u']);
+        $this->assertSame([5450000, 1030000, 5460000, 1040000], $fromApp['p']);
+        $this->assertEquals(2.0, $fromApp['s']);
+    }
+
+    public function testAppPayloadWithoutAnyWatchSettingsIsEmptyWithDefaultColors(): void
+    {
+        $userId = $this->createUser();
+
+        $payload = $this->appPayload($userId);
+
+        $this->assertSame('none', $payload['v']);
+        $this->assertSame([], $payload['p']);
+        $this->assertSame(\Ytan\Service\WatchColors::flatten(\Ytan\Service\WatchColors::effective(null)), $payload['c']);
+        $this->assertArrayNotHasKey('s', $payload);
+    }
+
+    public function testAppPayloadHidesARouteMadePrivateLater(): void
+    {
+        $owner = $this->createUser();
+        $userId = $this->createUser();
+        $routeId = $this->createRoute($owner, ['public' => 1, 'points' => $this->points()]);
+        $this->sendToWatch($userId, $routeId);
+        $this->assertNotSame([], $this->appPayload($userId)['p']);
+
+        $this->pdo->exec('UPDATE route SET public = 0 WHERE id = ' . $routeId);
+
+        $this->assertSame([], $this->appPayload($userId)['p']);
+    }
+
+    public function testAppPayloadRequiresLogin(): void
+    {
+        $this->expectException(UnauthorizedException::class);
+        $this->controller->payload($this->request('GET', '/api/v1/watch/payload'), $this->response());
+    }
+
+    private function settingsFile(int $userId): \Psr\Http\Message\ResponseInterface
+    {
+        return $this->controller->settingsFile($this->request('GET', '/api/v1/watch/settings-file', $this->authPayload($userId)), $this->response());
+    }
+
+    public function testSettingsFileHoldsTheCurrentKeyUntilANewOneIsCreated(): void
+    {
+        $userId = $this->createUser();
+        $first = $this->createToken($userId);
+
+        $response = $this->settingsFile($userId);
+        $this->assertSame('attachment; filename="ytan-ReplaceByWatchName.SET"', $response->getHeaderLine('Content-Disposition'));
+        $this->assertSame(WatchSettingsFile::build($first), (string) $response->getBody());
+
+        // Still there on the next request, and the status says so.
+        $this->assertSame(WatchSettingsFile::build($first), (string) $this->settingsFile($userId)->getBody());
+        $status = $this->decode($this->controller->status($this->request('GET', '/api/v1/watch', $this->authPayload($userId)), $this->response()))['data'];
+        $this->assertTrue($status['has_settings_file']);
+
+        $second = $this->createToken($userId);
+        $this->assertNotSame($first, $second);
+        $this->assertSame(WatchSettingsFile::build($second), (string) $this->settingsFile($userId)->getBody());
+    }
+
+    public function testSettingsFileIsStoredEncryptedNotAsTheKey(): void
+    {
+        $userId = $this->createUser();
+        $token = $this->createToken($userId);
+
+        $stored = (string) $this->pdo->query('SELECT token_enc FROM watch_link WHERE user_id = ' . $userId)->fetchColumn();
+
+        $this->assertNotSame('', $stored);
+        $this->assertStringNotContainsString($token, $stored);
+        $this->assertSame($token, (new WatchKeyVault('test-secret'))->decrypt($stored));
+    }
+
+    public function testSettingsFileIsGoneAfterUnpairing(): void
+    {
+        $userId = $this->createUser();
+        $this->createToken($userId);
+        $this->controller->deleteToken($this->request('DELETE', '/api/v1/watch/token', $this->authPayload($userId)), $this->response());
+
+        $this->expectException(NotFoundException::class);
+        $this->settingsFile($userId);
+    }
+
+    public function testSettingsFileUnavailableForAKeyWithoutAnEncryptedCopy(): void
+    {
+        $userId = $this->createUser();
+        $this->createToken($userId);
+        // A key from before migration 030.
+        $this->pdo->exec('UPDATE watch_link SET token_enc = NULL WHERE user_id = ' . $userId);
+
+        $status = $this->decode($this->controller->status($this->request('GET', '/api/v1/watch', $this->authPayload($userId)), $this->response()))['data'];
+        $this->assertTrue($status['has_token']);
+        $this->assertFalse($status['has_settings_file']);
+
+        $this->expectException(NotFoundException::class);
+        $this->settingsFile($userId);
+    }
+
+    public function testSettingsFileWithoutAnyKeyIsNotFound(): void
+    {
+        $this->expectException(NotFoundException::class);
+        $this->settingsFile($this->createUser());
+    }
+
+    public function testSettingsFileRequiresLogin(): void
+    {
+        $this->expectException(UnauthorizedException::class);
+        $this->controller->settingsFile($this->request('GET', '/api/v1/watch/settings-file'), $this->response());
     }
 
     public function testStatusRequiresLogin(): void

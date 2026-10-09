@@ -9,6 +9,7 @@
     <string id="SummaryTotal">Gesamt</string>
     <string id="SummaryMoving">Fahrzeit</string>
     <string id="Eta">ETA</string>
+    <string id="WatchKeyTitle">Uhr-Schlüssel</string>
     <string id="BadToken">Uhr-Schlüssel?</string>
     <string id="UnitNauticalMiles">sm</string>
 </strings>

@@ -1,0 +1,7 @@
+<resources>
+    <properties>
+        <!-- Empty = use the key compiled into the build (YtanConfig, bin\build-watch.bat).
+             Set through the app's .SET settings file on a sideloaded watch (see YtanKey). -->
+        <property id="watchKey" type="string"></property>
+    </properties>
+</resources>

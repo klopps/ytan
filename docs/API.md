@@ -144,10 +144,18 @@ or `1`), plus the shared `limit`/`offset` from Pagination above.
 For the sideloaded Connect IQ data field in `watch/`. All but the last
 endpoint require a logged-in user (JWT).
 
-- `GET /watch` → `{"data": {"has_token", "route": {"id", "name"} | null, "unit", "colors", "default_colors"}}`
+- `GET /watch` → `{"data": {"has_token", "has_settings_file", "route": {"id", "name"} | null, "unit", "colors", "default_colors"}}`
 - `POST /watch/token` → `201 {"data": {"token"}}` - a new 32-hex-char watch
   key, shown only in this response (stored as SHA-256 hash). Replaces and
   invalidates any previous key.
+- `GET /watch/settings-file` - the Connect IQ settings file (`.SET`, binary,
+  `Content-Disposition: attachment; filename="ytan-ReplaceByWatchName.SET"`)
+  holding the user's CURRENT watch key, for the watch's `GARMIN\Apps\SETTINGS`
+  folder (the user renames it to the name the watch gave its own file).
+  Available until a new key is created or the watch is unpaired; 404 if there is
+  no key or it predates the encrypted copy (`has_settings_file` false). The key is
+  kept encrypted (`watch_link.token_enc`, AES-256-GCM, `WatchKeyVault`, key
+  derived from `JWT_SECRET`) next to its hash.
 - `DELETE /watch/token` - unpair; the device endpoint then answers 401.
 - `PUT /watch/route` `{"route_id", "unit": "metric"|"nautical"}` - the route
   the watch shows. Must be the caller's own, public, or the caller is admin.
@@ -169,6 +177,13 @@ endpoint require a logged-in user (JWT).
   `"s"` (only if the user set one) is the default paddling speed in m/s for
   the initial ETA.
   Unknown key → 401.
+- `GET /watch/payload` (JWT, no key) → the very same payload for the signed-in
+  user, also without the `data` wrapper - same `"v"`, `"c"`, `"s"` as the
+  device endpoint serves that user's key (a user who never sent or configured
+  anything gets `"v": "none"` and the default colors). The YTAN Android app
+  fetches it and hands it to the watch over the Connect IQ Mobile SDK
+  (`GarminWatchPlugin.send()`), so a data field build needs no key for that
+  path.
 
 ## WSI (wind shelter indicator)
 

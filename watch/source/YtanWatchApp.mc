@@ -4,6 +4,30 @@ import Toybox.Lang;
 import Toybox.Time;
 import Toybox.WatchUi;
 
+// Whether this build has a watch key (YtanConfig, bin/build-watch.bat). With
+// one the data field fetches its route from the server itself; a build
+// without ("app" variant) only takes what the YTAN Android app sends it over
+// the phone connection (YtanSyncService.onPhoneAppMessage()). A build with a
+// key does both - the app's message carries the same payload.
+(:background)
+module YtanKey {
+    // The key: the "watchKey" setting if there is one (a .SET settings file
+    // copied to GARMIN/APPS/SETTINGS - the only way to change a sideloaded
+    // app's settings without a new build, there is no file access otherwise),
+    // else the one compiled in.
+    function token() as String {
+        var configured = Application.Properties.getValue("watchKey");
+        if (configured instanceof String && configured.length() > 0) {
+            return configured;
+        }
+        return YtanConfig.WATCH_TOKEN;
+    }
+
+    function present() as Boolean {
+        return token().length() > 0;
+    }
+}
+
 // Annotated (:background) because the background process (YtanSyncService)
 // starts through this same class; getInitialView() only ever runs in the
 // foreground.
@@ -25,16 +49,19 @@ class YtanWatchApp extends Application.AppBase {
         // interval from now, so reopening the activity shortly after a fetch
         // could cost up to 5 more minutes. The one-off event switches to the
         // periodic schedule once its result arrives.
-        var last = Background.getLastTemporalEventTime();
-        var now = Time.now();
-        if (last == null || now.subtract(last).value() >= SYNC_INTERVAL_SECONDS) {
-            Background.registerForTemporalEvent(now);
-        } else {
-            Background.registerForTemporalEvent(last.add(new Time.Duration(SYNC_INTERVAL_SECONDS)));
+        if (YtanKey.present()) {
+            var last = Background.getLastTemporalEventTime();
+            var now = Time.now();
+            if (last == null || now.subtract(last).value() >= SYNC_INTERVAL_SECONDS) {
+                Background.registerForTemporalEvent(now);
+            } else {
+                Background.registerForTemporalEvent(last.add(new Time.Duration(SYNC_INTERVAL_SECONDS)));
+            }
         }
-        // Lets the YTAN Android app wake the background process right after
-        // a route was sent (YtanSyncService.onPhoneAppMessage()); the
-        // 5-minute fetch above stays as the fallback for everything else.
+        // Lets the YTAN Android app send the route (or wake the background
+        // process) right after it was sent (YtanSyncService.onPhoneAppMessage());
+        // with a key the 5-minute fetch above stays as the fallback for
+        // everything else, without one this is the only way a route arrives.
         if (Background has :registerForPhoneAppMessageEvent) {
             Background.registerForPhoneAppMessageEvent();
         }
@@ -46,6 +73,15 @@ class YtanWatchApp extends Application.AppBase {
         Background.registerForTemporalEvent(new Time.Duration(SYNC_INTERVAL_SECONDS));
     }
 
+    // The "watchKey" setting changed while the data field runs (e.g. a new
+    // .SET file was read): fetch with it right away.
+    function onSettingsChanged() {
+        if (YtanKey.present()) {
+            Background.registerForTemporalEvent(Time.now());
+        }
+        WatchUi.requestUpdate();
+    }
+
     function getServiceDelegate() {
         return [new YtanSyncService()];
     }
@@ -55,7 +91,7 @@ class YtanWatchApp extends Application.AppBase {
     function onBackgroundData(data) {
         // After the one-off fetch from getInitialView() (whose registration
         // may already be gone, i.e. null), continue periodically.
-        if (!(Background.getTemporalEventRegisteredTime() instanceof Time.Duration)) {
+        if (YtanKey.present() && !(Background.getTemporalEventRegisteredTime() instanceof Time.Duration)) {
             registerPeriodicSync();
         }
         if (!(data instanceof Dictionary)) {

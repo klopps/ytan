@@ -1192,7 +1192,7 @@ function showRouteContextMenu(event, i) {
             content += '<div class="contextMenuItem" onClick="shareRoute(' + i + ');"><i class="material-icons-round">share</i>' + t('route.context.share') + '</div>';
         }
 
-        if (isWatchPaired()) {
+        if (isWatchUsable()) {
             content += '<div class="contextMenuItem" onClick="routeContextMenuSendToWatch(' + i + ');"><i class="material-icons-round">watch</i>' + t('route.context.send_to_watch') + '</div>';
         }
     }
@@ -1391,7 +1391,7 @@ function showRouteInfoWindow(event, i) {
                 '<div class="routeEdit"><i class="material-icons-round" onClick="editRoute(' + i + ', ' + event.latLng.lat() + ', ' + event.latLng.lng() +');">edit</i></div>' +
             '</div>' +
             '<div id="addToTourMenu" class="addToTourMenu" style="display:none;"></div>';
-        } else if (isWatchPaired()) {
+        } else if (isWatchUsable()) {
             // Someone else's (public) route - the watch is the only action.
             content += '<div class="infoWindowBottom"><div class="lefthalf">' + watchRouteIconHtml(i) + '</div></div>';
         }

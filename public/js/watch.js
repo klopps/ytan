@@ -1,20 +1,30 @@
 /**
- * Garmin watch data field (watch/ in the repo): pairing and "send route to
- * watch". The data field itself polls GET /api/v1/watch/device/route with
- * the device token baked into its sideloaded build (bin\build-watch.bat);
- * this file only manages that token and which route the watch shows.
+ * Garmin watch data field (watch/ in the repo): "send route to watch". Two
+ * ways to the watch, which a build with a key can use side by side:
+ *  - with a watch key: the data field polls GET /api/v1/watch/device/route
+ *    with the device token baked into its sideloaded build
+ *    (bin\build-watch.bat); this file manages that token;
+ *  - in the YTAN Android app, no key: wakeWatch() fetches GET /watch/payload
+ *    (login) and hands it to the watch over the Connect IQ Mobile SDK
+ *    (capacitor-bridge.js).
  *
  * watchStatus is null until loaded (and while logged out) -
  * {has_token, route: {id, name}|null, unit} afterwards.
  */
 let watchStatus = null;
+// The app's Garmin plugin can send the route itself (an APK with send()).
+let watchDirectSend = false;
 
 function loadWatchStatus() {
     if (user.id === null) {
         watchStatus = null;
         return Promise.resolve(null);
     }
-    return Ytan.get('/watch').then((answer) => {
+    return Promise.all([
+        Ytan.get('/watch'),
+        CapacitorBridge.hasGarminWatchSend(),
+    ]).then(([answer, directSend]) => {
+        watchDirectSend = directSend;
         watchStatus = answer.data;
         return watchStatus;
     }).catch((err) => {
@@ -23,23 +33,48 @@ function loadWatchStatus() {
     });
 }
 
+/** A watch key exists, i.e. a built data field polls the server. */
 function isWatchPaired() {
     return !!(watchStatus && watchStatus.has_token);
 }
 
 /**
- * In the YTAN Android app: wakes the data field through Garmin Connect
- * (capacitor-bridge.js's wakeGarminWatch()), so it fetches what was just
- * changed within seconds instead of at its next 5-minute slot.
+ * Whether routes can be sent to a watch at all: a key exists, or this is the
+ * Android app, which sends them to the watch directly. Gates every "send to
+ * watch" control.
+ */
+function isWatchUsable() {
+    return !!watchStatus && (watchStatus.has_token || watchDirectSend);
+}
+
+/**
+ * In the YTAN Android app: gets what was just changed (route, colors, speed)
+ * to the watch through Garmin Connect within seconds - the payload itself
+ * when the plugin can send it (no key needed), else just a wake-up that makes
+ * a watch with a key fetch now instead of at its next 5-minute slot.
  * @returns {Promise<boolean>} true if at least one watch confirmed it;
  * false in a browser/PWA, on an app build without the plugin, or whenever
- * it didn't get through - the watch's regular fetch still delivers then.
+ * it didn't get through - a watch with a key still fetches it regularly.
  */
 function wakeWatch() {
-    if (!isWatchPaired() || !CapacitorBridge.isAvailable()) {
+    if (!isWatchUsable() || !CapacitorBridge.isAvailable()) {
         return Promise.resolve(false);
     }
-    return CapacitorBridge.wakeGarminWatch().then((result) => !!result && result.sent > 0);
+    const wakeOnly = () => isWatchPaired()
+        ? CapacitorBridge.wakeGarminWatch().then((result) => !!result && result.sent > 0)
+        : false;
+    if (!watchDirectSend) {
+        return wakeOnly();
+    }
+    // The payload is what the watch would fetch with its key, so a watch
+    // with a key takes it just the same (same version: no restart).
+    return Ytan.get('/watch/payload')
+        .then((payload) => CapacitorBridge.sendGarminWatch(payload))
+        .then((result) => !!result && result.sent > 0)
+        .catch((err) => {
+            log('wakeWatch() payload failed', LOG_WARN, err);
+            return wakeOnly();
+        });
 }
 
 /**
@@ -47,7 +82,7 @@ function wakeWatch() {
  * offered once a watch is paired, otherwise it would just be clutter.
  */
 function watchRouteIconHtml(i) {
-    if (!isWatchPaired()) {
+    if (!isWatchUsable()) {
         return '';
     }
     const isCurrent = watchStatus.route && watchStatus.route.id == routes[i].id;
@@ -68,7 +103,15 @@ function sendRouteToWatch(i) {
         // The toast waits for the wake-up (a second or two in the app,
         // immediate elsewhere) so it can say when the route will arrive.
         return wakeWatch().then((woke) => {
-            showToast(t(woke ? 'watch.route_sent_now' : 'watch.route_sent', { name: route.name }), 'success');
+            if (woke) {
+                showToast(t('watch.route_sent_now', { name: route.name }), 'success');
+            } else if (isWatchPaired()) {
+                showToast(t('watch.route_sent', { name: route.name }), 'success');
+            } else {
+                // No key: the watch can't fetch it later itself - it only
+                // gets the route while the data field is running.
+                showToast(t('watch.route_not_reached', { name: route.name }), 'warning');
+            }
         });
     }).catch((err) => {
         showToast(translateApiError(err.data) || err.message, 'error');
@@ -90,7 +133,10 @@ function showWatchSection(newToken) {
             return;
         }
 
-        let html = '<div class="nav-form-message">' + escapeHTML(status.has_token ? t('watch.paired') : t('watch.not_paired')) + '</div>';
+        let html = '<div class="nav-form-message">' + escapeHTML(status.has_token ? t('watch.paired') : t(watchDirectSend ? 'watch.direct' : 'watch.not_paired')) + '</div>';
+        if (watchDirectSend && status.has_token) {
+            html += '<div class="nav-form-message">' + escapeHTML(t('watch.direct_also')) + '</div>';
+        }
 
         if (newToken) {
             html +=
@@ -100,7 +146,16 @@ function showWatchSection(newToken) {
                 '<div class="nav-form-message">' + escapeHTML(t('watch.token_hint')) + '</div>';
         }
 
-        if (status.has_token) {
+        // The settings file with the key stays available until a new key is created.
+        if (status.has_settings_file) {
+            html += '<div class="nav-form-message">' + escapeHTML(t('watch.settings_file_hint')) + '</div>' +
+                '<button type="button" class="nav-btn-secondary" onclick="downloadWatchSettingsFile();"><i class="material-icons-round">file_download</i>&nbsp;' +
+                escapeHTML(t('watch.settings_file_download')) + '</button>';
+        } else if (status.has_token) {
+            html += '<div class="nav-form-message">' + escapeHTML(t('watch.settings_file_missing')) + '</div>';
+        }
+
+        if (isWatchUsable()) {
             html += '<div class="nav-form-message">' + escapeHTML(status.route
                 ? t('watch.current_route', { name: status.route.name })
                 : t('watch.no_route')) + '</div>';
@@ -109,7 +164,7 @@ function showWatchSection(newToken) {
             }
         }
 
-        if (status.has_token) {
+        if (isWatchUsable()) {
             html += watchColorsHtml(status);
         }
 
@@ -175,6 +230,21 @@ function resetWatchColors() {
         wakeWatch();
         showWatchSection();
     }).catch((err) => showToast(translateApiError(err.data) || err.message, 'error'));
+}
+
+/**
+ * Downloads the Connect IQ settings file (.SET) holding the current watch
+ * key (GET /watch/settings-file) - in the Android app via the share sheet,
+ * see helper.js's downloadBlob().
+ */
+async function downloadWatchSettingsFile() {
+    try {
+        const blob = await Ytan.fetchBlob('/watch/settings-file');
+        await downloadBlob(blob, 'ytan-ReplaceByWatchName.SET');
+    } catch (err) {
+        log('downloadWatchSettingsFile() failed', LOG_ERROR, err);
+        showToast(t('watch.settings_file_failed'), 'error');
+    }
 }
 
 function copyWatchToken() {

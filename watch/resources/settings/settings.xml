@@ -1,0 +1,7 @@
+<resources>
+    <settings>
+        <setting propertyKey="@Properties.watchKey" title="@Strings.WatchKeyTitle">
+            <settingConfig type="alphaNumeric"/>
+        </setting>
+    </settings>
+</resources>

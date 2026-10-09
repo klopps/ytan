@@ -58,6 +58,7 @@ use Ytan\Service\Weather\WeatherRegionResolver;
 use Ytan\Service\WeatherService;
 use Ytan\Service\WsiRenderer;
 use Ytan\Domain\Watch\WatchLinkRepository;
+use Ytan\Service\WatchKeyVault;
 use Ytan\Http\Controllers\WatchController;
 
 final class App
@@ -171,7 +172,7 @@ final class App
             )
         );
         $geocodingController = new GeocodingController($geocodingService);
-        $watchController = new WatchController(new WatchLinkRepository($pdo), $routeRepository);
+        $watchController = new WatchController(new WatchLinkRepository($pdo), $routeRepository, new WatchKeyVault($_ENV['JWT_SECRET'] ?? 'insecure-dev-secret'));
 
         $app = AppFactory::create();
 
@@ -305,12 +306,14 @@ final class App
 
         $app->get('/api/v1/watch', [$watchController, 'status']);
         $app->post('/api/v1/watch/token', [$watchController, 'createToken']);
+        $app->get('/api/v1/watch/settings-file', [$watchController, 'settingsFile']);
         $app->delete('/api/v1/watch/token', [$watchController, 'deleteToken']);
         $app->put('/api/v1/watch/route', [$watchController, 'setRoute']);
         $app->delete('/api/v1/watch/route', [$watchController, 'clearRoute']);
         $app->put('/api/v1/watch/colors', [$watchController, 'setColors']);
         $app->delete('/api/v1/watch/colors', [$watchController, 'resetColors']);
         $app->get('/api/v1/watch/device/route', [$watchController, 'deviceRoute']);
+        $app->get('/api/v1/watch/payload', [$watchController, 'payload']);
 
         $app->put('/api/v1/settings/google-search-requires-login', [$settingsController, 'updateGoogleSearchRequiresLogin']);
         $app->put('/api/v1/settings/gpx-export-public', [$settingsController, 'updateGpxExportPublic']);

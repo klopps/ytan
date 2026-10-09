@@ -1,5 +1,7 @@
 // Template only - bin\build-watch.bat writes the real (gitignored) Config.mc
-// with the server URL and your personal watch key before every build.
+// with the server URL and your personal watch key before every build. An
+// EMPTY WATCH_TOKEN ("bin\build-watch.bat app") means: no fetching from the
+// server, the YTAN Android app sends the route over the phone connection.
 (:background)
 module YtanConfig {
     const SERVER_URL = "https://ytan.pesr.org";

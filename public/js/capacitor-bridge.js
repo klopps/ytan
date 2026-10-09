@@ -14,7 +14,10 @@
  */
 const CapacitorBridge = (function () {
     if (!window.Capacitor || typeof window.Capacitor.isNativePlatform !== 'function' || !window.Capacitor.isNativePlatform()) {
-        return { isAvailable: function () { return false; } };
+        return {
+            isAvailable: function () { return false; },
+            hasGarminWatchSend: function () { return Promise.resolve(false); },
+        };
     }
 
     // Capacitor's native Android runtime auto-registers every bundled native
@@ -231,6 +234,52 @@ const CapacitorBridge = (function () {
         });
     }
 
+    let garminSendAvailable = null;
+
+    /**
+     * Whether this APK's Garmin plugin can send the route payload itself
+     * (sendGarminWatch()) - an older APK has only the plain wake-up.
+     * @returns {Promise<boolean>} never rejects; cached after the first answer.
+     */
+    function hasGarminWatchSend() {
+        if (!GarminWatch) {
+            return Promise.resolve(false);
+        }
+        if (garminSendAvailable !== null) {
+            return Promise.resolve(garminSendAvailable);
+        }
+        return Promise.resolve(GarminWatch.available()).then(function (result) {
+            garminSendAvailable = !!(result && result.send);
+            return garminSendAvailable;
+        }).catch(function () {
+            // "not implemented" on an APK built before send() existed.
+            garminSendAvailable = false;
+            return false;
+        });
+    }
+
+    /**
+     * Sends the route payload (GET /watch/payload) to the watch through
+     * Garmin Connect - no watch key involved, the data field takes it as its
+     * route (YtanSyncService.onPhoneAppMessage()).
+     * @returns {Promise<?{sent: number, devices: number, reason: ?string}>}
+     * like wakeGarminWatch(); null if the plugin can't send or the call fails.
+     */
+    function sendGarminWatch(payload) {
+        return hasGarminWatchSend().then(function (can) {
+            if (!can) {
+                return null;
+            }
+            return Promise.resolve(GarminWatch.send({ payload: payload })).then(function (result) {
+                log('sendGarminWatch()', LOG_DEBUG, result);
+                return result || null;
+            });
+        }).catch(function (err) {
+            log('sendGarminWatch() failed', LOG_ERROR, err);
+            return null;
+        });
+    }
+
     function canSelfUpdate() {
         return !!AppUpdate;
     }
@@ -272,5 +321,7 @@ const CapacitorBridge = (function () {
         canSelfUpdate: canSelfUpdate,
         downloadAndInstallUpdate: downloadAndInstallUpdate,
         wakeGarminWatch: wakeGarminWatch,
+        hasGarminWatchSend: hasGarminWatchSend,
+        sendGarminWatch: sendGarminWatch,
     };
 })();
