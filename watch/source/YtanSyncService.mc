@@ -15,6 +15,13 @@ class YtanSyncService extends System.ServiceDelegate {
 
     // Every 5 minutes (and once when the activity opens), see YtanWatchApp.
     function onTemporalEvent() {
+        // Only registered when the foreground saw a key. If the background
+        // process sees none (e.g. the "watchKey" setting isn't readable
+        // here), say so as "YTAN -1" instead of staying at "YTAN ?".
+        if (!YtanKey.present()) {
+            Background.exit({ "e" => -1 });
+            return;
+        }
         fetchRoute();
     }
 
