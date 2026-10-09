@@ -198,6 +198,7 @@
           <div class="nav-divider"></div>
 
           <ul class="nav-menu-list nav-menu-footer">
+            <li><button type="button" class="nav-menu-row" onclick="openHelpMenu('<?= $baseUrl ?>/help?embed=1', '<?= $t('app.nav.help') ?>');"><i class="material-icons-round nav-menu-row-icon">menu_book</i><span class="nav-menu-row-labels"><?= $t('app.nav.help') ?></span></button></li>
             <li><button type="button" class="nav-menu-row" onclick="openLegalMenu('<?= $baseUrl ?>/about', '<?= $t('app.nav.about') ?>');"><i class="material-icons-round nav-menu-row-icon">info</i><span class="nav-menu-row-labels"><?= $t('app.nav.about') ?></span></button></li>
             <li><button type="button" class="nav-menu-row" onclick="openLegalMenu('<?= $baseUrl ?>/legal/imprint', '<?= $t('app.nav.imprint') ?>');"><i class="material-icons-round nav-menu-row-icon">description</i><span class="nav-menu-row-labels"><?= $t('app.nav.imprint') ?></span></button></li>
             <li><button type="button" class="nav-menu-row" onclick="openLegalMenu('<?= $baseUrl ?>/legal/privacy', '<?= $t('app.nav.privacy_note') ?>');"><i class="material-icons-round nav-menu-row-icon">privacy_tip</i><span class="nav-menu-row-labels"><?= $t('app.nav.privacy_note') ?></span></button></li>
@@ -404,6 +405,18 @@
           <div class="button" onclick="revokeConsent();"><i class="material-icons-round">not_interested</i>&nbsp;<?= $t('app.cookies.delete') ?></div>
         </div>
         <div class="panel-logo"></div>
+      </div>
+    </div>
+
+    <!-- HELP MENU (user guide, /help in an iframe: the guide has its own search and
+         table of contents scripts, which a fetched fragment like the legal panel's would lose) -->
+    <div id="helpmenu" class="cookiemenu">
+      <div class="cm_content cm_content-compact helpmenu-content">
+        <div class="cm-panel-header">
+          <button type="button" class="nav-back" onclick="closeHelpMenu();"><i class="material-icons-round">arrow_back</i></button>
+          <h2 id="helpmenu-title" class="cm-panel-title"></h2>
+        </div>
+        <iframe id="helpmenu-frame" class="helpmenu-frame" title="<?= htmlspecialchars($t('app.nav.help'), ENT_QUOTES) ?>"></iframe>
       </div>
     </div>
 

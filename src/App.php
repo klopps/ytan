@@ -58,6 +58,7 @@ use Ytan\Service\Weather\WeatherRegionResolver;
 use Ytan\Service\WeatherService;
 use Ytan\Service\WsiRenderer;
 use Ytan\Domain\Watch\WatchLinkRepository;
+use Ytan\Service\UserGuideService;
 use Ytan\Service\WatchKeyVault;
 use Ytan\Http\Controllers\WatchController;
 
@@ -353,6 +354,29 @@ final class App
             ob_start();
             $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
             require $rootDir . '/templates/about.php';
+            $res->getBody()->write(ob_get_clean());
+
+            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
+        });
+
+        // End-user documentation (docs/user/{locale}/*.md, UserGuideService).
+        // ?embed=1 is the in-app panel's iframe: same page without its own
+        // header/back link.
+        $app->get('/help', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
+            $guide = new UserGuideService($rootDir . '/docs/user', new GithubFlavoredMarkdownConverter());
+            $chapters = $guide->chapters($translator->locale(), $baseUrl);
+            $keywordIndex = UserGuideService::keywordIndex($chapters);
+            $guideInFallbackLocale = $guide->servedLocale($translator->locale()) !== $translator->locale();
+            $embed = ($req->getQueryParams()['embed'] ?? '') === '1';
+            ob_start();
+            // The page's own texts (title, search, cover, ...) follow the language the guide is
+            // actually written in; only the "not available in your language" note is in the UI language.
+            $guideTranslator = $guideInFallbackLocale
+                ? new Translator($rootDir . '/resources/i18n', $guide->servedLocale($translator->locale()))
+                : $translator;
+            $tNote = fn (string $key) => $translator->t($key);
+            $t = fn (string $key, array $vars = []) => $guideTranslator->t($key, $vars);
+            require $rootDir . '/templates/help.php';
             $res->getBody()->write(ob_get_clean());
 
             return $res->withHeader('Content-Type', 'text/html; charset=utf-8');

@@ -142,6 +142,34 @@ function closeLegalMenu() {
 
 
 /**
+ * The user guide (/help) in a full-screen panel. An iframe rather than the
+ * fetch-and-inject openLegalMenu() does: the guide's search/table-of-contents
+ * script has to run, and a fetched fragment loses its scripts. The frame is
+ * loaded on first open (a language switch reloads the page, so a stale frame
+ * can't outlive it).
+ */
+var helpMenuLoadedUrl = null;
+
+function openHelpMenu(url, title) {
+    var frame = document.getElementById("helpmenu-frame");
+    document.getElementById("helpmenu-title").textContent = title;
+    if (helpMenuLoadedUrl !== url) {
+        frame.src = url;
+        helpMenuLoadedUrl = url;
+    }
+    slideInPanel('helpmenu');
+    pushMenuLeft();
+    panelOpened();
+}
+
+function closeHelpMenu() {
+    slideOutPanel('helpmenu');
+    unpushMenuLeft();
+    panelClosed();
+}
+
+
+/**
  * Menü
  */
 

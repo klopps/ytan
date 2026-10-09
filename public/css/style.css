@@ -792,6 +792,7 @@ img.wsi {
 #touradminmenu,
 #useradminmenu,
 #gpximportmenu,
+#helpmenu,
 #legalmenu,
 #cookiemenu {
   z-index: 110;
@@ -829,6 +830,7 @@ img.wsi {
 #touradminmenu > .cm_content,
 #useradminmenu > .cm_content,
 #gpximportmenu > .cm_content,
+#helpmenu > .cm_content,
 #legalmenu > .cm_content,
 #cookiemenu > .cm_content {
   height: 100%;
@@ -4975,4 +4977,24 @@ input[type="color"] {
 #gpximportmenu .nav-btn-secondary {
   width: 100%;
   margin: 8px 0;
+}
+
+
+/* User guide panel: the guide (/help?embed=1) scrolls inside its own iframe,
+   so the panel's content box fills the screen without padding or scrolling
+   of its own, with the header on top and the frame taking the rest. */
+#helpmenu > .cm_content.helpmenu-content {
+  display: flex;
+  flex-direction: column;
+  max-width: none;
+  padding: 12px 0 0;
+  overflow-y: hidden;
+}
+
+.helpmenu-frame {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  border: 0;
+  background-color: var(--color-bg-page);
 }

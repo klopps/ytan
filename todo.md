@@ -1,77 +1,12 @@
 # Offene Punkte
 
-## Anwenderdokumentation
+## Anwenderdokumentation auf Englisch
 
-Es wird eine Anwenderdokumentation für YTAN benötigt.
+Die Anleitung (`docs/user/de/`, `/help`) gibt es bisher nur auf Deutsch; bei der Sprache Englisch zeigt `/help` die deutsche Fassung samt deutschen Seitentexten und einem Hinweis. Ein Verzeichnis `docs/user/en/` mit denselben Dateinamen (und Frontmatter `title`/`keywords`) reicht - `UserGuideService` nimmt es automatisch. Die Screenshots sind deutsch beschriftet; für Englisch müsste `tests/e2e/screenshots/help.spec.js` mit englischer Locale laufen (eigener Dateiname-Zusatz oder eigenes Verzeichnis je Sprache).
 
-Die Dokumentation soll folgende Bedindungen erfüllen:
-- online verfügbar
-- auf Smartphones problemlos nutzbar
-- umfassend
-- leicht verständlich
-- bebildert (Screenshots, Abbildungen)
-- verschlagwortet
-- durchsuchbar
-- ein Inhaltsverzeichnis enthalten
-- kann in YTAN eingebunden werden
-- auch als ein Dokument verfügbar
-- modern und ansprechend gestaltet
-- leicht zu pflegen
+## Zweite Werkzeugleiste ist nicht übersetzt
 
-
-Die Dokumentation soll unter anderem folgende Themen umfassen:
-- Einführung in YTAN: Was ist YTAN, wozu dient es etc.
-- Quickstart Guide
-- Beschreibung der Benutzeroberfläche
-- Kurze Erklärung von 
--- Routen
---- Was passiert bei Einfach-, Doppel- und Rechts-Klick
--- Points Of Interest (POIs)
---- Untscheidung der Typen
--- Gebieten
--- Standort-Button
-- Nutzung der Toolbar
--- Anlegen, bearbeiten und Löschen von 
--- Routen
---- Hinzufügen, verschieben und entfernen von Wegpunkten
---- Teilen von Routen (Split)
--- POIs
---- Sonderfälle wie Wind-Shelter-Indicator erklären
--- Gebieten
-- Suchfunktion
-- Umschalten der Kartendarstellung
-- Touren
-- GPX-Import
--- Was ist GPX?
--- Wo bekomme ich GPX-Daten her?
--- Der Import im Detail
---- mit Beispielen
-- Teilen-Funktion
-- Wetter
--- Aufrufmöglichkeiten zur Anzeige von Wetterinformationen
--- Erläuterung zur Datenherkunft
--- Darstellung von Wetter
--- Erklärung der Tabellen und Zeichen
-- Profil
--- Anmeldung
--- Passwort-vergessen-Funktion
--- Standardgeschwindigkeit
--- Garmin-Uhr
---- Verweis auf eigenes Kapitel
-- Einstellungen
--- Kurze Erklärung aller Einstellmöglichkeiten
-- Android-App
--- Installation
--- Trackaufzeichnung
-- Garmin-App
--- Kurzbeschreibung
--- Detaillierte Beschreibung der Installation per Sideloading inkl. Settings-Datei (ytan-xxx.SET).
--- Nutzung
-- Tipps & Tricks
--- Reload durch 4fach-Klick auf YTAN-Logo
-
-Ggfs. fehlen noch einzelne Punkte.
-
+`showSecondToolbar()` (`ui.js`) setzt die Texte "Editing Route", "END EDITING", "CANCEL" fest auf Englisch, auch bei deutscher Oberfläche (aufgefallen beim Erstellen der Anleitungs-Screenshots). Über `t()` und neue Schlüssel in `de.json`/`en.json` lösen.
 
 ## Standards für alle Gestaltungselemente festlegen
 
