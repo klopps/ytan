@@ -1,3 +1,7 @@
 {
     "java.configuration.updateBuildConfiguration": "interactive"
 }
+
+{
+	"intelephense.diagnostics.undefinedVariables": false
+}

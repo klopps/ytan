@@ -60,6 +60,12 @@ a fork of PESR. It runs in the browser, as an installable PWA, and as an
   details), managed in an admin area that also holds site settings, an
   in-browser translation editor and an orphaned-image cleanup tool.
 
+**Route Navigation on Garmin Watches**
+A Garmin ConnectIQ app that provides navigation assistance on routes to the next waypoint, showing direction and distance. Tested with
+-- Forerunner 245 music
+-- Fenix 6 Pro, Fenix 6S Pro, Fenix 6X Pro
+-- Fenix 7, Fenix 7X, Fenix 7S, Fenix 7 Pro, Fenix 7S Pro, Fenix 7X Pro
+
 ## Architecture
 
 - **Backend**: PHP 8.1+, [Slim 4](https://www.slimframework.com/) micro-framework,

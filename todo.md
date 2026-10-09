@@ -1,5 +1,78 @@
 # Offene Punkte
 
+## Anwenderdokumentation
+
+Es wird eine Anwenderdokumentation für YTAN benötigt.
+
+Die Dokumentation soll folgende Bedindungen erfüllen:
+- online verfügbar
+- auf Smartphones problemlos nutzbar
+- umfassend
+- leicht verständlich
+- bebildert (Screenshots, Abbildungen)
+- verschlagwortet
+- durchsuchbar
+- ein Inhaltsverzeichnis enthalten
+- kann in YTAN eingebunden werden
+- auch als ein Dokument verfügbar
+- modern und ansprechend gestaltet
+- leicht zu pflegen
+
+
+Die Dokumentation soll unter anderem folgende Themen umfassen:
+- Einführung in YTAN: Was ist YTAN, wozu dient es etc.
+- Quickstart Guide
+- Beschreibung der Benutzeroberfläche
+- Kurze Erklärung von 
+-- Routen
+--- Was passiert bei Einfach-, Doppel- und Rechts-Klick
+-- Points Of Interest (POIs)
+--- Untscheidung der Typen
+-- Gebieten
+-- Standort-Button
+- Nutzung der Toolbar
+-- Anlegen, bearbeiten und Löschen von 
+-- Routen
+--- Hinzufügen, verschieben und entfernen von Wegpunkten
+--- Teilen von Routen (Split)
+-- POIs
+--- Sonderfälle wie Wind-Shelter-Indicator erklären
+-- Gebieten
+- Suchfunktion
+- Umschalten der Kartendarstellung
+- Touren
+- GPX-Import
+-- Was ist GPX?
+-- Wo bekomme ich GPX-Daten her?
+-- Der Import im Detail
+--- mit Beispielen
+- Teilen-Funktion
+- Wetter
+-- Aufrufmöglichkeiten zur Anzeige von Wetterinformationen
+-- Erläuterung zur Datenherkunft
+-- Darstellung von Wetter
+-- Erklärung der Tabellen und Zeichen
+- Profil
+-- Anmeldung
+-- Passwort-vergessen-Funktion
+-- Standardgeschwindigkeit
+-- Garmin-Uhr
+--- Verweis auf eigenes Kapitel
+- Einstellungen
+-- Kurze Erklärung aller Einstellmöglichkeiten
+- Android-App
+-- Installation
+-- Trackaufzeichnung
+- Garmin-App
+-- Kurzbeschreibung
+-- Detaillierte Beschreibung der Installation per Sideloading inkl. Settings-Datei (ytan-xxx.SET).
+-- Nutzung
+- Tipps & Tricks
+-- Reload durch 4fach-Klick auf YTAN-Logo
+
+Ggfs. fehlen noch einzelne Punkte.
+
+
 ## Standards für alle Gestaltungselemente festlegen
 
 An verschiedenen Stellen sind die Gestaltungselemente wie Buttons, Inputfelder, Schalter, Hinweistexte etc. unterschiedlich gestaltet. Das muss einheitlich gestaltet werden. Dazu soll im Admin-Bereich eine Beispielseite aufgebaut werden, auf der möglichst alle Elemente vertreten sind, um die Gestaltung vergleichen zu können und schließlich anzugleichen. Ein Vorbild ist das Bootstrap Cheatsheet. Es kann sein, dass einige der folgenden Elemente noch gar nicht zum Einsatz kommen.
