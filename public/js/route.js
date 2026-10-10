@@ -1172,7 +1172,7 @@ function showRouteContextMenu(event, i) {
 
     contextMenuLastLatLng = event.latLng; // routeContextMenuAddToTour() reuses this to reposition routeInfoWindow
 
-    var content = '';
+    var content = contextMenuHeading(routes[i].name);
     if (canEdit) {
         content +=
             '<div class="contextMenuItem" onClick="routeContextMenuEditRoute(' + i + ', null, null);"><i class="material-icons-round">edit</i>' + t('route.context.edit_route') + '</div>' +

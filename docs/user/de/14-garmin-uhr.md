@@ -9,12 +9,22 @@ Das YTAN-Datenfeld zeigt dir auf deiner Garmin-Uhr **während einer Aktivität**
 
 Du wählst in YTAN eine Route aus und sendest sie an die Uhr. Das **Datenfeld „YTAN Waypoint"** auf der Uhr navigiert dich von Wegpunkt zu Wegpunkt:
 
-- ein **Dreieck**, das zum nächsten Wegpunkt zeigt (dazu der Kompasswinkel),
-- die **Entfernung** zum nächsten Wegpunkt,
-- die **Nummer** des Wegpunkts (z. B. 3/12),
-- die **ETA** - Ankunftszeit am Ziel und die verbleibende Zeit (z. B. „ETA 15:42 (1:23 h)"),
-- Uhrzeit und Puls,
-- am Ziel eine **Zusammenfassung** mit Gesamtstrecke, Gesamtzeit und Fahrzeit.
+![Das YTAN-Datenfeld auf einer fenix 7X](garmin-datenfeld.jpg)
+
+Von oben nach unten zeigt das Datenfeld:
+
+| Anzeige | Bedeutung |
+|---|---|
+| **YTAN** | Abgleichstatus mit YTAN, siehe „Die Anzeige auf der Uhr" weiter unten. |
+| **11:48** und **♥ --** | Uhrzeit und Puls (`--`, solange kein Puls gemessen wird). |
+| **Faaborg - Avernakø** | Name der Route. |
+| **206°** (blau) | Kompasswinkel zum nächsten Wegpunkt: In welche Richtung du dich wenden musst. |
+| **336 m** (grün) | Entfernung zum nächsten Wegpunkt. |
+| **ETA 12:07 (00:19 h)** | Voraussichtliche Ankunftszeit am **Ziel** der Route und die verbleibende Zeit. |
+| **2.52km** (links) und **10.5km** (rechts) | Bisher in dieser Aktivität zurückgelegte Strecke (Pfeil mit Strich davor) und verbleibende Strecke bis zum Ziel (Pfeil mit Strich dahinter). |
+| **6/21** | Nummer des aktuellen Wegpunkts und Zahl aller Wegpunkte. |
+
+Am Rand des Bildschirms zeigt zusätzlich je ein **Dreieck** zum nächsten Wegpunkt und nach Norden. Die Farben lassen sich anpassen, siehe unten. Erreichst du das Ziel, zeigt die Uhr eine **Zusammenfassung** mit Gesamtstrecke, Gesamtzeit und Fahrzeit.
 
 Das Datenfeld kann nichts eingeben und hat keinen eigenen Zugang zu YTAN. Deshalb braucht es einen **Weg, die Route zu bekommen**:
 

@@ -3735,6 +3735,20 @@ p.LighthouseCharacteristic {
   color: var(--color-on-accent);
 }
 
+/* Name of the POI/route/area a context menu belongs to (helper.js's
+   contextMenuHeading()); a long name is cut off with an ellipsis. */
+.contextMenuHeading {
+  max-width: 220px;
+  padding: 2px 4px 4px 4px;
+  margin-bottom: 2px;
+  font-weight: 600;
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-border-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* A question above the items (route.js's showRouteSplitMenu()). */
 .contextMenuTitle {
   padding: 2px 4px 6px 4px;

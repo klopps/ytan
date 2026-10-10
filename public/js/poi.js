@@ -623,7 +623,7 @@ function showPoiContextMenu(event, i) {
                     sectorLightVisible = true;
                     sectorLightCommand = t('poi.context.show_sector_light');
                 }
-                content = '<div class="contextMenuItem" onClick="poiContextMenuSwitchSectorLight(' + i + ', ' + sectorLightVisible + ');"><i class="material-icons-round">lightbulb_outline</i>' + sectorLightCommand + '</div>';
+                content += '<div class="contextMenuItem" onClick="poiContextMenuSwitchSectorLight(' + i + ', ' + sectorLightVisible + ');"><i class="material-icons-round">lightbulb_outline</i>' + sectorLightCommand + '</div>';
             }
         }
     }
@@ -639,7 +639,8 @@ function showPoiContextMenu(event, i) {
     }
 
     if (content != '') {
-        content += '<div class="contextMenuItem" onClick="closeContextMenu();"><i class="material-icons-round">close</i>' + t('common.cancel') + '</div>';
+        content = contextMenuHeading(pois[i].name) + content +
+            '<div class="contextMenuItem" onClick="closeContextMenu();"><i class="material-icons-round">close</i>' + t('common.cancel') + '</div>';
 
         contextMenu.setPosition(event.latLng);
         contextMenu.setContent(content);

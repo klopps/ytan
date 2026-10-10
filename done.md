@@ -1,5 +1,17 @@
 # Erledigt
 
+## Uhren-Simulator ruft die Route vom lokalen Server nicht ab (2026-10-10)
+
+~~Im Simulator bleibt das Datenfeld bei "YTAN ?" / "Keine Route" bzw. zeigt "YTAN -400".~~
+
+Gelöst (2026-10-10): Mehrere Ursachen übereinander. `Config.mc` zeigte auf `https://localhost` (Port 443 ist zu); mit `http://localhost` löste der Simulator zu IPv4 `127.0.0.1` auf, wo wegen `127.0.0.1 pesr/kimai/kimaidev` in der hosts-Datei und `<VirtualHost pesr:80>` der PESR-vhost jede Anfrage mit einer HTML-404 beantwortete (Garmin: -400, Body kein JSON); und der Simulator-Schalter "Use Device HTTPS Requirements" springt bei jedem Neustart des Simulators wieder auf "an". Gelöst mit der LAN-IP in `Config.mc` und `<VirtualHost *:80>` für pesr/kimai/kimaidev in `httpd-vhosts.conf` (Apache-Neustart als Admin steht noch aus). Zusätzlich liefert `WatchController::deviceRoute()` jetzt reines ASCII-JSON (Test `testDeviceRouteBodyIsPureAscii`) als Vorsichtsmaßnahme für Garmins Parser. Die Stolperfallen stehen in der CLAUDE.md.
+
+## Kontextmenü von POI, Route und Area mit Namen als Überschrift (2026-10-10)
+
+~~Das Kontextmenü von POI, Route und Area soll mit dem jeweiligen Namen überschrieben sein. Ggfs. muss der Name zur Anzeige gekürzt werden.~~
+
+Gelöst (2026-10-10): `contextMenuHeading(name)` (helper.js) liefert eine `.contextMenuHeading`-Zeile, die `showPoiContextMenu()`, `showRouteContextMenu()` und `showAreaContextMenu()` dem Menü voranstellen. Der Name wird mit `decodeHtmlEntities()` normalisiert (aus PESR importierte Namen enthalten teils fest eingebaute Entities) und danach mit `escapeHTML()` ausgegeben. Gekürzt wird rein per CSS (`max-width: 220px; white-space: nowrap; text-overflow: ellipsis`), der volle Name steht als `title`-Tooltip daran - so passt sich die Kürzung der tatsächlichen Breite an, statt an einer festen Zeichenzahl abgeschnitten zu werden. Ohne Namen entfällt die Zeile, das Menü sieht dann aus wie vorher. Nebenbei behoben: Im POI-Menü eines Leuchtfeuers mit Sektorlicht ersetzte der Punkt „Sektorlicht ein/aus" den Wetter-Eintrag (`content =` statt `content +=` in `showPoiContextMenu()`), jetzt stehen beide im Menü.
+
 ## Anwenderdokumentation (2026-10-09)
 
 ~~Es wird eine Anwenderdokumentation für YTAN benötigt: online verfügbar, auf Smartphones nutzbar, umfassend, leicht verständlich, bebildert, verschlagwortet, durchsuchbar, mit Inhaltsverzeichnis, in YTAN einbindbar, auch als ein druckbares Dokument, modern gestaltet, leicht zu pflegen - Einführung, Quickstart, Oberfläche, Routen/POIs/Gebiete/Standort-Button, Toolbar, Suche, Kartendarstellung, Touren, GPX-Import, Teilen, Wetter, Profil, Einstellungen, Android-App, Garmin-App, Tipps & Tricks.~~

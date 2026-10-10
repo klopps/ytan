@@ -143,7 +143,12 @@ final class WatchController extends BaseController
             throw new UnauthorizedException();
         }
 
-        return $this->json($response, $this->payloadFor($link));
+        // Pure ASCII (non-ASCII as \uXXXX, unlike json()): Garmin's JSON
+        // parser answered a raw UTF-8 route name ("Avernakø") with
+        // Communications error -400 (invalid body).
+        $response->getBody()->write(json_encode($this->payloadFor($link), JSON_UNESCAPED_SLASHES));
+
+        return $response->withHeader('Content-Type', 'application/json');
     }
 
     /**

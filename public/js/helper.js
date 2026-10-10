@@ -102,6 +102,23 @@ function decodeHtmlEntities(text) {
     return el.value;
 }
 
+/**
+ * Heading line for a POI/route/area context menu: the element's name, cut
+ * off with an ellipsis by CSS (.contextMenuHeading) when it's wider than
+ * the menu - the full name stays available as the tooltip. Empty string
+ * for an unnamed element, so the menu then looks as before.
+ *
+ * @param {string} name Stored name (may contain baked-in HTML entities)
+ * @returns {string} HTML for the heading, to be put in front of the items
+ */
+function contextMenuHeading(name) {
+    if (name == null || String(name).trim() === '') {
+        return '';
+    }
+    var plain = escapeHTML(decodeHtmlEntities(String(name).trim()));
+    return '<div class="contextMenuHeading" title="' + plain + '">' + plain + '</div>';
+}
+
 
 const DIACRITIC_FOLD_MAP = {
     'æ': 'ae', 'œ': 'oe', 'ø': 'o', 'ß': 'ss',

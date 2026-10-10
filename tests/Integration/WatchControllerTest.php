@@ -52,6 +52,22 @@ final class WatchControllerTest extends ControllerTestCase
         return $this->decode($this->controller->setRoute($request, $this->response()));
     }
 
+    public function testDeviceRouteBodyIsPureAscii(): void
+    {
+        $userId = $this->createUser();
+        $routeId = $this->createRoute($userId, ['name' => 'Avernakø', 'points' => $this->points()]);
+        $token = $this->createToken($userId);
+        $this->sendToWatch($userId, $routeId);
+
+        $request = $this->request('GET', '/api/v1/watch/device/route')->withHeader('X-Watch-Token', $token);
+        $body = (string) $this->controller->deviceRoute($request, $this->response())->getBody();
+
+        // Garmin's JSON parser rejects raw UTF-8 (Communications error -400).
+        $this->assertSame(1, preg_match('/^[\x00-\x7F]*$/', $body));
+        $this->assertStringContainsString('Avernak' . chr(92) . 'u00f8', $body);
+        $this->assertSame('Avernakø', json_decode($body, true)['n']);
+    }
+
     public function testOwnRouteSentToWatchIsServedToTheDevice(): void
     {
         $userId = $this->createUser();

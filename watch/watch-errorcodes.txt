@@ -2,5 +2,6 @@
 
 * "YTAN -1": the background process can't see the .SET key. A workaround would be to build the key into the .prg (bin\build-watch.bat WATCH-KEY fenix7x). The key is only shown once in YTAN, so you'd need to create a new one.
 * "YTAN -104" or another negative code: the phone or Garmin Connect connection isn't carrying the HTTPS request.
+* "YTAN -400" or another negative code: INVALID_HTTP_BODY - the phone or Garmin Connect connection isn't carrying the HTTPS request.
 * "YTAN 401" or "Watch key?": the server rejected the key.
 * "YTAN ?": the temporal event isn't firing.
