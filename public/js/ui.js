@@ -363,9 +363,9 @@ function showSecondToolbar(elementId) {
     }
 
     var labels = {
-        routeButton: { title: 'Editing Route', action: 'END EDITING', onclick: 'showRouteEditWindow(' + measureTool.index + ', null)' },
-        poiButton: { title: 'Editing POI', action: 'CANCEL', onclick: 'cancelEditPoi()' },
-        areaButton: { title: 'Editing Area', action: 'END EDITING', onclick: 'showAreaEditWindow(' + measureTool.index + ', null)' },
+        routeButton: { title: t('toolbar.editing_route'), action: t('toolbar.finish_editing'), onclick: 'showRouteEditWindow(' + measureTool.index + ', null)' },
+        poiButton: { title: t('toolbar.editing_poi'), action: t('toolbar.cancel'), onclick: 'cancelEditPoi()' },
+        areaButton: { title: t('toolbar.editing_area'), action: t('toolbar.finish_editing'), onclick: 'showAreaEditWindow(' + measureTool.index + ', null)' },
     };
     var label = labels[elementId];
 

@@ -1,12 +1,11 @@
 # Offene Punkte
 
+# 
+
 ## Anwenderdokumentation auf Englisch
 
 Die Anleitung (`docs/user/de/`, `/help`) gibt es bisher nur auf Deutsch; bei der Sprache Englisch zeigt `/help` die deutsche Fassung samt deutschen Seitentexten und einem Hinweis. Ein Verzeichnis `docs/user/en/` mit denselben Dateinamen (und Frontmatter `title`/`keywords`) reicht - `UserGuideService` nimmt es automatisch. Die Screenshots sind deutsch beschriftet; für Englisch müsste `tests/e2e/screenshots/help.spec.js` mit englischer Locale laufen (eigener Dateiname-Zusatz oder eigenes Verzeichnis je Sprache).
 
-## Zweite Werkzeugleiste ist nicht übersetzt
-
-`showSecondToolbar()` (`ui.js`) setzt die Texte "Editing Route", "END EDITING", "CANCEL" fest auf Englisch, auch bei deutscher Oberfläche (aufgefallen beim Erstellen der Anleitungs-Screenshots). Über `t()` und neue Schlüssel in `de.json`/`en.json` lösen.
 
 ## Standards für alle Gestaltungselemente festlegen
 

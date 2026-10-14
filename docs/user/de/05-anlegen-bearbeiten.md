@@ -13,7 +13,7 @@ Mit der Werkzeugleiste legst du Routen, POIs und Gebiete an. Dazu musst du angem
 
 1. Tippe in der Werkzeugleiste auf **Route anlegen**. Das Symbol wird hervorgehoben.
 2. Tippe auf die Karte: Jeder Tipp setzt einen **Wegpunkt** am Ende der Linie. Die bisherige Gesamtlänge steht oben in der Leiste.
-3. Tippe auf **END EDITING**, wenn die Route fertig ist.
+3. Tippe auf **BEENDEN**, wenn die Route fertig ist.
 4. Im Fenster **Route** gibst du die Daten ein (siehe unten) und tippst auf **Speichern**.
 
 ### Wegpunkte ändern

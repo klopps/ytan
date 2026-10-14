@@ -1,5 +1,11 @@
 # Erledigt
 
+## Zweite Werkzeugleiste ist nicht übersetzt
+
+~~`showSecondToolbar()` (`ui.js`) setzt die Texte "Editing Route", "END EDITING", "CANCEL" fest auf Englisch, auch bei deutscher Oberfläche. Über `t()` und neue Schlüssel in `de.json`/`en.json` lösen.~~
+
+Gelöst (2026-10-14): `showSecondToolbar()` holt Titel und Button-Text jetzt über `t()` aus neuen `toolbar.*`-Schlüsseln (`editing_route`, `editing_poi`, `editing_area`, `finish_editing`, `cancel`) in `resources/i18n/de.json`/`en.json`. Deutsch: "Route bearbeiten", "POI bearbeiten", "Gebiet bearbeiten" (wie `area.edit.heading`), "FERTIGSTELLEN", "ABBRECHEN"; Englisch behält die bisherigen Texte. Der Titel wird auch als Tooltip des Icons/der Längenanzeige verwendet.
+
 ## Uhren-Simulator ruft die Route vom lokalen Server nicht ab (2026-10-10)
 
 ~~Im Simulator bleibt das Datenfeld bei "YTAN ?" / "Keine Route" bzw. zeigt "YTAN -400".~~
