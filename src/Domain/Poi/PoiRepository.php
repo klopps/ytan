@@ -21,7 +21,7 @@ final class PoiRepository
             p.latitude, p.longitude, p.url, p.updated_at,
             wsi.direction,
             por.path AS portage_path,
-            lh.characteristic, lh.sector_characteristic, lh.international_id
+            lh.characteristic, lh.sector_characteristic, lh.international_id, lh.imported_at
         FROM poi p
         LEFT JOIN windshelter wsi ON wsi.poi_id = p.id
         LEFT JOIN portage por ON por.poi_id = p.id
@@ -229,6 +229,12 @@ final class PoiRepository
         return (int) $stmt->fetchColumn();
     }
 
+    /** Marks a lighthouse as (just now) created or overwritten by the lighthouse list import. */
+    public function markLighthouseImported(int $poiId): void
+    {
+        $this->db->prepare('UPDATE lighthouse SET imported_at = NOW() WHERE poi_id = ?')->execute([$poiId]);
+    }
+
     /** The lists print the number with a space here and there ("B 1804.42"); it is stored without any. */
     private function normalizeInternationalId(mixed $value): ?string
     {
@@ -247,29 +253,33 @@ final class PoiRepository
         }
 
         if ($type === self::TYPE_LIGHTHOUSE) {
-            // international_id is not part of the map's POI form: a request
-            // that doesn't mention it (an ordinary edit) must keep the stored
-            // value, since the row is rewritten below.
-            if (array_key_exists('international_id', $data)) {
-                $internationalId = $this->normalizeInternationalId($data['international_id']);
-            } else {
-                $existing = $this->db->prepare('SELECT international_id FROM lighthouse WHERE poi_id = ?');
-                $existing->execute([$poiId]);
-                $internationalId = $existing->fetchColumn() ?: null;
-            }
+            // international_id and imported_at are not part of the map's POI
+            // form: a request that doesn't mention them (an ordinary edit)
+            // must keep the stored values, since the row is rewritten below.
+            $existing = $this->db->prepare('SELECT international_id, imported_at FROM lighthouse WHERE poi_id = ? LIMIT 1');
+            $existing->execute([$poiId]);
+            $stored = $existing->fetch() ?: ['international_id' => null, 'imported_at' => null];
+
+            $internationalId = array_key_exists('international_id', $data)
+                ? $this->normalizeInternationalId($data['international_id'])
+                : ($stored['international_id'] ?: null);
+            $importedAt = array_key_exists('imported_at', $data)
+                ? ($data['imported_at'] === null || $data['imported_at'] === '' ? null : (string) $data['imported_at'])
+                : $stored['imported_at'];
 
             // Delete + insert rather than REPLACE INTO: lighthouse has no unique
             // key on poi_id (and international_id is not unique), so REPLACE
             // would add a second row for the same POI on every edit.
             $this->db->prepare('DELETE FROM lighthouse WHERE poi_id = ?')->execute([$poiId]);
             $stmt = $this->db->prepare(
-                'INSERT INTO lighthouse (poi_id, characteristic, sector_characteristic, international_id) VALUES (?, ?, ?, ?)'
+                'INSERT INTO lighthouse (poi_id, characteristic, sector_characteristic, international_id, imported_at) VALUES (?, ?, ?, ?, ?)'
             );
             $stmt->execute([
                 $poiId,
                 $data['characteristic'] ?? null,
                 $data['sector_characteristic'] ?? null,
                 $internationalId,
+                $importedAt,
             ]);
         }
     }

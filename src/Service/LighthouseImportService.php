@@ -103,6 +103,7 @@ final class LighthouseImportService
                 $skipped++;
                 continue;
             }
+            $this->pois->markLighthouseImported((int) $poi['id']);
             $this->staging->markImported((int) $entry['id'], (int) $poi['id']);
         }
 

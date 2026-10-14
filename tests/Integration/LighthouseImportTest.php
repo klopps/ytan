@@ -211,6 +211,38 @@ G327°-331°
         $this->assertStringContainsString('(NGA List of Lights: Nr. 2628, Int. nr. C0969)', $poi['description']);
     }
 
+    public function testImportStampsTheLighthouseAndAnEditKeepsTheStamp(): void
+    {
+        [$id] = $this->stage([$this->entry('44', 'B1780.2', 'Fovrfelt N')]);
+        $manual = $this->pois->create($this->adminId, ['poitype_id' => 14, 'name' => 'Von Hand', 'latitude' => 54.0, 'longitude' => 9.0]);
+        $this->assertNull($manual['imported_at'], 'a hand-drawn lighthouse has no import time');
+
+        $this->service->import([$id], $this->adminId, true);
+
+        $poiId = (int) $this->staging->search([], null)[0]['poi_id'];
+        $poi = $this->pois->findById($poiId);
+        $this->assertNotNull($poi['imported_at']);
+        $this->assertEqualsWithDelta(time(), strtotime((string) $poi['imported_at']), 120);
+
+        // The map's POI form doesn't know the column: an ordinary edit must keep it.
+        $edited = $this->pois->update($poiId, [
+            'poitype_id' => 14, 'name' => 'Umbenannt', 'latitude' => 54.0, 'longitude' => 9.0, 'characteristic' => 'Fl R 3s',
+        ]);
+        $this->assertSame($poi['imported_at'], $edited['imported_at']);
+    }
+
+    public function testOverwriteStampsTheExistingLighthouse(): void
+    {
+        $existing = $this->pois->create($this->adminId, [
+            'poitype_id' => 14, 'name' => 'Mein Fyr', 'latitude' => 54.0, 'longitude' => 9.0, 'international_id' => 'B1780.2',
+        ]);
+        [$id] = $this->stage([$this->entry('44', 'B1780.2', 'Fovrfelt N')]);
+
+        $this->service->import([$id], $this->adminId, true, LighthouseImportService::CONFLICT_OVERWRITE);
+
+        $this->assertNotNull($this->pois->findById((int) $existing['id'])['imported_at']);
+    }
+
     public function testAnEntryIsImportedOnlyOnce(): void
     {
         [$id] = $this->stage([$this->entry('44', 'B1780.2', 'Fovrfelt N')]);

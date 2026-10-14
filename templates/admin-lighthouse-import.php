@@ -77,11 +77,11 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
         <div class="w-100 d-flex flex-wrap align-items-center gap-2" id="liDefaultRanges">
             <span class="small"><?= $t('admin.lighthouse_import.default_ranges') ?></span>
             <label class="small d-flex align-items-center gap-1" for="liRangeW"><?= $t('admin.lighthouse_import.colour_white') ?>
-                <input type="number" class="form-control form-control-sm" style="width:5rem;" id="liRangeW" value="3" min="0.1" max="50" step="0.1"></label>
+                <input type="number" class="form-control form-control-sm" style="width:5rem;" id="liRangeW" value="3" min="0.1" max="50" step="any"></label>
             <label class="small d-flex align-items-center gap-1" for="liRangeR"><?= $t('admin.lighthouse_import.colour_red') ?>
-                <input type="number" class="form-control form-control-sm" style="width:5rem;" id="liRangeR" value="2" min="0.1" max="50" step="0.1"></label>
+                <input type="number" class="form-control form-control-sm" style="width:5rem;" id="liRangeR" value="2" min="0.1" max="50" step="any"></label>
             <label class="small d-flex align-items-center gap-1" for="liRangeG"><?= $t('admin.lighthouse_import.colour_green') ?>
-                <input type="number" class="form-control form-control-sm" style="width:5rem;" id="liRangeG" value="2" min="0.1" max="50" step="0.1"></label>
+                <input type="number" class="form-control form-control-sm" style="width:5rem;" id="liRangeG" value="2" min="0.1" max="50" step="any"></label>
             <span class="small text-secondary"><?= $t('admin.lighthouse_import.default_ranges_hint') ?></span>
         </div>
         <div class="form-check ms-md-auto mb-0">

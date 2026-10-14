@@ -36,7 +36,10 @@ use Ytan\Http\Controllers\UserController;
 use Ytan\Http\Controllers\WeatherController;
 use Ytan\Http\Controllers\WsiController;
 use Ytan\Http\Middleware\AppVersionMiddleware;
+use Ytan\Http\Controllers\LighthouseDuplicateController;
 use Ytan\Http\Controllers\LighthouseImportController;
+use Ytan\Domain\Poi\LighthouseDuplicateRepository;
+use Ytan\Service\LighthouseDuplicateService;
 use Ytan\Http\Middleware\AuthMiddleware;
 use Ytan\Domain\LighthouseImport\LighthouseImportRepository;
 use Ytan\Service\LighthouseImportService;
@@ -144,6 +147,15 @@ final class App
         $lighthouseImportController = new LighthouseImportController(
             $lighthouseImportRepository,
             new LighthouseImportService($lighthouseImportRepository, $poiRepository)
+        );
+
+        $lighthouseDuplicateController = new LighthouseDuplicateController(
+            new LighthouseDuplicateService(
+                $poiRepository,
+                new LighthouseDuplicateRepository($pdo),
+                $poiImageService,
+                $pdo
+            )
         );
 
         $adminController = new AdminController(
@@ -536,6 +548,21 @@ final class App
         $app->post('/api/v1/admin/lighthouse-import', [$lighthouseImportController, 'import']);
         $app->get('/api/v1/admin/lighthouse-import/export', [$lighthouseImportController, 'exportFile']);
         $app->post('/api/v1/admin/lighthouse-import/file', [$lighthouseImportController, 'importFile']);
+
+        // Admin tool: finds lighthouses that lie close together and merges the
+        // ones the admin says are the same (LighthouseDuplicateController).
+        $app->get('/admin/lighthouse-duplicates', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
+            ob_start();
+            $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
+            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
+            $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
+            require $rootDir . '/templates/admin-lighthouse-duplicates.php';
+            $res->getBody()->write(ob_get_clean());
+
+            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
+        });
+        $app->get('/api/v1/admin/lighthouse-duplicates', [$lighthouseDuplicateController, 'index']);
+        $app->post('/api/v1/admin/lighthouse-duplicates/merge', [$lighthouseDuplicateController, 'merge']);
 
         // Site-wide settings (currently just "Google search requires
         // login") - its own page so future settings have somewhere to go
