@@ -24,6 +24,8 @@ final class LighthouseImportRepository
     private const TEXT_FILTERS = [
         'dk_no' => 'dk_no',
         'international_id' => 'international_id',
+        'region' => 'region',
+        'subregion' => 'subregion',
         'name' => 'name',
         'location' => 'location',
     ];
@@ -100,7 +102,7 @@ final class LighthouseImportRepository
 
     /**
      * @param array<string,string> $filters dk_no, international_id, name, location (text, substring),
-     *        region (matches region or sub-region), source (exactly, e.g. "dk"/"nga"),
+     *        region, subregion (substring each), source (exactly, e.g. "dk"/"nga"),
      *        status ("open" = not imported yet, "imported")
      * @return list<array<string,mixed>>
      */
@@ -176,6 +178,13 @@ final class LighthouseImportRepository
         return $this->db->query('SELECT * FROM lighthouse_import ORDER BY source, id')->fetchAll();
     }
 
+    /** @return list<string> the distinct sub-regions, for the filter's drop-down */
+    public function subregions(): array
+    {
+        return $this->db->query("SELECT DISTINCT subregion FROM lighthouse_import WHERE subregion <> '' ORDER BY subregion")
+            ->fetchAll(PDO::FETCH_COLUMN);
+    }
+
     /** @return list<string> the distinct regions, for the filter's drop-down */
     public function regions(): array
     {
@@ -204,13 +213,6 @@ final class LighthouseImportRepository
             }
             $conditions[] = "$column LIKE ?";
             $params[] = '%' . addcslashes($value, '%_\\') . '%';
-        }
-
-        $region = trim((string) ($filters['region'] ?? ''));
-        if ($region !== '') {
-            $conditions[] = '(region LIKE ? OR subregion LIKE ?)';
-            $like = '%' . addcslashes($region, '%_\\') . '%';
-            array_push($params, $like, $like);
         }
 
         $source = trim((string) ($filters['source'] ?? ''));

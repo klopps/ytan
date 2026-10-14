@@ -49,7 +49,8 @@ async function loadEntries() {
         }));
         liState.rows = answer.data;
         liState.total = answer.meta.total;
-        liFillRegions(answer.meta.regions || []);
+        liFillOptions('liRegionList', answer.meta.regions || []);
+        liFillOptions('liSubregionList', answer.meta.subregions || []);
         liRender();
     } catch (err) {
         document.getElementById('liRows').innerHTML =
@@ -57,13 +58,14 @@ async function loadEntries() {
     }
 }
 
-function liFillRegions(regions) {
-    var list = document.getElementById('liRegionList');
-    if (list.children.length === regions.length) {
+/** Fills a filter's suggestion list (<datalist>) once. */
+function liFillOptions(listId, values) {
+    var list = document.getElementById(listId);
+    if (list.children.length === values.length) {
         return;
     }
-    list.innerHTML = regions.map(function (region) {
-        return '<option value="' + liEscape(region) + '"></option>';
+    list.innerHTML = values.map(function (value) {
+        return '<option value="' + liEscape(value) + '"></option>';
     }).join('');
 }
 

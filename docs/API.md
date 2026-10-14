@@ -145,7 +145,7 @@ Staged entries of the official lighthouse lists (`lighthouse_import` table, fill
 
 | Method | Path | Auth | Body / query | Notes |
 |---|---|---|---|---|
-| GET | `/admin/lighthouse-import` | admin | filters `dk_no`, `international_id` (spaces ignored), `region` (region or sub-region), `name`, `location` (substring), `status` (`open`/`imported`); `limit`, `offset` | `meta`: `total`, `limit`, `offset`, `regions` (for the drop-down) |
+| GET | `/admin/lighthouse-import` | admin | filters `dk_no`, `international_id` (spaces ignored), `region`, `subregion`, `name`, `location` (substring), `status` (`open`/`imported`); `limit`, `offset` | `meta`: `total`, `limit`, `offset`, `regions`, `subregions` (for the drop-downs) |
 | GET | `/admin/lighthouse-import/ids` | admin | same filters | ids of ALL matches ("select all" across pages) |
 | GET | `/admin/lighthouse-import/export` | admin | - | transfer file of every staged entry: `{format: "ytan-lighthouse-list", version: 1, exported_at, entries: [{source, source_key, ...}]}` (no `id`/`poi_id`/`imported_at`) |
 | POST | `/admin/lighthouse-import/file` | admin | body = the transfer file | adds new entries, refreshes existing ones (same `source` + `source_key`), keeps their imported state; `data`: `inserted`, `updated`; 422 `lighthouse_import.invalid_file` for anything that is not such a file |

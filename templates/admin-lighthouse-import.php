@@ -33,6 +33,11 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
                 <datalist id="liRegionList"></datalist>
             </div>
             <div class="col-12 col-md-3">
+                <label for="liFilterSubregion" class="form-label small mb-1"><?= $t('admin.lighthouse_import.col_subregion') ?></label>
+                <input type="text" class="form-control form-control-sm" id="liFilterSubregion" data-filter="subregion" list="liSubregionList" autocomplete="off">
+                <datalist id="liSubregionList"></datalist>
+            </div>
+            <div class="col-12 col-md-3">
                 <label for="liFilterName" class="form-label small mb-1"><?= $t('admin.lighthouse_import.col_name') ?></label>
                 <input type="text" class="form-control form-control-sm" id="liFilterName" data-filter="name" autocomplete="off">
             </div>

@@ -26,7 +26,7 @@ use Ytan\Service\LighthouseImportService;
  */
 final class LighthouseImportController extends BaseController
 {
-    private const FILTERS = ['dk_no', 'international_id', 'region', 'name', 'location', 'source', 'status'];
+    private const FILTERS = ['dk_no', 'international_id', 'region', 'subregion', 'name', 'location', 'source', 'status'];
 
     public function __construct(
         private readonly LighthouseImportRepository $staging,
@@ -48,6 +48,7 @@ final class LighthouseImportController extends BaseController
                 'limit' => $limit,
                 'offset' => $offset,
                 'regions' => $this->staging->regions(),
+                'subregions' => $this->staging->subregions(),
             ],
         ]);
     }

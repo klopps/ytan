@@ -89,6 +89,22 @@ final class LighthouseImportTest extends ControllerTestCase
         $this->assertSame(['A. Nordsøen', 'D. Kattegat'], $this->staging->regions());
     }
 
+    public function testRegionAndSubregionAreFilteredSeparately(): void
+    {
+        $this->stage([
+            $this->entry('1', 'B1', 'Erste', ['source_key' => 'a', 'region' => 'GERMANY-BALTIC SEA', 'subregion' => 'KIELER BUCHT']),
+            $this->entry('2', 'B2', 'Zweite', ['source_key' => 'b', 'region' => 'GERMANY-BALTIC SEA', 'subregion' => 'FEHMARN']),
+            $this->entry('3', 'B3', 'Dritte', ['source_key' => 'c', 'region' => 'DENMARK-BELTS', 'subregion' => '']),
+        ]);
+
+        $this->assertSame(2, $this->staging->count(['region' => 'germany']));
+        $this->assertSame(1, $this->staging->count(['subregion' => 'kieler']));
+        $this->assertSame(0, $this->staging->count(['region' => 'kieler']), 'region no longer matches the sub-region');
+        $this->assertSame(1, $this->staging->count(['region' => 'germany', 'subregion' => 'fehmarn']));
+        $this->assertSame(['FEHMARN', 'KIELER BUCHT'], $this->staging->subregions());
+        $this->assertSame(['DENMARK-BELTS', 'GERMANY-BALTIC SEA'], $this->staging->regions());
+    }
+
     public function testLikeWildcardsInAFilterAreTakenLiterally(): void
     {
         $this->stage([$this->entry('1', 'B1000', 'Skagen'), $this->entry('2', 'B1001', '100% Fyr')]);

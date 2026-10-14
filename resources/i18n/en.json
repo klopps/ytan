@@ -335,6 +335,7 @@
     "admin.lighthouse_import.source_dk": "Dansk Fyrliste",
     "admin.lighthouse_import.source_nga": "NGA",
     "admin.lighthouse_import.col_region": "Region",
+    "admin.lighthouse_import.col_subregion": "Sub-region",
     "admin.lighthouse_import.col_name": "Name",
     "admin.lighthouse_import.col_location": "Location",
     "admin.lighthouse_import.col_characteristic": "Characteristic",
