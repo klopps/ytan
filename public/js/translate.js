@@ -247,9 +247,11 @@ async function saveAll(force) {
         if (err.data && err.data.code === 'translation.key_mismatch') {
             var onlyEn = (err.data.only_in_en || []).join(', ') || t('admin.translate.none');
             var onlyDe = (err.data.only_in_de || []).join(', ') || t('admin.translate.none');
-            var proceed = window.confirm(
-                t('admin.translate.key_mismatch_message', { only_en: onlyEn, only_de: onlyDe })
-            );
+            var proceed = await adminConfirm({
+                title: t('admin.translate.key_mismatch_title'),
+                message: t('admin.translate.key_mismatch_message', { only_en: onlyEn, only_de: onlyDe }),
+                confirmLabel: t('admin.translate.key_mismatch_save_anyway'),
+            });
             if (proceed) {
                 await saveAll(true);
                 return;

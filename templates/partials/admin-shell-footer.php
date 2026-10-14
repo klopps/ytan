@@ -22,6 +22,24 @@
 
     <div class="toast-container position-fixed bottom-0 end-0 p-3" id="adminToastContainer"></div>
 
+    <!-- Confirmation dialog of every admin page (adminConfirm() in admin-common.js),
+         used instead of the browser's window.confirm(). -->
+    <div class="modal fade" id="adminConfirmModal" tabindex="-1" aria-labelledby="adminConfirmTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title h5" id="adminConfirmTitle"></h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= $t('common.cancel') ?>"></button>
+                </div>
+                <div class="modal-body" id="adminConfirmMessage" style="white-space: pre-line;"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= $t('common.cancel') ?></button>
+                    <button type="button" class="btn btn-primary" id="adminConfirmOk"></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="<?= $baseUrl ?>/js/config.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/config.js') ?>"></script>
     <script src="<?= $baseUrl ?>/js/i18n.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/i18n.js') ?>"></script>
     <script src="<?= $baseUrl ?>/js/helper.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/helper.js') ?>"></script>

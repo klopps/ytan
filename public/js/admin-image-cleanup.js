@@ -122,7 +122,12 @@ async function deleteSelected(kind) {
     if (indexes.length === 0) {
         return;
     }
-    if (!window.confirm(t('admin.image_cleanup.confirm_delete', { count: indexes.length }))) {
+    if (!(await adminConfirm({
+        title: t('admin.image_cleanup.confirm_delete_title'),
+        message: t('admin.image_cleanup.confirm_delete', { count: indexes.length }),
+        confirmLabel: t('common.delete'),
+        danger: true,
+    }))) {
         return;
     }
 

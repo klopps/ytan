@@ -146,7 +146,11 @@ async function liImport(decisions) {
     if (ids.length === 0) {
         return;
     }
-    if (!decisions && !window.confirm(t('admin.lighthouse_import.confirm_import', { count: ids.length }))) {
+    if (!decisions && !(await adminConfirm({
+        title: t('admin.lighthouse_import.confirm_import_title'),
+        message: t('admin.lighthouse_import.confirm_import', { count: ids.length }),
+        confirmLabel: t('admin.lighthouse_import.confirm_import_button'),
+    }))) {
         return;
     }
 
@@ -258,7 +262,11 @@ async function liLoadFile(file) {
         return;
     }
     var count = Array.isArray(data.entries) ? data.entries.length : 0;
-    if (!window.confirm(t('admin.lighthouse_import.confirm_load_file', { count: count, name: file.name }))) {
+    if (!(await adminConfirm({
+        title: t('admin.lighthouse_import.confirm_load_file_title'),
+        message: t('admin.lighthouse_import.confirm_load_file', { count: count, name: file.name }),
+        confirmLabel: t('admin.lighthouse_import.confirm_load_file_button'),
+    }))) {
         return;
     }
 

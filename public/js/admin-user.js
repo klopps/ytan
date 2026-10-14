@@ -410,8 +410,13 @@ function saveEditedUser(id) {
     });
 }
 
-function deleteUserRow(id) {
-    if (!window.confirm(t('admin_user.confirm_delete_user'))) {
+async function deleteUserRow(id) {
+    if (!(await adminConfirm({
+        title: t('admin_user.confirm_delete_title'),
+        message: t('admin_user.confirm_delete_user'),
+        confirmLabel: t('common.delete'),
+        danger: true,
+    }))) {
         return;
     }
 
@@ -465,8 +470,12 @@ function submitSetPassword(id) {
     });
 }
 
-function sendResetEmailRow(id) {
-    if (!window.confirm(t('admin_user.confirm_send_reset'))) {
+async function sendResetEmailRow(id) {
+    if (!(await adminConfirm({
+        title: t('admin_user.confirm_send_reset_title'),
+        message: t('admin_user.confirm_send_reset'),
+        confirmLabel: t('admin_user.confirm_send_reset_button'),
+    }))) {
         return;
     }
 

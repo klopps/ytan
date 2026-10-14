@@ -36,6 +36,38 @@ function showAdminToast(message, type) {
 }
 
 /**
+ * Asks the admin to confirm an action in a Bootstrap modal (the shell's
+ * #adminConfirmModal) - the replacement for the browser's window.confirm()
+ * on every admin page. Resolves to true when confirmed, false when cancelled
+ * or closed. It resolves only once the modal is gone, so a dialog opened
+ * next doesn't overlap this one's fade-out.
+ *
+ * @param {{title: string, message: string, confirmLabel: string, danger?: boolean}} options
+ *        danger paints the confirm button red (deleting something)
+ * @returns {Promise<boolean>}
+ */
+function adminConfirm(options) {
+    return new Promise(function (resolve) {
+        var element = document.getElementById('adminConfirmModal');
+        var modal = bootstrap.Modal.getOrCreateInstance(element);
+        var okButton = document.getElementById('adminConfirmOk');
+        var confirmed = false;
+
+        document.getElementById('adminConfirmTitle').textContent = options.title;
+        document.getElementById('adminConfirmMessage').textContent = options.message;
+        okButton.textContent = options.confirmLabel;
+        okButton.className = 'btn ' + (options.danger ? 'btn-danger' : 'btn-primary');
+        okButton.onclick = function () {
+            confirmed = true;
+            modal.hide();
+        };
+        element.addEventListener('hidden.bs.modal', function () { resolve(confirmed); }, { once: true });
+        element.addEventListener('shown.bs.modal', function () { okButton.focus(); }, { once: true });
+        modal.show();
+    });
+}
+
+/**
  * Called by admin-auth.js's showContent() once a valid admin session is
  * confirmed - populates the navbar's user-menu and wires its logout
  * button. Defined here (not in admin-auth.js itself) so admin-auth.js
