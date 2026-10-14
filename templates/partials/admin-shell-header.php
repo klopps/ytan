@@ -35,6 +35,7 @@ $adminNavItems = [
     ['key' => 'dashboard', 'icon' => 'bi-speedometer2', 'label' => $t('admin.nav.dashboard'), 'href' => $baseUrl . '/admin'],
     ['key' => 'users', 'icon' => 'bi-people', 'label' => $t('admin.nav.users'), 'href' => $baseUrl . '/admin/users'],
     ['key' => 'image_cleanup', 'icon' => 'bi-images', 'label' => $t('admin.nav.image_cleanup'), 'href' => $baseUrl . '/admin/image-cleanup'],
+    ['key' => 'lighthouse_import', 'icon' => 'bi-lightbulb', 'label' => $t('admin.nav.lighthouse_import'), 'href' => $baseUrl . '/admin/lighthouse-import'],
     ['key' => 'translate', 'icon' => 'bi-translate', 'label' => $t('admin.nav.translations'), 'href' => $baseUrl . '/admin/translate', 'visible' => $translateToolEnabled],
     ['key' => 'settings', 'icon' => 'bi-gear', 'label' => $t('admin.nav.settings'), 'href' => $baseUrl . '/admin/settings'],
     // Own page (templates/admin-styleguide.php), NOT part of this AdminLTE

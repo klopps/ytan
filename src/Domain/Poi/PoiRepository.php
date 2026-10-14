@@ -21,7 +21,7 @@ final class PoiRepository
             p.latitude, p.longitude, p.url, p.updated_at,
             wsi.direction,
             por.path AS portage_path,
-            lh.characteristic, lh.sector_characteristic
+            lh.characteristic, lh.sector_characteristic, lh.international_id
         FROM poi p
         LEFT JOIN windshelter wsi ON wsi.poi_id = p.id
         LEFT JOIN portage por ON por.poi_id = p.id
@@ -206,6 +206,37 @@ final class PoiRepository
         }
     }
 
+    /**
+     * The oldest lighthouse POI that carries this international ID (spaces
+     * ignored), or null. The ID is not unique: the same lighthouse may exist
+     * more than once (an admin decides at import, see LighthouseImportService).
+     */
+    public function findPoiIdByInternationalId(string $internationalId): ?int
+    {
+        $stmt = $this->db->prepare('SELECT poi_id FROM lighthouse WHERE international_id = ? ORDER BY poi_id LIMIT 1');
+        $stmt->execute([$this->normalizeInternationalId($internationalId)]);
+        $id = $stmt->fetchColumn();
+
+        return $id === false ? null : (int) $id;
+    }
+
+    /** How many lighthouse POIs carry this international ID (spaces ignored). */
+    public function countPoisByInternationalId(string $internationalId): int
+    {
+        $stmt = $this->db->prepare('SELECT COUNT(*) FROM lighthouse WHERE international_id = ?');
+        $stmt->execute([$this->normalizeInternationalId($internationalId)]);
+
+        return (int) $stmt->fetchColumn();
+    }
+
+    /** The lists print the number with a space here and there ("B 1804.42"); it is stored without any. */
+    private function normalizeInternationalId(mixed $value): ?string
+    {
+        $value = preg_replace('/\s+/u', '', (string) $value) ?? '';
+
+        return $value === '' ? null : $value;
+    }
+
     private function syncTypeSpecificFields(int $poiId, array $data): void
     {
         $type = (int) ($data['poitype_id'] ?? 0);
@@ -216,13 +247,29 @@ final class PoiRepository
         }
 
         if ($type === self::TYPE_LIGHTHOUSE) {
+            // international_id is not part of the map's POI form: a request
+            // that doesn't mention it (an ordinary edit) must keep the stored
+            // value, since the row is rewritten below.
+            if (array_key_exists('international_id', $data)) {
+                $internationalId = $this->normalizeInternationalId($data['international_id']);
+            } else {
+                $existing = $this->db->prepare('SELECT international_id FROM lighthouse WHERE poi_id = ?');
+                $existing->execute([$poiId]);
+                $internationalId = $existing->fetchColumn() ?: null;
+            }
+
+            // Delete + insert rather than REPLACE INTO: lighthouse has no unique
+            // key on poi_id (and international_id is not unique), so REPLACE
+            // would add a second row for the same POI on every edit.
+            $this->db->prepare('DELETE FROM lighthouse WHERE poi_id = ?')->execute([$poiId]);
             $stmt = $this->db->prepare(
-                'REPLACE INTO lighthouse (poi_id, characteristic, sector_characteristic) VALUES (?, ?, ?)'
+                'INSERT INTO lighthouse (poi_id, characteristic, sector_characteristic, international_id) VALUES (?, ?, ?, ?)'
             );
             $stmt->execute([
                 $poiId,
                 $data['characteristic'] ?? null,
                 $data['sector_characteristic'] ?? null,
+                $internationalId,
             ]);
         }
     }

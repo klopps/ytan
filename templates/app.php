@@ -5,29 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta charset="utf-8"/>
 
-    <!-- A shared map link (?tour=ID, ?z=..&lat=..&lng=.., see tour-admin.js's
-         shareTour() / map-core.js's shareMap()): remember those parameters and
-         take them out of the address bar right away - before anything is shown -
-         so the URL doesn't keep describing a view the user has long moved away
-         from (or after Tour Mode has been left) when the page is reloaded or
-         bookmarked. map-core.js picks them up from sessionStorage instead. If
-         storage is unavailable the URL is left alone and map-core.js falls back
-         to reading it. Other parameters (e.g. ?route=) are left in place. -->
+    <!-- Any query parameter of the page URL (shared links: ?tour=ID, ?route=ID,
+         ?z=..&lat=..&lng=.., see shareTour()/shareRoute()/shareMap(); and every
+         parameter added in future): remember them and take them out of the
+         address bar right away - before anything is shown - so the URL doesn't
+         keep describing a view the user has long moved away from (or a tour that
+         has been left) when the page is reloaded or bookmarked. map-core.js's
+         linkParam() reads them from sessionStorage['ytan_pending_link'] instead.
+         If storage is unavailable the URL is left alone and linkParam() falls
+         back to reading it. Code that needs a URL parameter must therefore use
+         linkParam(), never location.search/ytanUrl directly. -->
     <script>
       (function () {
         try {
           var url = new URL(window.location.href);
-          var keys = ['tour', 'z', 'lat', 'lng'];
           var found = {};
-          keys.forEach(function (key) {
-            if (url.searchParams.has(key)) {
-              found[key] = url.searchParams.get(key);
-              url.searchParams.delete(key);
-            }
-          });
+          url.searchParams.forEach(function (value, key) { found[key] = value; });
           if (Object.keys(found).length > 0) {
             sessionStorage.setItem('ytan_pending_link', JSON.stringify(found));
-            history.replaceState(history.state, '', url.pathname + url.search + url.hash);
+            history.replaceState(history.state, '', url.pathname + url.hash);
           }
         } catch (e) { /* leave the URL as it is */ }
       })();

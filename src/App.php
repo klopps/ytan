@@ -36,7 +36,10 @@ use Ytan\Http\Controllers\UserController;
 use Ytan\Http\Controllers\WeatherController;
 use Ytan\Http\Controllers\WsiController;
 use Ytan\Http\Middleware\AppVersionMiddleware;
+use Ytan\Http\Controllers\LighthouseImportController;
 use Ytan\Http\Middleware\AuthMiddleware;
+use Ytan\Domain\LighthouseImport\LighthouseImportRepository;
+use Ytan\Service\LighthouseImportService;
 use Ytan\Http\Middleware\CorsMiddleware;
 use Ytan\Service\GpxImportService;
 use Ytan\Service\AuthService;
@@ -137,6 +140,12 @@ final class App
         );
         $tourController = new TourController($tourRepository, $tourImageService, $tourDocumentService);
         $areaController = new AreaController($areaRepository, $areaImageService);
+        $lighthouseImportRepository = new LighthouseImportRepository($pdo);
+        $lighthouseImportController = new LighthouseImportController(
+            $lighthouseImportRepository,
+            new LighthouseImportService($lighthouseImportRepository, $poiRepository)
+        );
+
         $adminController = new AdminController(
             new ImageReconciliationService([
                 'tour' => ['repository' => $tourRepository, 'images' => $tourImageService],
@@ -508,6 +517,25 @@ final class App
         });
         $app->get('/api/v1/admin/image-orphans', [$adminController, 'scanImageOrphans']);
         $app->post('/api/v1/admin/image-orphans/delete', [$adminController, 'deleteImageOrphans']);
+
+        // Admin tool: imports lighthouses from the staged entries of an official
+        // lighthouse list (LighthouseImportController; the list itself is read
+        // into the staging table by bin/import-lighthouse-list.php).
+        $app->get('/admin/lighthouse-import', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
+            ob_start();
+            $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
+            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
+            $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
+            require $rootDir . '/templates/admin-lighthouse-import.php';
+            $res->getBody()->write(ob_get_clean());
+
+            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
+        });
+        $app->get('/api/v1/admin/lighthouse-import', [$lighthouseImportController, 'index']);
+        $app->get('/api/v1/admin/lighthouse-import/ids', [$lighthouseImportController, 'ids']);
+        $app->post('/api/v1/admin/lighthouse-import', [$lighthouseImportController, 'import']);
+        $app->get('/api/v1/admin/lighthouse-import/export', [$lighthouseImportController, 'exportFile']);
+        $app->post('/api/v1/admin/lighthouse-import/file', [$lighthouseImportController, 'importFile']);
 
         // Site-wide settings (currently just "Google search requires
         // login") - its own page so future settings have somewhere to go

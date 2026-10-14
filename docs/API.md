@@ -36,7 +36,7 @@ just without the limit applied, so a client can compute page count from it.
 | GET | `/pois?scope=public\|mine\|mine_public\|all` | scope-dependent | `mine`/`mine_public`/`all` require auth; `all` requires `is_admin`; see Pagination above |
 | GET | `/pois/bounds` | - | `{max_lat, min_lat, max_lng, min_lng}` across all POIs |
 | GET | `/pois/{id}` | - | |
-| POST | `/pois` | required | body: `poitype_id, name, description, public, latitude, longitude, url`, plus `direction` (camps/campsites, 16 chars of `0`/`1`/`2`) or `characteristic`/`sector_characteristic` (lighthouses) |
+| POST | `/pois` | required | body: `poitype_id, name, description, public, latitude, longitude, url`, plus `direction` (camps/campsites, 16 chars of `0`/`1`/`2`) or `characteristic`/`sector_characteristic`/`international_id` (lighthouses; `international_id` is stored without spaces and kept as is when a request leaves it out) |
 | PUT | `/pois/{id}` | required, owner or admin | same body as POST |
 | DELETE | `/pois/{id}` | required, owner or admin | |
 
@@ -138,6 +138,18 @@ configured or a Static Maps request fails.
 `tour_publish`/`tour_manage`/`tour_copy`/`route_view_recording`/
 `export_routes_own`/`export_routes_public` (each `0`
 or `1`), plus the shared `limit`/`offset` from Pagination above.
+
+## Lighthouse import (admin only)
+
+Staged entries of the official lighthouse lists (`lighthouse_import` table, filled by `bin/import-lighthouse-list.php`), used by the admin tool `/admin/lighthouse-import`.
+
+| Method | Path | Auth | Body / query | Notes |
+|---|---|---|---|---|
+| GET | `/admin/lighthouse-import` | admin | filters `dk_no`, `international_id` (spaces ignored), `region` (region or sub-region), `name`, `location` (substring), `status` (`open`/`imported`); `limit`, `offset` | `meta`: `total`, `limit`, `offset`, `regions` (for the drop-down) |
+| GET | `/admin/lighthouse-import/ids` | admin | same filters | ids of ALL matches ("select all" across pages) |
+| GET | `/admin/lighthouse-import/export` | admin | - | transfer file of every staged entry: `{format: "ytan-lighthouse-list", version: 1, exported_at, entries: [{source, source_key, ...}]}` (no `id`/`poi_id`/`imported_at`) |
+| POST | `/admin/lighthouse-import/file` | admin | body = the transfer file | adds new entries, refreshes existing ones (same `source` + `source_key`), keeps their imported state; `data`: `inserted`, `updated`; 422 `lighthouse_import.invalid_file` for anything that is not such a file |
+| POST | `/admin/lighthouse-import` | admin | `ids` (non-empty), `public` (bool), `decisions` (object staging id => `add`/`overwrite`/`skip`), `on_conflict` (fallback for entries without a decision: `ask` default / `add` / `overwrite` / `skip`), `default_ranges` (`{W, R, G}` nautical miles, default 3/2/2: range for sectors the list gives none for) | creates lighthouse POIs for the selected entries not imported yet. `lighthouse.international_id` is not unique, but importing a number that already exists (or occurs twice in the selection) must be decided per entry: while an entry like that has no decision and `on_conflict` is `ask`, nothing is imported and `data.conflicts` lists them (`id`, `international_id`, `name`, `existing_poi_id` (the oldest, null if only repeated within the selection), `existing_name`, `existing_count`); repeat with `decisions`: `add` creates another lighthouse, `overwrite` replaces the content of the oldest existing one (owner/visibility/photos kept), `skip` leaves the entry open. `data`: `imported`, `overwritten`, `skipped`, `conflicts`. Sectors without a range are staged as `G ?M 10-20` and get the range of their colour from `default_ranges` on import; the POI's description then ends with "Es sind keine Leuchtweiten bekannt. Es wurden 3, 2 und 2 Seemeilen für Weiß, Rot und Grün angenommen." (the values used) |
 
 ## Garmin watch
 

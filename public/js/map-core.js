@@ -77,12 +77,13 @@ let light = new LightCharacteristic();
 // URL
 let ytanUrl = new URL(window.location.href);
 
-// app.php's early inline script has already moved ?tour=/?z=/?lat=/?lng= out of
-// the address bar into sessionStorage['ytan_pending_link'] (JSON object) - so a
-// shared link doesn't stay in the URL. linkParam() reads those four from there,
-// falling back to the URL itself (storage unavailable, script didn't run). The
-// stored copy is consumed at the start of initMap() so a later reload doesn't
-// replay it (re-entering Tour Mode, re-centering).
+// app.php's early inline script has already moved ALL query parameters (tour,
+// route, z, lat, lng, and any future one) out of the address bar into
+// sessionStorage['ytan_pending_link'] (JSON object) - so a shared link doesn't
+// stay in the URL. Read URL parameters ONLY through linkParam(), which looks
+// there first and falls back to the URL itself (storage unavailable, script
+// didn't run). The stored copy is consumed at the start of initMap() so a
+// later reload doesn't replay it (re-entering Tour Mode, re-centering).
 let pendingLink = {};
 try {
     pendingLink = JSON.parse(sessionStorage.getItem('ytan_pending_link')) || {};
@@ -124,7 +125,7 @@ if (tourParam !== null && !isNaN(parseInt(tourParam))) {
 // Shared-route link (route.js's shareRoute()) - handled at the end of
 // initMap() alongside the tour case above, once the map itself is ready.
 let initialRouteId = null;
-let routeParam = ytanUrl.searchParams.get("route");
+let routeParam = linkParam("route");
 if (routeParam !== null && !isNaN(parseInt(routeParam))) {
     initialRouteId = parseInt(routeParam);
 }
