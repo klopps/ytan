@@ -736,6 +736,13 @@ function initMap() {
     // user.id (see app.php's recovery path) - Phase 1 is read-only, offline
     // create/edit/delete doesn't exist yet, so the create-POI button
     // shouldn't imply it does just because a stored token looks valid.
+    // Landing on a "?tour=" link: mark Tour Mode active BEFORE the route
+    // load below, so the loaders fetch just the tour's routes straight away
+    // instead of all routes first and the tour's only after the tour fetch
+    // further down (see activateTourMode()).
+    if (initialTourId !== null) {
+        activeTourModeId = initialTourId;
+    }
     var effectiveUserId = (user.id !== null) ? user.id : Ytan.getStoredUserId();
     if (effectiveUserId !== null) {
         getPoisByUserId(effectiveUserId);
@@ -1096,9 +1103,12 @@ function initMap() {
     // tour was deleted (or made private) since the link was shared.
     if (initialTourId !== null) {
         Ytan.get('/tours/' + initialTourId).then(answer => {
-            activateTourMode(answer.data.id, answer.data.name);
+            activateTourMode(answer.data.id, answer.data.name, true);
         }).catch(err => {
             log('shared tour link - tour ' + initialTourId + ' could not be loaded', LOG_WARN, err);
+            // The initial route load above was already redirected to the tour
+            // - give up on Tour Mode and show the normal routes instead.
+            exitTourMode();
             showToast(t('tour_admin.share_link_tour_not_found'), 'error');
         });
     }

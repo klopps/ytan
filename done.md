@@ -1,5 +1,11 @@
 # Erledigt
 
+## Tour-Modus und Routenanzeige
+
+~~Ist der Tour-Modus aktiv und meldet man sich dann an, so werden auch alle weiteren öffentlichen und privaten Routen des Benutzers angezeigt. Beim Aktualisieren der Seite im Tour-Modus oder Aufruf eines Tour-Links (`/?tour=2`) werden zunächst alle Routen angezeigt und erst danach ausgeblendet.~~
+
+Gelöst (2026-10-14): Tour-Modus ist jetzt Zustand, den jeder Routen-Ladevorgang beachtet. `getRoutesByUserId()` und `getPublicRoutes()` (`route.js`) laden bei aktivem `activeTourModeId` stattdessen `getRoutesByTourId()` - damit gilt das für Login, Logout, `online`-Event, Routen-Teilen und den Wiederherstellungspfad in `app.php` gleichermaßen (Login im Tour-Modus zeigt nun weiter nur die Tour-Routen, jetzt mit Token, also inkl. deren privater Routen). Bei einem `?tour=`-Link setzt `initMap()` (`map-core.js`) `activeTourModeId` vor dem ersten Routen-Laden; `activateTourMode(id, name, routesAlreadyLoading)` (`tour.js`) lädt dann nicht ein zweites Mal. Ist die Tour nicht ladbar (gelöscht/privat), ruft der Fehlerpfad `exitTourMode()` auf und die normalen Routen erscheinen. Bewusst nicht wie in der Idee "alles laden, dann clientseitig filtern": eine Tour kann Routen enthalten, die nicht in `mine_public` stehen (z. B. private Routen anderer in einer öffentlichen Tour), und es würde unnötig alle Routen übertragen. Geprüft: Netzwerk-Log bei `/?tour=2` zeigt nur `routes?tour_id=2`; e2e-Suite (9 Tests) grün.
+
 ## Zweite Werkzeugleiste ist nicht übersetzt
 
 ~~`showSecondToolbar()` (`ui.js`) setzt die Texte "Editing Route", "END EDITING", "CANCEL" fest auf Englisch, auch bei deutscher Oberfläche. Über `t()` und neue Schlüssel in `de.json`/`en.json` lösen.~~

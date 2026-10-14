@@ -61,11 +61,17 @@ let activeTourModeName = null; // kept alongside the id so saveRoute()'s toast c
  *
  * @param {number} id
  * @param {string} name
+ * @param {boolean} [routesAlreadyLoading] true when the caller already set
+ *   activeTourModeId before the initial route load (a "?tour=" landing,
+ *   map-core.js's initMap()), so the tour's routes are on their way and must
+ *   not be fetched a second time
  */
-function activateTourMode(id, name) {
+function activateTourMode(id, name, routesAlreadyLoading) {
     activeTourModeId = id;
     activeTourModeName = name;
-    getRoutesByTourId(id);
+    if (!routesAlreadyLoading) {
+        getRoutesByTourId(id);
+    }
     document.getElementById('tourModeBadgeName').textContent = name;
     document.getElementById('tourModeBadge').style.display = 'flex';
 }

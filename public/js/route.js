@@ -690,6 +690,13 @@ function deleteRoutes() {
  * @param {number} userId
  */
 function getRoutesByUserId(userId) {
+    // Tour Mode is a filter over whatever (re)load comes next - login, logout,
+    // 'online', a route split, the initial page load - so none of them may
+    // briefly (or permanently) show all routes while a tour is active.
+    if (activeTourModeId !== null) {
+        getRoutesByTourId(activeTourModeId);
+        return;
+    }
     Ytan.get('/routes?scope=mine_public').then(answer => {
         deleteRoutes();
         routes = answer.data;
@@ -732,6 +739,10 @@ function getRoutesByUserId(userId) {
  * Hole alle öffentlichen Routen speichere sie in routes[] und zeige sie an
  */
 function getPublicRoutes() {
+    if (activeTourModeId !== null) { // see getRoutesByUserId()
+        getRoutesByTourId(activeTourModeId);
+        return;
+    }
     Ytan.get('/routes?scope=public').then(answer => {
         log('getPublicRoutes()', LOG_INFO, answer);
         deleteRoutes();
