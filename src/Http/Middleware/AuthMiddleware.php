@@ -12,7 +12,9 @@ use Ytan\Service\AuthService;
 
 /**
  * Decodes the Authorization: Bearer <jwt> header, if present, and attaches
- * the payload as the "auth" request attribute (null if absent/invalid).
+ * the payload as the "auth" request attribute (null if absent/invalid, or
+ * if the user no longer exists). The user claims in it are refreshed from the
+ * database on every request (see AuthService::authenticate()).
  * Does NOT reject requests itself - routes that require a logged-in user
  * call BaseController::requireAuthUser() themselves, so public and
  * optionally-authenticated endpoints can share this same middleware.
@@ -32,7 +34,7 @@ final class AuthMiddleware implements MiddlewareInterface
             $token = substr($header, 7);
         }
 
-        $payload = $this->authService->verifyToken($token);
+        $payload = $this->authService->authenticate($token);
 
         return $handler->handle($request->withAttribute('auth', $payload));
     }

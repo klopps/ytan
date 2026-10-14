@@ -182,7 +182,25 @@ final class AuthService
     private function issueToken(array $user): array
     {
         $expiresAt = time() + $this->ttlSeconds;
-        $token = JWT::encode([
+        $token = JWT::encode(
+            $this->claimsFor($user) + ['iat' => time(), 'exp' => $expiresAt],
+            $this->jwtSecret,
+            'HS256'
+        );
+
+        return ['token' => $token, 'expires_at' => $expiresAt, 'user' => $user];
+    }
+
+    /**
+     * The user-describing JWT claims (everything but iat/exp) for a `user`
+     * row - shared by token issuing, authenticate() and GET /auth/me so the
+     * claim shape stays identical everywhere.
+     *
+     * @return array<string,mixed>
+     */
+    public function claimsFor(array $user): array
+    {
+        return [
             'sub' => (int) $user['id'],
             'username' => $user['username'],
             'email' => $user['email'],
@@ -196,11 +214,32 @@ final class AuthService
             'route_view_recording' => (bool) ($user['route_view_recording'] ?? false),
             'export_routes_own' => (bool) ($user['export_routes_own'] ?? false),
             'export_routes_public' => (bool) ($user['export_routes_public'] ?? false),
-            'iat' => time(),
-            'exp' => $expiresAt,
-        ], $this->jwtSecret, 'HS256');
+        ];
+    }
 
-        return ['token' => $token, 'expires_at' => $expiresAt, 'user' => $user];
+    /**
+     * Verifies the token and returns its payload with the user claims
+     * replaced by the user's CURRENT database values, or null if the token is
+     * invalid or the user no longer exists. The claims baked into a JWT stay
+     * as they were at login until it expires, so without this a changed
+     * right (admin revoked/granted, tour_create, ...) or a deleted account
+     * would keep applying to every request until the token ran out.
+     *
+     * @return array<string,mixed>|null
+     */
+    public function authenticate(?string $token): ?array
+    {
+        $payload = $this->verifyToken($token);
+        if ($payload === null || !isset($payload['sub'])) {
+            return null;
+        }
+
+        $user = $this->users->findById((int) $payload['sub']);
+        if ($user === null) {
+            return null;
+        }
+
+        return $this->claimsFor($user) + $payload;
     }
 
     /**

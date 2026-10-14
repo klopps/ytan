@@ -99,4 +99,34 @@ final class AuthControllerErrorCodeTest extends ControllerTestCase
             $this->assertSame('auth.link_expired', $e->getErrorCode());
         }
     }
+
+    public function testMeReturnsTheCurrentDatabaseValuesNotTheStaleTokenClaims(): void
+    {
+        $userId = $this->createUser(['firstname' => 'Old', 'lastname' => 'Name', 'tour_create' => 0]);
+        $staleClaims = $this->authPayload($userId);
+
+        $this->pdo->prepare('UPDATE user SET firstname = ?, lastname = ?, tour_create = 1 WHERE id = ?')
+            ->execute(['New', 'Person', $userId]);
+
+        $data = $this->decode(
+            $this->controller->me($this->request('GET', '/auth/me', $staleClaims), $this->response())
+        )['data'];
+
+        $this->assertSame($userId, $data['sub']);
+        $this->assertSame('New', $data['firstname']);
+        $this->assertSame('Person', $data['lastname']);
+        $this->assertTrue($data['tour_create']);
+        $this->assertFalse($data['is_admin']);
+        $this->assertArrayHasKey('pending_email', $data);
+    }
+
+    public function testMeForADeletedUserIsUnauthorized(): void
+    {
+        $userId = $this->createUser();
+        $claims = $this->authPayload($userId);
+        $this->users->delete($userId);
+
+        $this->expectException(UnauthorizedException::class);
+        $this->controller->me($this->request('GET', '/auth/me', $claims), $this->response());
+    }
 }

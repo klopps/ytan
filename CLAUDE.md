@@ -64,7 +64,7 @@ composer test        # = phpunit, uses phpunit.xml + tests/bootstrap.php
 
 - **Framework**: Slim 4, PSR-7 (`slim/psr7`). No DI container — everything is wired by hand in `src\App.php`'s `App::create()`: PDO connection, repositories, services and controllers are constructed and closed over directly, then routes are registered as flat `$app->get/post/put/delete(...)` calls (no route groups).
 - **Autoloading**: PSR-4, `Ytan\` → `src/`.
-- **Request flow**: `public/index.php` → `App::create($rootDir)->run()`. `AuthMiddleware` runs globally and decodes a `Bearer` JWT (if present) into the PSR-7 request attribute `"auth"` — it never rejects a request itself, so every route sees either a decoded payload or `null` there.
+- **Request flow**: `public/index.php` → `App::create($rootDir)->run()`. `AuthMiddleware` runs globally and decodes a `Bearer` JWT (if present) into the PSR-7 request attribute `"auth"` — with the user claims (name, email, all rights) overwritten from the database on every request by `AuthService::authenticate()`, so a changed right/name or a deleted user applies immediately, not only after the token expires (`claimsFor()` is the one place that defines the claim shape) — it never rejects a request itself, so every route sees either a decoded payload or `null` there.
 - **Controllers** (`src/Http/Controllers/*Controller.php`) extend `BaseController`, which provides:
   - `json($response, $data, $status=200)` — wraps success payloads as `{"data": ...}`.
   - `requireAuthUser($request)` — 401s if `auth` attribute is null, else returns the JWT payload array.

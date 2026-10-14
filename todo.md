@@ -1,5 +1,15 @@
 # Offene Punkte
 
+## Einlesen der Dänischen Leuchtfeuer
+Das PDF https://www.soefartsstyrelsen.dk/Media/638090273557711196/Dansk%20Fyrliste%202022.pdf enthält eine Liste der Dänischen Leuchtfeuer. Auf den Seiten 10 bis 289  werden die relevanten jedes Leuchtfeuers in 8 Spalten beschrieben. 
+
+Erstelle im Admin-Bereich ein Tool, dass dieses Dokument einliest und die Daten paginiert auflistet. Man soll dann in der Liste nach Dansk Nr., International Nr., Region,  Name, Ort kombiniert filtern können. Jeder Eintrag in der Liste kann einzeln ausgewählt werden. Es können auch alle Einträge aus- und abgewählt werden.
+Ausgewählte Einträge können dann importiert werden.
+
+Ist in der Spalte 8 der Liste ein Sektorlicht beschrieben, so soll dies entsprechend in der Spalte sector_characteristic der lighthouse-Tabelle gespeichert werden. Beispiel: G350,7°-352,2° W352,2°-354,2°
+R354,2°-355,7°. Die Gradzahlen können Kommata enthalten. Die Buchstaben stehen für die Farben des Lichts (G=grün, R=rot, W=weiß). In der Spalte 8 können aich weitere Informationen hinterlegt sein, die jedoch ignoriert werden müssen. In Spalte 6 der Liste steht ggfs. die Leuchtweite für jede Farbe des Leuchtfeuers in Seemeilen, was in die sector_characteristic einzubeziehen ist. 
+
+
 ## Anwenderdokumentation auf Englisch
 
 Die Anleitung (`docs/user/de/`, `/help`) gibt es bisher nur auf Deutsch; bei der Sprache Englisch zeigt `/help` die deutsche Fassung samt deutschen Seitentexten und einem Hinweis. Ein Verzeichnis `docs/user/en/` mit denselben Dateinamen (und Frontmatter `title`/`keywords`) reicht - `UserGuideService` nimmt es automatisch. Die Screenshots sind deutsch beschriftet; für Englisch müsste `tests/e2e/screenshots/help.spec.js` mit englischer Locale laufen (eigener Dateiname-Zusatz oder eigenes Verzeichnis je Sprache).

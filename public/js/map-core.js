@@ -77,9 +77,24 @@ let light = new LightCharacteristic();
 // URL
 let ytanUrl = new URL(window.location.href);
 
+// app.php's early inline script has already moved ?tour=/?z=/?lat=/?lng= out of
+// the address bar into sessionStorage['ytan_pending_link'] (JSON object) - so a
+// shared link doesn't stay in the URL. linkParam() reads those four from there,
+// falling back to the URL itself (storage unavailable, script didn't run). The
+// stored copy is consumed at the start of initMap() so a later reload doesn't
+// replay it (re-entering Tour Mode, re-centering).
+let pendingLink = {};
+try {
+    pendingLink = JSON.parse(sessionStorage.getItem('ytan_pending_link')) || {};
+} catch (e) { /* storage unavailable or unparsable - URL values only */ }
+
+function linkParam(name) {
+    return (name in pendingLink) ? pendingLink[name] : ytanUrl.searchParams.get(name);
+}
+
 // Zoom einstellen
 let initialZoom = 8;
-let zoomParam = ytanUrl.searchParams.get("z");
+let zoomParam = linkParam("z");
 if (zoomParam !== null) {
     if (!isNaN(parseInt(zoomParam))) {
         initialZoom = parseInt(zoomParam);
@@ -87,8 +102,8 @@ if (zoomParam !== null) {
 }
 
 // Haben wir ein Center?
-let initialLat = parseFloat(ytanUrl.searchParams.get("lat"));
-let initialLng = parseFloat(ytanUrl.searchParams.get("lng"));
+let initialLat = parseFloat(linkParam("lat"));
+let initialLng = parseFloat(linkParam("lng"));
 let initialLatLng = null;
 if (!(isNaN(initialLat) || isNaN(initialLng))) {
     initialLatLng = {
@@ -101,7 +116,7 @@ if (!(isNaN(initialLat) || isNaN(initialLng))) {
 // initMap(), once the map itself is ready to show Tour Mode's badge/route
 // filter.
 let initialTourId = null;
-let tourParam = ytanUrl.searchParams.get("tour");
+let tourParam = linkParam("tour");
 if (tourParam !== null && !isNaN(parseInt(tourParam))) {
     initialTourId = parseInt(tourParam);
 }
@@ -740,6 +755,7 @@ function initMap() {
     // load below, so the loaders fetch just the tour's routes straight away
     // instead of all routes first and the tour's only after the tour fetch
     // further down (see activateTourMode()).
+    try { sessionStorage.removeItem('ytan_pending_link'); } catch (e) { /* ignore */ }
     if (initialTourId !== null) {
         activeTourModeId = initialTourId;
     }

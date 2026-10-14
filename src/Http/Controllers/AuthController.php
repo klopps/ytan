@@ -7,6 +7,7 @@ namespace Ytan\Http\Controllers;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Ytan\Domain\User\UserRepository;
+use Ytan\Exception\UnauthorizedException;
 use Ytan\Exception\ValidationException;
 use Ytan\Service\AuthService;
 use Ytan\Service\MailService;
@@ -41,11 +42,22 @@ final class AuthController extends BaseController
     {
         $auth = $this->requireAuthUser($request);
 
-        $pending = $this->users->findActivePendingEmailChange((int) $auth['sub']);
-        $auth['pending_email'] = $pending['payload'] ?? null;
-        $auth['pending_email_expires_at'] = $pending['expires_at'] ?? null;
+        // Read the user's current data from the database rather than echoing
+        // the JWT's claims back: the token is minted at login and keeps its
+        // old name/email/rights until it expires, so a change made since
+        // (by an admin, or on another device) would never reach the page.
+        $user = $this->users->findById((int) $auth['sub']);
+        if ($user === null) {
+            throw new UnauthorizedException();
+        }
 
-        return $this->json($response, ['data' => $auth]);
+        $data = $this->authService->claimsFor($user);
+
+        $pending = $this->users->findActivePendingEmailChange((int) $user['id']);
+        $data['pending_email'] = $pending['payload'] ?? null;
+        $data['pending_email_expires_at'] = $pending['expires_at'] ?? null;
+
+        return $this->json($response, ['data' => $data]);
     }
 
     public function defaultSpeed(Request $request, Response $response): Response

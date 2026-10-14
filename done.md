@@ -1,5 +1,17 @@
 # Erledigt
 
+## Tour-Link
+
+~~Wird die Site über einen Tour-Link (`?tour=2`) geöffnet, bleibt der Parameter dauerhaft in der URL, auch nach Beenden des Tour-Modus. Besser: tour_id merken, vor der Anzeige auf die URL ohne `?tour=` umleiten, dann erst die Tour zeigen.~~
+
+Gelöst (2026-10-14): Keine echte Weiterleitung nötig (die kostet einen Roundtrip und eine zweite Seitenladung) - ein kleines Inline-Script ganz oben im `<head>` von `templates/app.php`, also vor jeder Anzeige, legt die Id in `sessionStorage['ytan_pending_link']` und entfernt `tour` per `history.replaceState()` aus der Adressleiste (andere Parameter wie `z`/`lat`/`lng`/`route` bleiben). `map-core.js` liest die Id von dort (Fallback: `?tour=` selbst, falls Storage nicht verfügbar ist, dann bleibt die URL eben unverändert) und löscht den Eintrag am Anfang von `initMap()`, damit ein späterer Reload den Tour-Modus nicht erneut betritt. Cookie-Zustimmung: die Id überlebt im sessionStorage, bis die Karte nach der Zustimmung startet. Geprüft im Browser: `/?tour=2&z=9` -> URL `/?z=9`, Badge aktiv, nur `routes?tour_id=2` geladen. Nachtrag (2026-10-14): gilt genauso für `?z=`/`?lat=`/`?lng=` (Karten-Link aus `shareMap()`): das Script legt `tour`/`z`/`lat`/`lng` als JSON-Objekt in `sessionStorage['ytan_pending_link']`, `map-core.js` liest sie über `linkParam(name)` (Fallback: URL) und löscht den Eintrag am Anfang von `initMap()`. `?route=` bleibt bewusst in der URL.
+
+## Geänderte Benutzerdaten erscheinen nach Reload nicht beim angemeldeten Benutzer
+
+~~Werden Daten eines angemeldeten Benutzers (Benutzername, Nachname, Vorname) geändert, wird die Änderung auch nach einem Reload nicht angezeigt.~~
+
+Gelöst (2026-10-14): `GET /auth/me` (`AuthController::me()`) gab nur die Claims des JWT zurück, und die stehen seit dem Login fest im Token - eine Änderung durch einen Admin (Benutzerverwaltung) oder auf einem anderen Gerät kam so nie bei der Seite an, bis der Token ablief. `me()` liest den Benutzer jetzt frisch aus der Datenbank (`UserRepository::findById()`), gleiche Antwortform wie vorher (`sub`, Name, E-Mail, alle Rechte als Boolean, `pending_email*`); existiert der Benutzer nicht mehr, 401. Tests `testMeReturnsTheCurrentDatabaseValuesNotTheStaleTokenClaims`/`testMeForADeletedUserIsUnauthorized`. Auch die serverseitigen Rechteprüfungen sind betroffen gewesen (sie lasen die Token-Claims: ein entzogenes Recht oder Admin-Status galt bis zum Token-Ablauf weiter, ein gelöschter Benutzer blieb autorisiert) - behoben: `AuthMiddleware` ruft jetzt `AuthService::authenticate()` auf, das den Token prüft und die Benutzer-Claims (`claimsFor()`, auch von `issueToken()` und `me()` genutzt) bei JEDER Anfrage aus der Datenbank überschreibt (eine zusätzliche `SELECT ... FROM user WHERE id` pro authentifizierter Anfrage); existiert der Benutzer nicht mehr, ist die Anfrage anonym (401 bei geschützten Routen). `iat`/`exp` bleiben die des Tokens. Test: `AuthServiceAuthenticateTest`.
+
 ## Tour-Modus und Routenanzeige
 
 ~~Ist der Tour-Modus aktiv und meldet man sich dann an, so werden auch alle weiteren öffentlichen und privaten Routen des Benutzers angezeigt. Beim Aktualisieren der Seite im Tour-Modus oder Aufruf eines Tour-Links (`/?tour=2`) werden zunächst alle Routen angezeigt und erst danach ausgeblendet.~~

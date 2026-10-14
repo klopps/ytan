@@ -11,7 +11,7 @@ Stateless JWT bearer tokens (no server-side session). Include
 | Method | Path | Auth | Body | Notes |
 |---|---|---|---|---|
 | POST | `/auth/login` | - | `{username, password}` | Returns `{token, expires_at, user}` |
-| GET | `/auth/me` | required | - | Returns the decoded token payload |
+| GET | `/auth/me` | required | - | Returns the user's current data from the database (same fields as the token claims, plus `pending_email*`), not the stale token payload |
 | GET | `/auth/default-speed` | required | - | `{data: {default_speed_kmh: number\|null}}` |
 | PUT | `/auth/default-speed` | required | `{default_speed_kmh}` | Usual paddling speed in km/h (0.5-30, one decimal) for the watch's initial ETA; empty/0/null clears it |
 
