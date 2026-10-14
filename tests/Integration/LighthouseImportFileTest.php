@@ -26,6 +26,7 @@ final class LighthouseImportFileTest extends ControllerTestCase
     {
         parent::setUp();
         $this->pdo->exec("INSERT INTO poitype (id, name) VALUES (14, 'Lighthouse')");
+        $this->seedDataSources();
         $this->staging = new LighthouseImportRepository($this->pdo);
         $this->controller = new LighthouseImportController(
             $this->staging,
@@ -110,6 +111,19 @@ final class LighthouseImportFileTest extends ControllerTestCase
         $after = $this->staging->search([], null)[0];
         $this->assertSame('Fovrfelt N (neu)', $after['name']);
         $this->assertSame($poiId, (int) $after['poi_id']);
+    }
+
+    public function testSourceRefTravelsInTheFile(): void
+    {
+        $this->staging->upsertMany('osm', [$this->entry('node/9', ['source_ref' => 'node/9'])]);
+
+        $file = LighthouseImportFile::build($this->staging->all());
+        $this->pdo->exec('DELETE FROM lighthouse_import');
+        $this->controller->importFile($this->request('POST', '/x', $this->admin, $file), $this->response());
+
+        $row = $this->staging->search([], null)[0];
+        $this->assertSame('osm', $row['source']);
+        $this->assertSame('node/9', $row['source_ref']);
     }
 
     public function testInvalidFilesAreRejected(): void

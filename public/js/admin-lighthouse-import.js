@@ -12,11 +12,22 @@ var liState = {
     page: 1,
     pageSize: 50,
     total: 0,
+    open: 0, // matches that are not imported yet - what "select all" selects
     rows: [],
     selected: new Set(),
     filterTimer: null,
     pendingImportIds: [],
 };
+
+// The area drawn on the map (the "polygon" filter). Google Maps is only loaded
+// when the panel is opened for the first time.
+var liArea = {
+    map: null,
+    polygon: null,
+    drawing: false,
+    mapsPromise: null,
+};
+var LI_AREA_MAX_VERTICES = 100;
 
 function liEscape(value) {
     var div = document.createElement('div');
@@ -32,7 +43,148 @@ function liFilters() {
             filters[input.dataset.filter] = value;
         }
     });
+    var polygon = liAreaValue();
+    if (polygon !== '') {
+        filters.polygon = polygon;
+    }
     return filters;
+}
+
+/** The drawn area as the "polygon" filter value ("lat,lng;lat,lng;..."), or '' while it has fewer than 3 vertices. */
+function liAreaValue() {
+    if (!liArea.polygon) {
+        return '';
+    }
+    var path = liArea.polygon.getPath();
+    if (path.getLength() < 3) {
+        return '';
+    }
+    var pairs = [];
+    path.forEach(function (point) {
+        pairs.push(point.lat().toFixed(6) + ',' + point.lng().toFixed(6));
+    });
+    return pairs.join(';');
+}
+
+function liAreaScheduleReload() {
+    liAreaUpdateUi();
+    clearTimeout(liState.filterTimer);
+    liState.filterTimer = setTimeout(function () { liReload(true); }, 300);
+}
+
+function liAreaUpdateUi() {
+    var count = liArea.polygon ? liArea.polygon.getPath().getLength() : 0;
+    var status = document.getElementById('liAreaStatus');
+    status.textContent = count === 0 ? '' : t('admin.lighthouse_import.area_vertices', { count: count });
+    document.getElementById('liAreaDraw').classList.toggle('active', liArea.drawing);
+    document.getElementById('liAreaUndo').disabled = count === 0;
+    document.getElementById('liAreaFinish').disabled = !liArea.drawing;
+    document.getElementById('liAreaClear').disabled = count === 0;
+    if (liArea.map) {
+        liArea.map.setOptions({ draggableCursor: liArea.drawing ? 'crosshair' : null });
+    }
+}
+
+/** Loads the Google Maps script once; the promise resolves when google.maps.Map is usable. */
+function liAreaLoadMaps() {
+    if (liArea.mapsPromise) {
+        return liArea.mapsPromise;
+    }
+    liArea.mapsPromise = new Promise(function (resolve, reject) {
+        var key = window.YTAN_MAPS_API_KEY || '';
+        if (key === '') {
+            reject(new Error('no key'));
+            return;
+        }
+        window.liAreaMapsReady = function () {
+            google.maps.importLibrary('maps').then(resolve, reject);
+        };
+        var script = document.createElement('script');
+        script.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(key)
+            + '&loading=async&v=weekly&callback=liAreaMapsReady';
+        script.async = true;
+        script.onerror = function () { reject(new Error('script')); };
+        document.head.appendChild(script);
+    });
+    return liArea.mapsPromise;
+}
+
+/** Creates the map (and the empty polygon) the first time the panel opens. */
+async function liAreaEnsureMap() {
+    if (liArea.map) {
+        return;
+    }
+    try {
+        await liAreaLoadMaps();
+    } catch (err) {
+        document.getElementById('liAreaNoKey').hidden = false;
+        document.getElementById('liAreaButtons').hidden = true;
+        document.getElementById('liAreaMap').hidden = true;
+        return;
+    }
+
+    liArea.map = new google.maps.Map(document.getElementById('liAreaMap'), {
+        center: { lat: 56, lng: 11 },
+        zoom: 5,
+        gestureHandling: 'greedy',
+        streetViewControl: false,
+        fullscreenControl: false,
+        clickableIcons: false,
+    });
+    // clickable:false - a click inside the polygon must still reach the map, to add a vertex there.
+    liArea.polygon = new google.maps.Polygon({
+        map: liArea.map,
+        editable: true,
+        clickable: false,
+        strokeColor: '#BF409F',
+        fillColor: '#BF409F',
+        fillOpacity: 0.15,
+        path: [],
+    });
+    var path = liArea.polygon.getPath();
+    ['insert_at', 'set_at', 'remove_at'].forEach(function (eventName) {
+        google.maps.event.addListener(path, eventName, liAreaScheduleReload);
+    });
+    liArea.map.addListener('click', function (event) {
+        if (!liArea.drawing) {
+            return;
+        }
+        if (path.getLength() >= LI_AREA_MAX_VERTICES) {
+            showAdminToast(t('admin.lighthouse_import.area_too_many', { max: LI_AREA_MAX_VERTICES }), 'error');
+            return;
+        }
+        path.push(event.latLng);
+    });
+    liAreaUpdateUi();
+}
+
+function liAreaInit() {
+    document.getElementById('liAreaPanel').addEventListener('shown.bs.collapse', liAreaEnsureMap);
+    document.getElementById('liAreaDraw').addEventListener('click', function () {
+        // A new drawing replaces the old area.
+        if (liArea.polygon && liArea.polygon.getPath().getLength() > 0) {
+            liArea.polygon.getPath().clear();
+        }
+        liArea.drawing = true;
+        liAreaUpdateUi();
+    });
+    document.getElementById('liAreaUndo').addEventListener('click', function () {
+        if (liArea.polygon && liArea.polygon.getPath().getLength() > 0) {
+            liArea.polygon.getPath().pop();
+        }
+    });
+    document.getElementById('liAreaFinish').addEventListener('click', function () {
+        liArea.drawing = false;
+        liAreaUpdateUi();
+    });
+    document.getElementById('liAreaClear').addEventListener('click', function () {
+        if (liArea.polygon) {
+            liArea.polygon.getPath().clear();
+        }
+        liArea.drawing = false;
+        liAreaUpdateUi();
+    });
+    liAreaUpdateUi();
 }
 
 function liQuery(filters, extra) {
@@ -49,6 +201,7 @@ async function loadEntries() {
         }));
         liState.rows = answer.data;
         liState.total = answer.meta.total;
+        liState.open = answer.meta.open;
         liFillOptions('liRegionList', answer.meta.regions || []);
         liFillOptions('liSubregionList', answer.meta.subregions || []);
         liRender();
@@ -56,6 +209,93 @@ async function loadEntries() {
         document.getElementById('liRows').innerHTML =
             '<tr><td colspan="10" class="text-danger">' + liEscape(t('admin.lighthouse_import.load_failed', { error: err.message })) + '</td></tr>';
     }
+}
+
+/** Display name of a staging entry's source (the data_source codes of migration 036). */
+function liSourceName(code) {
+    switch (code) {
+        case 'nga':
+            return t('admin.lighthouse_import.source_nga');
+        case 'ngaapi':
+            return t('admin.lighthouse_import.source_ngaapi');
+        case 'osm':
+            return t('admin.lighthouse_import.source_osm');
+        default:
+            return t('admin.lighthouse_import.source_dk');
+    }
+}
+
+/** Loads one volume of the NGA List of Lights from the NGA web service into the list (source "ngaapi"). */
+async function liLoadNga() {
+    var button = document.getElementById('liNgaLoad');
+    button.disabled = true;
+    button.textContent = t('admin.lighthouse_import.nga_loading');
+    try {
+        var answer = await Ytan.post('/admin/lighthouse-import/nga', { volume: parseInt(document.getElementById('liNgaVolume').value, 10) });
+        showAdminToast(t('admin.lighthouse_import.nga_result', {
+            lights: answer.data.lights,
+            inserted: answer.data.inserted,
+            updated: answer.data.updated,
+            skipped: answer.data.skipped,
+        }), 'success');
+        liReload(true);
+    } catch (err) {
+        showAdminToast(t('admin.lighthouse_import.nga_failed', { error: translateApiError(err.data) || err.message }), 'error');
+    } finally {
+        button.disabled = false;
+        button.innerHTML = '<i class="bi bi-cloud-download"></i> ' + liEscape(t('admin.lighthouse_import.nga_load'));
+    }
+}
+
+/** Loads the lights of the entered area from OpenStreetMap into the list (source "osm"). */
+async function liLoadOsm() {
+    var area = {};
+    var fields = { south: 'liOsmSouth', west: 'liOsmWest', north: 'liOsmNorth', east: 'liOsmEast' };
+    for (var key in fields) {
+        var value = parseFloat(document.getElementById(fields[key]).value);
+        if (isNaN(value)) {
+            showAdminToast(t('admin.lighthouse_import.osm_area_missing'), 'error');
+            return;
+        }
+        area[key] = value;
+    }
+    area.label = document.getElementById('liOsmLabel').value.trim();
+    if (area.label === '') {
+        showAdminToast(t('admin.lighthouse_import.osm_label_missing'), 'error');
+        return;
+    }
+
+    var button = document.getElementById('liOsmLoad');
+    button.disabled = true;
+    button.textContent = t('admin.lighthouse_import.osm_loading');
+    try {
+        var answer = await Ytan.post('/admin/lighthouse-import/osm', area);
+        showAdminToast(t('admin.lighthouse_import.osm_result', {
+            fetched: answer.data.fetched,
+            inserted: answer.data.inserted,
+            updated: answer.data.updated,
+            skipped: answer.data.skipped,
+        }), 'success');
+        liReload(true);
+    } catch (err) {
+        showAdminToast(t('admin.lighthouse_import.osm_failed', { error: translateApiError(err.data) || err.message }), 'error');
+    } finally {
+        button.disabled = false;
+        button.innerHTML = '<i class="bi bi-cloud-download"></i> ' + liEscape(t('admin.lighthouse_import.osm_load'));
+    }
+}
+
+/** Fills the area fields from a preset ("label|south|west|north|east"). */
+function liApplyOsmPreset(value) {
+    var parts = value.split('|');
+    if (parts.length !== 5) {
+        return;
+    }
+    document.getElementById('liOsmLabel').value = parts[0];
+    document.getElementById('liOsmSouth').value = parts[1];
+    document.getElementById('liOsmWest').value = parts[2];
+    document.getElementById('liOsmNorth').value = parts[3];
+    document.getElementById('liOsmEast').value = parts[4];
 }
 
 /** Fills a filter's suggestion list (<datalist>) once. */
@@ -85,7 +325,7 @@ function liRender() {
             return '<tr>' +
                 '<td><input type="checkbox" class="form-check-input liRowCheckbox" data-id="' + row.id + '"' +
                     (imported ? ' disabled' : '') + (liState.selected.has(Number(row.id)) ? ' checked' : '') + '></td>' +
-                '<td class="text-nowrap small">' + liEscape(row.source === 'nga' ? t('admin.lighthouse_import.source_nga') : t('admin.lighthouse_import.source_dk')) + '</td>' +
+                '<td class="text-nowrap small">' + liEscape(liSourceName(row.source)) + '</td>' +
                 '<td class="text-nowrap">' + liEscape(row.dk_no) + '</td>' +
                 '<td class="text-nowrap">' + liEscape(row.international_id) + '</td>' +
                 '<td>' + liEscape(row.name) + '</td>' +
@@ -110,7 +350,7 @@ function liRender() {
 }
 
 function liUpdateSelectionUi() {
-    document.getElementById('liSelectAllMatches').textContent = t('admin.lighthouse_import.select_all_matches', { count: liState.total });
+    document.getElementById('liSelectAllMatches').textContent = t('admin.lighthouse_import.select_all_matches', { count: liState.open });
     document.getElementById('liSelectedCount').textContent = t('admin.lighthouse_import.selected_count', { count: liState.selected.size });
     document.getElementById('liImportButton').disabled = liState.selected.size === 0;
 
@@ -282,6 +522,7 @@ async function liLoadFile(file) {
 }
 
 function liInit() {
+    liAreaInit();
     document.querySelectorAll('#liFilterForm [data-filter]').forEach(function (input) {
         var eventName = input.tagName === 'SELECT' ? 'change' : 'input';
         input.addEventListener(eventName, function () {
@@ -333,6 +574,11 @@ function liInit() {
         loadEntries();
     });
 
+    document.getElementById('liNgaForm').addEventListener('submit', liLoadNga);
+    document.getElementById('liOsmForm').addEventListener('submit', liLoadOsm);
+    document.getElementById('liOsmPreset').addEventListener('change', function (event) {
+        liApplyOsmPreset(event.target.value);
+    });
     document.getElementById('liExportButton').addEventListener('click', liExport);
     document.getElementById('liFileButton').addEventListener('click', function () {
         document.getElementById('liFileInput').click();

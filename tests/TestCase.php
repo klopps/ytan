@@ -47,6 +47,22 @@ abstract class TestCase extends BaseTestCase
     /**
      * @return int the new user's id
      */
+    /**
+     * The rows migration 036 seeds into data_source (the test database is a
+     * structure-only clone, so it starts without them): needed wherever a
+     * lighthouse_import entry or a lighthouse refers to a source.
+     */
+    protected function seedDataSources(): void
+    {
+        $this->pdo->exec(
+            "INSERT IGNORE INTO data_source (code, name, url, license, license_url, attribution) VALUES
+             ('dk', 'Dansk Fyrliste', 'https://www.soefartsstyrelsen.dk/', 'keine ausdrückliche Lizenz', NULL, 'Dansk Fyrliste, Søfartsstyrelsen'),
+             ('nga', 'NGA List of Lights', 'https://msi.nga.mil/', 'Public Domain', 'https://www.law.cornell.edu/uscode/text/17/105', 'NGA List of Lights'),
+             ('ngaapi', 'NGA List of Lights (MSI)', 'https://msi.nga.mil/', 'Public Domain', 'https://www.law.cornell.edu/uscode/text/17/105', 'NGA List of Lights, MSI'),
+             ('osm', 'OpenStreetMap / OpenSeaMap', 'https://www.openstreetmap.org/', 'ODbL 1.0', 'https://opendatacommons.org/licenses/odbl/1-0/', '© OpenStreetMap-Mitwirkende')"
+        );
+    }
+
     protected function createUser(array $overrides = []): int
     {
         $data = array_merge([

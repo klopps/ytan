@@ -22,5 +22,24 @@
             'club_link' => '<a href="https://tjornkajak.se/" target="_blank">Tjörns Kajakklubb</a>',
         ]) ?>
     </p>
+    <?php if (!empty($dataSources)): ?>
+    <h2><?= $t('about.data_sources_title') ?></h2>
+    <p><?= $t('about.data_sources_intro') ?></p>
+    <ul>
+        <?php foreach ($dataSources as $source): ?>
+        <li>
+            <?php if (!empty($source['url'])): ?>
+            <a href="<?= htmlspecialchars($source['url'], ENT_QUOTES) ?>" target="_blank" rel="noopener"><?= htmlspecialchars($source['name']) ?></a>
+            <?php else: ?>
+            <?= htmlspecialchars($source['name']) ?>
+            <?php endif; ?>
+            <?php if (!empty($source['attribution'])): ?> - <?= htmlspecialchars($source['attribution']) ?><?php endif; ?>
+            <?php if (!empty($source['license'])): ?>
+            (<?php if (!empty($source['license_url'])): ?><a href="<?= htmlspecialchars($source['license_url'], ENT_QUOTES) ?>" target="_blank" rel="noopener"><?= htmlspecialchars($source['license']) ?></a><?php else: ?><?= htmlspecialchars($source['license']) ?><?php endif; ?>)
+            <?php endif; ?>
+        </li>
+        <?php endforeach; ?>
+    </ul>
+    <?php endif; ?>
 </body>
 </html>

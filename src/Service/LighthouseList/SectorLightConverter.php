@@ -31,11 +31,11 @@ final class SectorLightConverter
     public const UNKNOWN_RANGE = '?';
 
     // Angle: degrees (optionally decimal) with a degree sign, optionally
-    // followed directly by whole minutes ("350°42", NGA: "350°42´" with a
-    // minute sign). The sign is mandatory on at least one side of a sector,
+    // followed directly by whole minutes ("350°42", NGA: "350°42´" or
+    // "350°42`" with a minute sign). The sign is mandatory on at least one side of a sector,
     // which keeps ordinary text ("R 6", "Nr. 32a") from being mistaken for a
     // sector.
-    private const ANGLE = '(\d{1,3}(?:[.,]\d+)?)\s*°(\d{1,2}(?![\d.,]))?[\'´′’]?';
+    private const ANGLE = '(\d{1,3}(?:[.,]\d+)?)\s*°(\d{1,2}(?![\d.,]))?[\'´′’`]?';
 
     /**
      * @return list<array{colour:string, start:float, end:float}> in text order,
@@ -43,8 +43,8 @@ final class SectorLightConverter
      */
     public static function parseSectors(string $text): array
     {
-        // NGA spells the weaker parts of a sector light "G.Unintensified-239°".
-        $pattern = '/(?<![\p{L}\d])([A-Z])\s*\.?\s*(?:(?:[Uu]n)?[Ii]ntensified)?\s*(?:' . self::ANGLE . ')?\s*[-–]\s*(?:' . self::ANGLE . ')?/u';
+        // NGA spells the weaker parts of a sector light "G.Unintensified-239°" or "W. (unintensified)-203°".
+        $pattern = '/(?<![\p{L}\d])([A-Z])\s*\.?\s*(?:\(?(?:[Uu]n)?[Ii]ntensified\)?)?\s*(?:' . self::ANGLE . ')?\s*[-–]\s*(?:' . self::ANGLE . ')?/u';
         if (preg_match_all($pattern, $text, $matches, PREG_SET_ORDER) === false) {
             return [];
         }
@@ -133,6 +133,12 @@ final class SectorLightConverter
         }
 
         return $value;
+    }
+
+    /** A degree/range value as short text: no trailing zeros ("8", "350.7"). */
+    public static function formatNumber(float $value): string
+    {
+        return self::number($value);
     }
 
     private static function number(float $value): string

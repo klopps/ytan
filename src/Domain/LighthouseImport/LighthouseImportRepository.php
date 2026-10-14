@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Ytan\Domain\LighthouseImport;
 
 use PDO;
+use Ytan\Exception\ValidationException;
+use Ytan\Service\LighthousePolygon;
 
 /**
  * The staging table behind the admin tool "Lighthouse import": entries read
@@ -15,7 +17,7 @@ final class LighthouseImportRepository
 {
     /** Columns the list file fills (everything except id, poi_id, imported_at). */
     private const LIST_COLUMNS = [
-        'dk_no', 'international_id', 'region', 'subregion', 'name', 'location', 'latitude', 'longitude',
+        'source_ref', 'dk_no', 'international_id', 'region', 'subregion', 'name', 'location', 'latitude', 'longitude',
         'characteristic', 'other_signals', 'flame_height', 'light_range', 'appearance', 'remarks',
         'sector_characteristic', 'sector_missing_range',
     ];
@@ -44,6 +46,10 @@ final class LighthouseImportRepository
      */
     public function upsertMany(string $source, array $entries): array
     {
+        if (!isset($this->dataSources()[$source])) {
+            throw new ValidationException("Unknown data source \"$source\".");
+        }
+
         $columns = array_merge(['source', 'source_key'], self::LIST_COLUMNS);
         $assignments = implode(', ', array_map(fn ($c) => "$c = VALUES($c)", self::LIST_COLUMNS));
         $stmt = $this->db->prepare(
@@ -63,6 +69,7 @@ final class LighthouseImportRepository
                 $stmt->execute([
                     $source,
                     $entry['source_key'],
+                    mb_substr((string) ($entry['source_ref'] ?? ''), 0, 60),
                     $entry['dk_no'],
                     $entry['international_id'],
                     $entry['region'],
@@ -130,6 +137,17 @@ final class LighthouseImportRepository
     }
 
     /**
+     * How many of the matches are still open (not imported yet) - the ones
+     * "select all" can select; imported entries can't be selected again.
+     *
+     * @param array<string,string> $filters
+     */
+    public function countOpen(array $filters): int
+    {
+        return ($filters['status'] ?? '') === 'imported' ? 0 : $this->count(array_merge($filters, ['status' => 'open']));
+    }
+
+    /**
      * Ids of every entry matching the filters ("select all", across pages).
      *
      * @param array<string,string> $filters
@@ -178,6 +196,34 @@ final class LighthouseImportRepository
         return $this->db->query('SELECT * FROM lighthouse_import ORDER BY source, id')->fetchAll();
     }
 
+    /**
+     * Every data source (table data_source), by code.
+     *
+     * @return array<string, array<string,mixed>>
+     */
+    public function dataSources(): array
+    {
+        $sources = [];
+        foreach ($this->db->query('SELECT * FROM data_source ORDER BY code') as $row) {
+            $sources[$row['code']] = $row;
+        }
+
+        return $sources;
+    }
+
+    /**
+     * The data sources at least one lighthouse is taken from (for the
+     * attribution on the About page).
+     *
+     * @return list<array<string,mixed>>
+     */
+    public function usedDataSources(): array
+    {
+        return $this->db->query(
+            'SELECT ds.* FROM data_source ds WHERE EXISTS (SELECT 1 FROM lighthouse l WHERE l.data_source = ds.code) ORDER BY ds.name'
+        )->fetchAll();
+    }
+
     /** @return list<string> the distinct sub-regions, for the filter's drop-down */
     public function subregions(): array
     {
@@ -190,6 +236,32 @@ final class LighthouseImportRepository
     {
         return $this->db->query("SELECT DISTINCT region FROM lighthouse_import WHERE region <> '' ORDER BY region")
             ->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    /**
+     * Ids of the staged entries inside a polygon: the bounding box narrows it
+     * down in SQL, the exact test runs in PHP on what is left.
+     *
+     * @param list<array{0:float, 1:float}> $polygon [latitude, longitude] vertices
+     * @return list<int>
+     */
+    private function idsInPolygon(array $polygon): array
+    {
+        $box = LighthousePolygon::boundingBox($polygon);
+        $stmt = $this->db->prepare(
+            'SELECT id, latitude, longitude FROM lighthouse_import'
+            . ' WHERE latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ? ORDER BY id'
+        );
+        $stmt->execute([$box['south'], $box['north'], $box['west'], $box['east']]);
+
+        $ids = [];
+        foreach ($stmt->fetchAll() as $row) {
+            if (LighthousePolygon::contains($polygon, (float) $row['latitude'], (float) $row['longitude'])) {
+                $ids[] = (int) $row['id'];
+            }
+        }
+
+        return $ids;
     }
 
     /**
@@ -219,6 +291,17 @@ final class LighthouseImportRepository
         if ($source !== '') {
             $conditions[] = 'source = ?';
             $params[] = $source;
+        }
+
+        $polygonText = trim((string) ($filters['polygon'] ?? ''));
+        if ($polygonText !== '') {
+            $ids = $this->idsInPolygon(LighthousePolygon::parse($polygonText));
+            if ($ids === []) {
+                $conditions[] = '0 = 1';
+            } else {
+                // The ids are ints we just read from the table, so they go in as numbers.
+                $conditions[] = 'id IN (' . implode(',', $ids) . ')';
+            }
         }
 
         $status = (string) ($filters['status'] ?? '');

@@ -36,6 +36,9 @@ final class LighthouseImportService
     /** Ranges (nautical miles) assumed for sectors the list gives none for, per colour. */
     public const DEFAULT_RANGES = ['W' => 3.0, 'R' => 2.0, 'G' => 2.0];
 
+    /** @var array<string,string>|null */
+    private ?array $sourceNames = null;
+
     public function __construct(
         private readonly LighthouseImportRepository $staging,
         private readonly PoiRepository $pois,
@@ -103,7 +106,7 @@ final class LighthouseImportService
                 $skipped++;
                 continue;
             }
-            $this->pois->markLighthouseImported((int) $poi['id']);
+            $this->pois->markLighthouseImported((int) $poi['id'], (string) $entry['source'], (string) ($entry['source_ref'] ?? ''));
             $this->staging->markImported((int) $entry['id'], (int) $poi['id']);
         }
 
@@ -185,12 +188,27 @@ final class LighthouseImportService
         return str_replace('.', ',', rtrim(rtrim(number_format($range, 2, '.', ''), '0'), '.'));
     }
 
+    /** Name of a list as shown in a POI's description: the data_source table's, else a built-in one. */
+    private function sourceName(string $code): string
+    {
+        $this->sourceNames ??= array_map(fn ($row) => (string) $row['name'], $this->staging->dataSources());
+
+        return $this->sourceNames[$code] ?? self::SOURCE_NAMES[$code] ?? $code;
+    }
+
     /** @param array<string,mixed> $entry */
     private function poiName(array $entry): string
     {
         $name = trim((string) $entry['name']);
 
-        return $name !== '' ? $name : (self::SOURCE_NAMES[$entry['source'] ?? 'dk'] ?? 'Leuchtfeuer') . ' ' . $entry['dk_no'];
+        if ($name !== '') {
+            return $name;
+        }
+
+        // An entry without a name (OpenStreetMap nodes often have none): the list's name plus whatever identifies the entry.
+        $id = $entry['dk_no'] !== '' ? $entry['dk_no'] : ($entry['international_id'] !== '' ? $entry['international_id'] : (string) ($entry['source_ref'] ?? ''));
+
+        return trim($this->sourceName((string) ($entry['source'] ?? 'dk')) . ' ' . $id);
     }
 
     /**
@@ -229,7 +247,7 @@ final class LighthouseImportService
             $source[] = 'Int. nr. ' . $entry['international_id'];
         }
         if ($source !== []) {
-            $parts[] = '(' . (self::SOURCE_NAMES[$list] ?? $list) . ': ' . implode(', ', $source) . ')';
+            $parts[] = '(' . $this->sourceName($list) . ': ' . implode(', ', $source) . ')';
         }
 
         return implode("

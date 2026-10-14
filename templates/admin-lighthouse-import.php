@@ -18,6 +18,96 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
 
 <div class="card mb-3">
     <div class="card-body">
+        <h2 class="h6"><?= $t('admin.lighthouse_import.nga_title') ?></h2>
+        <p class="small text-secondary mb-2"><?= $t('admin.lighthouse_import.nga_hint') ?></p>
+        <form id="liNgaForm" class="row g-2 align-items-end" onsubmit="return false;">
+            <div class="col-12 col-md-8">
+                <label for="liNgaVolume" class="form-label small mb-1"><?= $t('admin.lighthouse_import.nga_volume') ?></label>
+                <select class="form-select form-select-sm" id="liNgaVolume">
+                    <option value="110">Pub. 110 - <?= $t('admin.lighthouse_import.nga_pub110') ?></option>
+                    <option value="111">Pub. 111 - <?= $t('admin.lighthouse_import.nga_pub111') ?></option>
+                    <option value="112">Pub. 112 - <?= $t('admin.lighthouse_import.nga_pub112') ?></option>
+                    <option value="113">Pub. 113 - <?= $t('admin.lighthouse_import.nga_pub113') ?></option>
+                    <option value="114">Pub. 114 - <?= $t('admin.lighthouse_import.nga_pub114') ?></option>
+                    <option value="115">Pub. 115 - <?= $t('admin.lighthouse_import.nga_pub115') ?></option>
+                    <option value="116" selected>Pub. 116 - <?= $t('admin.lighthouse_import.nga_pub116') ?></option>
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                <button type="submit" class="btn btn-outline-primary btn-sm" id="liNgaLoad"><i class="bi bi-cloud-download"></i> <?= $t('admin.lighthouse_import.nga_load') ?></button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <h2 class="h6"><?= $t('admin.lighthouse_import.osm_title') ?></h2>
+        <p class="small text-secondary mb-2"><?= $t('admin.lighthouse_import.osm_hint') ?></p>
+        <form id="liOsmForm" class="row g-2 align-items-end" onsubmit="return false;">
+            <div class="col-12 col-md-4">
+                <label for="liOsmPreset" class="form-label small mb-1"><?= $t('admin.lighthouse_import.osm_preset') ?></label>
+                <select class="form-select form-select-sm" id="liOsmPreset">
+                    <option value=""><?= $t('admin.lighthouse_import.osm_preset_choose') ?></option>
+                    <option value="Bornholm|54.95|14.6|55.35|15.2">Bornholm</option>
+                    <option value="Kieler Bucht|53.9|9.8|54.9|11.5">Kieler Bucht</option>
+                    <option value="Fünen und Seeland|54.5|9.5|56.2|12.8">Fünen und Seeland</option>
+                    <option value="Öresund|55.2|12.3|56.2|13.0">Öresund</option>
+                    <option value="Kattegat|55.5|10.0|58.0|12.8">Kattegat</option>
+                    <option value="Bohuslän|57.5|10.8|59.2|11.9">Bohuslän</option>
+                    <option value="Gotland|56.8|18.0|58.0|19.4">Gotland</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-8">
+                <label for="liOsmLabel" class="form-label small mb-1"><?= $t('admin.lighthouse_import.osm_label') ?></label>
+                <input type="text" class="form-control form-control-sm" id="liOsmLabel" maxlength="100" autocomplete="off">
+            </div>
+            <div class="col-6 col-md-2">
+                <label for="liOsmSouth" class="form-label small mb-1"><?= $t('admin.lighthouse_import.osm_south') ?></label>
+                <input type="number" class="form-control form-control-sm" id="liOsmSouth" min="-90" max="90" step="any">
+            </div>
+            <div class="col-6 col-md-2">
+                <label for="liOsmWest" class="form-label small mb-1"><?= $t('admin.lighthouse_import.osm_west') ?></label>
+                <input type="number" class="form-control form-control-sm" id="liOsmWest" min="-180" max="180" step="any">
+            </div>
+            <div class="col-6 col-md-2">
+                <label for="liOsmNorth" class="form-label small mb-1"><?= $t('admin.lighthouse_import.osm_north') ?></label>
+                <input type="number" class="form-control form-control-sm" id="liOsmNorth" min="-90" max="90" step="any">
+            </div>
+            <div class="col-6 col-md-2">
+                <label for="liOsmEast" class="form-label small mb-1"><?= $t('admin.lighthouse_import.osm_east') ?></label>
+                <input type="number" class="form-control form-control-sm" id="liOsmEast" min="-180" max="180" step="any">
+            </div>
+            <div class="col-12 col-md-4">
+                <button type="submit" class="btn btn-outline-primary btn-sm" id="liOsmLoad"><i class="bi bi-cloud-download"></i> <?= $t('admin.lighthouse_import.osm_load') ?></button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card mb-3" id="liAreaCard">
+    <div class="card-body">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="liAreaToggle" data-bs-toggle="collapse" data-bs-target="#liAreaPanel" aria-expanded="false" aria-controls="liAreaPanel"><i class="bi bi-bounding-box"></i> <?= $t('admin.lighthouse_import.area_title') ?></button>
+            <span class="small text-secondary" id="liAreaStatus"></span>
+        </div>
+        <div class="collapse mt-3" id="liAreaPanel">
+            <p class="small text-secondary mb-2"><?= $t('admin.lighthouse_import.area_hint') ?></p>
+            <p class="small text-danger mb-2" id="liAreaNoKey" hidden><?= $t('admin.lighthouse_import.area_no_key') ?></p>
+            <div class="d-flex flex-wrap gap-2 mb-2" id="liAreaButtons">
+                <button type="button" class="btn btn-outline-primary btn-sm" id="liAreaDraw"><i class="bi bi-pencil"></i> <?= $t('admin.lighthouse_import.area_draw') ?></button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="liAreaUndo"><i class="bi bi-arrow-counterclockwise"></i> <?= $t('admin.lighthouse_import.area_undo') ?></button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="liAreaFinish"><i class="bi bi-check2"></i> <?= $t('admin.lighthouse_import.area_finish') ?></button>
+                <button type="button" class="btn btn-outline-danger btn-sm" id="liAreaClear"><i class="bi bi-trash"></i> <?= $t('admin.lighthouse_import.area_clear') ?></button>
+            </div>
+            <div id="liAreaMap" class="border rounded" style="height:55vh;min-height:280px;"></div>
+        </div>
+        <script>window.YTAN_MAPS_API_KEY = <?= json_encode($mapsApiKey ?? '') ?>;</script>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
         <form id="liFilterForm" class="row g-2" onsubmit="return false;">
             <div class="col-6 col-md-2">
                 <label for="liFilterDkNo" class="form-label small mb-1"><?= $t('admin.lighthouse_import.col_dk_no') ?></label>
@@ -51,6 +141,8 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
                     <option value=""><?= $t('admin.lighthouse_import.source_all') ?></option>
                     <option value="dk"><?= $t('admin.lighthouse_import.source_dk') ?></option>
                     <option value="nga"><?= $t('admin.lighthouse_import.source_nga') ?></option>
+                    <option value="ngaapi"><?= $t('admin.lighthouse_import.source_ngaapi') ?></option>
+                    <option value="osm"><?= $t('admin.lighthouse_import.source_osm') ?></option>
                 </select>
             </div>
             <div class="col-6 col-md-3">

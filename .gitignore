@@ -46,3 +46,5 @@ Thumbs.db
 
 # Kartenbilder für Touren-Dokumente
 storage/static-maps-cache/*
+/storage/overpass-last-request
+/storage/nga-msi-last-request

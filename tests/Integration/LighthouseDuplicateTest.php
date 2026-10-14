@@ -32,6 +32,7 @@ final class LighthouseDuplicateTest extends ControllerTestCase
     {
         parent::setUp();
         $this->pdo->exec("INSERT INTO poitype (id, name) VALUES (14, 'Lighthouse'), (2, 'Other')");
+        $this->seedDataSources();
         $this->pois = new PoiRepository($this->pdo);
         $this->staging = new LighthouseImportRepository($this->pdo);
         $this->imageDir = sys_get_temp_dir() . '/ytan-dup-test-' . bin2hex(random_bytes(4));

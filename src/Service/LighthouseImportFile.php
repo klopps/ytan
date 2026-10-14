@@ -27,6 +27,7 @@ final class LighthouseImportFile
     /** Text columns of an entry => maximum length (the column sizes of lighthouse_import). */
     private const TEXT_FIELDS = [
         'source_key' => 190,
+        'source_ref' => 60,
         'dk_no' => 20,
         'international_id' => 30,
         'region' => 100,

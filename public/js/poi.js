@@ -554,6 +554,16 @@ function showPoiInfoWindow(event, i, marker) {
                     light.animateElement(pois[i].characteristic, lighthouseId);
                 });
             }
+
+            // Where an imported lighthouse's data comes from (data_source table).
+            if (pois[i].source_name) {
+                var sourceName = escapeHTML(pois[i].source_name);
+                if (pois[i].source_url) {
+                    sourceName = '<a href="' + escapeHTML(pois[i].source_url) + '" target="_blank" rel="noopener">' + sourceName + '</a>';
+                }
+                var sourceLicense = pois[i].source_license ? ' (' + escapeHTML(pois[i].source_license) + ')' : '';
+                content += '<div class="InfoWindowElement"><p class="PoiSource">' + t('poi.source', { source: sourceName }) + sourceLicense + '</p></div>';
+            }
         }
 
         content += '<div class="infoWindowBottom">';

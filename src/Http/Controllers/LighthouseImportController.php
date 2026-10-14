@@ -10,6 +10,8 @@ use Ytan\Domain\LighthouseImport\LighthouseImportRepository;
 use Ytan\Exception\ValidationException;
 use Ytan\Service\LighthouseImportFile;
 use Ytan\Service\LighthouseImportService;
+use Ytan\Service\NgaMsiImportService;
+use Ytan\Service\OsmImportService;
 
 /**
  * Backend of the admin tool "Lighthouse import" (templates/admin-lighthouse-import.php):
@@ -26,11 +28,13 @@ use Ytan\Service\LighthouseImportService;
  */
 final class LighthouseImportController extends BaseController
 {
-    private const FILTERS = ['dk_no', 'international_id', 'region', 'subregion', 'name', 'location', 'source', 'status'];
+    private const FILTERS = ['dk_no', 'international_id', 'region', 'subregion', 'name', 'location', 'source', 'status', 'polygon'];
 
     public function __construct(
         private readonly LighthouseImportRepository $staging,
         private readonly LighthouseImportService $importService,
+        private readonly ?OsmImportService $osmImport = null,
+        private readonly ?NgaMsiImportService $ngaImport = null,
     ) {
     }
 
@@ -45,6 +49,7 @@ final class LighthouseImportController extends BaseController
             'data' => $this->staging->search($filters, $limit, $offset),
             'meta' => [
                 'total' => $this->staging->count($filters),
+                'open' => $this->staging->countOpen($filters),
                 'limit' => $limit,
                 'offset' => $offset,
                 'regions' => $this->staging->regions(),
@@ -87,6 +92,53 @@ final class LighthouseImportController extends BaseController
         }
 
         return $this->json($response, ['data' => ['inserted' => $inserted, 'updated' => $updated]]);
+    }
+
+    /**
+     * Loads the lights of an area from OpenStreetMap into the staging table
+     * (source "osm"): body {south, west, north, east, label}.
+     */
+    public function loadOsm(Request $request, Response $response): Response
+    {
+        $this->requireAdmin($request);
+        if ($this->osmImport === null) {
+            throw new ValidationException('The OpenStreetMap import is not configured.');
+        }
+
+        $body = $this->jsonBody($request);
+        foreach (['south', 'west', 'north', 'east'] as $key) {
+            if (!isset($body[$key]) || !is_numeric($body[$key])) {
+                throw new ValidationException("$key must be a number.");
+            }
+        }
+
+        return $this->json($response, ['data' => $this->osmImport->import(
+            (float) $body['south'],
+            (float) $body['west'],
+            (float) $body['north'],
+            (float) $body['east'],
+            (string) ($body['label'] ?? '')
+        )]);
+    }
+
+    /**
+     * Loads one volume of the NGA List of Lights (Pub. 110-116) from the NGA
+     * Maritime Safety Information web service into the staging table
+     * (source "ngaapi"): body {volume}.
+     */
+    public function loadNga(Request $request, Response $response): Response
+    {
+        $this->requireAdmin($request);
+        if ($this->ngaImport === null) {
+            throw new ValidationException('The NGA import is not configured.');
+        }
+
+        $volume = $this->jsonBody($request)['volume'] ?? null;
+        if (!is_numeric($volume)) {
+            throw new ValidationException('volume must be a number.');
+        }
+
+        return $this->json($response, ['data' => $this->ngaImport->import((int) $volume)]);
     }
 
     public function import(Request $request, Response $response): Response

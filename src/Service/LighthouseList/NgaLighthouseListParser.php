@@ -206,66 +206,20 @@ final class NgaLighthouseListParser extends LighthouseTableParser
      */
     protected function finish(array $entries): array
     {
-        $result = [];
-        $baseName = '';
-        foreach ($entries as $entry) {
-            if (preg_match('/RACON/', $entry['name']) === 1 || preg_match('/^[A-Z]\(\s*[–\-•]/u', $entry['characteristic']) === 1) {
-                continue;
-            }
+        $lights = array_values(array_filter(
+            $entries,
+            fn ($entry) => !NgaLightText::isRacon((string) $entry['name'], (string) $entry['characteristic'])
+        ));
 
-            if (preg_match('/^-+\s*(.*)$/u', $entry['name'], $m) === 1) {
-                $own = rtrim($m[1], '. ');
-                // The part of the first light's name before its first comma ("Bojden Ferry Harbor, N. mole, head." -> "Bojden Ferry Harbor").
-                $stem = $baseName === '' ? '' : (strstr($baseName, ', ', true) ?: rtrim($baseName, '. '));
-                $entry['name'] = $stem === '' ? $own : $stem . ', ' . $own;
-            } else {
-                $baseName = $entry['name'];
-            }
-            $result[] = $entry;
-        }
-
-        return $result;
+        return NgaLightText::completeSiblingNames($lights);
     }
 
     /**
-     * "Iso.W.R.G." + "period 2s" -> "Iso WRG 2s", the spelling YTAN's light
-     * characteristics use (same as the Danish list's "Oc(2) WRG 6s"). Further
-     * lines ("fl. 1s, ec. 4s") are kept separately.
-     *
      * @param list<string> $lines the rows of column 4
      * @return array{0:string, 1:string} characteristic, other lines
      */
     private function characteristic(array $lines): array
     {
-        $code = '';
-        $period = '';
-        $other = [];
-        foreach ($lines as $line) {
-            // "period 2s" is a line of its own, or glued to the code ("Iso.W.period 10s").
-            if (preg_match('/^(.*?)\s*period\s*(.+)$/i', $line, $m) === 1) {
-                if ($code === '' && $m[1] !== '') {
-                    $code = $m[1];
-                }
-                $period = rtrim(preg_replace('/\s+/', '', $m[2]) ?? '', '.');
-            } elseif ($code === '') {
-                $code = $line;
-            } else {
-                $other[] = $line;
-            }
-        }
-
-        $compact = str_replace('.', '', preg_replace('/\s+/', '', $code) ?? '');
-        // A trailing word in brackets ("(vert)": lights in a vertical line) stays behind the colours.
-        $suffix = '';
-        if (preg_match('/^(.*?)(\([a-z]+\))$/', $compact, $m) === 1) {
-            $compact = $m[1];
-            $suffix = $m[2];
-        }
-        if (preg_match('/^(.*\))([A-Za-z]*)$/', $compact, $m) !== 1) {
-            preg_match('/^(.*?)([WRGYB]*)$/', $compact, $m);
-        }
-        $characteristic = trim(preg_replace('/\s+/', ' ', ($m[1] ?? '') . ' ' . ($m[2] ?? '') . ' ' . $suffix . ' ' . $period) ?? '');
-
-        return [$characteristic, implode('; ', $other)];
+        return NgaLightText::characteristic($lines);
     }
 }

@@ -21,11 +21,15 @@ final class PoiRepository
             p.latitude, p.longitude, p.url, p.updated_at,
             wsi.direction,
             por.path AS portage_path,
-            lh.characteristic, lh.sector_characteristic, lh.international_id, lh.imported_at
+            lh.characteristic, lh.sector_characteristic, lh.international_id, lh.imported_at,
+            lh.data_source, lh.source_ref,
+            ds.name AS source_name, ds.url AS source_url, ds.license AS source_license,
+            ds.license_url AS source_license_url, ds.attribution AS source_attribution
         FROM poi p
         LEFT JOIN windshelter wsi ON wsi.poi_id = p.id
         LEFT JOIN portage por ON por.poi_id = p.id
         LEFT JOIN lighthouse lh ON lh.poi_id = p.id
+        LEFT JOIN data_source ds ON ds.code = lh.data_source
     SQL;
 
     public function __construct(private readonly PDO $db)
@@ -229,10 +233,15 @@ final class PoiRepository
         return (int) $stmt->fetchColumn();
     }
 
-    /** Marks a lighthouse as (just now) created or overwritten by the lighthouse list import. */
-    public function markLighthouseImported(int $poiId): void
+    /**
+     * Marks a lighthouse as (just now) created or overwritten by the lighthouse
+     * list import, and records where its data comes from (data_source.code and
+     * the entry's id within that source).
+     */
+    public function markLighthouseImported(int $poiId, ?string $dataSource = null, ?string $sourceRef = null): void
     {
-        $this->db->prepare('UPDATE lighthouse SET imported_at = NOW() WHERE poi_id = ?')->execute([$poiId]);
+        $this->db->prepare('UPDATE lighthouse SET imported_at = NOW(), data_source = ?, source_ref = ? WHERE poi_id = ?')
+            ->execute([$dataSource, $sourceRef !== null && $sourceRef !== '' ? $sourceRef : null, $poiId]);
     }
 
     /** The lists print the number with a space here and there ("B 1804.42"); it is stored without any. */
@@ -253,12 +262,15 @@ final class PoiRepository
         }
 
         if ($type === self::TYPE_LIGHTHOUSE) {
-            // international_id and imported_at are not part of the map's POI
-            // form: a request that doesn't mention them (an ordinary edit)
-            // must keep the stored values, since the row is rewritten below.
-            $existing = $this->db->prepare('SELECT international_id, imported_at FROM lighthouse WHERE poi_id = ? LIMIT 1');
+            // international_id, imported_at and the data source are not part
+            // of the map's POI form: a request that doesn't mention them (an
+            // ordinary edit) must keep the stored values, since the row is
+            // rewritten below.
+            $existing = $this->db->prepare('SELECT international_id, imported_at, data_source, source_ref FROM lighthouse WHERE poi_id = ? LIMIT 1');
             $existing->execute([$poiId]);
-            $stored = $existing->fetch() ?: ['international_id' => null, 'imported_at' => null];
+            $stored = $existing->fetch() ?: ['international_id' => null, 'imported_at' => null, 'data_source' => null, 'source_ref' => null];
+            $dataSource = array_key_exists('data_source', $data) ? ($data['data_source'] ?: null) : $stored['data_source'];
+            $sourceRef = array_key_exists('source_ref', $data) ? ($data['source_ref'] ?: null) : $stored['source_ref'];
 
             $internationalId = array_key_exists('international_id', $data)
                 ? $this->normalizeInternationalId($data['international_id'])
@@ -272,7 +284,7 @@ final class PoiRepository
             // would add a second row for the same POI on every edit.
             $this->db->prepare('DELETE FROM lighthouse WHERE poi_id = ?')->execute([$poiId]);
             $stmt = $this->db->prepare(
-                'INSERT INTO lighthouse (poi_id, characteristic, sector_characteristic, international_id, imported_at) VALUES (?, ?, ?, ?, ?)'
+                'INSERT INTO lighthouse (poi_id, characteristic, sector_characteristic, international_id, imported_at, data_source, source_ref) VALUES (?, ?, ?, ?, ?, ?, ?)'
             );
             $stmt->execute([
                 $poiId,
@@ -280,6 +292,8 @@ final class PoiRepository
                 $data['sector_characteristic'] ?? null,
                 $internationalId,
                 $importedAt,
+                $dataSource,
+                $sourceRef,
             ]);
         }
     }

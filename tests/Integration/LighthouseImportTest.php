@@ -29,6 +29,7 @@ final class LighthouseImportTest extends ControllerTestCase
         parent::setUp();
         // poitype is a lookup table the test DB starts without.
         $this->pdo->exec("INSERT INTO poitype (id, name) VALUES (14, 'Lighthouse')");
+        $this->seedDataSources();
         $this->staging = new LighthouseImportRepository($this->pdo);
         $this->pois = new PoiRepository($this->pdo);
         $this->service = new LighthouseImportService($this->staging, $this->pois);
@@ -103,6 +104,30 @@ final class LighthouseImportTest extends ControllerTestCase
         $this->assertSame(1, $this->staging->count(['region' => 'germany', 'subregion' => 'fehmarn']));
         $this->assertSame(['FEHMARN', 'KIELER BUCHT'], $this->staging->subregions());
         $this->assertSame(['DENMARK-BELTS', 'GERMANY-BALTIC SEA'], $this->staging->regions());
+    }
+
+    public function testSelectAllCountsOnlyTheOpenMatches(): void
+    {
+        [$a, $b, $c] = $this->stage([
+            $this->entry('1', 'B1', 'Erste', ['source_key' => 'a', 'subregion' => 'BORNHOLM']),
+            $this->entry('2', 'B2', 'Zweite', ['source_key' => 'b', 'subregion' => 'BORNHOLM']),
+            $this->entry('3', 'B3', 'Dritte', ['source_key' => 'c', 'subregion' => 'BORNHOLM']),
+        ]);
+        $this->service->import([$a], $this->adminId, true);
+
+        $filters = ['subregion' => 'bornholm'];
+        $this->assertSame(3, $this->staging->count($filters), 'the list shows all matches');
+        $this->assertSame(2, $this->staging->countOpen($filters), 'but only the open ones can be selected');
+        $this->assertSame([$b, $c], $this->staging->ids(array_merge($filters, ['status' => 'open'])));
+        $this->assertSame(1, $this->staging->countOpen(['subregion' => 'bornholm', 'name' => 'Zweite']));
+        $this->assertSame(0, $this->staging->countOpen(['subregion' => 'bornholm', 'status' => 'imported']));
+        $this->assertSame(2, $this->staging->countOpen(['subregion' => 'bornholm', 'status' => 'open']));
+
+        $controller = new LighthouseImportController($this->staging, $this->service);
+        $admin = $this->authPayload($this->adminId, ['is_admin' => true]);
+        $meta = $this->decode($controller->index($this->request('GET', '/x', $admin, null, $filters), $this->response()))['meta'];
+        $this->assertSame(3, $meta['total']);
+        $this->assertSame(2, $meta['open']);
     }
 
     public function testLikeWildcardsInAFilterAreTakenLiterally(): void
@@ -257,6 +282,46 @@ G327°-331°
         $this->service->import([$id], $this->adminId, true, LighthouseImportService::CONFLICT_OVERWRITE);
 
         $this->assertNotNull($this->pois->findById((int) $existing['id'])['imported_at']);
+    }
+
+    public function testImportedLighthouseCarriesItsSourceAndEditsKeepIt(): void
+    {
+        $this->staging->upsertMany('osm', [$this->entry('', 'C0969', 'Aaro Island', ['source_key' => 'node/123', 'source_ref' => 'node/123'])]);
+        $manual = $this->pois->create($this->adminId, ['poitype_id' => 14, 'name' => 'Von Hand', 'latitude' => 54.0, 'longitude' => 9.0]);
+        $this->assertNull($manual['data_source'], 'a hand-drawn lighthouse has no source');
+        $this->assertNull($manual['source_name']);
+
+        $this->service->import($this->staging->ids([]), $this->adminId, true);
+
+        $poiId = (int) $this->staging->search([], null)[0]['poi_id'];
+        $poi = $this->pois->findById($poiId);
+        $this->assertSame('osm', $poi['data_source']);
+        $this->assertSame('node/123', $poi['source_ref']);
+        $this->assertSame('OpenStreetMap / OpenSeaMap', $poi['source_name']);
+        $this->assertSame('ODbL 1.0', $poi['source_license']);
+        $this->assertStringContainsString('https://opendatacommons.org', (string) $poi['source_license_url']);
+        $this->assertStringContainsString('(OpenStreetMap / OpenSeaMap: Int. nr. C0969)', $poi['description']);
+
+        $edited = $this->pois->update($poiId, ['poitype_id' => 14, 'name' => 'Umbenannt', 'latitude' => 54.0, 'longitude' => 9.0]);
+        $this->assertSame('osm', $edited['data_source']);
+        $this->assertSame('node/123', $edited['source_ref']);
+    }
+
+    public function testUnknownDataSourcesAreRejected(): void
+    {
+        $this->expectException(ValidationException::class);
+        $this->staging->upsertMany('nope', [$this->entry('1', 'B1', 'X')]);
+    }
+
+    public function testOnlySourcesInUseAreListedForTheAboutPage(): void
+    {
+        $this->assertSame([], $this->staging->usedDataSources());
+        $this->assertSame(['dk', 'nga', 'ngaapi', 'osm'], array_keys($this->staging->dataSources()));
+
+        [$id] = $this->stage([$this->entry('1', 'B1', 'Erste')]);
+        $this->service->import([$id], $this->adminId, true);
+
+        $this->assertSame(['dk'], array_column($this->staging->usedDataSources(), 'code'));
     }
 
     public function testAnEntryIsImportedOnlyOnce(): void
@@ -483,6 +548,37 @@ G327°-331°
 
         $this->assertNull($a['international_id']);
         $this->assertNull($b['international_id']);
+    }
+
+    public function testPolygonFiltersEveryQueryTheSameWay(): void
+    {
+        [$bornholm, $kiel, $imported] = $this->stage([
+            $this->entry('1', 'B1', 'Hammeren', ['source_key' => 'a', 'latitude' => 55.30, 'longitude' => 14.75, 'region' => 'DENMARK']),
+            $this->entry('2', 'B2', 'Kiel', ['source_key' => 'b', 'latitude' => 54.40, 'longitude' => 10.20, 'region' => 'GERMANY']),
+            $this->entry('3', 'B3', 'Rønne', ['source_key' => 'c', 'latitude' => 55.10, 'longitude' => 14.70, 'region' => 'DENMARK']),
+        ]);
+        $this->service->import([$imported], $this->adminId, false);
+        // Around Bornholm only (lat 54.9-55.4, lng 14.5-15.3).
+        $polygon = '54.9,14.5;54.9,15.3;55.4,15.3;55.4,14.5';
+
+        $this->assertSame(2, $this->staging->count(['polygon' => $polygon]));
+        $this->assertSame([$bornholm, $imported], $this->staging->ids(['polygon' => $polygon]));
+        $this->assertSame(['Hammeren', 'Rønne'], array_column($this->staging->search(['polygon' => $polygon], null), 'name'));
+        $this->assertSame(1, $this->staging->countOpen(['polygon' => $polygon]), 'the imported one is no open match');
+        $this->assertSame(1, $this->staging->count(['polygon' => $polygon, 'region' => 'denmark', 'status' => 'open']));
+        $this->assertSame(0, $this->staging->count(['polygon' => $polygon, 'region' => 'germany']), 'combines with the other filters');
+        $this->assertSame(0, $this->staging->count(['polygon' => '10,-40;10,-30;20,-30']), 'a polygon without a match lists nothing');
+        $this->assertSame(3, $this->staging->count(['polygon' => '   ']), 'an empty polygon filter is no filter');
+        $this->assertContains($kiel, $this->staging->ids([]));
+    }
+
+    public function testAnInvalidPolygonIsRejected(): void
+    {
+        $controller = new LighthouseImportController($this->staging, $this->service);
+        $admin = $this->authPayload($this->adminId, ['is_admin' => true]);
+
+        $this->expectException(ValidationException::class);
+        $controller->index($this->request('GET', '/admin/lighthouse-import', $admin, null, ['polygon' => '55,14;55.5,14.5']), $this->response());
     }
 
     public function testControllerIsAdminOnly(): void

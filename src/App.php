@@ -43,6 +43,12 @@ use Ytan\Service\LighthouseDuplicateService;
 use Ytan\Http\Middleware\AuthMiddleware;
 use Ytan\Domain\LighthouseImport\LighthouseImportRepository;
 use Ytan\Service\LighthouseImportService;
+use Ytan\Service\LighthouseList\OsmLightMapper;
+use Ytan\Service\LighthouseList\NgaMsiLightMapper;
+use Ytan\Service\NgaMsi\CurlNgaMsiClient;
+use Ytan\Service\NgaMsiImportService;
+use Ytan\Service\OsmImportService;
+use Ytan\Service\Overpass\CurlOverpassClient;
 use Ytan\Http\Middleware\CorsMiddleware;
 use Ytan\Service\GpxImportService;
 use Ytan\Service\AuthService;
@@ -146,7 +152,19 @@ final class App
         $lighthouseImportRepository = new LighthouseImportRepository($pdo);
         $lighthouseImportController = new LighthouseImportController(
             $lighthouseImportRepository,
-            new LighthouseImportService($lighthouseImportRepository, $poiRepository)
+            new LighthouseImportService($lighthouseImportRepository, $poiRepository),
+            new OsmImportService(
+                CurlOverpassClient::fromSetting((string) ($_ENV['OVERPASS_ENDPOINTS'] ?? '')),
+                $lighthouseImportRepository,
+                new OsmLightMapper(),
+                $rootDir . '/storage/overpass-last-request'
+            ),
+            new NgaMsiImportService(
+                new CurlNgaMsiClient(),
+                $lighthouseImportRepository,
+                new NgaMsiLightMapper(),
+                $rootDir . '/storage/nga-msi-last-request'
+            )
         );
 
         $lighthouseDuplicateController = new LighthouseDuplicateController(
@@ -371,9 +389,10 @@ final class App
             return $res->withHeader('Content-Type', 'application/javascript; charset=utf-8');
         });
 
-        $app->get('/about', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
+        $app->get('/about', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator, $lighthouseImportRepository) {
             ob_start();
             $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
+            $dataSources = $lighthouseImportRepository->usedDataSources();
             require $rootDir . '/templates/about.php';
             $res->getBody()->write(ob_get_clean());
 
@@ -538,6 +557,7 @@ final class App
             $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
             $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
             $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
+            $mapsApiKey = $_ENV['MAPS_API_KEY'] ?? '';
             require $rootDir . '/templates/admin-lighthouse-import.php';
             $res->getBody()->write(ob_get_clean());
 
@@ -545,6 +565,8 @@ final class App
         });
         $app->get('/api/v1/admin/lighthouse-import', [$lighthouseImportController, 'index']);
         $app->get('/api/v1/admin/lighthouse-import/ids', [$lighthouseImportController, 'ids']);
+        $app->post('/api/v1/admin/lighthouse-import/osm', [$lighthouseImportController, 'loadOsm']);
+        $app->post('/api/v1/admin/lighthouse-import/nga', [$lighthouseImportController, 'loadNga']);
         $app->post('/api/v1/admin/lighthouse-import', [$lighthouseImportController, 'import']);
         $app->get('/api/v1/admin/lighthouse-import/export', [$lighthouseImportController, 'exportFile']);
         $app->post('/api/v1/admin/lighthouse-import/file', [$lighthouseImportController, 'importFile']);
