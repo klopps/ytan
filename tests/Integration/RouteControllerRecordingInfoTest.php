@@ -31,7 +31,7 @@ final class RouteControllerRecordingInfoTest extends ControllerTestCase
         return new RouteController(
             new RouteRepository($this->pdo),
             new TourRepository($this->pdo),
-            new CaptchaService('unit-test-secret'),
+            new CaptchaService('unit-test-secret-at-least-32-bytes-long'),
             $notifications,
             new ImageStorageService(sys_get_temp_dir() . '/ytan-test-images')
         );

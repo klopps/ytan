@@ -533,17 +533,16 @@ function showPoiInfoWindow(event, i, marker) {
             }
         }
 
-        content += '<h3>' + pois[i].name + '</h3>';
-        // || '': description/url may be NULL in the database (e.g. POIs
-        // imported before GpxImportService::toPoi() stored '') -
-        // marked.parse(null) throws.
-        content +=  marked.parse(pois[i].description || '');
+        // Name/description/characteristic/url are user input shown to every
+        // visitor - escaped / sanitized (renderMarkdown(), safeUrl()), never raw.
+        content += '<h3>' + escapeText(pois[i].name) + '</h3>';
+        content +=  renderMarkdown(pois[i].description);
         content += '<div class="infoWindowCoordinates"><i class="material-icons-round">navigation</i>' + formatCoordinates(Number.parseFloat(pois[i].latitude), Number.parseFloat(pois[i].longitude)) + '</div>';
 
         // Lighthouse
         if (pois[i].poitype_id == '14') {
             if (pois[i].characteristic !== null) {
-                content += '<div class="InfoWindowElement"><p class="LighthouseCharacteristic">' + pois[i].characteristic + '</p></div>';
+                content += '<div class="InfoWindowElement"><p class="LighthouseCharacteristic">' + escapeText(pois[i].characteristic) + '</p></div>';
 
                 var lighthouseId = "lighthouse" +  pois[i].id;
                 content += '<div class="InfoWindowLighthouseContainer" onClick="switchSectorLight(' + i + ')">';
@@ -567,8 +566,8 @@ function showPoiInfoWindow(event, i, marker) {
         }
 
         content += '<div class="infoWindowBottom poiInfoBottom">';
-        if (pois[i].url) {
-            content += '<div class="lefthalf"><a href="' + pois[i].url + '" target="_blank"><i class="material-icons-round">info</i>&nbsp;' + t('common.info') + '</a></div>';
+        if (safeUrl(pois[i].url)) {
+            content += '<div class="lefthalf"><a href="' + safeUrl(pois[i].url) + '" target="_blank" rel="noopener"><i class="material-icons-round">info</i>&nbsp;' + t('common.info') + '</a></div>';
         }
 
         // Lighthouse with a sector light: closes this InfoWindow and shows
@@ -830,7 +829,7 @@ function initPoiEditWindow(i) {
                 '<label for="editPoiName">' + t('poi.edit.name_label') + '</label>' +
             '</div>' +
             '<div class="rightCol">' +
-                '<input id="editPoiName" type="text" oninput="validatePoiEditForm();" placeholder="' + t('poi.edit.name_placeholder') + '" title="' + t('poi.edit.name_title') + '" value="' + poi.name + '">' +
+                '<input id="editPoiName" type="text" oninput="validatePoiEditForm();" placeholder="' + t('poi.edit.name_placeholder') + '" title="' + t('poi.edit.name_title') + '" value="' + escapeText(poi.name) + '">' +
             '</div>' +
         '</div>' +
         '<div class="infoWindowElement">' +
@@ -860,14 +859,14 @@ function initPoiEditWindow(i) {
         '</div>' +
         '<div class="infoWindowElement">' +
             '<label for="editPoiDescription">' + t('poi.edit.description_label') + '</label><br>' +
-            '<textarea id="editPoiDescription" rows="5"  oninput="validatePoiEditForm();"placeholder="' + t('poi.edit.description_placeholder') + '">' + (poi.description || '') + '</textarea>' +
+            '<textarea id="editPoiDescription" rows="5"  oninput="validatePoiEditForm();"placeholder="' + t('poi.edit.description_placeholder') + '">' + escapeText(poi.description) + '</textarea>' +
         '</div>' +
         '<div id="infoWindowElement" class="infoWindowElement">' +
             '<div class="leftCol">' +
                 '<label for="editPoiUrl">' + t('poi.edit.url_label') + '</label>' +
             '</div>' +
             '<div class="rightCol">' +
-                '<input id="editPoiURL" type="text" maxlength="300" oninput="validatePoiEditForm();" placeholder="https://www.mypoi.tld" title="' + t('poi.edit.url_title') + '" value="' + (poi.url || '') + '">' +
+                '<input id="editPoiURL" type="text" maxlength="300" oninput="validatePoiEditForm();" placeholder="https://www.mypoi.tld" title="' + t('poi.edit.url_title') + '" value="' + escapeText(poi.url) + '">' +
             '</div>' +
         '</div>' +
         '<div id="editPoiWSIContainer" class="infoWindowElement"' + styleWsi +'>' +
@@ -875,7 +874,7 @@ function initPoiEditWindow(i) {
                 '<label for="editPoiWSI">' + t('poi.edit.wsi_label') + '</label>' +
                 '<p class="wsi-instructions">' + t('poi.edit.wsi_text_instructions') + '</p>' +
             '</div>' +
-            '<input id="editPoiWSI" type="text" maxlength="16" oninput="validatePoiEditForm();" placeholder="0011222222221100" title="' + t('poi.edit.wsi_title') + '" value="' + poi.direction + '">' +
+            '<input id="editPoiWSI" type="text" maxlength="16" oninput="validatePoiEditForm();" placeholder="0011222222221100" title="' + t('poi.edit.wsi_title') + '" value="' + escapeText(poi.direction) + '">' +
             '<button type="button" class="button wsi-editor-btn" onclick="openWsiEditorModal();"><i class="material-icons-round">explore</i>' + t('poi.edit.wsi_editor_button') + '</button>' +
         '</div>' +
         '<div id="editPoiLighthouseContainer" class="infoWindowElement"' + styleLighthouse +'>' +
@@ -883,13 +882,13 @@ function initPoiEditWindow(i) {
                 '<label for="editPoiLighthouseCharacteristic">' + t('poi.edit.characteristic_label') + ' </label>' +
             '</div>' +
             '<div class="rightCol">' +
-                '<input id="editPoiLighthouseCharacteristic" type="text" maxlength="50" oninput="validatePoiEditForm();" placeholder="Iso WRG 6s" title="' + t('poi.edit.characteristic_title') + '" value="' + poi.characteristic + '">' +
+                '<input id="editPoiLighthouseCharacteristic" type="text" maxlength="50" oninput="validatePoiEditForm();" placeholder="Iso WRG 6s" title="' + t('poi.edit.characteristic_title') + '" value="' + escapeText(poi.characteristic) + '">' +
             '</div>' +
             '<div class="infoWindowElement">' +
                 '<label for="editPoiLighthouseSectorCharacteristic">' + t('poi.edit.sector_characteristic_label') + ' </label>' +
             '</div>' +
             '<div class="infoWindowElement">' +
-                '<textarea id="editPoiLighthouseSectorCharacteristic" rows="6" maxlength="250" oninput="validatePoiEditForm();" placeholder="G 8M 30-110&#10;W 10M 110-195&#10;R 8M 195-275" title="' + t('poi.edit.sector_characteristic_title') + '">' + poi.sector_characteristic + '</textarea>' +
+                '<textarea id="editPoiLighthouseSectorCharacteristic" rows="6" maxlength="250" oninput="validatePoiEditForm();" placeholder="G 8M 30-110&#10;W 10M 110-195&#10;R 8M 195-275" title="' + t('poi.edit.sector_characteristic_title') + '">' + escapeText(poi.sector_characteristic) + '</textarea>' +
             '</div>' +
         '</div>'+
     '</div>';

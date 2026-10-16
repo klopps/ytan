@@ -37,7 +37,7 @@ final class RouteControllerCaptchaTest extends ControllerTestCase
         parent::setUp();
         $this->tours = new TourRepository($this->pdo);
         $this->routes = new RouteRepository($this->pdo);
-        $this->captcha = new CaptchaService('unit-test-secret');
+        $this->captcha = new CaptchaService('unit-test-secret-at-least-32-bytes-long');
         $notifications = new TourNotificationService(
             new UserRepository($this->pdo),
             new MailService('unreachable.invalid', 587, '', '', 'from@example.test', '', 'YTAN Test'),

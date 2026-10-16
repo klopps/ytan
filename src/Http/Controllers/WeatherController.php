@@ -6,7 +6,7 @@ namespace Ytan\Http\Controllers;
 
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
-use Ytan\Exception\ValidationException;
+use Ytan\Service\RequestThrottle;
 use Ytan\Service\WeatherService;
 
 /**
@@ -17,21 +17,18 @@ use Ytan\Service\WeatherService;
  */
 final class WeatherController extends BaseController
 {
-    public function __construct(private readonly WeatherService $weather)
-    {
+    public function __construct(
+        private readonly WeatherService $weather,
+        private readonly RequestThrottle $throttle,
+    ) {
     }
 
     public function show(Request $request, Response $response): Response
     {
-        $params = $request->getQueryParams();
-        $lat = $params['lat'] ?? null;
-        $lng = $params['lng'] ?? null;
+        [$lat, $lng] = $this->requireCoordinates($request, 'weather.lat_lng_required');
+        $this->throttle->hit(RequestThrottle::GEO, (string) ($request->getServerParams()['REMOTE_ADDR'] ?? ''));
 
-        if ($lat === null || $lng === null || !is_numeric($lat) || !is_numeric($lng)) {
-            throw new ValidationException('lat and lng are required numeric query parameters.', 'weather.lat_lng_required');
-        }
-
-        $data = $this->weather->getForecast((float) $lat, (float) $lng);
+        $data = $this->weather->getForecast($lat, $lng);
 
         return $this->json($response, ['data' => $data]);
     }

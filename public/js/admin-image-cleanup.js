@@ -14,7 +14,8 @@ var state = {
 function escapeHtml(value) {
     var div = document.createElement('div');
     div.textContent = value == null ? '' : String(value);
-    return div.innerHTML;
+    // innerHTML escapes only &, < and > - quotes too, for attribute values.
+    return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 
 function formatBytes(bytes) {

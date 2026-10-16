@@ -24,7 +24,7 @@ final class AuthServiceAuthenticateTest extends TestCase
         parent::setUp();
         $this->users = new UserRepository($this->pdo);
         $mail = new MailService('unreachable.invalid', 587, '', '', 'from@example.test', '', 'YTAN Test');
-        $this->authService = new AuthService($this->users, 'unit-test-secret', 3600, $mail, 'http://localhost');
+        $this->authService = new AuthService($this->users, 'unit-test-secret-at-least-32-bytes-long', 3600, $mail, 'http://localhost');
     }
 
     private function tokenFor(int $userId): string

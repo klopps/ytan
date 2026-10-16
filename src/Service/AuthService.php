@@ -36,7 +36,11 @@ final class AuthService
 
         if (password_verify($password, $user['password'])) {
             // already a proper hash
-        } elseif (hash_equals((string) $user['password'], $password)) {
+        } elseif (password_get_info((string) $user['password'])['algo'] === null
+            && hash_equals((string) $user['password'], $password)) {
+            // Only for a stored value that is NOT a hash: otherwise whoever
+            // knows the hash (e.g. from a database dump) could log in by
+            // sending the hash itself as the password.
             $user['password'] = password_hash($password, PASSWORD_DEFAULT);
             $this->users->updatePassword((int) $user['id'], $user['password']);
         } else {
@@ -56,15 +60,21 @@ final class AuthService
     public function setNewPassword(string $rawToken, string $newPassword): array
     {
         $tokenRow = $this->users->findValidToken($rawToken);
-        if ($tokenRow === null) {
+        // Only invite/reset links set a password - not an email_change token,
+        // which went to the new, not yet confirmed address.
+        if ($tokenRow === null || !in_array($tokenRow['purpose'], ['invite', 'reset'], true)) {
             throw new ValidationException('This link is invalid or has expired.', 'auth.link_expired');
         }
 
         $this->validatePasswordFormat($newPassword);
 
-        $user = $this->users->findById((int) $tokenRow['user_id']);
-        $this->users->updatePassword((int) $user['id'], password_hash($newPassword, PASSWORD_DEFAULT));
+        $userId = (int) $tokenRow['user_id'];
+        $this->users->updatePassword($userId, password_hash($newPassword, PASSWORD_DEFAULT));
         $this->users->consumeToken($rawToken);
+        // A reset usually means the old password may be known to someone
+        // else - sign out every session that was opened with it.
+        $this->users->bumpTokenVersion($userId);
+        $user = $this->users->findById($userId);
 
         unset($user['password']);
 
@@ -73,9 +83,11 @@ final class AuthService
 
     /**
      * Self-service password change for a logged-in user - requires proof of
-     * the current password, unlike adminSetPassword() below.
+     * the current password, unlike adminSetPassword() below. Signs out every
+     * other session (token_version) and returns a fresh token for this one,
+     * same shape as login().
      */
-    public function changePassword(int $userId, string $currentPassword, string $newPassword): void
+    public function changePassword(int $userId, string $currentPassword, string $newPassword): array
     {
         $user = $this->users->findById($userId);
         if ($user === null || $user['password'] === null || !password_verify($currentPassword, $user['password'])) {
@@ -84,16 +96,37 @@ final class AuthService
 
         $this->validatePasswordFormat($newPassword);
         $this->users->updatePassword($userId, password_hash($newPassword, PASSWORD_DEFAULT));
+
+        return $this->logoutEverywhere($userId);
     }
 
     /**
      * Admin override - sets a user's password directly, without requiring
-     * (or even knowing) their current one.
+     * (or even knowing) their current one. Signs out all of that user's
+     * sessions.
      */
     public function adminSetPassword(int $userId, string $newPassword): void
     {
         $this->validatePasswordFormat($newPassword);
         $this->users->updatePassword($userId, password_hash($newPassword, PASSWORD_DEFAULT));
+        $this->users->bumpTokenVersion($userId);
+    }
+
+    /**
+     * "Sign out everywhere": invalidates every token issued for the user so
+     * far (JWTs are valid for years, JWT_TTL_SECONDS) and returns a fresh
+     * one, so the device that asked stays signed in.
+     */
+    public function logoutEverywhere(int $userId): array
+    {
+        $this->users->bumpTokenVersion($userId);
+        $user = $this->users->findById($userId);
+        if ($user === null) {
+            throw new UnauthorizedException();
+        }
+        unset($user['password']);
+
+        return $this->issueToken($user);
     }
 
     /**
@@ -183,7 +216,7 @@ final class AuthService
     {
         $expiresAt = time() + $this->ttlSeconds;
         $token = JWT::encode(
-            $this->claimsFor($user) + ['iat' => time(), 'exp' => $expiresAt],
+            $this->claimsFor($user) + ['tv' => (int) ($user['token_version'] ?? 0), 'iat' => time(), 'exp' => $expiresAt],
             $this->jwtSecret,
             'HS256'
         );
@@ -236,6 +269,11 @@ final class AuthService
 
         $user = $this->users->findById((int) $payload['sub']);
         if ($user === null) {
+            return null;
+        }
+        // Revoked: issued before the last password change/reset or "sign
+        // out everywhere" (tokens from before migration 039 have no "tv" = 0).
+        if ((int) ($payload['tv'] ?? 0) !== (int) ($user['token_version'] ?? 0)) {
             return null;
         }
 

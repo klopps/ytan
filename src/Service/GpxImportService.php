@@ -82,6 +82,12 @@ final class GpxImportService
         libxml_clear_errors();
         libxml_use_internal_errors($previous);
 
+        // Second check after parsing: the regex above only sees the raw
+        // bytes, a document in another encoding (e.g. UTF-16) hides its
+        // DOCTYPE from it. Entities are never substituted (no LIBXML_NOENT).
+        if ($loaded && $doc->doctype !== null) {
+            throw new ValidationException('The GPX file must not contain a DOCTYPE.');
+        }
         if (!$loaded || $doc->documentElement === null || $doc->documentElement->localName !== 'gpx') {
             throw new ValidationException('This is not a valid GPX file.');
         }

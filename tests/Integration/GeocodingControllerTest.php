@@ -30,7 +30,7 @@ final class GeocodingControllerTest extends ControllerTestCase
         mkdir($this->cacheDir);
         $this->httpClient = new FakeJsonHttpClient();
 
-        $this->controller = new GeocodingController(new GeocodingService($this->cacheDir, $this->httpClient, 'en'));
+        $this->controller = new GeocodingController(new GeocodingService($this->cacheDir, $this->httpClient, 'en'), new \Ytan\Service\RequestThrottle($this->pdo));
     }
 
     protected function tearDown(): void

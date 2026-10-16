@@ -67,13 +67,42 @@ function togglePasswordVisibility(inputId, button) {
  * @returns {string} escaped text
  */
 function escapeHTML(unsafe) {
-    return unsafe
+    // null/undefined/numbers too: user data (name, description, ...) may be
+    // NULL in the database, and the old version threw on anything but a string.
+    return String(unsafe ?? '')
          .replace(/&/g, "&amp;")
          .replace(/</g, "&lt;")
          .replace(/>/g, "&gt;")
          .replace(/"/g, "&quot;")
          .replace(/'/g, "&#039;");
  }
+
+/**
+ * Markdown of a user-written description as SAFE HTML: marked passes raw
+ * HTML and javascript: links through unchanged, so its output is cleaned by
+ * DOMPurify (public/lib/dompurify) before it may go into innerHTML. Every
+ * description rendered as Markdown must go through this, never marked.parse()
+ * directly - any signed-in user can write one, and it is shown to every
+ * visitor of a public POI/route/area/tour (stored XSS).
+ *
+ * @param {?string} text
+ * @returns {string} sanitized HTML
+ */
+function renderMarkdown(text) {
+    return DOMPurify.sanitize(marked.parse(String(text ?? '')));
+}
+
+/**
+ * An http(s) URL for an href, or '' for anything else (javascript:, data:,
+ * ...). Result is HTML-escaped and ready for an attribute.
+ *
+ * @param {?string} url
+ * @returns {string}
+ */
+function safeUrl(url) {
+    const value = String(url ?? '').trim();
+    return /^https?:\/\//i.test(value) ? escapeHTML(value) : '';
+}
 
 /**
  * Decodes HTML entities in plain text (e.g. "&quot;" -> '"') without ever
@@ -100,6 +129,18 @@ function decodeHtmlEntities(text) {
     const el = document.createElement('textarea');
     el.innerHTML = text;
     return el.value;
+}
+
+/**
+ * A stored user text (name, characteristic, ...) as escaped HTML. Decodes
+ * the HTML entities some PESR-era names have baked in first (see
+ * decodeHtmlEntities()), so "&quot;" still shows as '"' and not literally.
+ *
+ * @param {?string} text
+ * @returns {string}
+ */
+function escapeText(text) {
+    return escapeHTML(decodeHtmlEntities(String(text ?? '')));
 }
 
 /**

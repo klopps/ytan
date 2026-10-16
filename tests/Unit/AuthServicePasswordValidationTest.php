@@ -27,7 +27,7 @@ final class AuthServicePasswordValidationTest extends TestCase
     {
         $users = new UserRepository(Connection::fromEnv());
         $mail = new MailService('', 587, '', '', 'test@example.test', '', 'YTAN Test');
-        $this->auth = new AuthService($users, 'unit-test-secret', 3600, $mail, 'http://localhost');
+        $this->auth = new AuthService($users, 'unit-test-secret-at-least-32-bytes-long', 3600, $mail, 'http://localhost');
     }
 
     public function testAcceptsAStrongPassword(): void

@@ -6,8 +6,8 @@ namespace Ytan\Http\Controllers;
 
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
-use Ytan\Exception\ValidationException;
 use Ytan\Service\GeocodingService;
+use Ytan\Service\RequestThrottle;
 
 /**
  * Backs the weather timeline's place-name title (public/js/weather.js) -
@@ -16,21 +16,18 @@ use Ytan\Service\GeocodingService;
  */
 final class GeocodingController extends BaseController
 {
-    public function __construct(private readonly GeocodingService $geocoding)
-    {
+    public function __construct(
+        private readonly GeocodingService $geocoding,
+        private readonly RequestThrottle $throttle,
+    ) {
     }
 
     public function reverse(Request $request, Response $response): Response
     {
-        $params = $request->getQueryParams();
-        $lat = $params['lat'] ?? null;
-        $lng = $params['lng'] ?? null;
+        [$lat, $lng] = $this->requireCoordinates($request, 'geocoding.lat_lng_required');
+        $this->throttle->hit(RequestThrottle::GEO, (string) ($request->getServerParams()['REMOTE_ADDR'] ?? ''));
 
-        if ($lat === null || $lng === null || !is_numeric($lat) || !is_numeric($lng)) {
-            throw new ValidationException('lat and lng are required numeric query parameters.', 'geocoding.lat_lng_required');
-        }
-
-        $placeName = $this->geocoding->reverseGeocode((float) $lat, (float) $lng);
+        $placeName = $this->geocoding->reverseGeocode($lat, $lng);
 
         return $this->json($response, ['data' => ['place_name' => $placeName]]);
     }

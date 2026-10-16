@@ -41,6 +41,19 @@ final class RouteController extends BaseController
             // A tour's own route list is inherently small (bounded by how
             // many routes a tour can reasonably contain) - no pagination
             // needed here, unlike the scope-based branches below.
+            // Only for a tour the caller may see (public, own, admin,
+            // tour_manage - TourController's rule); then ALL its routes,
+            // the creator's private ones included, same as the tour PDF/GPX.
+            $tour = $this->tours->findById((int) $params['tour_id']);
+            $tourVisible = (int) $tour['public'] === 1
+                || ($auth !== null && (
+                    (int) $auth['sub'] === (int) $tour['user_id']
+                    || ($auth['is_admin'] ?? false)
+                    || ($auth['tour_manage'] ?? false)
+                ));
+            if (!$tourVisible) {
+                throw new NotFoundException("Tour {$params['tour_id']} not found.");
+            }
             $data = array_map(
                 fn (array $route) => $this->redactRecordingInfo($route, $auth),
                 $this->routes->findByTour((int) $params['tour_id'])
@@ -78,9 +91,13 @@ final class RouteController extends BaseController
     public function show(Request $request, Response $response, array $args): Response
     {
         $auth = $request->getAttribute('auth');
-        $route = $this->redactRecordingInfo($this->routes->findById((int) $args['id']), $auth);
+        $route = $this->routes->findById((int) $args['id']);
+        // A private route of someone else answers like a missing one.
+        if (!$this->canView($auth, $route)) {
+            throw new NotFoundException("Route {$args['id']} not found.");
+        }
 
-        return $this->json($response, ['data' => $route]);
+        return $this->json($response, ['data' => $this->redactRecordingInfo($route, $auth)]);
     }
 
     public function create(Request $request, Response $response): Response
@@ -261,15 +278,18 @@ final class RouteController extends BaseController
      */
     private function assertCanViewImages(Request $request, array $route): void
     {
-        $auth = $request->getAttribute('auth');
+        if (!$this->canView($request->getAttribute('auth'), $route)) {
+            throw new ForbiddenException();
+        }
+    }
 
-        $canView = (int) $route['public'] === 1
+    /** Public, own, or admin - show() and the photo endpoints. */
+    private function canView(?array $auth, array $route): bool
+    {
+        return (int) $route['public'] === 1
             || ($auth !== null && (
                 (int) $auth['sub'] === (int) $route['user_id']
                 || ($auth['is_admin'] ?? false)
             ));
-        if (!$canView) {
-            throw new ForbiddenException();
-        }
     }
 }

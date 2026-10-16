@@ -31,15 +31,15 @@ function showUserWindow() {
         ;
     } else {
         var pendingEmailNotice = user.pending_email
-            ? '<div class="nav-form-message" style="color: var(--color-warning);">' + t('user.pending_email_notice', { email: user.pending_email }) + ' <span class="nav-link-small" onclick="cancelPendingEmailChange();">' + t('common.cancel') + '</span></div>'
+            ? '<div class="nav-form-message" style="color: var(--color-warning);">' + t('user.pending_email_notice', { email: escapeHTML(user.pending_email) }) + ' <span class="nav-link-small" onclick="cancelPendingEmailChange();">' + t('common.cancel') + '</span></div>'
             : '';
 
         document.getElementById('userWindow').innerHTML =
             '<div class="nav-account-head">' +
-                '<div class="nav-avatar">' + userInitials() + '</div>' +
+                '<div class="nav-avatar">' + escapeHTML(userInitials()) + '</div>' +
                 '<div>' +
-                    '<div class="nav-account-name">' + (user.firstname && user.lastname ? user.firstname + ' ' + user.lastname : user.username) + '</div>' +
-                    '<div class="nav-account-email">' + user.email + '</div>' +
+                    '<div class="nav-account-name">' + escapeHTML(user.firstname && user.lastname ? user.firstname + ' ' + user.lastname : user.username) + '</div>' +
+                    '<div class="nav-account-email">' + escapeHTML(user.email) + '</div>' +
                 '</div>' +
             '</div>' +
             pendingEmailNotice +
@@ -49,7 +49,8 @@ function showUserWindow() {
                 profileSubRowHtml('userDefaultSpeedBtn', 'showDefaultSpeedForm();', 'speed', t('user.default_speed_button')) +
                 profileSubRowHtml('userWatchBtn', 'showWatchSection();', 'watch', t('watch.title')) +
             '</ul>' +
-            '<button id="userLogoutBtn" class="nav-btn-secondary nav-btn-danger" type="button" onClick="logoutUser()"><i class="material-icons-round">logout</i>&nbsp;' + t('user.logout_button') + '</button>'
+            '<button id="userLogoutBtn" class="nav-btn-secondary nav-btn-danger" type="button" onClick="logoutUser()"><i class="material-icons-round">logout</i>&nbsp;' + t('user.logout_button') + '</button>' +
+            '<button id="userLogoutAllBtn" class="nav-btn-secondary" type="button" onClick="logoutEverywhere()"><i class="material-icons-round">devices</i>&nbsp;' + t('user.logout_all_button') + '</button>'
         ;
     }
     document.getElementById('userWindow').insertAdjacentHTML('beforeend', navCancelButtonHtml());
@@ -148,7 +149,12 @@ function submitChangePassword() {
 
     document.getElementById('userChangePasswordSaveBtn').disabled = true;
 
-    Ytan.put('/auth/password', { current_password: current, new_password: newPassword }).then(() => {
+    Ytan.put('/auth/password', { current_password: current, new_password: newPassword }).then(answer => {
+        // The server signed out every session - this one continues with
+        // the fresh token it sent back.
+        if (answer && answer.token) {
+            Ytan.setToken(answer.token);
+        }
         message.style.color = 'var(--color-success)';
         message.textContent = t('user.password_changed_success');
         document.getElementById('userChangePasswordCurrent').value = '';
@@ -212,9 +218,9 @@ function submitDefaultSpeed() {
  */
 function showEditProfileForm() {
     openProfileSub(t('user.edit_profile_button'),
-        '<div class="nav-field"><label for="userEditProfileFirstname">' + t('user.firstname_label') + '</label><input id="userEditProfileFirstname" type="text" value="' + user.firstname + '"></div>' +
-        '<div class="nav-field"><label for="userEditProfileLastname">' + t('user.lastname_label') + '</label><input id="userEditProfileLastname" type="text" value="' + user.lastname + '"></div>' +
-        '<div class="nav-field"><label for="userEditProfileEmail">' + t('user.email_label') + '</label><input id="userEditProfileEmail" type="email" value="' + user.email + '"></div>' +
+        '<div class="nav-field"><label for="userEditProfileFirstname">' + t('user.firstname_label') + '</label><input id="userEditProfileFirstname" type="text" value="' + escapeHTML(user.firstname) + '"></div>' +
+        '<div class="nav-field"><label for="userEditProfileLastname">' + t('user.lastname_label') + '</label><input id="userEditProfileLastname" type="text" value="' + escapeHTML(user.lastname) + '"></div>' +
+        '<div class="nav-field"><label for="userEditProfileEmail">' + t('user.email_label') + '</label><input id="userEditProfileEmail" type="email" value="' + escapeHTML(user.email) + '"></div>' +
         '<div class="nav-field"><label for="userEditProfileCurrentPassword">' + t('user.current_password_label') + '</label><div class="password-input-wrapper"><input id="userEditProfileCurrentPassword" type="password" autocomplete="current-password">' + passwordToggleButtonHtml('userEditProfileCurrentPassword') + '</div></div>' +
         '<div class="nav-form-message" id="userEditProfileMessage"></div>' +
         '<button id="userEditProfileSaveBtn" class="nav-btn-primary" type="button" onClick="submitEditProfile();"><i class="material-icons-round">check</i>&nbsp;' + t('user.save_profile_button') + '</button>' +
@@ -354,6 +360,26 @@ function logoutUser() {
     getPublicTours();
     disablePoiButton();
     infoWindow.close();
+}
+
+/**
+ * "Sign out on all devices": the server invalidates every token of this
+ * user (POST /auth/logout-all, token_version) and sends a fresh one, so this
+ * device stays signed in - the way to end a session on a lost phone or a
+ * stolen token, since JWTs here are valid for years.
+ */
+function logoutEverywhere() {
+    showConfirmDialog(t('user.logout_all_confirm'), { type: 'danger', confirmLabel: t('user.logout_all_button') }).then(confirmed => {
+        if (!confirmed) {
+            return;
+        }
+        Ytan.post('/auth/logout-all', {}).then(answer => {
+            Ytan.setToken(answer.token);
+            showToast(t('user.logout_all_done'), 'success');
+        }).catch(err => {
+            showToast(apiErrorMessage(err), 'error');
+        });
+    });
 }
 
 function loginUser() {

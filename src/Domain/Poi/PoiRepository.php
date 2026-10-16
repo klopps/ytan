@@ -200,6 +200,13 @@ final class PoiRepository
 
     private function assertTypeSpecificFields(array $data): void
     {
+        // The URL becomes a link in the POI's info window (poi.js) - only
+        // http(s), never javascript:/data: etc. (applies to every type).
+        $url = $data['url'] ?? null;
+        if ($url !== null && $url !== '' && (!is_string($url) || preg_match('#^https?://#i', trim($url)) !== 1)) {
+            throw new ValidationException('url must start with http:// or https://.');
+        }
+
         $type = (int) ($data['poitype_id'] ?? 0);
 
         if (in_array($type, [self::TYPE_CAMP, self::TYPE_CAMPSITE], true)) {

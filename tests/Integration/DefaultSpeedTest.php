@@ -28,7 +28,7 @@ final class DefaultSpeedTest extends ControllerTestCase
         parent::setUp();
         $users = new UserRepository($this->pdo);
         $mail = new MailService('unreachable.invalid', 587, '', '', 'from@example.test', '', 'YTAN Test');
-        $this->controller = new AuthController(new AuthService($users, 'unit-test-secret', 3600, $mail, 'http://localhost'), $users, $mail, 'http://localhost');
+        $this->controller = new AuthController(new AuthService($users, 'unit-test-secret-at-least-32-bytes-long', 3600, $mail, 'http://localhost'), $users, $mail, 'http://localhost', new \Ytan\Service\RequestThrottle($this->pdo));
     }
 
     private function put(int $userId, mixed $value): array

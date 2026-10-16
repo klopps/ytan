@@ -10,6 +10,7 @@ use Ytan\Domain\User\UserRepository;
 use Ytan\Exception\UnauthorizedException;
 use Ytan\Exception\ValidationException;
 use Ytan\Service\AuthService;
+use Ytan\Service\RequestThrottle;
 use Ytan\Service\MailService;
 
 final class AuthController extends BaseController
@@ -22,9 +23,14 @@ final class AuthController extends BaseController
         private readonly UserRepository $users,
         private readonly MailService $mail,
         private readonly string $appUrl,
+        private readonly RequestThrottle $throttle,
     ) {
     }
 
+    /**
+     * Throttled (RequestThrottle): too many failed attempts for the username or
+     * from the IP answer 429 before the password is even checked.
+     */
     public function login(Request $request, Response $response): Response
     {
         $body = $this->jsonBody($request);
@@ -35,7 +41,22 @@ final class AuthController extends BaseController
             throw new ValidationException('Username and password are required.', 'auth.username_password_required');
         }
 
-        return $this->json($response, $this->authService->login($username, $password));
+        $ip = $this->clientIp($request);
+        $this->throttle->assertAllowed(RequestThrottle::LOGIN, $username, $ip);
+        try {
+            $issued = $this->authService->login($username, $password);
+        } catch (UnauthorizedException $e) {
+            $this->throttle->record(RequestThrottle::LOGIN, $username, $ip);
+            throw $e;
+        }
+        $this->throttle->clear(RequestThrottle::LOGIN, $username);
+
+        return $this->json($response, $issued);
+    }
+
+    private function clientIp(Request $request): string
+    {
+        return (string) ($request->getServerParams()['REMOTE_ADDR'] ?? '');
     }
 
     public function me(Request $request, Response $response): Response
@@ -102,6 +123,12 @@ final class AuthController extends BaseController
             throw new ValidationException('Identifier is required.', 'auth.identifier_required');
         }
 
+        // Every request counts (each may send a mail), whether or not the
+        // account exists - so the 429 itself reveals nothing about it.
+        $ip = $this->clientIp($request);
+        $this->throttle->assertAllowed(RequestThrottle::FORGOT, $identifier, $ip);
+        $this->throttle->record(RequestThrottle::FORGOT, $identifier, $ip);
+
         $user = $this->users->findByUsername($identifier) ?? $this->users->findByEmail($identifier);
         if ($user !== null && !empty($user['email'])) {
             $token = $this->users->createToken((int) $user['id'], 'reset', 3600);
@@ -149,9 +176,23 @@ final class AuthController extends BaseController
             throw new ValidationException('Current password and new password are required.', 'auth.current_new_password_required');
         }
 
-        $this->authService->changePassword((int) $auth['sub'], $currentPassword, $newPassword);
+        // Every other session is signed out; this one gets a fresh token
+        // (same shape as login: token, expires_at, user).
+        $issued = $this->authService->changePassword((int) $auth['sub'], $currentPassword, $newPassword);
 
-        return $this->json($response, ['message' => 'Password changed.']);
+        return $this->json($response, ['message' => 'Password changed.'] + $issued);
+    }
+
+    /**
+     * "Sign out everywhere": invalidates every token of the current user
+     * (JWTs are valid for years and can't be revoked one by one) and returns
+     * a fresh one for the calling device.
+     */
+    public function logoutEverywhere(Request $request, Response $response): Response
+    {
+        $auth = $this->requireAuthUser($request);
+
+        return $this->json($response, $this->authService->logoutEverywhere((int) $auth['sub']));
     }
 
     /**

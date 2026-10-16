@@ -95,12 +95,12 @@ function showRouteEditWindow(i, latLng) {
                 '<label for="editRouteName">' + t('route.edit.name_label') + '</label>' +
             '</div>' +
             '<div class="rightCol">' +
-                '<input id="editRouteName" type="text" oninput="validateRouteEditForm();" placeholder="' + t('route.edit.name_placeholder') + '" title="' + t('common.min_3_chars_title') + '" value="' + route.name + '">' +
+                '<input id="editRouteName" type="text" oninput="validateRouteEditForm();" placeholder="' + t('route.edit.name_placeholder') + '" title="' + t('common.min_3_chars_title') + '" value="' + escapeText(route.name) + '">' +
             '</div>' +
         '</div>' +
         '<div class="infoWindowElement">' +
             '<label for="editRouteDescription">' + t('route.edit.description_label') + '</label><br>' +
-            '<textarea id="editRouteDescription" rows="5" oninput="validateRouteEditForm();"placeholder="' + t('route.edit.description_placeholder') + '">' + route.description + '</textarea>' +
+            '<textarea id="editRouteDescription" rows="5" oninput="validateRouteEditForm();"placeholder="' + t('route.edit.description_placeholder') + '">' + escapeText(route.description) + '</textarea>' +
         '</div>' +
         '<div class="infoWindowElement">' +
             '<div class="leftCol">' +
@@ -108,7 +108,7 @@ function showRouteEditWindow(i, latLng) {
             '</div>' +
             '<div class="rightCol">' +
                 '<div id="editRouteColorWrapper">' +
-                    '<input type="color" id="editRouteColor" name="editRouteColor" value="' + route.color + '">' +
+                    '<input type="color" id="editRouteColor" name="editRouteColor" value="' + escapeHTML(route.color) + '">' +
                 '</div>' +
             '</div>' +
         '</div>';
@@ -1368,7 +1368,7 @@ function showRouteInfoWindow(event, i) {
     var length = Intl.NumberFormat(language, { style: 'decimal' }).format(kilometers);
 
     var content =
-        '<h3>' + routes[i]['name'] + '</h3>' +
+        '<h3>' + escapeText(routes[i]['name']) + '</h3>' +
         '<div class="infoWindowElement">' + t('route.info.length', { length: length }) + '</div>';
 
     // Recording metadata (when/by whom/how long) is only ever present on a
@@ -1385,14 +1385,14 @@ function showRouteInfoWindow(event, i) {
         var startDate = new Date(routes[i]['recorded_at'].replace(' ', 'T'));
         var endDate = new Date(startDate.getTime() + routes[i]['recording_duration_seconds'] * 1000);
         content += '<div class="infoWindowElement">' + t('route.info.recorded', {
-            by: routes[i]['recorded_by_username'] || '?',
+            by: escapeHTML(routes[i]['recorded_by_username'] || '?'),
             start: startDate.toLocaleString(language, dateTimeOpts),
             end: endDate.toLocaleString(language, dateTimeOpts),
             duration: formatRouteRecordingDuration(routes[i]['recording_duration_seconds']),
         }) + '</div>';
     }
 
-    content += '<div class="infoWindowElement">' + marked.parse(routes[i]['description']) + '<div>';
+    content += '<div class="infoWindowElement">' + renderMarkdown(routes[i]['description']) + '<div>';
 
     if (user.id !== null) {
         if (routes[i].user_id == user.id) {

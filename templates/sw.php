@@ -10,6 +10,7 @@
 $shellFiles = [
     '/lib/measuretool-googlemap-v3/gmaps-measuretool.umd.js',
     '/lib/marked/marked.min.js',
+    '/lib/dompurify/purify.min.js',
     '/lib/markerWithLabel/markerwithlabel.min.js',
     '/lib/light-characteristics/lightcharacteristic.js',
     '/lib/map-label-rotated/rotated-label.js',

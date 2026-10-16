@@ -32,7 +32,7 @@ final class RouteControllerConflictTest extends ControllerTestCase
         parent::setUp();
         $this->routes = new RouteRepository($this->pdo);
         $tours = new TourRepository($this->pdo);
-        $captcha = new CaptchaService('unit-test-secret');
+        $captcha = new CaptchaService('unit-test-secret-at-least-32-bytes-long');
         $notifications = new TourNotificationService(
             new UserRepository($this->pdo),
             new MailService('unreachable.invalid', 587, '', '', 'from@example.test', '', 'YTAN Test'),

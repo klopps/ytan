@@ -10,13 +10,19 @@ Stateless JWT bearer tokens (no server-side session). Include
 
 | Method | Path | Auth | Body | Notes |
 |---|---|---|---|---|
-| POST | `/auth/login` | - | `{username, password}` | Returns `{token, expires_at, user}` |
+| POST | `/auth/login` | - | `{username, password}` | Returns `{token, expires_at, user}`. 429 (`auth.too_many_attempts`) after 10 failed attempts for the username or 50 from the IP within 15 minutes |
+| POST | `/auth/forgot-password` | - | `{identifier}` | Always the same generic answer; 429 after 3 requests for the identifier or 10 from the IP per hour (counted whether or not the account exists) |
+| PUT | `/auth/password` | required | `{current_password, new_password}` | Signs out every session and returns `{message, token, expires_at, user}` - the caller continues with the new token |
+| POST | `/auth/logout-all` | required | - | "Sign out on all devices": every token issued so far becomes invalid; returns `{token, expires_at, user}` for the calling device |
 | GET | `/auth/me` | required | - | Returns the user's current data from the database (same fields as the token claims, plus `pending_email*`), not the stale token payload |
 | GET | `/auth/default-speed` | required | - | `{data: {default_speed_kmh: number\|null}}` |
 | PUT | `/auth/default-speed` | required | `{default_speed_kmh}` | Usual paddling speed in km/h (0.5-30, one decimal) for the watch's initial ETA; empty/0/null clears it |
 
-There is no `/auth/logout` endpoint: since tokens are stateless, "logging
-out" just means the client discards the token it's holding.
+There is no `/auth/logout` endpoint: "logging out" on one device just means
+the client discards the token it's holding. Every token carries the user's
+`token_version` as claim `tv`; a password change/reset, an admin setting the
+password and `/auth/logout-all` raise it, which makes every older token
+answer 401 (tokens from before this claim existed count as `tv` 0).
 
 ## Pagination
 
@@ -213,6 +219,14 @@ endpoint require a logged-in user (JWT).
 `GET /wsi/{code}` where `code` is a 16-character string of `0`/`1`/`2` (one
 per 22.5° compass sector). Returns `image/svg+xml`, rendered server-side and
 cached to disk. No auth required (same as POIs).
+
+## Weather and reverse geocoding
+
+`GET /api/v1/weather?lat=..&lng=..` (forecast for the weather timeline) and
+`GET /api/v1/geocode/reverse?lat=..&lng=..` (`{data: {place_name}}`), no
+auth required. `lat` must be -90..90, `lng` -180..180 (else 422). Both call
+external services (Open-Meteo/SMHI, Nominatim), so together they are limited
+to 120 requests per IP in 10 minutes (429, `auth.too_many_attempts`).
 
 ## Health
 

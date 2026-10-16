@@ -66,6 +66,11 @@ final class TourController extends BaseController
     public function show(Request $request, Response $response, array $args): Response
     {
         $tour = $this->tours->findById((int) $args['id']);
+        // A tour the caller may not see answers like a missing one (no hint
+        // that a private tour with this id exists).
+        if (!$this->canView($request->getAttribute('auth'), $tour)) {
+            throw new NotFoundException("Tour {$args['id']} not found.");
+        }
         $tour['tags'] = $this->tours->getTags((int) $tour['id']);
         $tour['images'] = $this->tours->getImages((int) $tour['id']);
 
@@ -166,6 +171,17 @@ final class TourController extends BaseController
         $routeId = (int) ($this->jsonBody($request)['route_id'] ?? 0);
         if ($routeId <= 0) {
             throw new ValidationException('route_id is required.');
+        }
+
+        // Only a route the caller may see: someone else's private route in
+        // a tour would be readable by everybody who may see the tour (tour
+        // GPX/PDF, GET /routes?tour_id=, and once the tour is published).
+        $route = $this->tours->findRouteAccess($routeId);
+        if ($route === null) {
+            throw new NotFoundException("Route $routeId not found.");
+        }
+        if ($route['public'] !== 1 && $route['user_id'] !== (int) $auth['sub'] && !($auth['is_admin'] ?? false)) {
+            throw new ForbiddenException();
         }
 
         return $this->json($response, ['data' => $this->tours->addRoute($tourId, $routeId)]);
@@ -299,15 +315,20 @@ final class TourController extends BaseController
      */
     private function assertCanView(?array $auth, array $tour): void
     {
-        $canView = (int) $tour['public'] === 1
+        if (!$this->canView($auth, $tour)) {
+            throw new ForbiddenException();
+        }
+    }
+
+    /** Public, or the owner/admin/tour_manage - also used by show(). */
+    private function canView(?array $auth, array $tour): bool
+    {
+        return (int) $tour['public'] === 1
             || ($auth !== null && (
                 (int) $auth['sub'] === (int) $tour['user_id']
                 || ($auth['is_admin'] ?? false)
                 || ($auth['tour_manage'] ?? false)
             ));
-        if (!$canView) {
-            throw new ForbiddenException();
-        }
     }
 
     /**

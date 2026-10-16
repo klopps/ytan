@@ -33,7 +33,7 @@ final class UserControllerFilterTest extends ControllerTestCase
         return new UserController(
             $users,
             $this->mailService(),
-            new AuthService($users, 'unit-test-secret', 3600, $this->mailService(), 'http://localhost'),
+            new AuthService($users, 'unit-test-secret-at-least-32-bytes-long', 3600, $this->mailService(), 'http://localhost'),
             'http://localhost'
         );
     }

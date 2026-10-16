@@ -76,7 +76,14 @@
             .catch(function () {
                 // deliberately ignored below - always show the same generic message
             })
-            .then(function () {
+            .then(function (response) {
+                // 429 = too many requests (AuthThrottle) - counted whether or
+                // not the account exists, so saying so reveals nothing.
+                if (response && response.status === 429) {
+                    message.textContent = t('error.auth.too_many_attempts');
+                    btn.disabled = false;
+                    return;
+                }
                 message.textContent = t('forgot.success');
             });
         }

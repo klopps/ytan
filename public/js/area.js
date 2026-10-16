@@ -58,12 +58,12 @@ function showAreaEditWindow(i, latLng) {
                 '<label for="editAreaName">' + t('area.edit.name_label') + '</label>' +
             '</div>' +
             '<div class="rightCol">' +
-                '<input id="editAreaName" type="text" oninput="validateAreaEditForm();" placeholder="' + t('area.edit.name_placeholder') + '" title="' + t('common.min_3_chars_title') + '" value="' + area.name + '">' +
+                '<input id="editAreaName" type="text" oninput="validateAreaEditForm();" placeholder="' + t('area.edit.name_placeholder') + '" title="' + t('common.min_3_chars_title') + '" value="' + escapeText(area.name) + '">' +
             '</div>' +
         '</div>' +
         '<div class="infoWindowElement">' +
             '<label for="editAreaDescription">' + t('area.edit.description_label') + '</label><br>' +
-            '<textarea id="editAreaDescription" rows="5" oninput="validateAreaEditForm();"placeholder="' + t('area.edit.description_placeholder') + '">' + area.description + '</textarea>' +
+            '<textarea id="editAreaDescription" rows="5" oninput="validateAreaEditForm();"placeholder="' + t('area.edit.description_placeholder') + '">' + escapeText(area.description) + '</textarea>' +
         '</div>' +
         '<div class="infoWindowElement">' +
             '<div class="leftCol">' +
@@ -71,7 +71,7 @@ function showAreaEditWindow(i, latLng) {
             '</div>' +
             '<div class="rightCol">' +
                 '<div id="editAreaColorWrapper">' +
-                    '<input type="color" id="editAreaColor" name="editAreaColor" value="' + area.color + '">' +
+                    '<input type="color" id="editAreaColor" name="editAreaColor" value="' + escapeHTML(area.color) + '">' +
                 '</div>' +
             '</div>' +
         '</div>' +
@@ -89,7 +89,7 @@ function showAreaEditWindow(i, latLng) {
                 '<label for="editAreaZindex">' + t('area.edit.zindex_label') + '</label>' +
             '</div>' +
             '<div class="rightCol">' +
-                '<input id="editAreaZindex" type="text" oninput="validateAreaEditForm();" placeholder="1" title="' + t('area.edit.zindex_title') + '" value="' + area.zindex + '">' +
+                '<input id="editAreaZindex" type="text" oninput="validateAreaEditForm();" placeholder="1" title="' + t('area.edit.zindex_title') + '" value="' + escapeHTML(area.zindex) + '">' +
             '</div>' +
         '</div>'
         ;
@@ -677,8 +677,8 @@ function showAreaInfoWindow(event, i) {
     }
 
     var content =
-        '<h3>' + areas[i]['name'] + '</h3>' +
-        '<div class="infoWindowElement">' + marked.parse(areas[i]['description']) + '</div>' +
+        '<h3>' + escapeText(areas[i]['name']) + '</h3>' +
+        '<div class="infoWindowElement">' + renderMarkdown(areas[i]['description']) + '</div>' +
         '<div class="infoWindowBottom">' +
             '<div class="lefthalf"><i>' + areaSizeText + '</i></div>';
     if ((user.id !== null) && ((areas[i].user_id == user.id) || user.is_admin)) {

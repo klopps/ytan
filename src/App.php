@@ -52,6 +52,8 @@ use Ytan\Service\Overpass\CurlOverpassClient;
 use Ytan\Http\Middleware\CorsMiddleware;
 use Ytan\Service\GpxImportService;
 use Ytan\Service\AuthService;
+use Ytan\Service\RequestThrottle;
+use Ytan\Service\JwtSecret;
 use Ytan\Service\CaptchaService;
 use Ytan\Service\CurlJsonHttpClient;
 use Ytan\Service\GeocodingService;
@@ -95,6 +97,9 @@ final class App
         );
         $translator = new Translator($rootDir . '/resources/i18n', $locale);
 
+        // Throws if JWT_SECRET is missing (no public fallback secret any more).
+        $jwtKey = JwtSecret::key($_ENV['JWT_SECRET'] ?? null);
+
         $userRepository = new UserRepository($pdo);
         $mailService = new MailService(
             $_ENV['MAIL_HOST'] ?? '',
@@ -107,13 +112,13 @@ final class App
         );
         $authService = new AuthService(
             $userRepository,
-            $_ENV['JWT_SECRET'] ?? 'insecure-dev-secret',
+            $jwtKey,
             (int) ($_ENV['JWT_TTL_SECONDS'] ?? 86400),
             $mailService,
             $appUrl
         );
         $tourRepository = new TourRepository($pdo);
-        $captchaService = new CaptchaService($_ENV['JWT_SECRET'] ?? 'insecure-dev-secret');
+        $captchaService = new CaptchaService($jwtKey);
         $tourNotificationService = new TourNotificationService($userRepository, $mailService, $appUrl);
         // One ImageStorageService instance per entity type - the class
         // itself is entity-agnostic, only the storage subdirectory differs.
@@ -189,7 +194,8 @@ final class App
             $tourRepository,
             $userRepository,
         );
-        $authController = new AuthController($authService, $userRepository, $mailService, $appUrl);
+        $requestThrottle = new RequestThrottle($pdo);
+        $authController = new AuthController($authService, $userRepository, $mailService, $appUrl, $requestThrottle);
         $userController = new UserController($userRepository, $mailService, $authService, $appUrl);
         $wsiController = new WsiController(new WsiRenderer($rootDir . '/public/images/wsi'));
         $settingsRepository = new SettingsRepository($pdo);
@@ -209,10 +215,11 @@ final class App
                 new WeatherRegionResolver($geocodingService),
                 new OpenMeteoWeatherProvider($jsonHttpClient),
                 new SmhiWeatherProvider($jsonHttpClient),
-            )
+            ),
+            $requestThrottle
         );
-        $geocodingController = new GeocodingController($geocodingService);
-        $watchController = new WatchController(new WatchLinkRepository($pdo), $routeRepository, new WatchKeyVault($_ENV['JWT_SECRET'] ?? 'insecure-dev-secret'));
+        $geocodingController = new GeocodingController($geocodingService, $requestThrottle);
+        $watchController = new WatchController(new WatchLinkRepository($pdo), $routeRepository, new WatchKeyVault((string) $_ENV['JWT_SECRET']));
 
         $app = AppFactory::create();
 
@@ -228,7 +235,8 @@ final class App
         }
 
         $app->addBodyParsingMiddleware();
-        $app->add(new CorsMiddleware($_ENV['ALLOWED_ORIGINS'] ?? '*'));
+        // No cross-origin access unless .env lists origins (the app itself is same-origin).
+        $app->add(new CorsMiddleware($_ENV['ALLOWED_ORIGINS'] ?? ''));
         $app->add(new AppVersionMiddleware((int) ($_ENV['MIN_APP_VERSION_CODE'] ?? 0)));
         $app->add(new AuthMiddleware($authService));
         $app->addRoutingMiddleware();
@@ -275,6 +283,7 @@ final class App
         $app->post('/api/v1/auth/forgot-password', [$authController, 'forgotPassword']);
         $app->post('/api/v1/auth/set-password', [$authController, 'setPassword']);
         $app->put('/api/v1/auth/password', [$authController, 'changePassword']);
+        $app->post('/api/v1/auth/logout-all', [$authController, 'logoutEverywhere']);
         $app->put('/api/v1/auth/profile', [$authController, 'updateProfile']);
         $app->delete('/api/v1/auth/email-change', [$authController, 'cancelEmailChange']);
         $app->post('/api/v1/auth/confirm-email-change', [$authController, 'confirmEmailChange']);

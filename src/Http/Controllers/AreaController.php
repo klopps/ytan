@@ -55,7 +55,13 @@ final class AreaController extends BaseController
 
     public function show(Request $request, Response $response, array $args): Response
     {
-        return $this->json($response, ['data' => $this->areas->findById((int) $args['id'])]);
+        $area = $this->areas->findById((int) $args['id']);
+        // A private area of someone else answers like a missing one.
+        if (!$this->canView($request, $area)) {
+            throw new NotFoundException("Area {$args['id']} not found.");
+        }
+
+        return $this->json($response, ['data' => $area]);
     }
 
     public function create(Request $request, Response $response): Response
@@ -169,15 +175,20 @@ final class AreaController extends BaseController
      */
     private function assertCanViewImages(Request $request, array $area): void
     {
+        if (!$this->canView($request, $area)) {
+            throw new ForbiddenException();
+        }
+    }
+
+    /** Public, own, or admin - show() and the photo endpoints. */
+    private function canView(Request $request, array $area): bool
+    {
         $auth = $request->getAttribute('auth');
 
-        $canView = (int) $area['public'] === 1
+        return (int) $area['public'] === 1
             || ($auth !== null && (
                 (int) $auth['sub'] === (int) $area['user_id']
                 || ($auth['is_admin'] ?? false)
             ));
-        if (!$canView) {
-            throw new ForbiddenException();
-        }
     }
 }

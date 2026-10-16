@@ -244,6 +244,22 @@ final class TourRepository
      * recalculates the tour's cached total_length. Duplicate adds are
      * silently ignored (tour_route has a UNIQUE(tour_id, route_id) key).
      */
+    /**
+     * Owner and public flag of a route, for TourController::addRoute()'s
+     * "may this caller put this route into a tour" check - null if the
+     * route doesn't exist.
+     *
+     * @return array{user_id:int, public:int}|null
+     */
+    public function findRouteAccess(int $routeId): ?array
+    {
+        $stmt = $this->db->prepare('SELECT user_id, public FROM route WHERE id = ?');
+        $stmt->execute([$routeId]);
+        $row = $stmt->fetch();
+
+        return $row === false ? null : ['user_id' => (int) $row['user_id'], 'public' => (int) $row['public']];
+    }
+
     public function addRoute(int $tourId, int $routeId): array
     {
         $this->findById($tourId); // 404s if missing

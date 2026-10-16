@@ -344,7 +344,7 @@ function renderTourDetail(tour, routesInTour) {
     }
 
     if (tour.description) {
-        html += '<div class="tour-detail-desc">' + marked.parse(tour.description) + '</div>';
+        html += '<div class="tour-detail-desc">' + renderMarkdown(tour.description) + '</div>';
     }
 
     if ((tour.images || []).length > 0) {

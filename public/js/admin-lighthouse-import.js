@@ -32,7 +32,10 @@ var LI_AREA_MAX_VERTICES = 100;
 function liEscape(value) {
     var div = document.createElement('div');
     div.textContent = value == null ? '' : String(value);
-    return div.innerHTML;
+    // innerHTML escapes only &, < and > - quotes too, since the result also
+    // goes into attributes (title="...", value="...") and the data comes
+    // from outside (OpenStreetMap, NGA).
+    return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 
 function liFilters() {

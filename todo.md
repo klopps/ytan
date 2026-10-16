@@ -1,5 +1,12 @@
 # Offene Punkte
 
+## Sicherheit: offene Reste aus dem Audit vom 2026-10-16
+
+Die Befunde selbst sind behoben (done.md). Offen:
+- **Produktion prüfen (nach dem Deploy):** `.env` auf dem Server - `JWT_SECRET` mindestens 32 Zeichen (sonst wird er gestreckt, `JwtSecret`, und alle müssen sich einmal neu anmelden; dann einen langen Zufallswert setzen), `ALLOWED_ORIGINS` leer (steht dort vermutlich noch `*`; die App braucht kein CORS), `APP_DEBUG=false`, `TRANSLATE_TOOL_ENABLED=false`. Danach mit `curl -I https://ytan.pesr.org/` prüfen, dass die Sicherheits-Header da sind und `http://` auf `https://` umleitet.
+- **Vollständige Content-Security-Policy:** gesetzt ist bisher nur `frame-ancestors 'self'`. Eine echte CSP (`script-src` ohne `'unsafe-inline'`) setzt voraus, dass die Inline-`<script>`-Blöcke in den Templates in Dateien wandern (oder Nonces bekommen) und die vielen `onclick="..."`-Attribute im per JS gebauten HTML durch `addEventListener` ersetzt werden; dazu Google Maps (`maps.googleapis.com`, `*.gstatic.com`), Overpass/NGA nur serverseitig. Großer Umbau, wäre die zweite Verteidigungslinie gegen XSS.
+- **Login-Altlast ganz entfernen:** prüfen, ob in der Produktions-DB noch Klartext-Passwörter stehen (`SELECT COUNT(*) FROM user WHERE password IS NOT NULL AND password NOT LIKE '$2y$%'`); wenn nein, den Klartext-Zweig in `AuthService::login()` löschen.
+
 ## Leuchtfeuer-Quellen: nächste Schritte
 
 Aus der Quellenrecherche (2026-10-14, Plan "Weitere Quellen für den Leuchtfeuer-Import"); OpenStreetMap als Quelle und die Quellen-Tabelle sind umgesetzt (done.md), offen sind:

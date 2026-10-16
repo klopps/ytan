@@ -31,8 +31,8 @@ final class AuthControllerErrorCodeTest extends ControllerTestCase
         parent::setUp();
         $this->users = new UserRepository($this->pdo);
         $mail = new MailService('unreachable.invalid', 587, '', '', 'from@example.test', '', 'YTAN Test');
-        $authService = new AuthService($this->users, 'unit-test-secret', 3600, $mail, 'http://localhost');
-        $this->controller = new AuthController($authService, $this->users, $mail, 'http://localhost');
+        $authService = new AuthService($this->users, 'unit-test-secret-at-least-32-bytes-long', 3600, $mail, 'http://localhost');
+        $this->controller = new AuthController($authService, $this->users, $mail, 'http://localhost', new \Ytan\Service\RequestThrottle($this->pdo));
     }
 
     public function testLoginWithAWrongPasswordCarriesTheInvalidCredentialsCode(): void

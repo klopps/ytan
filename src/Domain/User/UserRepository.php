@@ -204,6 +204,15 @@ final class UserRepository
     }
 
     /**
+     * Invalidates every JWT issued for the user so far (their "tv" claim no
+     * longer matches, see AuthService::authenticate()).
+     */
+    public function bumpTokenVersion(int $id): void
+    {
+        $this->db->prepare('UPDATE user SET token_version = token_version + 1 WHERE id = ?')->execute([$id]);
+    }
+
+    /**
      * Self-service update of a user's own display name - deliberately
      * separate from update() above, which also lets an admin change
      * username/email/is_admin for an arbitrary user.
@@ -243,11 +252,19 @@ final class UserRepository
         $token = bin2hex(random_bytes(32));
         $expiresAt = date('Y-m-d H:i:s', time() + $ttlSeconds);
 
+        // Only the SHA-256 of the token is stored: a database dump alone
+        // doesn't give working invite/reset links (migration 041 converted
+        // the older rows).
         $this->db->prepare(
             'INSERT INTO user_token (user_id, token, purpose, payload, expires_at) VALUES (?, ?, ?, ?, ?)'
-        )->execute([$userId, $token, $purpose, $payload, $expiresAt]);
+        )->execute([$userId, self::hashToken($token), $purpose, $payload, $expiresAt]);
 
         return $token;
+    }
+
+    private static function hashToken(string $token): string
+    {
+        return hash('sha256', $token);
     }
 
     /**
@@ -266,7 +283,7 @@ final class UserRepository
         $stmt = $this->db->prepare(
             'SELECT * FROM user_token WHERE token = ? AND used_at IS NULL AND expires_at > NOW()'
         );
-        $stmt->execute([$token]);
+        $stmt->execute([self::hashToken($token)]);
         $row = $stmt->fetch();
 
         return $row === false ? null : $row;
@@ -291,6 +308,6 @@ final class UserRepository
 
     public function consumeToken(string $token): void
     {
-        $this->db->prepare('UPDATE user_token SET used_at = NOW() WHERE token = ?')->execute([$token]);
+        $this->db->prepare('UPDATE user_token SET used_at = NOW() WHERE token = ?')->execute([self::hashToken($token)]);
     }
 }

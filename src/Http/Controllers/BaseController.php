@@ -8,6 +8,7 @@ use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Ytan\Exception\ForbiddenException;
 use Ytan\Exception\UnauthorizedException;
+use Ytan\Exception\ValidationException;
 
 abstract class BaseController
 {
@@ -88,6 +89,28 @@ abstract class BaseController
         $data = json_decode($body, true);
 
         return is_array($data) ? $data : [];
+    }
+
+    /**
+     * The `lat`/`lng` query parameters as floats: numeric, finite and in
+     * range (-90..90, -180..180) - anything else would end up in cache file
+     * names and external API requests (weather, reverse geocoding).
+     *
+     * @return array{0: float, 1: float}
+     */
+    protected function requireCoordinates(Request $request, string $errorCode): array
+    {
+        $params = $request->getQueryParams();
+        $lat = $params['lat'] ?? null;
+        $lng = $params['lng'] ?? null;
+
+        if (!is_numeric($lat) || !is_numeric($lng)
+            || !is_finite((float) $lat) || !is_finite((float) $lng)
+            || abs((float) $lat) > 90 || abs((float) $lng) > 180) {
+            throw new ValidationException('lat and lng are required numeric query parameters (lat -90..90, lng -180..180).', $errorCode);
+        }
+
+        return [(float) $lat, (float) $lng];
     }
 
     private const MAX_PAGINATION_LIMIT = 500;

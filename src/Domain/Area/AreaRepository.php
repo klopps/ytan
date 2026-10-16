@@ -7,6 +7,7 @@ namespace Ytan\Domain\Area;
 use PDO;
 use Ytan\Exception\ConflictException;
 use Ytan\Exception\NotFoundException;
+use Ytan\Exception\ValidationException;
 
 final class AreaRepository
 {
@@ -81,6 +82,8 @@ final class AreaRepository
 
     public function create(int $userId, array $data): array
     {
+        $this->assertValidColor($data);
+
         $stmt = $this->db->prepare(
             'INSERT INTO area (user_id, name, description, public, points, color, opacity, zindex, updated_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())'
@@ -103,6 +106,7 @@ final class AreaRepository
     {
         $existing = $this->findById($id); // 404s if missing
         $this->assertNotStale($existing, $data['expected_updated_at'] ?? null);
+        $this->assertValidColor($data);
 
         $stmt = $this->db->prepare(
             'UPDATE area SET name=?, description=?, public=?, points=?, color=?, opacity=?, zindex=?, updated_at=NOW() WHERE id=?'
@@ -126,6 +130,18 @@ final class AreaRepository
         $existing = $this->findById($id); // 404s if missing
         $this->assertNotStale($existing, $expectedUpdatedAt);
         $this->db->prepare('DELETE FROM area WHERE id = ?')->execute([$id]);
+    }
+
+    /**
+     * The color ends up in an HTML attribute of the edit form (area.js), so
+     * only #RRGGBB (what <input type="color"> sends) or none (the default).
+     */
+    private function assertValidColor(array $data): void
+    {
+        $color = $data['color'] ?? null;
+        if ($color !== null && (!is_string($color) || preg_match('/^#[0-9A-Fa-f]{6}$/', $color) !== 1)) {
+            throw new ValidationException('color must be a #RRGGBB color.');
+        }
     }
 
     private function assertNotStale(array $existing, ?string $expectedUpdatedAt): void

@@ -78,7 +78,7 @@ final class PaginationControllerTest extends ControllerTestCase
         $routes = new RouteRepository($this->pdo);
         $tours = new TourRepository($this->pdo);
         $notifications = new TourNotificationService(new UserRepository($this->pdo), $this->mailService(), 'http://localhost');
-        $controller = new RouteController($routes, $tours, new CaptchaService('unit-test-secret'), $notifications, new ImageStorageService(sys_get_temp_dir() . '/ytan-test-images'));
+        $controller = new RouteController($routes, $tours, new CaptchaService('unit-test-secret-at-least-32-bytes-long'), $notifications, new ImageStorageService(sys_get_temp_dir() . '/ytan-test-images'));
         $userId = $this->createUser();
         $this->createRoute($userId, ['public' => 1]);
         $this->createRoute($userId, ['public' => 1]);
@@ -98,14 +98,15 @@ final class PaginationControllerTest extends ControllerTestCase
         $routes = new RouteRepository($this->pdo);
         $tours = new TourRepository($this->pdo);
         $notifications = new TourNotificationService(new UserRepository($this->pdo), $this->mailService(), 'http://localhost');
-        $controller = new RouteController($routes, $tours, new CaptchaService('unit-test-secret'), $notifications, new ImageStorageService(sys_get_temp_dir() . '/ytan-test-images'));
+        $controller = new RouteController($routes, $tours, new CaptchaService('unit-test-secret-at-least-32-bytes-long'), $notifications, new ImageStorageService(sys_get_temp_dir() . '/ytan-test-images'));
         $userId = $this->createUser();
         $tour = $tours->create($userId, ['name' => 'T']);
         $route = $this->createRoute($userId);
         $tours->addRoute((int) $tour['id'], $route);
 
         $result = $this->decode($controller->index(
-            $this->request('GET', '/routes', null, null, ['tour_id' => (string) $tour['id'], 'limit' => '1']),
+            // As the owner: a private tour's routes are not listed for anyone else.
+            $this->request('GET', '/routes', $this->authPayload($userId), null, ['tour_id' => (string) $tour['id'], 'limit' => '1']),
             $this->response()
         ));
 
@@ -134,7 +135,7 @@ final class PaginationControllerTest extends ControllerTestCase
     public function testUserIndexWithLimitReportsTotalInMeta(): void
     {
         $users = new UserRepository($this->pdo);
-        $controller = new UserController($users, $this->mailService(), new AuthService($users, 'unit-test-secret', 3600, $this->mailService(), 'http://localhost'), 'http://localhost');
+        $controller = new UserController($users, $this->mailService(), new AuthService($users, 'unit-test-secret-at-least-32-bytes-long', 3600, $this->mailService(), 'http://localhost'), 'http://localhost');
         $admin = $this->createUser(['is_admin' => 1]);
         $this->createUser(['username' => 'zzz']);
         $this->createUser(['username' => 'aaa']);

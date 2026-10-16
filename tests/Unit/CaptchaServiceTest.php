@@ -13,7 +13,7 @@ final class CaptchaServiceTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->captcha = new CaptchaService('unit-test-secret');
+        $this->captcha = new CaptchaService('unit-test-secret-at-least-32-bytes-long');
     }
 
     public function testIssueChallengeReturnsAQuestionAndToken(): void
@@ -59,7 +59,7 @@ final class CaptchaServiceTest extends TestCase
 
     public function testVerifyRejectsATokenSignedWithADifferentSecret(): void
     {
-        $other = new CaptchaService('a-different-secret');
+        $other = new CaptchaService('a-different-secret-also-at-least-32-bytes');
         $challenge = $other->issueChallenge('route:1');
         [$a, $b] = $this->parseQuestion($challenge['question']);
 

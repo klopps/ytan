@@ -66,7 +66,13 @@ final class PoiController extends BaseController
 
     public function show(Request $request, Response $response, array $args): Response
     {
-        return $this->json($response, ['data' => $this->pois->findById((int) $args['id'])]);
+        $poi = $this->pois->findById((int) $args['id']);
+        // A private POI of someone else answers like a missing one.
+        if (!$this->canView($request, $poi)) {
+            throw new NotFoundException("POI {$args['id']} not found.");
+        }
+
+        return $this->json($response, ['data' => $poi]);
     }
 
     public function create(Request $request, Response $response): Response
@@ -180,15 +186,20 @@ final class PoiController extends BaseController
      */
     private function assertCanViewImages(Request $request, array $poi): void
     {
+        if (!$this->canView($request, $poi)) {
+            throw new ForbiddenException();
+        }
+    }
+
+    /** Public, own, or admin - show() and the photo endpoints. */
+    private function canView(Request $request, array $poi): bool
+    {
         $auth = $request->getAttribute('auth');
 
-        $canView = (int) $poi['public'] === 1
+        return (int) $poi['public'] === 1
             || ($auth !== null && (
                 (int) $auth['sub'] === (int) $poi['user_id']
                 || ($auth['is_admin'] ?? false)
             ));
-        if (!$canView) {
-            throw new ForbiddenException();
-        }
     }
 }

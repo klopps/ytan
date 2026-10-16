@@ -72,7 +72,30 @@ final class WeatherControllerTest extends ControllerTestCase
             new WeatherRegionResolver($geocoding),
             new OpenMeteoWeatherProvider($this->httpClient),
             new SmhiWeatherProvider($this->httpClient),
-        ));
+        ), new \Ytan\Service\RequestThrottle($this->pdo));
+    }
+
+    public function testOutOfRangeCoordinatesAreRejected(): void
+    {
+        foreach ([['lat' => '91', 'lng' => '10'], ['lat' => '54', 'lng' => '-181'], ['lat' => '1e999', 'lng' => '10']] as $params) {
+            try {
+                $this->controller->show($this->request('GET', '/weather', null, null, $params), $this->response());
+                $this->fail('lat=' . $params['lat'] . ' lng=' . $params['lng'] . ' must be rejected.');
+            } catch (\Ytan\Exception\ValidationException) {
+                $this->addToAssertionCount(1);
+            }
+        }
+    }
+
+    public function testRequestsPerIpAreLimited(): void
+    {
+        $stmt = $this->pdo->prepare("INSERT INTO auth_attempt (kind, identifier, ip, created_at) VALUES ('geo', '', '', NOW())");
+        for ($i = 0; $i < 120; $i++) {
+            $stmt->execute();
+        }
+
+        $this->expectException(\Ytan\Exception\TooManyRequestsException::class);
+        $this->controller->show($this->request('GET', '/weather', null, null, ['lat' => '54.3', 'lng' => '10.1']), $this->response());
     }
 
     protected function tearDown(): void

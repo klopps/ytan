@@ -136,6 +136,8 @@ final class GpxImportServiceTest extends TestCase
         foreach ([
             '<?xml version="1.0"?><!DOCTYPE gpx [<!ENTITY x SYSTEM "file:///etc/passwd">]><gpx>&x;</gpx>',
             '<kml xmlns="http://www.opengis.net/kml/2.2"></kml>',
+            // The same DOCTYPE in UTF-16LE (no BOM): the raw-text check can't see it.
+            mb_convert_encoding('<?xml version="1.0" encoding="UTF-16"?><!DOCTYPE gpx [<!ENTITY x "y">]><gpx>&x;</gpx>', 'UTF-16LE', 'UTF-8'),
             'not xml at all',
             '',
         ] as $input) {

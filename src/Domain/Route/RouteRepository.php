@@ -7,6 +7,7 @@ namespace Ytan\Domain\Route;
 use PDO;
 use Ytan\Exception\ConflictException;
 use Ytan\Exception\NotFoundException;
+use Ytan\Exception\ValidationException;
 
 final class RouteRepository
 {
@@ -78,6 +79,18 @@ final class RouteRepository
         return $limit !== null ? ' LIMIT ' . $limit . ' OFFSET ' . max(0, $offset) : '';
     }
 
+    /**
+     * The color ends up in an HTML attribute of the edit form (route.js), so
+     * only #RRGGBB (what <input type="color"> sends) or none (the default).
+     */
+    private function assertValidColor(array $data): void
+    {
+        $color = $data['color'] ?? null;
+        if ($color !== null && (!is_string($color) || preg_match('/^#[0-9A-Fa-f]{6}$/', $color) !== 1)) {
+            throw new ValidationException('color must be a #RRGGBB color.');
+        }
+    }
+
     private function assertNotStale(array $existing, ?string $expectedUpdatedAt): void
     {
         if ($expectedUpdatedAt === null) {
@@ -118,6 +131,8 @@ final class RouteRepository
 
     public function create(int $userId, array $data): array
     {
+        $this->assertValidColor($data);
+
         $stmt = $this->db->prepare(
             'INSERT INTO route (user_id, name, description, public, length, points, color, recorded_at, recording_duration_seconds, updated_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())'
@@ -141,6 +156,7 @@ final class RouteRepository
     {
         $existing = $this->findById($id); // 404s if missing
         $this->assertNotStale($existing, $data['expected_updated_at'] ?? null);
+        $this->assertValidColor($data);
 
         // recorded_at/recording_duration_seconds are deliberately NOT
         // updatable here - they're write-once-at-creation facts about a

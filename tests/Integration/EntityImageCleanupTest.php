@@ -130,7 +130,7 @@ final class EntityImageCleanupTest extends ControllerTestCase
         $tours = new TourRepository($this->pdo);
         $mail = new MailService('unreachable.invalid', 587, '', '', 'from@example.test', '', 'YTAN Test');
         $notifications = new TourNotificationService(new UserRepository($this->pdo), $mail, 'http://localhost');
-        $controller = new RouteController($routes, $tours, new CaptchaService('unit-test-secret'), $notifications, $images);
+        $controller = new RouteController($routes, $tours, new CaptchaService('unit-test-secret-at-least-32-bytes-long'), $notifications, $images);
 
         $userId = $this->createUser();
         $routeId = $this->createRoute($userId);
