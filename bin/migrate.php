@@ -3,8 +3,10 @@
 
 declare(strict_types=1);
 
-// Tiny migration runner: applies database/migrations/*.sql in filename order,
-// tracking what already ran in a `schema_migrations` table.
+// Tiny migration runner: applies database/migrations/*.sql and *.php in
+// filename order, tracking what already ran in a `schema_migrations` table.
+// A .php migration (for data changes plain SQL can't express) returns a
+// function(PDO $pdo): void.
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 
@@ -36,7 +38,7 @@ $pdo->exec(
 
 $applied = $pdo->query('SELECT migration FROM schema_migrations')->fetchAll(PDO::FETCH_COLUMN);
 
-$files = glob($root . '/database/migrations/*.sql');
+$files = array_merge(glob($root . '/database/migrations/*.sql'), glob($root . '/database/migrations/*.php'));
 sort($files);
 
 $ranAny = false;
@@ -47,8 +49,11 @@ foreach ($files as $file) {
     }
 
     echo "Applying $name ...\n";
-    $sql = file_get_contents($file);
-    $pdo->exec($sql);
+    if (str_ends_with($name, '.php')) {
+        (require $file)($pdo);
+    } else {
+        $pdo->exec(file_get_contents($file));
+    }
 
     $stmt = $pdo->prepare('INSERT INTO schema_migrations (migration, applied_at) VALUES (?, NOW())');
     $stmt->execute([$name]);

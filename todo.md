@@ -2,9 +2,10 @@
 
 ## Performance: offene Punkte aus der Analyse vom 2026-10-16
 
-Kompression, Browser-Caching, WSI-Icons, Marker bei Bedarf und das doppelte Laden sind erledigt (done.md). Offen:
-- **Nach dem Deploy prüfen:** `curl -sI -H "Accept-Encoding: gzip" https://ytan.pesr.org/js/map-core.js?v=1` - kommt `Content-Encoding: gzip`, hat der Host `mod_deflate`; sonst bleiben statische Dateien unkomprimiert (PHP-Antworten komprimiert `CompressionMiddleware` in jedem Fall). `Cache-Control: public, max-age=31536000, immutable` muss bei `?v=` dabei sein.
-- **Nutzdaten verkleinern:** Koordinaten in `points` mit 15-17 Nachkommastellen (6 = 11 cm reichen) -> Routen/Gebiete ~40 % kleiner; beim Speichern runden (Repository) plus einmalige Migration der vorhandenen Zeilen. POI-Liste: `source_name/url/license/license_url/attribution` stehen an jedem Leuchtfeuer (~190 KB roh, gzip fängt das großteils ab) -> einmal als `data_sources` mitschicken; Beschreibungen (~160 KB) könnten erst beim Öffnen des InfoWindows geladen werden (`GET /pois/{id}`).
+Kompression, Browser-Caching, WSI-Icons, Marker bei Bedarf, das doppelte Laden, die Prüfung in Produktion, gerundete Koordinaten und `data_sources` in der POI-Liste sind erledigt (done.md).
+
+Offen:
+- **POI-Beschreibungen erst bei Bedarf laden** (~160 KB roh in der Liste): erst beim Öffnen des InfoWindows per `GET /pois/{id}` holen. Vorher klären, was `description` aus der Liste sonst braucht (Bearbeiten-Formular, Suche, Offline-Cache - offline wäre die Beschreibung dann nicht da).
 - **Verbleibende Long Tasks beim Laden** (4x gedrosselt je ~0,5 s): vermutlich JSON-Parsen der großen Listen und das Anlegen der Routen-/Gebiets-Polylinien; bei Bedarf profilieren.
 - **Grundlast pro PHP-Request:** `App::create()` baut bei jedem Request alle ~40 Repositories/Services/Controller und lädt dafür ihre Klassen (lokal ~7 ms + Autoload, ohne OPcache ~50 ms). Fix: Controller erst bei Bedarf erzeugen (Closures/Container), in Produktion prüfen, dass OPcache aktiv ist. Lokal zusätzlich `DB_HOST=127.0.0.1` statt `localhost` (Windows probiert erst IPv6 `::1`, ~10 ms pro Verbindung) - nur `.env` der Dev-Maschine.
 - Datenbank-Indizes reichen bei der aktuellen Datenmenge (1,8 k POIs); `public` hat keinen Index, `WHERE user_id = ? OR public = 1` liest die Tabelle ganz - erst bei deutlich mehr Daten relevant.

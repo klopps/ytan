@@ -29,6 +29,22 @@ final class AreaRepositoryTest extends TestCase
         ], $overrides));
     }
 
+    public function testCreateAndUpdateRoundPointsToSixDecimals(): void
+    {
+        $userId = $this->createUser();
+
+        $area = $this->createArea($userId, [
+            'points' => '[{"lat":54.19601443156392,"lng":10.284302830696106}]',
+        ]);
+        $this->assertSame('[{"lat":54.196014,"lng":10.284303}]', $area['points']);
+
+        $area = $this->areas->update((int) $area['id'], [
+            'name' => $area['name'],
+            'points' => '[{"lat":-1.0000004,"lng":179.12345678}]',
+        ]);
+        $this->assertSame('[{"lat":-1,"lng":179.123457}]', $area['points']);
+    }
+
     public function testFindPublicWithoutLimitReturnsEverything(): void
     {
         $userId = $this->createUser();

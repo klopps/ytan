@@ -54,6 +54,50 @@ final class PaginationControllerTest extends ControllerTestCase
         $this->assertNull($result['meta']);
     }
 
+    public function testPoiIndexSendsDataSourcesOnceInsteadOfOnEveryRow(): void
+    {
+        $this->seedDataSources();
+        $this->pdo->exec("INSERT IGNORE INTO poitype (id, name) VALUES (14, 'Leuchtfeuer'), (2, 'Test Type')");
+        $pois = new PoiRepository($this->pdo);
+        $controller = new PoiController($pois, new ImageStorageService(sys_get_temp_dir() . '/ytan-test-images'));
+        $userId = $this->createUser();
+        $ids = [];
+        foreach (range(1, 2) as $i) {
+            $poi = $pois->create($userId, ['poitype_id' => 14, 'name' => "Light $i", 'latitude' => 55.0, 'longitude' => 10.0, 'public' => 1, 'characteristic' => 'Fl W 5s']);
+            $pois->markLighthouseImported((int) $poi['id'], 'dk', "dk-$i");
+            $ids[] = (int) $poi['id'];
+        }
+        $pois->create($userId, ['poitype_id' => 2, 'name' => 'Plain', 'latitude' => 54.0, 'longitude' => 10.0, 'public' => 1]);
+
+        $result = json_decode((string) $controller->index($this->request('GET', '/pois', null, null, ['scope' => 'public']), $this->response())->getBody(), true);
+
+        $this->assertSame(['dk'], array_keys($result['data_sources']));
+        $this->assertSame('Dansk Fyrliste', $result['data_sources']['dk']['name']);
+        $this->assertSame('https://www.soefartsstyrelsen.dk/', $result['data_sources']['dk']['url']);
+        $this->assertSame('Dansk Fyrliste, Søfartsstyrelsen', $result['data_sources']['dk']['attribution']);
+        foreach ($result['data'] as $row) {
+            $this->assertArrayNotHasKey('source_name', $row);
+            $this->assertArrayNotHasKey('source_attribution', $row);
+        }
+        $this->assertSame(['dk', 'dk', null], array_column($result['data'], 'data_source'));
+
+        // A single POI still carries the joined columns itself.
+        $single = $this->decode($controller->show($this->request('GET', "/pois/{$ids[0]}"), $this->response(), ['id' => (string) $ids[0]]));
+        $this->assertSame('Dansk Fyrliste', $single['data']['source_name']);
+    }
+
+    public function testPoiIndexWithoutDataSourcesSendsAnEmptyObject(): void
+    {
+        $this->pdo->exec("INSERT INTO poitype (id, name) VALUES (2, 'Test Type')");
+        $pois = new PoiRepository($this->pdo);
+        $controller = new PoiController($pois, new ImageStorageService(sys_get_temp_dir() . '/ytan-test-images'));
+        $pois->create($this->createUser(), ['poitype_id' => 2, 'name' => 'Plain', 'latitude' => 54.0, 'longitude' => 10.0, 'public' => 1]);
+
+        $response = $controller->index($this->request('GET', '/pois', null, null, ['scope' => 'public']), $this->response());
+
+        $this->assertStringContainsString('"data_sources":{}', (string) $response->getBody());
+    }
+
     public function testPoiIndexWithLimitSlicesDataAndReportsTotalInMeta(): void
     {
         $this->pdo->exec("INSERT INTO poitype (id, name) VALUES (2, 'Test Type')");

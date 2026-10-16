@@ -39,7 +39,7 @@ just without the limit applied, so a client can compute page count from it.
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| GET | `/pois?scope=public\|mine\|mine_public\|all` | scope-dependent | `mine`/`mine_public`/`all` require auth; `all` requires `is_admin`; see Pagination above |
+| GET | `/pois?scope=public\|mine\|mine_public\|all` | scope-dependent | `mine`/`mine_public`/`all` require auth; `all` requires `is_admin`; see Pagination above. The rows carry `data_source` (code) but not the joined `source_name/url/license/license_url/attribution` of single-POI responses - those come once per source in a top-level `data_sources: {code: {name, url, license, license_url, attribution}}` (`{}` when none) |
 | GET | `/pois/bounds` | - | `{max_lat, min_lat, max_lng, min_lng}` across all POIs |
 | GET | `/pois/{id}` | - | |
 | POST | `/pois` | required | body: `poitype_id, name, description, public, latitude, longitude, url`, plus `direction` (camps/campsites, 16 chars of `0`/`1`/`2`) or `characteristic`/`sector_characteristic`/`international_id` (lighthouses; `international_id` is stored without spaces and kept as is when a request leaves it out; a lighthouse in a response also carries `imported_at`, the time of the lighthouse list import that created or overwrote it - `null` for one drawn by hand - which an ordinary edit keeps) |

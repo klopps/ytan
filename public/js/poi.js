@@ -145,11 +145,34 @@ function deletePortages() {
 
 
 /**
+ * The POI list (GET /pois) sends the data_source columns once per source
+ * (`data_sources`, PoiController::extractDataSources()) instead of on every
+ * imported lighthouse - put them back on the rows, so the InfoWindow and the
+ * offline cache see the same fields as from a single-POI response. The
+ * strings are shared, not copied.
+ */
+function withPoiDataSources(answer) {
+    var list = answer.data;
+    var sources = answer.data_sources || {};
+    for (let i = 0; i < list.length; i++) {
+        var source = list[i].data_source ? sources[list[i].data_source] : null;
+        if (source) {
+            list[i].source_name = source.name;
+            list[i].source_url = source.url;
+            list[i].source_license = source.license;
+            list[i].source_license_url = source.license_url;
+            list[i].source_attribution = source.attribution;
+        }
+    }
+    return list;
+}
+
+/**
  * Lade alle POIs (nur für Admins sinnvoll, siehe scope=all der API)
  */
 function getPois() {
     Ytan.get('/pois?scope=all').then(answer => {
-        pois = answer.data;
+        pois = withPoiDataSources(answer);
         setAllPois(pois);
     }).catch(err => log('getPois() failed', LOG_ERROR, err));
 }
@@ -160,7 +183,7 @@ function getPois() {
 function getPublicPois() {
     Ytan.get('/pois?scope=public').then(answer => {
         log("getPublicPois()", LOG_INFO, answer);
-        pois = answer.data;
+        pois = withPoiDataSources(answer);
         setAllPois(pois);
         putCachedCollection('pois', 'public', pois);
     }).catch(err => {
@@ -181,7 +204,7 @@ function getPublicPois() {
 function getPoisByUserId(userId) {
     Ytan.get('/pois?scope=mine_public').then(answer => {
         log("getPoisByUserId()", LOG_INFO, answer);
-        pois = answer.data;
+        pois = withPoiDataSources(answer);
         setAllPois(pois);
         putCachedCollection('pois', 'mine_public', pois);
     }).catch(err => {

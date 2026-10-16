@@ -33,6 +33,24 @@ final class RouteRepositoryTest extends TestCase
         $this->assertSame(['First', 'Second', 'Third'], array_column($result, 'name'));
     }
 
+    public function testCreateAndUpdateRoundPointsToSixDecimals(): void
+    {
+        $routes = new RouteRepository($this->pdo);
+        $userId = $this->createUser();
+
+        $route = $routes->create($userId, [
+            'name' => 'Rounded',
+            'points' => '[{"lat":54.99077682394697,"lng":10.333843231201172},{"lat":54.99131400775246,"lng":10.323356296867132}]',
+        ]);
+        $this->assertSame('[{"lat":54.990777,"lng":10.333843},{"lat":54.991314,"lng":10.323356}]', $route['points']);
+
+        $route = $routes->update((int) $route['id'], [
+            'name' => 'Rounded',
+            'points' => '[{"lat":1.1234564,"lng":2.9999999}]',
+        ]);
+        $this->assertSame('[{"lat":1.123456,"lng":3}]', $route['points']);
+    }
+
     public function testFindPublicWithoutLimitReturnsEverything(): void
     {
         $routes = new RouteRepository($this->pdo);

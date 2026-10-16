@@ -19,7 +19,7 @@ php bin/migrate.php               # applies database/migrations/*.sql in filenam
 php -S localhost:8000 -t public public/index.php
 ```
 
-- Adding a schema change: add a new plain-SQL file `database/migrations/NNN_description.sql` (zero-padded, next number) — there is no migration framework, just `bin/migrate.php` running un-applied files in sorted order once each.
+- Adding a schema change: add a new plain-SQL file `database/migrations/NNN_description.sql` (zero-padded, next number) — there is no migration framework, just `bin/migrate.php` running un-applied files in sorted order once each. A data change plain SQL can't express can be a `NNN_description.php` instead, returning `function (PDO $pdo): void` (first one: `042_round_route_area_points.php`, rounds route/area `points` with `PointsJson::round()`, which `RouteRepository`/`AreaRepository` also apply on every save).
 - No frontend build step — `public/js/*.js` are plain scripts loaded directly by `templates/app.php`, no bundler/transpiler/package.json.
 - This machine has multiple PHP installs; the composer.json requires PHP >=8.1 but a plain `php` on PATH may resolve to an older 7.x build. Prefer an explicit 8.1+ binary (e.g. `/c/dev/php8/php.exe` on this Windows box) for anything version-sensitive (composer, migrations, `php -l`).
 - When testing a UI/frontend change in a browser, always check the **mobile viewport first** (e.g. ~390×844), then desktop — this app is Mobile First (see Frontend architecture below), and mobile-only problems (touch targets too small, overlapping fixed-position elements, responsive fallbacks not kicking in) are easy to miss if desktop is checked first or exclusively.

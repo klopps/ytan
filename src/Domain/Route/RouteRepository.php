@@ -8,6 +8,7 @@ use PDO;
 use Ytan\Exception\ConflictException;
 use Ytan\Exception\NotFoundException;
 use Ytan\Exception\ValidationException;
+use Ytan\Service\PointsJson;
 
 final class RouteRepository
 {
@@ -143,7 +144,7 @@ final class RouteRepository
             $data['description'] ?? null,
             (int) ($data['public'] ?? 0),
             $data['length'] ?? null,
-            $data['points'] ?? null,
+            PointsJson::round($data['points'] ?? null),
             $data['color'] ?? '#BF409F',
             $data['recorded_at'] ?? null,
             $data['recording_duration_seconds'] ?? null,
@@ -172,7 +173,7 @@ final class RouteRepository
             $data['description'] ?? null,
             (int) ($data['public'] ?? 0),
             $data['length'] ?? null,
-            $data['points'] ?? null,
+            PointsJson::round($data['points'] ?? null),
             $data['color'] ?? '#BF409F',
             $id,
         ]);

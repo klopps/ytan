@@ -8,6 +8,7 @@ use PDO;
 use Ytan\Exception\ConflictException;
 use Ytan\Exception\NotFoundException;
 use Ytan\Exception\ValidationException;
+use Ytan\Service\PointsJson;
 
 final class AreaRepository
 {
@@ -93,7 +94,7 @@ final class AreaRepository
             $data['name'],
             $data['description'] ?? null,
             (int) ($data['public'] ?? 0),
-            $data['points'] ?? null,
+            PointsJson::round($data['points'] ?? null),
             $data['color'] ?? '#00FF30',
             $data['opacity'] ?? 0.10,
             $data['zindex'] ?? 1,
@@ -115,7 +116,7 @@ final class AreaRepository
             $data['name'],
             $data['description'] ?? null,
             (int) ($data['public'] ?? 0),
-            $data['points'] ?? null,
+            PointsJson::round($data['points'] ?? null),
             $data['color'] ?? '#00FF30',
             $data['opacity'] ?? 0.10,
             $data['zindex'] ?? 1,

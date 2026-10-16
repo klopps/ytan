@@ -76,7 +76,7 @@ $test->exec('SET FOREIGN_KEY_CHECKS=1');
 // against the test DB should only apply migrations added AFTER this
 // snapshot, never replay ones already baked into the clone.
 if (in_array('schema_migrations', $tables, true)) {
-    $files = glob($root . '/database/migrations/*.sql');
+    $files = array_merge(glob($root . '/database/migrations/*.sql'), glob($root . '/database/migrations/*.php'));
     sort($files);
     $stmt = $test->prepare('INSERT IGNORE INTO schema_migrations (migration, applied_at) VALUES (?, NOW())');
     foreach ($files as $file) {

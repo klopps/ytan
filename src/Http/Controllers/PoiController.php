@@ -18,6 +18,43 @@ final class PoiController extends BaseController
     // kept in sync manually, there being no shared config layer between PHP and JS.
     private const MAX_IMAGES_PER_POI = 5;
 
+    /** data_source columns PoiRepository joins onto every row, => key in `data_sources`. */
+    private const SOURCE_FIELDS = [
+        'source_name' => 'name',
+        'source_url' => 'url',
+        'source_license' => 'license',
+        'source_license_url' => 'license_url',
+        'source_attribution' => 'attribution',
+    ];
+
+    /**
+     * Moves the joined data_source columns out of a POI list: every imported
+     * lighthouse repeats them (~190 KB in a full list), so the list sends
+     * them once per source as `data_sources` ({code: {name, url, ...}}) and
+     * each row keeps only its `data_source` code. poi.js re-attaches them.
+     *
+     * @param array<int, array<string, mixed>> $pois
+     * @return array{pois: array<int, array<string, mixed>>, sources: array<string, array<string, mixed>>}
+     */
+    private static function extractDataSources(array $pois): array
+    {
+        $sources = [];
+        foreach ($pois as &$poi) {
+            $code = $poi['data_source'] ?? null;
+            if ($code !== null && $code !== '' && !isset($sources[$code])) {
+                foreach (self::SOURCE_FIELDS as $column => $key) {
+                    $sources[$code][$key] = $poi[$column] ?? null;
+                }
+            }
+            foreach (self::SOURCE_FIELDS as $column => $key) {
+                unset($poi[$column]);
+            }
+        }
+        unset($poi);
+
+        return ['pois' => $pois, 'sources' => $sources];
+    }
+
     public function __construct(
         private readonly PoiRepository $pois,
         private readonly ImageStorageService $images,
@@ -42,7 +79,8 @@ final class PoiController extends BaseController
             default => $this->pois->findPublic($limit, $offset),
         };
 
-        $body = ['data' => $data];
+        ['pois' => $data, 'sources' => $sources] = self::extractDataSources($data);
+        $body = ['data' => $data, 'data_sources' => (object) $sources];
         if ($limit !== null) {
             $body['meta'] = [
                 'total' => match ($scope) {
