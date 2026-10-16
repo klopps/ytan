@@ -69,6 +69,10 @@ const AREA_PHOTO_MAX_COUNT = 5;
 const ROUTE_SMOOTHING_SEGMENTS_PER_POINT = 15;
 const ROUTE_SMOOTHING_ALPHA = 0.5;
 const ROUTE_SMOOTHING_MAX_DEVIATION_METERS = 15; // Default: Infinity
+// - METERS_PER_PIECE: a segment gets one interpolated piece per this many
+//   metres of its length, at most SEGMENTS_PER_POINT (helper.js's
+//   smoothingPieces()) - short GPS segments don't need 15.
+const ROUTE_SMOOTHING_METERS_PER_PIECE = 15;
 
 // Page-size choices offered by the admin panels' "rows per page" dropdowns
 // (admin-user.js's user table, tour-admin.js's My/Public Tours sections),

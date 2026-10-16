@@ -341,6 +341,25 @@ function getMiddleCoordinate(p1, p2) {
     return { lat: (p1.lat + p2.lat) / 2, lng: (p1.lng + p2.lng) / 2};
 }
 
+/**
+ * A Polyline/Polygon path as an MVCArray of LatLng. Handing Maps a plain
+ * array of {lat, lng} literals makes it check and convert every point once
+ * per overlay - with smoothed routes (~80,000 points) that took ~80 ms
+ * (~0.5 s on a phone); building the LatLngs here takes ~7 ms, and one
+ * MVCArray can be shared by several overlays (a route's line and its
+ * white background).
+ *
+ * @param {Array<{lat:number,lng:number}>} points
+ * @returns {google.maps.MVCArray<google.maps.LatLng>}
+ */
+function toLatLngPath(points) {
+    var latLngs = new Array(points.length);
+    for (let i = 0; i < points.length; i++) {
+        latLngs[i] = new google.maps.LatLng(points[i].lat, points[i].lng);
+    }
+    return new google.maps.MVCArray(latLngs);
+}
+
 
 /**
  * Glättet einen Streckenzug (z.B. routes[i].points) mit einer zentripetalen
@@ -394,13 +413,15 @@ function smoothRoutePoints(
     for (var i = 0; i < extended.length - 3; i++) {
         var p0 = extended[i], p1 = extended[i + 1], p2 = extended[i + 2], p3 = extended[i + 3];
 
+        var segmentLength = getDistance(p1, p2);
         var t0 = 0;
         var t1 = t0 + Math.pow(getDistance(p0, p1), alpha);
-        var t2 = t1 + Math.pow(getDistance(p1, p2), alpha);
+        var t2 = t1 + Math.pow(segmentLength, alpha);
         var t3 = t2 + Math.pow(getDistance(p2, p3), alpha);
 
-        for (var s = 0; s < segmentsPerPoint; s++) {
-            var t = t1 + (t2 - t1) * (s / segmentsPerPoint);
+        var pieces = smoothingPieces(segmentLength, segmentsPerPoint);
+        for (var s = 0; s < pieces; s++) {
+            var t = t1 + (t2 - t1) * (s / pieces);
             var curvePoint = catmullRomInterpolate(p0, p1, p2, p3, t0, t1, t2, t3, t);
             if (isFinite(maxDeviationMeters)) {
                 // p1/p2 sind hier die beiden echten Nachbar-Stützpunkte (nicht
@@ -416,6 +437,20 @@ function smoothRoutePoints(
     smoothed.push(deduped[deduped.length - 1]); // exakter letzter Punkt, nicht approximiert
 
     return smoothed;
+}
+
+// How many straight pieces draw one curve segment: one per
+// ROUTE_SMOOTHING_METERS_PER_PIECE of its length, at most segmentsPerPoint.
+// Always segmentsPerPoint (15) made ~80,000 display points out of ~5,400
+// route points (most of them short GPS segments, where 15 pieces are
+// invisible) and slowed down loading the map. Measured against a densely
+// sampled curve (2026-10-16, all public routes): 15 m per piece -> 31 %
+// fewer points, p99 deviation 1.2 m instead of 1.05 m, same maximum.
+// (A bound from the curve's bulge - error ~ bulge/n² - doesn't hold here:
+// clampDeviation() flattens long segments into steep ramps that need the
+// full 15 pieces.)
+function smoothingPieces(segmentLength, segmentsPerPoint) {
+    return Math.max(1, Math.min(segmentsPerPoint, Math.ceil(segmentLength / ROUTE_SMOOTHING_METERS_PER_PIECE)));
 }
 
 function mirrorPoint(p, neighbor) {

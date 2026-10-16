@@ -2,13 +2,17 @@
 
 ## Performance: offene Punkte aus der Analyse vom 2026-10-16
 
-Kompression, Browser-Caching, WSI-Icons, Marker bei Bedarf, das doppelte Laden, die Prüfung in Produktion, gerundete Koordinaten und `data_sources` in der POI-Liste sind erledigt (done.md).
+Kompression, Browser-Caching, WSI-Icons, Marker bei Bedarf, das doppelte Laden, die Prüfung in Produktion, gerundete Koordinaten, `data_sources` in der POI-Liste, Controller bei Bedarf und schnellere Routen-/Gebietslinien sind erledigt (done.md).
 
 Offen:
-- **POI-Beschreibungen erst bei Bedarf laden** (~160 KB roh in der Liste): erst beim Öffnen des InfoWindows per `GET /pois/{id}` holen. Vorher klären, was `description` aus der Liste sonst braucht (Bearbeiten-Formular, Suche, Offline-Cache - offline wäre die Beschreibung dann nicht da).
-- **Verbleibende Long Tasks beim Laden** (4x gedrosselt je ~0,5 s): vermutlich JSON-Parsen der großen Listen und das Anlegen der Routen-/Gebiets-Polylinien; bei Bedarf profilieren.
-- **Grundlast pro PHP-Request:** `App::create()` baut bei jedem Request alle ~40 Repositories/Services/Controller und lädt dafür ihre Klassen (lokal ~7 ms + Autoload, ohne OPcache ~50 ms). Fix: Controller erst bei Bedarf erzeugen (Closures/Container), in Produktion prüfen, dass OPcache aktiv ist. Lokal zusätzlich `DB_HOST=127.0.0.1` statt `localhost` (Windows probiert erst IPv6 `::1`, ~10 ms pro Verbindung) - nur `.env` der Dev-Maschine.
+
+- **OPcache in Produktion prüfen:** ohne OPcache kostet allein das Laden/Parsen der PHP-Dateien pro Request ~50 ms Autoload + ~45 ms `App::create()` (lokal gemessen, das lokale Apache-PHP hat OPcache aus: `;zend_extension=opcache` in `c:/dev/php8/php.ini`). Auf dem Server z. B. per `php -i | grep opcache.enable` bzw. für das Web-PHP über das Hosting-Panel/phpinfo prüfen; ggf. aktivieren.
+- **Restliche Long Tasks beim Laden** (4x gedrosselt, nach dem Umbau): längster ~280 ms, zusammen ~2,2 s; größte eigene Posten `createRoutes()` ~210 ms (davon Glätten ~100 ms), `setAllPois()` ~170 ms, `updatePoiClustering()` ~130 ms (Clusterbildung bei niedrigem Zoom). Weitere Möglichkeit: `createRoutes()` in Zeitscheiben aufteilen - aufwendig, weil Code direkt danach `routePaths[i]` erwartet (`showRoutes()`, `redrawRoutes()`, Links mit `?route=`).
 - Datenbank-Indizes reichen bei der aktuellen Datenmenge (1,8 k POIs); `public` hat keinen Index, `WHERE user_id = ? OR public = 1` liest die Tabelle ganz - erst bei deutlich mehr Daten relevant.
+
+Nicht umsetzen:
+
+- **POI-Beschreibungen erst bei Bedarf laden** (~160 KB roh in der Liste): erst beim Öffnen des InfoWindows per `GET /pois/{id}` holen. Vorher klären, was `description` aus der Liste sonst braucht (Bearbeiten-Formular, Suche, Offline-Cache - offline wäre die Beschreibung dann nicht da).
 
 ## Sicherheit: offene Reste aus dem Audit vom 2026-10-16
 

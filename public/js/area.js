@@ -578,12 +578,13 @@ function createAreas() {
  */
 function createArea(i) {
     if (typeof areas[i] !== 'undefined') {
-        var path = areas[i].points;
+        // toLatLngPath(): see helper.js; not geodesic, as for routes.
+        var path = toLatLngPath(areas[i].points);
 
         var areaPolygon = new google.maps.Polygon({
             id: areas[i].id,
             paths: path,
-            geodesic: true,
+            geodesic: false,
             strokeColor: areas[i].color,
             strokeOpacity: areas[i].opacity + 0.1,
             strokeWeight: 2.0,

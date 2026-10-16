@@ -1055,12 +1055,15 @@ function createRoute(i) {
         // returns a new array purely for the Polyline's display path. Every
         // other consumer of routes[i].points (distance labels, bounds fit,
         // measureTool editing) keeps reading the exact original vertices.
-        var path = settings.smoothRoutes ? smoothRoutePoints(routes[i].points) : routes[i].points;
+        // One shared LatLng path for both visible lines (toLatLngPath()).
+        // Not geodesic: at these segment lengths a great-circle line looks
+        // the same, but Maps then subdivides every segment on each redraw.
+        var path = toLatLngPath(settings.smoothRoutes ? smoothRoutePoints(routes[i].points) : routes[i].points);
 
         var routePathBackground = new google.maps.Polyline({
             id: routes[i].id,
             path: path,
-            geodesic: true,
+            geodesic: false,
             strokeColor: '#FFFFFF',
             strokeOpacity: 0.6,
             strokeWeight: 6,
@@ -1070,7 +1073,7 @@ function createRoute(i) {
         var routePathLine = new google.maps.Polyline({
             id: routes[i].id,
             path: path,
-            geodesic: true,
+            geodesic: false,
             strokeColor: routes[i].color,
             strokeOpacity: 1.0,
             strokeWeight: 2.5,
