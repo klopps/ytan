@@ -3387,6 +3387,33 @@ div.infoWindowElement .button {
   text-decoration: none;
 }
 
+/* A POI's InfoWindow row: info link, optional "show sector light" button, edit
+   icon pushed to the right edge. Flex, so the floated .lefthalf (50% wide, used by
+   the route InfoWindow) doesn't leave too little room for the button. */
+.infoWindowBottom.poiInfoBottom {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.poiInfoBottom .lefthalf {
+  float: none;
+  width: auto;
+}
+
+.poiInfoBottom .poiEdit {
+  margin-left: auto;
+}
+
+.poiSectorLightButton {
+  white-space: nowrap;
+}
+
+.poiSectorLightButton i,
+.poiInfoBottom .lefthalf i {
+  vertical-align: middle;
+}
+
 .InfoWindowLighthouseContainer {
   display: flex;
   background-color: black;

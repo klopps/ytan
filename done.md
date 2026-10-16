@@ -1,5 +1,11 @@
 # Erledigt
 
+## Leuchtfeuer-InfoWindow: Button "Zeige Sektorlicht"
+
+~~Im InfoWindow eines Leuchtfeuers soll in der unteren Zeile ein Button "Zeige Sektorlicht" erscheinen, wenn ein Sektorlicht hinterlegt ist; ein Klick schließt das InfoWindow und zeigt das Sektorlicht.~~
+
+Gelöst (2026-10-16): `showPoiInfoWindow()` (`poi.js`) hängt in die untere Zeile (`.infoWindowBottom.poiInfoBottom`) einen Link mit Glühbirnen-Icon, wenn der POI ein Leuchtfeuer (Typ 14) mit nicht leerem `sector_characteristic` ist (`poiHasSectorLight()`); Klick = `poiInfoWindowSwitchSectorLight(i)`: `closePoiInfoWindow(i)` + `switchSectorLight(i)`, also dieselbe `SectorLightOverlay` wie im Kontextmenü. Ist das Sektorlicht beim Öffnen des InfoWindows schon sichtbar, heißt der Button "Verberge Sektorlicht" und blendet es aus (sonst gäbe es keinen Weg zurück aus dem InfoWindow). Texte `poi.info.show_sector_light`/`hide_sector_light` (de/en). Die Zeile ist für POIs jetzt ein Flex-Container (Info-Link, Button, Bearbeiten-Icon rechts, `margin-left: auto`), weil das bisherige `.lefthalf` (float, 50 % Breite) für Info + Button zu schmal war; die Route-InfoWindows nutzen `.lefthalf` unverändert. Geprüft im Browser (390 px, dann Desktop): mit/ohne Info-Link, ohne Sektorlicht kein Button, Klick schließt das Fenster und zeigt die Sektoren. Dabei aufgefallen und behoben: `removeAllPoiInfowWindows()` warf, sobald `poiInfoWindows` Lücken hatte (`delete poiInfoWindows[i]` bei `closeclick`/`closePoiInfoWindow()`, dann `.close()` auf `undefined` in der `for...of`-Schleife); Lücken werden jetzt übersprungen (die Funktion wird derzeit von keiner Stelle aufgerufen).
+
 ## Leuchtfeuer-Import: Bereich auf der Karte als Polygon markieren
 
 ~~Im Admin-Tool `/admin/lighthouse-import` soll der zu importierende Bereich auf einer Karte markiert werden können (Form: Polygon).~~

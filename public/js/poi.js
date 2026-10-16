@@ -566,9 +566,17 @@ function showPoiInfoWindow(event, i, marker) {
             }
         }
 
-        content += '<div class="infoWindowBottom">';
+        content += '<div class="infoWindowBottom poiInfoBottom">';
         if (pois[i].url) {
             content += '<div class="lefthalf"><a href="' + pois[i].url + '" target="_blank"><i class="material-icons-round">info</i>&nbsp;' + t('common.info') + '</a></div>';
+        }
+
+        // Lighthouse with a sector light: closes this InfoWindow and shows
+        // (or, when it is on the map already, hides) the sector light.
+        if (pois[i].poitype_id == '14' && poiHasSectorLight(i)) {
+            var sectorLightShown = typeof(sectorLights[i]) != "undefined";
+            content += '<a href="#" class="poiSectorLightButton" onClick="poiInfoWindowSwitchSectorLight(' + i + '); return false;"><i class="material-icons-round">lightbulb_outline</i>&nbsp;' +
+                t(sectorLightShown ? 'poi.info.hide_sector_light' : 'poi.info.show_sector_light') + '</a>';
         }
 
         if ((pois[i].user_id == user.id) || user.is_admin) {
@@ -587,6 +595,16 @@ function showPoiInfoWindow(event, i, marker) {
     }
 }
 
+/** True when the POI has a sector light definition (lighthouse.sector_characteristic is not empty). */
+function poiHasSectorLight(i) {
+    return pois[i].sector_characteristic != null && pois[i].sector_characteristic.trim() != "";
+}
+
+function poiInfoWindowSwitchSectorLight(i) {
+    closePoiInfoWindow(i);
+    switchSectorLight(i);
+}
+
 function closePoiInfoWindow(i) {
     // editPoi() calls this unconditionally, but it's also reachable via the
     // right-click context menu's "Edit" item, which never opens the POI's
@@ -601,7 +619,11 @@ function closePoiInfoWindow(i) {
 
 function removeAllPoiInfowWindows() {
     for (const poiInfoWindow of poiInfoWindows) {
-        poiInfoWindow.close();
+        // closeclick/closePoiInfoWindow() `delete` an entry, which leaves a hole
+        // (for...of yields undefined for it).
+        if (poiInfoWindow) {
+            poiInfoWindow.close();
+        }
     }
     poiInfoWindows = [];
 }

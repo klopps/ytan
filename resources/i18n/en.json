@@ -142,6 +142,8 @@
     "toolbar.editing_area": "Editing Area",
     "toolbar.finish_editing": "END EDITING",
     "toolbar.cancel": "CANCEL",
+    "poi.info.show_sector_light": "Show sector light",
+    "poi.info.hide_sector_light": "Hide sector light",
     "poi.context.show_sector_light": "Show Sector Light",
     "poi.context.hide_sector_light": "Hide Sector Light",
     "poi.context_menu.create_item": "Create POI",

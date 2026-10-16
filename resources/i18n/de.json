@@ -142,6 +142,8 @@
     "toolbar.editing_area": "Gebiet bearbeiten",
     "toolbar.finish_editing": "BEENDEN",
     "toolbar.cancel": "ABBRECHEN",
+    "poi.info.show_sector_light": "Zeige Sektorlicht",
+    "poi.info.hide_sector_light": "Verberge Sektorlicht",
     "poi.context.show_sector_light": "Sektorleuchtfeuer anzeigen",
     "poi.context.hide_sector_light": "Sektorleuchtfeuer ausblenden",
     "poi.context_menu.create_item": "POI erstellen",
