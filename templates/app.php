@@ -660,11 +660,16 @@
           // button disabled. Load the user's own data and flip it on now
           // that we actually know who's logged in, instead of leaving the
           // UI stuck in its anonymous state for the rest of the session.
+          // Usually it already loaded them for the right user (it reads the
+          // user id from the stored token) - then nothing is fetched again.
           if (typeof mapInitialized !== 'undefined' && mapInitialized) {
-            getPoisByUserId(user.id);
-            getRoutesByUserId(user.id);
-            getAreasByUserId(user.id);
-            getToursByUserId(user.id);
+            if (dataLoadedForUserId !== user.id) {
+              dataLoadedForUserId = user.id;
+              getPoisByUserId(user.id);
+              getRoutesByUserId(user.id);
+              getAreasByUserId(user.id);
+              getToursByUserId(user.id);
+            }
             enablePoiButton();
           }
 

@@ -23,9 +23,34 @@ AddType application/vnd.android.package-archive .apk
     Header always set X-Frame-Options "SAMEORIGIN"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
     Header always set Strict-Transport-Security "max-age=15552000" env=HTTPS
+
+    # Browser caching (performance review 2026-10-16). Scripts/styles/
+    # fonts/images that the templates request with ?v=<mtime>
+    # (App::assetVersion()) get a new URL whenever they change, so they may
+    # be cached for a year without asking again (YTAN_VERSIONED is set by
+    # the RewriteRule below). Unversioned images/fonts (markers, help
+    # screenshots, fonts referenced from fonts.css) for a day. Without this
+    # the browser revalidated every file on every visit.
+    Header set Cache-Control "public, max-age=31536000, immutable" env=YTAN_VERSIONED
+    <FilesMatch "\.(png|jpe?g|webp|gif|svg|ico|woff2?|ttf|otf)$">
+        Header set Cache-Control "public, max-age=86400" env=!YTAN_VERSIONED
+    </FilesMatch>
+</IfModule>
+
+# gzip for static text files (PHP responses are compressed by
+# CompressionMiddleware; mod_deflate leaves those alone). Both modules are
+# optional - without them nothing breaks, files just stay uncompressed.
+<IfModule mod_deflate.c>
+    <IfModule mod_filter.c>
+        AddOutputFilterByType DEFLATE text/html text/plain text/css text/xml text/javascript application/javascript application/json application/xml application/manifest+json image/svg+xml
+    </IfModule>
 </IfModule>
 
 RewriteEngine On
+
+# Versioned static asset (?v=..., see the Cache-Control block above).
+RewriteCond %{QUERY_STRING} (^|&)v=
+RewriteRule \.(js|css|png|jpe?g|webp|gif|svg|ico|woff2?|ttf|otf)$ - [E=YTAN_VERSIONED:1]
 
 # Plain HTTP -> HTTPS on real hosts. A bearer token sent over HTTP could be
 # read on the way. Left out: localhost, private/LAN IPs, IPv6 literals and

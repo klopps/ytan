@@ -35,17 +35,17 @@ test.describe('Context menus', () => {
     // The POIs load asynchronously after the map - right-clicking before
     // this POI's marker is on the map hits the empty map (map context menu)
     // instead; that race made this test fail intermittently.
-    await page.waitForFunction((name) => {
-      const i = pois.findIndex((p) => p && p.name === name);
-      return i !== -1 && markers[pois[i].id] && markers[pois[i].id].getMap();
-    }, 'E2E Context Menu POI', { timeout: 20_000 });
+    await page.waitForFunction((name) => pois.some((p) => p && p.name === name), 'E2E Context Menu POI', { timeout: 20_000 });
     await settleMapAt(page, LAT, LNG, 15);
-    // ...and until its icon has actually loaded: the marker's <img> has no
-    // fixed size, so before that it is 0x0 px and the click lands on the
-    // map (seen with the single-threaded php -S test server).
+    // POI markers are only built/shown around the visible area once zoomed
+    // in (applyPoiTypeVisibility(), after the map's 'idle') - wait until this
+    // one is on the map and its icon has actually loaded: the marker's <img>
+    // has no fixed size, so before that it is 0x0 px and the click lands on
+    // the map (seen with the single-threaded php -S test server).
     await page.waitForFunction((name) => {
       const i = pois.findIndex((p) => p && p.name === name);
-      const img = markers[pois[i].id].advanced.querySelector('img');
+      const marker = markers[pois[i].id];
+      const img = marker && marker.getMap() && marker.real.advanced.querySelector('img');
       return img && img.complete && img.getBoundingClientRect().height > 0;
     }, 'E2E Context Menu POI', { timeout: 20_000 });
 

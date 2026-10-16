@@ -143,6 +143,10 @@ let areaEditWindow;
 let areaInfoWindow;
 let poiMarker;
 let myPositionMarker;
+// Whose POIs/routes/areas/tours initMap() loaded (null = the public ones) -
+// templates/app.php's /auth/me handler reloads only if that turns out to be
+// someone else, instead of fetching ~1.7 MB a second time.
+let dataLoadedForUserId = null;
 let searchMarker;
 let searchInfoWindow;
 let googlePredictions = [];
@@ -761,6 +765,7 @@ function initMap() {
         activeTourModeId = initialTourId;
     }
     var effectiveUserId = (user.id !== null) ? user.id : Ytan.getStoredUserId();
+    dataLoadedForUserId = effectiveUserId;
     if (effectiveUserId !== null) {
         getPoisByUserId(effectiveUserId);
         getRoutesByUserId(effectiveUserId);
@@ -919,6 +924,15 @@ function initMap() {
     map.addListener('center_changed', () => {
         log('center changed: ' + map.getCenter(), LOG_DEBUG);
         saveSettings();
+    });
+
+    // POI markers are only shown (and built) around the visible area
+    // (applyPoiTypeVisibility(), poi.js) - refresh after every pan/zoom once
+    // zoomed in past the clustering threshold.
+    map.addListener('idle', () => {
+        if (map.getZoom() >= POI_CLUSTER_ZOOM_THRESHOLD && typeof pois !== 'undefined' && pois.length) {
+            applyPoiTypeVisibility();
+        }
     });
 
     map.addListener('zoom_changed', () => {
@@ -1562,14 +1576,13 @@ function toggleMarkerType(poitype_id) {
 }
 
 function toggleMarkerByType(element, poitype_id) {
-    for (let i = 0; i < pois.length; i++) {
-        if (typeof pois[i] !== "undefined") {
-            if (pois[i]['poitype_id'] == poitype_id) {
-                if (element.checked) {
-                    markers[pois[i]['id']].setMap(map);
-                } else {
-                    markers[pois[i]['id']].setMap(null);
-                }
+    // Switching a type off hides its markers right away; switching it on is
+    // left to updatePoiClustering() below, which only shows (and builds,
+    // LazyYtanMarker) the ones around the visible area.
+    if (!element.checked) {
+        for (let i = 0; i < pois.length; i++) {
+            if (typeof pois[i] !== "undefined" && pois[i]['poitype_id'] == poitype_id) {
+                markers[pois[i]['id']].setMap(null);
             }
         }
     }

@@ -127,3 +127,96 @@ class YtanMarker {
         return this.getIcon();
     }
 }
+
+/**
+ * A YtanMarker that is only built when it is first needed on the map
+ * (performance review 2026-10-16): creating an AdvancedMarkerElement costs
+ * ~130 µs (4x that on a mid-range phone), and setAllPois() used to build all
+ * ~1,750 POI and ~360 wind-shelter markers at once - 0.5 s (3.4 s throttled)
+ * of blocked page, although below POI_CLUSTER_ZOOM_THRESHOLD only cluster
+ * bubbles are shown and most markers are off screen anyway.
+ *
+ * Same surface as YtanMarker for what the callers use: setMap()/getMap(),
+ * getPosition()/position/setPosition(), getIcon()/icon/setIcon(),
+ * getTitle(), .id and .advanced. setMap(null) on a marker that was never
+ * built does nothing; setMap(map) and .advanced build it. `onCreate(real)`
+ * runs once right after building - the place for event listeners and
+ * attachLongPressContextMenu(), which need the real YtanMarker (`.real`).
+ */
+class LazyYtanMarker {
+    constructor(options, onCreate) {
+        this.options = options;
+        this.onCreate = onCreate || null;
+        this.real = null;
+        this.id = options.id;
+    }
+
+    ensure() {
+        if (this.real === null) {
+            this.real = new YtanMarker(this.options);
+            if (this.onCreate) {
+                this.onCreate(this.real);
+            }
+        }
+        return this.real;
+    }
+
+    setMap(map) {
+        if (!map && this.real === null) {
+            return;
+        }
+        this.ensure().setMap(map);
+    }
+
+    getMap() {
+        return this.real ? this.real.getMap() : null;
+    }
+
+    getPosition() {
+        if (this.real) {
+            return this.real.getPosition();
+        }
+        const position = this.options.position;
+        if (!position) {
+            return null;
+        }
+        return position instanceof google.maps.LatLng ? position : new google.maps.LatLng(position.lat, position.lng);
+    }
+
+    get position() {
+        return this.getPosition();
+    }
+
+    setPosition(latLng) {
+        this.options.position = latLng;
+        if (this.real) {
+            this.real.setPosition(latLng);
+        }
+    }
+
+    getTitle() {
+        return this.real ? this.real.getTitle() : (this.options.title || '');
+    }
+
+    setIcon(url) {
+        this.options.iconUrl = url;
+        if (this.real) {
+            this.real.setIcon(url);
+        }
+    }
+
+    getIcon() {
+        if (this.real) {
+            return this.real.getIcon();
+        }
+        return this.options.iconUrl ? { url: this.options.iconUrl, anchor: this.options.iconAnchor || null } : null;
+    }
+
+    get icon() {
+        return this.getIcon();
+    }
+
+    get advanced() {
+        return this.ensure().advanced;
+    }
+}

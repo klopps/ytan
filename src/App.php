@@ -41,6 +41,7 @@ use Ytan\Http\Controllers\LighthouseImportController;
 use Ytan\Domain\Poi\LighthouseDuplicateRepository;
 use Ytan\Service\LighthouseDuplicateService;
 use Ytan\Http\Middleware\AuthMiddleware;
+use Ytan\Http\Middleware\CompressionMiddleware;
 use Ytan\Http\Middleware\ContentSecurityPolicyMiddleware;
 use Ytan\Domain\LighthouseImport\LighthouseImportRepository;
 use Ytan\Service\LighthouseImportService;
@@ -242,6 +243,8 @@ final class App
         $app->add(new AppVersionMiddleware((int) ($_ENV['MIN_APP_VERSION_CODE'] ?? 0)));
         $app->add(new AuthMiddleware($authService));
         $app->add(new ContentSecurityPolicyMiddleware($baseUrl));
+        // Added after (= runs around) the middlewares above, so it compresses their final body.
+        $app->add(new CompressionMiddleware());
         $app->addRoutingMiddleware();
 
         $displayErrors = ($_ENV['APP_DEBUG'] ?? 'false') === 'true';

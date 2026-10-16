@@ -23,12 +23,72 @@ function showWsiMarkerByPoiId(id) {
 }
 
 function addWsiMarker(id, location, direction) {
-    const marker = new YtanMarker({
+    // Lazy (marker.js): built only when the wind shelter indicators are
+    // switched on - they are off by default.
+    const marker = new LazyYtanMarker({
         position: location,
-        iconUrl: Ytan.wsiImageUrl(direction),
+        iconUrl: wsiSvgDataUrl(direction),
         id: id
     });
     wsiMarkers.push(marker);
+}
+
+const wsiSvgCache = {};
+
+/**
+ * The wind shelter indicator (16 sectors, 0 = none, 1 = partial, 2 = full
+ * shelter, clockwise from north) as an SVG data: URL - drawn here instead of
+ * requested from GET /api/v1/wsi/{code} (performance review 2026-10-16: that
+ * was ~210 requests through the whole PHP app on every page load, one per
+ * distinct code, for 1-KB images). Same drawing as WsiRenderer::draw() (PHP),
+ * which still serves the API endpoint.
+ *
+ * @param {string} code 16 characters of 0/1/2
+ * @returns {string}
+ */
+function wsiSvgDataUrl(code) {
+    if (!/^[012]{16}$/.test(code)) {
+        code = '0'.repeat(16);
+    }
+    if (wsiSvgCache[code]) {
+        return wsiSvgCache[code];
+    }
+
+    const cx = 50, cy = 75, r = 40, crossH = 90, crossW = 90;
+    const polar = (angleDeg) => {
+        const rad = (angleDeg - 90) * Math.PI / 180;
+        return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+    };
+    const arc = (startAngle, endAngle) => {
+        const s = polar(endAngle);
+        const e = polar(startAngle);
+        const sweep = (endAngle - startAngle) <= 180 ? 0 : 1;
+        return ['M', s[0], s[1], 'A', r, r, 0, sweep, 0, e[0], e[1], 'L', cx, cy, 'L', s[0], s[1]].join(' ');
+    };
+
+    let shapes = '';
+    let first = 0;
+    let last = code[0];
+    for (let x = 1; x <= 16; x++) {
+        const marker = x > 15 ? '' : code[x];
+        if (marker === last) {
+            continue;
+        }
+        const color = last === '2' ? '#777' : (last === '1' ? '#ccc' : null);
+        if (color) {
+            shapes += '<path d="' + arc(22.5 * first, 22.5 * x - 0.01) + '" style="fill:' + color + '"/>';
+        }
+        last = marker;
+        first = x;
+    }
+    shapes += '<line x1="' + cx + '" y1="' + (cy - crossH / 2) + '" x2="' + cx + '" y2="' + (cy + crossH / 2) + '" style="stroke:#000;stroke-width:2px"/>';
+    shapes += '<line x1="' + (cx - crossW / 2) + '" y1="' + cy + '" x2="' + (cx + crossW / 2) + '" y2="' + cy + '" style="stroke:#000;stroke-width:2px"/>';
+    shapes += '<polyline points="' + [[cx - 5, cy - r - 12], [cx - 5, cy - r - 32], [cx + 5, cy - r - 12], [cx + 5, cy - r - 32]].map(p => p.join(',')).join(' ') +
+        '" style="stroke:#000;fill:none;stroke-width:3px;stroke-linejoin:bevel"/>';
+
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="120" viewBox="0 0 100 120">' + shapes + '</svg>';
+    wsiSvgCache[code] = 'data:image/svg+xml,' + encodeURIComponent(svg);
+    return wsiSvgCache[code];
 }
 
 function removeWsiMarkerById(id) {
@@ -45,12 +105,22 @@ function removeWsiMarkerById(id) {
 
 function removeMarkerById(id) {
     markers[id].setMap(null);
+    if (markers[id].real) {
+        detachLongPressCandidate(markers[id].real);
+    }
     poiInfoWindows.splice(id, 1);
     delete markers[id];
 }
 
 function deleteMarkers() {
     clearMarkers();
+    // Built markers registered a long-press candidate (setPoi()'s onCreate) -
+    // drop those too, or the list grows with every reload.
+    markers.forEach(marker => {
+        if (marker && marker.real) {
+            detachLongPressCandidate(marker.real);
+        }
+    });
     markers = [];
 }
 
@@ -180,19 +250,61 @@ function updatePoiClustering() {
 
 /**
  * Restores each POI marker's visibility from the "Show POIs" checkboxes
- * (settings.detail<poitype_id>), independently of what clustering last did.
+ * (settings.detail<poitype_id>), independently of what clustering last did -
+ * but only inside the visible map area plus half a screen around it: markers
+ * are built on first display (LazyYtanMarker) and each one costs, so the
+ * ones far off screen stay unbuilt / are taken off the map. Re-run on every
+ * 'idle' (map-core.js), i.e. after each pan/zoom. Until the map knows its
+ * bounds nothing is shown - the first 'idle' follows right after.
  */
 function applyPoiTypeVisibility() {
+    var bounds = paddedMapBounds(0.5);
+    if (bounds === null) {
+        return;
+    }
+
     for (let i = 0; i < pois.length; i++) {
         if (typeof pois[i] === "undefined") {
             continue;
         }
 
         var marker = markers[pois[i].id];
-        if (marker) {
-            marker.setMap(settings["detail" + pois[i].poitype_id] ? map : null);
+        if (!marker || pois[i].id === poiHiddenForEditId) {
+            continue;
         }
+        var visible = settings["detail" + pois[i].poitype_id] && bounds.contains(marker.getPosition());
+        marker.setMap(visible ? map : null);
     }
+}
+
+// Id of the POI whose marker editPoi() replaced by a draggable copy - kept
+// hidden by applyPoiTypeVisibility() until the edit window closes.
+let poiHiddenForEditId = null;
+
+/**
+ * The map's current bounds enlarged by `margin` (fraction of the visible
+ * span) on every side, or null before the map has bounds.
+ *
+ * @param {number} margin
+ * @returns {?google.maps.LatLngBounds}
+ */
+function paddedMapBounds(margin) {
+    var bounds = map.getBounds();
+    if (!bounds) {
+        return null;
+    }
+    var ne = bounds.getNorthEast();
+    var sw = bounds.getSouthWest();
+    var latPad = (ne.lat() - sw.lat()) * margin;
+    var lngSpan = ne.lng() - sw.lng();
+    if (lngSpan < 0) {
+        lngSpan += 360; // bounds across the antimeridian
+    }
+    var lngPad = lngSpan * margin;
+    return new google.maps.LatLngBounds(
+        new google.maps.LatLng(Math.max(-85, sw.lat() - latPad), sw.lng() - lngPad),
+        new google.maps.LatLng(Math.min(85, ne.lat() + latPad), ne.lng() + lngPad)
+    );
 }
 
 /**
@@ -429,14 +541,22 @@ function setAllPois(arrPois) {
 
     deleteMarkers();
 
-    for (i = 0; i < arrPois.length; i++) {
-        if (typeof arrPois[i] !== "undefinded") {
-            setPoi(i);
+    settingAllPois = true;
+    try {
+        for (i = 0; i < arrPois.length; i++) {
+            if (typeof arrPois[i] !== "undefinded") {
+                setPoi(i);
+            }
         }
+    } finally {
+        settingAllPois = false;
     }
 
     updatePoiClustering();
 }
+
+// True while setAllPois() runs - setPoi() then leaves updatePoiClustering() to it.
+let settingAllPois = false;
 
 /**
  * Für Leuchttürme wird die Mitte des Markers auf die Position gesetzt
@@ -464,40 +584,40 @@ function setPoi(i) {
 
     var LatLng = new google.maps.LatLng(pois[i].latitude, pois[i].longitude);
 
-    var marker = new YtanMarker({
+    // Built only when it is first shown (LazyYtanMarker, marker.js) -
+    // applyPoiTypeVisibility() decides that (type switched on, zoomed in
+    // past the clustering threshold, inside the visible map area).
+    var marker = new LazyYtanMarker({
         position: LatLng,
         title: pois[i].name,
         iconUrl: "markers/poi_" + pois[i].poitype_id + "_" + ICONSET + ".png",
         iconAnchor: poiIconAnchor(pois[i].poitype_id),
-        zIndex: ZINDEX_POI
-    });
-
-    if (settings["detail"+pois[i].poitype_id]) {
-        marker.setMap(map);
-    }
-
-    google.maps.event.addListener(marker, 'contextmenu',
-        function(event) {
-            showPoiContextMenu.call(this, event, i);
-        }
-    );
-
-    // Fallback for touch devices where the browser doesn't translate a
-    // long-press into the 'contextmenu' event above (map-core.js).
-    attachLongPressContextMenu(marker, function(event) {
-        showPoiContextMenu.call(marker, event, i);
-    });
-
-    google.maps.event.addListener(marker, 'click',
-        function(event) {
-            if (shouldSuppressClick()) {
-                return;
+        zIndex: ZINDEX_POI,
+        id: pois[i].id
+    }, function (real) {
+        google.maps.event.addListener(real, 'contextmenu',
+            function(event) {
+                showPoiContextMenu.call(this, event, i);
             }
-            showPoiInfoWindow.call(this, event, i, marker);
-        }
-    );
+        );
 
-    google.maps.event.addListener(marker, 'dblclick', zoomToMaxAndPan);
+        // Fallback for touch devices where the browser doesn't translate a
+        // long-press into the 'contextmenu' event above (map-core.js).
+        attachLongPressContextMenu(real, function(event) {
+            showPoiContextMenu.call(real, event, i);
+        });
+
+        google.maps.event.addListener(real, 'click',
+            function(event) {
+                if (shouldSuppressClick()) {
+                    return;
+                }
+                showPoiInfoWindow.call(this, event, i, real);
+            }
+        );
+
+        google.maps.event.addListener(real, 'dblclick', zoomToMaxAndPan);
+    });
 
     // WSI
     if ((pois[i].poitype_id == '1') || (pois[i].poitype_id == '11')) {
@@ -515,8 +635,15 @@ function setPoi(i) {
 
     markers[pois[i].id] = marker;
 
-    if (settings.detailwsi === true) {
+    // Only wind shelter types have a WSI marker - skips the scan of all
+    // WSI markers for the other ~80 % of the POIs.
+    if (settings.detailwsi === true && pois[i].direction !== null && (pois[i].poitype_id == '1' || pois[i].poitype_id == '11')) {
         showWsiMarkerByPoiId(pois[i].id);
+    }
+
+    // A single POI (created/edited) - setAllPois() does this once for all.
+    if (!settingAllPois) {
+        updatePoiClustering();
     }
 }
 
@@ -529,7 +656,7 @@ function showPoiInfoWindow(event, i, marker) {
 
         if ((pois[i].poitype_id == '1') || (pois[i].poitype_id == '11')) {
             if (pois[i].direction !== null) {
-                content += '<img class="wsi" src="' + Ytan.wsiImageUrl(pois[i].direction) + '">';
+                content += '<img class="wsi" src="' + wsiSvgDataUrl(pois[i].direction) + '">';
             }
         }
 
@@ -1244,6 +1371,7 @@ function editPoi(i) {
     closePoiEditWindow();
     closePoiInfoWindow(i);
     markers[id].setMap(null);
+    poiHiddenForEditId = id;
 
     initPoiEditWindow(i);
 
@@ -1280,6 +1408,7 @@ function cancelEditPoi(i) {
 }
 
 function closePoiEditWindow() {
+    poiHiddenForEditId = null;
     if (typeof poiMarker !== 'undefined') {
         poiMarker.setMap(null);
     }
