@@ -514,7 +514,18 @@ function addPoiClusterMarker(position, count, bounds) {
     });
 
     google.maps.event.addListener(marker, 'click', function () {
+        // A chained cluster's POIs can spread wider than the screen already
+        // shows (neighbor cells merge transitively), so fitBounds() alone may
+        // keep the current zoom and the click seems to do nothing - then zoom
+        // in on the cluster itself.
+        var zoomBefore = map.getZoom();
         map.fitBounds(bounds);
+        google.maps.event.addListenerOnce(map, 'idle', function () {
+            if (map.getZoom() <= zoomBefore) {
+                map.setCenter(position);
+                map.setZoom(zoomBefore + 2);
+            }
+        });
     });
 
     poiClusterMarkers.push(marker);
