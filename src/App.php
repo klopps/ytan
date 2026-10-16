@@ -121,110 +121,128 @@ final class App
             $mailService,
             $appUrl
         );
-        $tourRepository = new TourRepository($pdo);
-        $captchaService = new CaptchaService($jwtKey);
-        $tourNotificationService = new TourNotificationService($userRepository, $mailService, $appUrl);
+
+        // Everything below is built on demand (LazyContainer): a request only
+        // creates the controller of its route and what that needs. Shared
+        // pieces are registered by class name, the per-entity image stores
+        // by 'images.<entity>'.
+        $c = new LazyContainer();
+        $c->set(UserRepository::class, fn () => $userRepository);
+        $c->set(MailService::class, fn () => $mailService);
+
+        $c->set(TourRepository::class, fn () => new TourRepository($pdo));
+        $c->set(PoiRepository::class, fn () => new PoiRepository($pdo));
+        $c->set(RouteRepository::class, fn () => new RouteRepository($pdo));
+        $c->set(AreaRepository::class, fn () => new AreaRepository($pdo));
+        $c->set(SettingsRepository::class, fn () => new SettingsRepository($pdo));
+        $c->set(LighthouseImportRepository::class, fn () => new LighthouseImportRepository($pdo));
+        $c->set(RequestThrottle::class, fn () => new RequestThrottle($pdo));
+        $c->set(CaptchaService::class, fn () => new CaptchaService($jwtKey));
+        $c->set(TourNotificationService::class, fn ($c) => new TourNotificationService($c->get(UserRepository::class), $c->get(MailService::class), $appUrl));
         // One ImageStorageService instance per entity type - the class
         // itself is entity-agnostic, only the storage subdirectory differs.
-        $tourImageService = new ImageStorageService($rootDir . '/storage/tour-images');
-        $poiImageService = new ImageStorageService($rootDir . '/storage/poi-images');
-        $routeImageService = new ImageStorageService($rootDir . '/storage/route-images');
-        $areaImageService = new ImageStorageService($rootDir . '/storage/area-images');
-        $poiRepository = new PoiRepository($pdo);
-        $routeRepository = new RouteRepository($pdo);
-        $areaRepository = new AreaRepository($pdo);
-        $poiController = new PoiController($poiRepository, $poiImageService);
-        $routeController = new RouteController($routeRepository, $tourRepository, $captchaService, $tourNotificationService, $routeImageService);
-        $staticMapImageService = new StaticMapImageService(
-            $rootDir . '/storage/static-maps-cache',
-            $_ENV['MAPS_STATIC_API_KEY'] ?? ''
-        );
-        $tourDocumentService = new TourDocumentService(
-            $tourRepository,
-            $routeRepository,
-            $poiRepository,
-            $areaRepository,
-            $poiImageService,
-            $areaImageService,
-            $staticMapImageService,
-            new GithubFlavoredMarkdownConverter(),
-            $rootDir . '/public/markers',
-            // Fixed to German rather than the request-resolved $locale above -
-            // the rest of the document's text (e.g. "Länge") is hardcoded
-            // German too, so this keeps it internally consistent.
-            new Translator($rootDir . '/resources/i18n', 'de'),
-            $rootDir . '/public/images/ytan-logo.png',
-            $appUrl
-        );
-        $tourController = new TourController($tourRepository, $tourImageService, $tourDocumentService);
-        $areaController = new AreaController($areaRepository, $areaImageService);
-        $lighthouseImportRepository = new LighthouseImportRepository($pdo);
-        $lighthouseImportController = new LighthouseImportController(
-            $lighthouseImportRepository,
-            new LighthouseImportService($lighthouseImportRepository, $poiRepository),
+        foreach (['tour', 'poi', 'route', 'area'] as $entity) {
+            $c->set("images.$entity", fn () => new ImageStorageService($rootDir . "/storage/$entity-images"));
+        }
+        $c->set(CurlJsonHttpClient::class, fn () => new CurlJsonHttpClient());
+        $c->set(GeocodingService::class, fn ($c) => new GeocodingService($rootDir . '/storage/geocoding-cache', $c->get(CurlJsonHttpClient::class), $locale));
+
+        $c->set(PoiController::class, fn ($c) => new PoiController($c->get(PoiRepository::class), $c->get('images.poi')));
+        $c->set(RouteController::class, fn ($c) => new RouteController(
+            $c->get(RouteRepository::class),
+            $c->get(TourRepository::class),
+            $c->get(CaptchaService::class),
+            $c->get(TourNotificationService::class),
+            $c->get('images.route')
+        ));
+        $c->set(TourController::class, fn ($c) => new TourController(
+            $c->get(TourRepository::class),
+            $c->get('images.tour'),
+            new TourDocumentService(
+                $c->get(TourRepository::class),
+                $c->get(RouteRepository::class),
+                $c->get(PoiRepository::class),
+                $c->get(AreaRepository::class),
+                $c->get('images.poi'),
+                $c->get('images.area'),
+                new StaticMapImageService(
+                    $rootDir . '/storage/static-maps-cache',
+                    $_ENV['MAPS_STATIC_API_KEY'] ?? ''
+                ),
+                new GithubFlavoredMarkdownConverter(),
+                $rootDir . '/public/markers',
+                // Fixed to German rather than the request-resolved $locale above -
+                // the rest of the document's text (e.g. "Länge") is hardcoded
+                // German too, so this keeps it internally consistent.
+                new Translator($rootDir . '/resources/i18n', 'de'),
+                $rootDir . '/public/images/ytan-logo.png',
+                $appUrl
+            )
+        ));
+        $c->set(AreaController::class, fn ($c) => new AreaController($c->get(AreaRepository::class), $c->get('images.area')));
+        $c->set(LighthouseImportController::class, fn ($c) => new LighthouseImportController(
+            $c->get(LighthouseImportRepository::class),
+            new LighthouseImportService($c->get(LighthouseImportRepository::class), $c->get(PoiRepository::class)),
             new OsmImportService(
                 CurlOverpassClient::fromSetting((string) ($_ENV['OVERPASS_ENDPOINTS'] ?? '')),
-                $lighthouseImportRepository,
+                $c->get(LighthouseImportRepository::class),
                 new OsmLightMapper(),
                 $rootDir . '/storage/overpass-last-request'
             ),
             new NgaMsiImportService(
                 new CurlNgaMsiClient(),
-                $lighthouseImportRepository,
+                $c->get(LighthouseImportRepository::class),
                 new NgaMsiLightMapper(),
                 $rootDir . '/storage/nga-msi-last-request'
             )
-        );
-
-        $lighthouseDuplicateController = new LighthouseDuplicateController(
+        ));
+        $c->set(LighthouseDuplicateController::class, fn ($c) => new LighthouseDuplicateController(
             new LighthouseDuplicateService(
-                $poiRepository,
+                $c->get(PoiRepository::class),
                 new LighthouseDuplicateRepository($pdo),
-                $poiImageService,
+                $c->get('images.poi'),
                 $pdo
             )
-        );
-
-        $adminController = new AdminController(
+        ));
+        $c->set(AdminController::class, fn ($c) => new AdminController(
             new ImageReconciliationService([
-                'tour' => ['repository' => $tourRepository, 'images' => $tourImageService],
-                'poi' => ['repository' => $poiRepository, 'images' => $poiImageService],
-                'route' => ['repository' => $routeRepository, 'images' => $routeImageService],
-                'area' => ['repository' => $areaRepository, 'images' => $areaImageService],
+                'tour' => ['repository' => $c->get(TourRepository::class), 'images' => $c->get('images.tour')],
+                'poi' => ['repository' => $c->get(PoiRepository::class), 'images' => $c->get('images.poi')],
+                'route' => ['repository' => $c->get(RouteRepository::class), 'images' => $c->get('images.route')],
+                'area' => ['repository' => $c->get(AreaRepository::class), 'images' => $c->get('images.area')],
             ]),
-            $poiRepository,
-            $routeRepository,
-            $areaRepository,
-            $tourRepository,
-            $userRepository,
-        );
-        $requestThrottle = new RequestThrottle($pdo);
-        $authController = new AuthController($authService, $userRepository, $mailService, $appUrl, $requestThrottle);
-        $userController = new UserController($userRepository, $mailService, $authService, $appUrl);
-        $wsiController = new WsiController(new WsiRenderer($rootDir . '/public/images/wsi'));
-        $settingsRepository = new SettingsRepository($pdo);
-        $settingsController = new SettingsController($settingsRepository);
-        $gpxExportController = new GpxExportController($routeRepository, $tourRepository, $settingsRepository, $appName);
-        $routeSplitController = new RouteSplitController($routeRepository, $tourRepository, $routeImageService, $pdo);
-        $gpxImportController = new GpxImportController($routeRepository, $tourRepository, $poiRepository, new GpxImportService(), $pdo);
-        $translationController = new TranslationController(
+            $c->get(PoiRepository::class),
+            $c->get(RouteRepository::class),
+            $c->get(AreaRepository::class),
+            $c->get(TourRepository::class),
+            $c->get(UserRepository::class),
+        ));
+        $c->set(AuthController::class, fn ($c) => new AuthController($authService, $userRepository, $mailService, $appUrl, $c->get(RequestThrottle::class)));
+        $c->set(UserController::class, fn () => new UserController($userRepository, $mailService, $authService, $appUrl));
+        $c->set(WsiController::class, fn () => new WsiController(new WsiRenderer($rootDir . '/public/images/wsi')));
+        $c->set(SettingsController::class, fn ($c) => new SettingsController($c->get(SettingsRepository::class)));
+        $c->set(GpxExportController::class, fn ($c) => new GpxExportController($c->get(RouteRepository::class), $c->get(TourRepository::class), $c->get(SettingsRepository::class), $appName));
+        $c->set(RouteSplitController::class, fn ($c) => new RouteSplitController($c->get(RouteRepository::class), $c->get(TourRepository::class), $c->get('images.route'), $pdo));
+        $c->set(GpxImportController::class, fn ($c) => new GpxImportController($c->get(RouteRepository::class), $c->get(TourRepository::class), $c->get(PoiRepository::class), new GpxImportService(), $pdo));
+        $c->set(TranslationController::class, fn () => new TranslationController(
             new TranslationRepository($rootDir . '/resources/i18n'),
             new TranslationUsageScanner($rootDir)
-        );
-        $jsonHttpClient = new CurlJsonHttpClient();
-        $geocodingService = new GeocodingService($rootDir . '/storage/geocoding-cache', $jsonHttpClient, $locale);
-        $weatherController = new WeatherController(
+        ));
+        $c->set(WeatherController::class, fn ($c) => new WeatherController(
             new WeatherService(
                 new WeatherForecastRepository($pdo),
-                new WeatherRegionResolver($geocodingService),
-                new OpenMeteoWeatherProvider($jsonHttpClient),
-                new SmhiWeatherProvider($jsonHttpClient),
+                new WeatherRegionResolver($c->get(GeocodingService::class)),
+                new OpenMeteoWeatherProvider($c->get(CurlJsonHttpClient::class)),
+                new SmhiWeatherProvider($c->get(CurlJsonHttpClient::class)),
             ),
-            $requestThrottle
-        );
-        $geocodingController = new GeocodingController($geocodingService, $requestThrottle);
-        $watchController = new WatchController(new WatchLinkRepository($pdo), $routeRepository, new WatchKeyVault((string) $_ENV['JWT_SECRET']));
+            $c->get(RequestThrottle::class)
+        ));
+        $c->set(GeocodingController::class, fn ($c) => new GeocodingController($c->get(GeocodingService::class), $c->get(RequestThrottle::class)));
+        $c->set(WatchController::class, fn ($c) => new WatchController(new WatchLinkRepository($pdo), $c->get(RouteRepository::class), new WatchKeyVault((string) $_ENV['JWT_SECRET'])));
 
+        // Route callables [SomeController::class, 'method'] are resolved
+        // through $c, i.e. only for the route that matched.
+        AppFactory::setContainer($c);
         $app = AppFactory::create();
 
         // When the app isn't served from the web root (e.g. Apache/XAMPP
@@ -286,9 +304,9 @@ final class App
         // Content-Security-Policy violation reports (report-uri of
         // ContentSecurityPolicy): written to the PHP error log, shortened
         // and rate-limited per IP; always 204, also when throttled.
-        $app->post('/api/v1/csp-report', function (Request $req, Response $res) use ($requestThrottle) {
+        $app->post('/api/v1/csp-report', function (Request $req, Response $res) use ($c) {
             try {
-                $requestThrottle->hit(RequestThrottle::CSP_REPORT, (string) ($req->getServerParams()['REMOTE_ADDR'] ?? ''));
+                $c->get(RequestThrottle::class)->hit(RequestThrottle::CSP_REPORT, (string) ($req->getServerParams()['REMOTE_ADDR'] ?? ''));
                 $report = mb_substr(preg_replace('/\s+/', ' ', (string) $req->getBody()), 0, 2000);
                 error_log('YTAN CSP violation: ' . $report);
             } catch (\Ytan\Exception\TooManyRequestsException) {
@@ -298,108 +316,108 @@ final class App
             return $res->withStatus(204);
         });
 
-        $app->post('/api/v1/auth/login', [$authController, 'login']);
-        $app->get('/api/v1/auth/me', [$authController, 'me']);
-        $app->get('/api/v1/auth/default-speed', [$authController, 'defaultSpeed']);
-        $app->put('/api/v1/auth/default-speed', [$authController, 'setDefaultSpeed']);
-        $app->post('/api/v1/auth/forgot-password', [$authController, 'forgotPassword']);
-        $app->post('/api/v1/auth/set-password', [$authController, 'setPassword']);
-        $app->put('/api/v1/auth/password', [$authController, 'changePassword']);
-        $app->post('/api/v1/auth/logout-all', [$authController, 'logoutEverywhere']);
-        $app->put('/api/v1/auth/profile', [$authController, 'updateProfile']);
-        $app->delete('/api/v1/auth/email-change', [$authController, 'cancelEmailChange']);
-        $app->post('/api/v1/auth/confirm-email-change', [$authController, 'confirmEmailChange']);
+        $app->post('/api/v1/auth/login', [AuthController::class, 'login']);
+        $app->get('/api/v1/auth/me', [AuthController::class, 'me']);
+        $app->get('/api/v1/auth/default-speed', [AuthController::class, 'defaultSpeed']);
+        $app->put('/api/v1/auth/default-speed', [AuthController::class, 'setDefaultSpeed']);
+        $app->post('/api/v1/auth/forgot-password', [AuthController::class, 'forgotPassword']);
+        $app->post('/api/v1/auth/set-password', [AuthController::class, 'setPassword']);
+        $app->put('/api/v1/auth/password', [AuthController::class, 'changePassword']);
+        $app->post('/api/v1/auth/logout-all', [AuthController::class, 'logoutEverywhere']);
+        $app->put('/api/v1/auth/profile', [AuthController::class, 'updateProfile']);
+        $app->delete('/api/v1/auth/email-change', [AuthController::class, 'cancelEmailChange']);
+        $app->post('/api/v1/auth/confirm-email-change', [AuthController::class, 'confirmEmailChange']);
 
-        $app->get('/api/v1/pois', [$poiController, 'index']);
-        $app->get('/api/v1/pois/bounds', [$poiController, 'bounds']);
-        $app->get('/api/v1/pois/{id}', [$poiController, 'show']);
-        $app->post('/api/v1/pois', [$poiController, 'create']);
-        $app->put('/api/v1/pois/{id}', [$poiController, 'update']);
-        $app->delete('/api/v1/pois/{id}', [$poiController, 'delete']);
-        $app->post('/api/v1/pois/{id}/images', [$poiController, 'uploadImage']);
-        $app->get('/api/v1/pois/{id}/images', [$poiController, 'listImages']);
-        $app->get('/api/v1/pois/{id}/images/{imageId}', [$poiController, 'showImage']);
-        $app->delete('/api/v1/pois/{id}/images/{imageId}', [$poiController, 'deleteImage']);
+        $app->get('/api/v1/pois', [PoiController::class, 'index']);
+        $app->get('/api/v1/pois/bounds', [PoiController::class, 'bounds']);
+        $app->get('/api/v1/pois/{id}', [PoiController::class, 'show']);
+        $app->post('/api/v1/pois', [PoiController::class, 'create']);
+        $app->put('/api/v1/pois/{id}', [PoiController::class, 'update']);
+        $app->delete('/api/v1/pois/{id}', [PoiController::class, 'delete']);
+        $app->post('/api/v1/pois/{id}/images', [PoiController::class, 'uploadImage']);
+        $app->get('/api/v1/pois/{id}/images', [PoiController::class, 'listImages']);
+        $app->get('/api/v1/pois/{id}/images/{imageId}', [PoiController::class, 'showImage']);
+        $app->delete('/api/v1/pois/{id}/images/{imageId}', [PoiController::class, 'deleteImage']);
 
-        $app->get('/api/v1/routes', [$routeController, 'index']);
-        $app->get('/api/v1/routes/{id}', [$routeController, 'show']);
-        $app->post('/api/v1/routes', [$routeController, 'create']);
-        $app->put('/api/v1/routes/{id}', [$routeController, 'update']);
-        $app->delete('/api/v1/routes/{id}', [$routeController, 'delete']);
-        $app->post('/api/v1/routes/{id}/images', [$routeController, 'uploadImage']);
-        $app->get('/api/v1/routes/{id}/images', [$routeController, 'listImages']);
-        $app->get('/api/v1/routes/{id}/gpx', [$gpxExportController, 'routeGpx']);
-        $app->post('/api/v1/routes/{id}/split', [$routeSplitController, 'split']);
-        $app->get('/api/v1/routes/{id}/images/{imageId}', [$routeController, 'showImage']);
-        $app->delete('/api/v1/routes/{id}/images/{imageId}', [$routeController, 'deleteImage']);
+        $app->get('/api/v1/routes', [RouteController::class, 'index']);
+        $app->get('/api/v1/routes/{id}', [RouteController::class, 'show']);
+        $app->post('/api/v1/routes', [RouteController::class, 'create']);
+        $app->put('/api/v1/routes/{id}', [RouteController::class, 'update']);
+        $app->delete('/api/v1/routes/{id}', [RouteController::class, 'delete']);
+        $app->post('/api/v1/routes/{id}/images', [RouteController::class, 'uploadImage']);
+        $app->get('/api/v1/routes/{id}/images', [RouteController::class, 'listImages']);
+        $app->get('/api/v1/routes/{id}/gpx', [GpxExportController::class, 'routeGpx']);
+        $app->post('/api/v1/routes/{id}/split', [RouteSplitController::class, 'split']);
+        $app->get('/api/v1/routes/{id}/images/{imageId}', [RouteController::class, 'showImage']);
+        $app->delete('/api/v1/routes/{id}/images/{imageId}', [RouteController::class, 'deleteImage']);
 
-        $app->get('/api/v1/tours', [$tourController, 'index']);
-        $app->get('/api/v1/tours/{id}', [$tourController, 'show']);
-        $app->post('/api/v1/tours', [$tourController, 'create']);
-        $app->put('/api/v1/tours/{id}', [$tourController, 'update']);
-        $app->delete('/api/v1/tours/{id}', [$tourController, 'delete']);
-        $app->post('/api/v1/tours/{id}/routes', [$tourController, 'addRoute']);
-        $app->delete('/api/v1/tours/{id}/routes/{routeId}', [$tourController, 'removeRoute']);
-        $app->put('/api/v1/tours/{id}/routes/order', [$tourController, 'reorderRoutes']);
-        $app->put('/api/v1/tours/{id}/publish', [$tourController, 'publish']);
-        $app->post('/api/v1/tours/{id}/copy', [$tourController, 'copy']);
-        $app->post('/api/v1/tours/{id}/images', [$tourController, 'uploadImage']);
-        $app->get('/api/v1/tours/{id}/images/{imageId}', [$tourController, 'showImage']);
-        $app->delete('/api/v1/tours/{id}/images/{imageId}', [$tourController, 'deleteImage']);
-        $app->put('/api/v1/tours/{id}/images/order', [$tourController, 'reorderImages']);
-        $app->get('/api/v1/tours/{id}/document', [$tourController, 'document']);
-        $app->get('/api/v1/tours/{id}/gpx', [$gpxExportController, 'tourGpx']);
-        $app->post('/api/v1/gpx/preview', [$gpxImportController, 'preview']);
-        $app->post('/api/v1/gpx/import', [$gpxImportController, 'import']);
+        $app->get('/api/v1/tours', [TourController::class, 'index']);
+        $app->get('/api/v1/tours/{id}', [TourController::class, 'show']);
+        $app->post('/api/v1/tours', [TourController::class, 'create']);
+        $app->put('/api/v1/tours/{id}', [TourController::class, 'update']);
+        $app->delete('/api/v1/tours/{id}', [TourController::class, 'delete']);
+        $app->post('/api/v1/tours/{id}/routes', [TourController::class, 'addRoute']);
+        $app->delete('/api/v1/tours/{id}/routes/{routeId}', [TourController::class, 'removeRoute']);
+        $app->put('/api/v1/tours/{id}/routes/order', [TourController::class, 'reorderRoutes']);
+        $app->put('/api/v1/tours/{id}/publish', [TourController::class, 'publish']);
+        $app->post('/api/v1/tours/{id}/copy', [TourController::class, 'copy']);
+        $app->post('/api/v1/tours/{id}/images', [TourController::class, 'uploadImage']);
+        $app->get('/api/v1/tours/{id}/images/{imageId}', [TourController::class, 'showImage']);
+        $app->delete('/api/v1/tours/{id}/images/{imageId}', [TourController::class, 'deleteImage']);
+        $app->put('/api/v1/tours/{id}/images/order', [TourController::class, 'reorderImages']);
+        $app->get('/api/v1/tours/{id}/document', [TourController::class, 'document']);
+        $app->get('/api/v1/tours/{id}/gpx', [GpxExportController::class, 'tourGpx']);
+        $app->post('/api/v1/gpx/preview', [GpxImportController::class, 'preview']);
+        $app->post('/api/v1/gpx/import', [GpxImportController::class, 'import']);
 
-        $app->get('/api/v1/areas', [$areaController, 'index']);
-        $app->get('/api/v1/areas/{id}', [$areaController, 'show']);
-        $app->post('/api/v1/areas', [$areaController, 'create']);
-        $app->put('/api/v1/areas/{id}', [$areaController, 'update']);
-        $app->delete('/api/v1/areas/{id}', [$areaController, 'delete']);
-        $app->post('/api/v1/areas/{id}/images', [$areaController, 'uploadImage']);
-        $app->get('/api/v1/areas/{id}/images', [$areaController, 'listImages']);
-        $app->get('/api/v1/areas/{id}/images/{imageId}', [$areaController, 'showImage']);
-        $app->delete('/api/v1/areas/{id}/images/{imageId}', [$areaController, 'deleteImage']);
+        $app->get('/api/v1/areas', [AreaController::class, 'index']);
+        $app->get('/api/v1/areas/{id}', [AreaController::class, 'show']);
+        $app->post('/api/v1/areas', [AreaController::class, 'create']);
+        $app->put('/api/v1/areas/{id}', [AreaController::class, 'update']);
+        $app->delete('/api/v1/areas/{id}', [AreaController::class, 'delete']);
+        $app->post('/api/v1/areas/{id}/images', [AreaController::class, 'uploadImage']);
+        $app->get('/api/v1/areas/{id}/images', [AreaController::class, 'listImages']);
+        $app->get('/api/v1/areas/{id}/images/{imageId}', [AreaController::class, 'showImage']);
+        $app->delete('/api/v1/areas/{id}/images/{imageId}', [AreaController::class, 'deleteImage']);
 
-        $app->get('/api/v1/users', [$userController, 'index']);
-        $app->get('/api/v1/users/{id}', [$userController, 'show']);
-        $app->post('/api/v1/users', [$userController, 'create']);
-        $app->put('/api/v1/users/{id}', [$userController, 'update']);
-        $app->delete('/api/v1/users/{id}', [$userController, 'delete']);
-        $app->put('/api/v1/users/{id}/password', [$userController, 'setPassword']);
-        $app->post('/api/v1/users/{id}/send-reset', [$userController, 'sendResetEmail']);
+        $app->get('/api/v1/users', [UserController::class, 'index']);
+        $app->get('/api/v1/users/{id}', [UserController::class, 'show']);
+        $app->post('/api/v1/users', [UserController::class, 'create']);
+        $app->put('/api/v1/users/{id}', [UserController::class, 'update']);
+        $app->delete('/api/v1/users/{id}', [UserController::class, 'delete']);
+        $app->put('/api/v1/users/{id}/password', [UserController::class, 'setPassword']);
+        $app->post('/api/v1/users/{id}/send-reset', [UserController::class, 'sendResetEmail']);
 
-        $app->get('/api/v1/wsi/{code}', [$wsiController, 'show']);
+        $app->get('/api/v1/wsi/{code}', [WsiController::class, 'show']);
 
-        $app->get('/api/v1/weather', [$weatherController, 'show']);
-        $app->get('/api/v1/geocode/reverse', [$geocodingController, 'reverse']);
+        $app->get('/api/v1/weather', [WeatherController::class, 'show']);
+        $app->get('/api/v1/geocode/reverse', [GeocodingController::class, 'reverse']);
 
-        $app->get('/api/v1/watch', [$watchController, 'status']);
-        $app->post('/api/v1/watch/token', [$watchController, 'createToken']);
-        $app->get('/api/v1/watch/settings-file', [$watchController, 'settingsFile']);
-        $app->delete('/api/v1/watch/token', [$watchController, 'deleteToken']);
-        $app->put('/api/v1/watch/route', [$watchController, 'setRoute']);
-        $app->delete('/api/v1/watch/route', [$watchController, 'clearRoute']);
-        $app->put('/api/v1/watch/colors', [$watchController, 'setColors']);
-        $app->delete('/api/v1/watch/colors', [$watchController, 'resetColors']);
-        $app->get('/api/v1/watch/device/route', [$watchController, 'deviceRoute']);
-        $app->get('/api/v1/watch/payload', [$watchController, 'payload']);
+        $app->get('/api/v1/watch', [WatchController::class, 'status']);
+        $app->post('/api/v1/watch/token', [WatchController::class, 'createToken']);
+        $app->get('/api/v1/watch/settings-file', [WatchController::class, 'settingsFile']);
+        $app->delete('/api/v1/watch/token', [WatchController::class, 'deleteToken']);
+        $app->put('/api/v1/watch/route', [WatchController::class, 'setRoute']);
+        $app->delete('/api/v1/watch/route', [WatchController::class, 'clearRoute']);
+        $app->put('/api/v1/watch/colors', [WatchController::class, 'setColors']);
+        $app->delete('/api/v1/watch/colors', [WatchController::class, 'resetColors']);
+        $app->get('/api/v1/watch/device/route', [WatchController::class, 'deviceRoute']);
+        $app->get('/api/v1/watch/payload', [WatchController::class, 'payload']);
 
-        $app->put('/api/v1/settings/google-search-requires-login', [$settingsController, 'updateGoogleSearchRequiresLogin']);
-        $app->put('/api/v1/settings/gpx-export-public', [$settingsController, 'updateGpxExportPublic']);
-        $app->put('/api/v1/settings/track-distance-filter', [$settingsController, 'updateTrackDistanceFilterPresets']);
-        $app->put('/api/v1/settings/route-label-font-size-range', [$settingsController, 'updateRouteLabelFontSizeRange']);
+        $app->put('/api/v1/settings/google-search-requires-login', [SettingsController::class, 'updateGoogleSearchRequiresLogin']);
+        $app->put('/api/v1/settings/gpx-export-public', [SettingsController::class, 'updateGpxExportPublic']);
+        $app->put('/api/v1/settings/track-distance-filter', [SettingsController::class, 'updateTrackDistanceFilterPresets']);
+        $app->put('/api/v1/settings/route-label-font-size-range', [SettingsController::class, 'updateRouteLabelFontSizeRange']);
 
-        $app->get('/', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $settingsRepository, $translator) {
+        $app->get('/', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $c, $translator) {
             ob_start();
             $mapsApiKey = $_ENV['MAPS_API_KEY'] ?? '';
             $mapsId = $_ENV['MAPS_ID'] ?? '';
             $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
-            $googleSearchRequiresLogin = $settingsRepository->googleSearchRequiresLogin();
-            $gpxExportPublic = $settingsRepository->gpxExportPublic();
-            $trackDistanceFilterPresets = $settingsRepository->trackDistanceFilterPresets();
-            $routeLabelFontSizeRange = $settingsRepository->routeLabelFontSizeRange();
+            $googleSearchRequiresLogin = $c->get(SettingsRepository::class)->googleSearchRequiresLogin();
+            $gpxExportPublic = $c->get(SettingsRepository::class)->gpxExportPublic();
+            $trackDistanceFilterPresets = $c->get(SettingsRepository::class)->trackDistanceFilterPresets();
+            $routeLabelFontSizeRange = $c->get(SettingsRepository::class)->routeLabelFontSizeRange();
             $appVersion = 'dev';
             $versionFile = $rootDir . '/VERSION';
             if (is_file($versionFile)) {
@@ -420,12 +438,12 @@ final class App
             return $res->withHeader('Content-Type', 'application/javascript; charset=utf-8');
         });
 
-        $app->get('/about', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator, $lighthouseImportRepository) {
+        $app->get('/about', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator, $c) {
             ob_start();
             $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
             $dataSources = array_map(
                 fn (array $source) => DataSourceText::localize($source, $t),
-                $lighthouseImportRepository->usedDataSources()
+                $c->get(LighthouseImportRepository::class)->usedDataSources()
             );
             require $rootDir . '/templates/about.php';
             $res->getBody()->write(ob_get_clean());
@@ -517,7 +535,7 @@ final class App
 
             return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
         });
-        $app->get('/api/v1/admin/dashboard-stats', [$adminController, 'dashboardStats']);
+        $app->get('/api/v1/admin/dashboard-stats', [AdminController::class, 'dashboardStats']);
 
         // User management, moved out of the main SPA's drawer
         // (templates/admin-users.php, public/js/admin-users.js) - loads a
@@ -560,8 +578,8 @@ final class App
                 return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
             });
 
-            $app->get('/api/v1/translations', [$translationController, 'index']);
-            $app->put('/api/v1/translations', [$translationController, 'update']);
+            $app->get('/api/v1/translations', [TranslationController::class, 'index']);
+            $app->put('/api/v1/translations', [TranslationController::class, 'update']);
         }
 
         // Admin tool: finds photo files/DB rows left behind by a bug or a
@@ -580,8 +598,8 @@ final class App
 
             return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
         });
-        $app->get('/api/v1/admin/image-orphans', [$adminController, 'scanImageOrphans']);
-        $app->post('/api/v1/admin/image-orphans/delete', [$adminController, 'deleteImageOrphans']);
+        $app->get('/api/v1/admin/image-orphans', [AdminController::class, 'scanImageOrphans']);
+        $app->post('/api/v1/admin/image-orphans/delete', [AdminController::class, 'deleteImageOrphans']);
 
         // Admin tool: imports lighthouses from the staged entries of an official
         // lighthouse list (LighthouseImportController; the list itself is read
@@ -597,13 +615,13 @@ final class App
 
             return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
         });
-        $app->get('/api/v1/admin/lighthouse-import', [$lighthouseImportController, 'index']);
-        $app->get('/api/v1/admin/lighthouse-import/ids', [$lighthouseImportController, 'ids']);
-        $app->post('/api/v1/admin/lighthouse-import/osm', [$lighthouseImportController, 'loadOsm']);
-        $app->post('/api/v1/admin/lighthouse-import/nga', [$lighthouseImportController, 'loadNga']);
-        $app->post('/api/v1/admin/lighthouse-import', [$lighthouseImportController, 'import']);
-        $app->get('/api/v1/admin/lighthouse-import/export', [$lighthouseImportController, 'exportFile']);
-        $app->post('/api/v1/admin/lighthouse-import/file', [$lighthouseImportController, 'importFile']);
+        $app->get('/api/v1/admin/lighthouse-import', [LighthouseImportController::class, 'index']);
+        $app->get('/api/v1/admin/lighthouse-import/ids', [LighthouseImportController::class, 'ids']);
+        $app->post('/api/v1/admin/lighthouse-import/osm', [LighthouseImportController::class, 'loadOsm']);
+        $app->post('/api/v1/admin/lighthouse-import/nga', [LighthouseImportController::class, 'loadNga']);
+        $app->post('/api/v1/admin/lighthouse-import', [LighthouseImportController::class, 'import']);
+        $app->get('/api/v1/admin/lighthouse-import/export', [LighthouseImportController::class, 'exportFile']);
+        $app->post('/api/v1/admin/lighthouse-import/file', [LighthouseImportController::class, 'importFile']);
 
         // Admin tool: finds lighthouses that lie close together and merges the
         // ones the admin says are the same (LighthouseDuplicateController).
@@ -617,21 +635,21 @@ final class App
 
             return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
         });
-        $app->get('/api/v1/admin/lighthouse-duplicates', [$lighthouseDuplicateController, 'index']);
-        $app->post('/api/v1/admin/lighthouse-duplicates/merge', [$lighthouseDuplicateController, 'merge']);
+        $app->get('/api/v1/admin/lighthouse-duplicates', [LighthouseDuplicateController::class, 'index']);
+        $app->post('/api/v1/admin/lighthouse-duplicates/merge', [LighthouseDuplicateController::class, 'merge']);
 
         // Site-wide settings (currently just "Google search requires
         // login") - its own page so future settings have somewhere to go
         // without growing the dashboard into a dumping ground.
-        $app->get('/admin/settings', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator, $settingsRepository) {
+        $app->get('/admin/settings', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator, $c) {
             ob_start();
             $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
             $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
             $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
-            $googleSearchRequiresLogin = $settingsRepository->googleSearchRequiresLogin();
-            $gpxExportPublic = $settingsRepository->gpxExportPublic();
-            $trackDistanceFilterPresets = $settingsRepository->trackDistanceFilterPresets();
-            $routeLabelFontSizeRange = $settingsRepository->routeLabelFontSizeRange();
+            $googleSearchRequiresLogin = $c->get(SettingsRepository::class)->googleSearchRequiresLogin();
+            $gpxExportPublic = $c->get(SettingsRepository::class)->gpxExportPublic();
+            $trackDistanceFilterPresets = $c->get(SettingsRepository::class)->trackDistanceFilterPresets();
+            $routeLabelFontSizeRange = $c->get(SettingsRepository::class)->routeLabelFontSizeRange();
             require $rootDir . '/templates/admin-settings.php';
             $res->getBody()->write(ob_get_clean());
 
