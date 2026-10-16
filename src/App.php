@@ -93,7 +93,8 @@ final class App
         $supportedLocales = array_map('trim', explode(',', $_ENV['SUPPORTED_LOCALES'] ?? 'en,de'));
         $locale = Translator::resolveLocale(
             $supportedLocales,
-            $_COOKIE['settings'] ?? null,
+            // "settings" = the cookie's name before 2026-10-16 (public/js/settings.js).
+            $_COOKIE['ytan_settings'] ?? $_COOKIE['settings'] ?? null,
             $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? null
         );
         $translator = new Translator($rootDir . '/resources/i18n', $locale);

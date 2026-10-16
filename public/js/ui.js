@@ -324,10 +324,13 @@ function toggleDisabled(elementId) {
 }
 
 function revokeConsent() {
-    deleteCookie("settings");
+    deleteCookie(SETTINGS_COOKIE);
+    // The pre-2026-10-16 name too - an explicit "forget everything" may also
+    // remove a leftover old cookie.
+    deleteCookie(LEGACY_SETTINGS_COOKIE);
     deleteCookie("gdpr_accepted");
     // The JWT lives in localStorage, not a cookie (see api-client.js), so
-    // it survives the two deleteCookie() calls above on its own - revoking
+    // it survives the deleteCookie() calls above on its own - revoking
     // consent must still log the user out, not just forget map/UI settings.
     Ytan.setToken(null);
     sessionStorage.removeItem('user');

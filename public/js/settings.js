@@ -34,6 +34,43 @@ function deleteCookie(cname) {
     document.cookie = cname + "=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
 }
 
+/*
+ * The settings live in the cookie "ytan_settings" (path=/). Until 2026-10-16
+ * it was called just "settings" - a name other apps on the same host use as
+ * well: on the dev box everything shares http://localhost, and e.g. /radio
+ * wrote its own "settings" cookie over YTAN's (map type missing, so no map
+ * type option was selected while the map showed the default hybrid).
+ * templates/help.php and Translator::resolveLocale() (via App.php) read the
+ * same cookie.
+ */
+const SETTINGS_COOKIE = 'ytan_settings';
+const LEGACY_SETTINGS_COOKIE = 'settings';
+
+/**
+ * The stored settings JSON string, '' if none. Falls back to the old
+ * "settings" cookie only while "ytan_settings" doesn't exist yet, and only
+ * if it is recognisably YTAN's (has map settings) - one written by another
+ * app on the same host is ignored. The old cookie is never deleted: on a
+ * shared host it may belong to that other app; the next saveSettings()
+ * writes "ytan_settings", which wins from then on.
+ */
+function readSettingsCookie() {
+    var current = getCookie(SETTINGS_COOKIE);
+    if (current !== '') {
+        return current;
+    }
+    var legacy = getCookie(LEGACY_SETTINGS_COOKIE);
+    if (legacy === '') {
+        return '';
+    }
+    try {
+        var parsed = JSON.parse(legacy);
+        return (parsed && typeof parsed === 'object' && 'maptype1' in parsed && 'detail0' in parsed) ? legacy : '';
+    } catch (err) {
+        return '';
+    }
+}
+
 
 /**
  * Speichert die derzeitigen Einstellungen in einem Cookie
@@ -121,14 +158,14 @@ function saveSettings() {
     settings['zoom'] = map.getZoom();
     settings['center'] = map.getCenter();
 
-    setCookie('settings', JSON.stringify(settings), 365);
+    setCookie(SETTINGS_COOKIE, JSON.stringify(settings), 365);
 }
 
 /**
  * Lädt die Einstellungen aus einem Cookie
  */
 function loadSettings() {
-    var settingsString = getCookie('settings');
+    var settingsString = readSettingsCookie();
 
     if (settingsString != '') {
         // A malformed/corrupted "settings" cookie (e.g. left over from an
@@ -240,7 +277,7 @@ function loadSettings() {
  * is just a fast, defensive early read of the same cookie.
  */
 function applyStoredTheme() {
-    var settingsString = getCookie('settings');
+    var settingsString = readSettingsCookie();
     if (settingsString == '') {
         return;
     }

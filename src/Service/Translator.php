@@ -92,7 +92,7 @@ final class Translator
 
     /**
      * Pure/testable locale resolution: stored preference (the same
-     * "settings" cookie public/js/settings.js already uses for
+     * "ytan_settings" cookie public/js/settings.js already uses for
      * theme/unit, read here server-side so the very first response is
      * already in the right language - no flash-of-wrong-language the way
      * a client-only switch would need to guard against) takes priority,

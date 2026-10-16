@@ -1,5 +1,11 @@
 # Erledigt
 
+## Einstellungs-Cookie: eigener Name statt "settings"
+
+~~Auf der DevSite zeigte die Karte Hybrid, im Menü war aber kein Kartentyp angewählt.~~
+
+Gelöst (2026-10-16): Ursache war der Cookie-Name. YTAN speicherte seine Einstellungen im Cookie `settings` mit `path=/`; auf `localhost` teilen sich alle Apps diesen Namensraum, und `/radio` schreibt ebenfalls ein Cookie `settings` (ohne Kartentyp-Felder). `loadSettings()` übernahm die fehlenden `maptype1`-`maptype3` als "nicht angewählt", die Karte nahm den Standard `hybrid`. Jetzt heißt das Cookie `ytan_settings` (`SETTINGS_COOKIE` in `settings.js`); `readSettingsCookie()` liest das alte `settings` nur, solange das neue fehlt und nur, wenn es nach YTAN aussieht (`maptype1` und `detail0` vorhanden) - in Produktion werden die Einstellungen so übernommen, ein fremdes Cookie wird ignoriert; gelöscht wird das alte nie (auf einem geteilten Host gehört es evtl. der anderen App), nur "Einwilligung widerrufen" löscht beide. Ebenso umgestellt: `templates/help.php` (Theme) und `App.php` -> `Translator::resolveLocale()` (Sprache, Rückfall auf das alte Cookie). Im Browser geprüft: fremdes `settings` -> Hybrid angewählt; altes YTAN-`settings` mit Gelände -> übernommen; Wechsel auf Satellit landet in `ytan_settings`, altes Cookie bleibt unberührt; erneutes Überschreiben durch eine fremde App ändert nichts mehr; serverseitige Sprache aus beiden Cookies. Nebenbei: der E2E-Test "POI-Kontextmenü" scheiterte sporadisch, weil er klickte, bevor das Marker-Icon geladen war (0x0 px, Klick traf die Karte) - er wartet jetzt auf Marker und geladenes Icon.
+
 ## Sicherheit: vollständige Content-Security-Policy
 
 ~~Eine echte CSP (`script-src` ohne `'unsafe-inline'`) als zweite Verteidigungslinie gegen XSS - setzt voraus, dass Inline-`<script>`-Blöcke Nonces bekommen und die vielen `onclick="..."`-Attribute ersetzt werden.~~

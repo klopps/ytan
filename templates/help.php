@@ -32,7 +32,8 @@ $title = $t('help.title');
                 if (window.parent !== window && window.parent.document.documentElement.dataset.theme === 'dark') {
                     dark = true;
                 } else {
-                    var m = document.cookie.match(/(?:^|; )settings=([^;]*)/);
+                    // "settings" = the cookie's name before 2026-10-16 (settings.js).
+                    var m = document.cookie.match(/(?:^|; )ytan_settings=([^;]*)/) || document.cookie.match(/(?:^|; )settings=([^;]*)/);
                     dark = !!m && JSON.parse(decodeURIComponent(m[1])).theme === 'dark';
                 }
                 if (dark) { document.documentElement.dataset.theme = 'dark'; }

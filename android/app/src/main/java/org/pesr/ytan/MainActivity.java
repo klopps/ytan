@@ -67,7 +67,7 @@ public class MainActivity extends BridgeActivity {
      * guaranteed to run (e.g. the process is simply killed when swiped
      * away in the recent-apps list, or low-memory-killed in the
      * background), so document.cookie writes from public/js/settings.js
-     * (the "settings"/"gdpr_accepted" cookies - language, theme, map
+     * (the "ytan_settings"/"gdpr_accepted" cookies - language, theme, map
      * type, units, ...) could silently never make it to disk: they worked
      * for the rest of that session (reading them back from the in-memory
      * store), then were gone on the next cold start. localStorage/
