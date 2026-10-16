@@ -1,5 +1,11 @@
 # Erledigt
 
+## Lizenz- und Quellentext der Leuchtfeuer-Datenquellen übersetzbar
+
+~~Bei importierten Leuchtfeuern steht die Quelle fest auf Deutsch aus der Tabelle `data_source`, z. B. "Dansk Fyrliste (Veröffentlicht von der Søfartsstyrelsen (keine ausdrückliche Lizenz))" - auch bei englischer Oberfläche.~~
+
+Gelöst (2026-10-16): `license` und `attribution` einer Quelle sind über i18n-Keys `data_source.{code}.{field}` übersetzbar (de/en: `dk.license`, `dk.attribution`, `nga.license`, `ngaapi.license`, `osm.attribution`; `name`/`url` bleiben unübersetzt). Ohne Key gilt weiter der Text der Tabelle, eine neue Quelle funktioniert also ohne Übersetzung. Server: `DataSourceText::localize()` für die About-Seite (`/about`); Browser: `poi.js`'s `dataSourceTranslations()`/`poiDataSourceText()` für das InfoWindow. Beide schreiben die Keys wörtlich aus statt `'data_source.' + code`, weil `TranslationUsageScanner` (Übersetzungswerkzeug) nur wörtliche Keys findet - eine neue Quelle braucht deshalb einen Eintrag an beiden Stellen. Nebenbei die doppelte Klammer beseitigt: der dk-Lizenztext lautet jetzt "Veröffentlicht von der Søfartsstyrelsen, keine ausdrückliche Lizenz" bzw. "Published by the Danish Maritime Authority, no explicit licence". Die Tabelle selbst ist unverändert. Test: `DataSourceTextTest`. Im Browser (390x660) auf Deutsch und Englisch geprüft: InfoWindow und About-Seite. PHPUnit 616 grün.
+
 ## Performance: Prüfung nach dem Deploy, Koordinaten gerundet, Datenquellen einmal pro POI-Liste
 
 ~~Aus den offenen Performance-Punkten vom 2026-10-16: nach dem Deploy Kompression/Caching in Produktion prüfen; Koordinaten in `points` mit 15-17 Nachkommastellen auf 6 kürzen (beim Speichern + einmalige Migration); `source_name/url/license/license_url/attribution` nicht an jedem Leuchtfeuer der POI-Liste mitschicken.~~

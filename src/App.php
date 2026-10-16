@@ -39,6 +39,7 @@ use Ytan\Http\Middleware\AppVersionMiddleware;
 use Ytan\Http\Controllers\LighthouseDuplicateController;
 use Ytan\Http\Controllers\LighthouseImportController;
 use Ytan\Domain\Poi\LighthouseDuplicateRepository;
+use Ytan\Service\DataSourceText;
 use Ytan\Service\LighthouseDuplicateService;
 use Ytan\Http\Middleware\AuthMiddleware;
 use Ytan\Http\Middleware\CompressionMiddleware;
@@ -422,7 +423,10 @@ final class App
         $app->get('/about', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator, $lighthouseImportRepository) {
             ob_start();
             $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
-            $dataSources = $lighthouseImportRepository->usedDataSources();
+            $dataSources = array_map(
+                fn (array $source) => DataSourceText::localize($source, $t),
+                $lighthouseImportRepository->usedDataSources()
+            );
             require $rootDir . '/templates/about.php';
             $res->getBody()->write(ob_get_clean());
 

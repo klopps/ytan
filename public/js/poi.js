@@ -168,6 +168,27 @@ function withPoiDataSources(answer) {
 }
 
 /**
+ * The translated texts of a data source (data_source.{code}.{field} in the
+ * i18n files), keyed by field - same list as DataSourceText::localize() on
+ * the server. Literal keys so that TranslationUsageScanner finds them.
+ */
+function dataSourceTranslations(code) {
+    var texts = {
+        dk: { license: t('data_source.dk.license'), attribution: t('data_source.dk.attribution') },
+        nga: { license: t('data_source.nga.license') },
+        ngaapi: { license: t('data_source.ngaapi.license') },
+        osm: { attribution: t('data_source.osm.attribution') },
+    };
+    return texts[code] || {};
+}
+
+/** A POI's source text `field` (license/attribution): translated, else the data_source table's. */
+function poiDataSourceText(poi, field) {
+    var text = dataSourceTranslations(poi.data_source)[field];
+    return (text && text.indexOf('data_source.') !== 0) ? text : poi['source_' + field];
+}
+
+/**
  * Lade alle POIs (nur für Admins sinnvoll, siehe scope=all der API)
  */
 function getPois() {
@@ -721,7 +742,8 @@ function showPoiInfoWindow(event, i, marker) {
                 if (pois[i].source_url) {
                     sourceName = '<a href="' + escapeHTML(pois[i].source_url) + '" target="_blank" rel="noopener">' + sourceName + '</a>';
                 }
-                var sourceLicense = pois[i].source_license ? ' (' + escapeHTML(pois[i].source_license) + ')' : '';
+                var license = poiDataSourceText(pois[i], 'license');
+                var sourceLicense = license ? ' (' + escapeHTML(license) + ')' : '';
                 content += '<div class="InfoWindowElement"><p class="PoiSource">' + t('poi.source', { source: sourceName }) + sourceLicense + '</p></div>';
             }
         }
