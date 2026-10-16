@@ -32,12 +32,16 @@ final class RequestThrottle
     public const LOGIN = 'login';
     public const FORGOT = 'forgot';
     public const GEO = 'geo';
+    public const CSP_REPORT = 'csp';
 
     /** kind => [window seconds, max per identifier, max per IP] */
     private const LIMITS = [
         self::LOGIN => [900, 10, 50],
         self::FORGOT => [3600, 3, 10],
         self::GEO => [600, 120, 120],
+        // Browser CSP violation reports - they only end up in the error
+        // log, which must not be floodable.
+        self::CSP_REPORT => [600, 30, 30],
     ];
 
     private const RETENTION_SECONDS = 86400;

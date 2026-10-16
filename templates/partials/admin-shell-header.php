@@ -56,7 +56,7 @@ $adminNavItems = [
     <!-- Prevents a flash of the wrong theme on load - mirrors AdminLTE's
          own recommended inline snippet, reading the same localStorage key
          its color-mode toggle (in the navbar below) writes to. -->
-    <script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>
         (function () {
             var root = document.documentElement;
             var stored = null;
@@ -77,10 +77,11 @@ $adminNavItems = [
     <link rel="stylesheet" href="<?= $baseUrl ?>/css/admin.css?v=<?= \Ytan\App::assetVersion($rootDir, '/css/admin.css') ?>" />
     <link rel="shortcut icon" href="<?= $baseUrl ?>/favicon.ico">
 
-    <script>window.YTAN_API_BASE = "<?= htmlspecialchars($baseUrl, ENT_QUOTES) ?>/api/v1";</script>
-    <script>window.YTAN_LOCALE = "<?= htmlspecialchars($translator->locale(), ENT_QUOTES) ?>";</script>
-    <script>window.YTAN_TRANSLATIONS = <?= json_encode($translator->all(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;</script>
-    <script>let logLevel = <?= (int) $logLevel ?>;</script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_API_BASE = "<?= htmlspecialchars($baseUrl, ENT_QUOTES) ?>/api/v1";</script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_LOCALE = "<?= htmlspecialchars($translator->locale(), ENT_QUOTES) ?>";</script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_TRANSLATIONS = <?= json_encode($translator->all(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;</script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="<?= $baseUrl ?>/js/csp-events.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/csp-events.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>let logLevel = <?= (int) $logLevel ?>;</script>
 </head>
 <body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
 
@@ -97,10 +98,10 @@ $adminNavItems = [
                     <label for="loginPassword" class="form-label"><?= $t('admin.login.password') ?></label>
                     <div class="input-group">
                         <input id="loginPassword" type="password" class="form-control" autocomplete="current-password">
-                        <button type="button" class="btn btn-outline-secondary" onclick="togglePasswordVisibility('loginPassword', this);" aria-label="<?= htmlspecialchars($t('common.show_password'), ENT_QUOTES) ?>"><i class="bi bi-eye"></i></button>
+                        <button type="button" class="btn btn-outline-secondary" data-on-click="togglePasswordVisibility('loginPassword', this);" aria-label="<?= htmlspecialchars($t('common.show_password'), ENT_QUOTES) ?>"><i class="bi bi-eye"></i></button>
                     </div>
                 </div>
-                <button type="button" class="btn btn-primary d-block w-100" onclick="submitAdminLogin();"><?= $t('admin.login.submit') ?></button>
+                <button type="button" class="btn btn-primary d-block w-100" data-on-click="submitAdminLogin();"><?= $t('admin.login.submit') ?></button>
                 <div id="loginMessage" class="text-danger small mt-2"></div>
             </div>
         </div>

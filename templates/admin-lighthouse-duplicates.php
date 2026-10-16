@@ -8,7 +8,7 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
 
 <div class="card mb-3">
     <div class="card-body">
-        <form id="ldForm" class="row g-2 align-items-end" onsubmit="return false;">
+        <form id="ldForm" class="row g-2 align-items-end" data-on-submit="return false;">
             <div class="col-6 col-md-3">
                 <label for="ldDistance" class="form-label small mb-1"><?= $t('admin.lighthouse_duplicates.distance_label') ?></label>
                 <input type="number" class="form-control form-control-sm" id="ldDistance" value="50" min="1" max="5000" step="any">

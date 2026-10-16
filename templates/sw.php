@@ -15,6 +15,7 @@ $shellFiles = [
     '/lib/light-characteristics/lightcharacteristic.js',
     '/lib/map-label-rotated/rotated-label.js',
     '/lib/sectorlight-overlay/sectorlight-overlay.js',
+    '/js/csp-events.js',
     '/js/config.js',
     '/js/helper.js',
     '/js/api-client.js',

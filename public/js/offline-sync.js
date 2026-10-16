@@ -278,8 +278,8 @@ function renderPendingChangesScreen() {
                         '<span class="track-recorder-pending-name">' + escapeHTML(name) + '</span>' +
                         '<span class="track-recorder-pending-meta">' + t('offline_sync.conflict_label') + '</span>' +
                     '</div>' +
-                    '<button type="button" class="nav-btn-secondary" onclick="resolveConflict(\'' + entry.id + '\');">' + t('offline_sync.conflict_resolve_button') + '</button>' +
-                    '<i class="material-icons-round track-recorder-pending-discard" onclick="discardPendingChangeClicked(\'' + entry.id + '\');" title="' + t('common.delete') + '">delete</i>' +
+                    '<button type="button" class="nav-btn-secondary" data-on-click="resolveConflict(\'' + entry.id + '\');">' + t('offline_sync.conflict_resolve_button') + '</button>' +
+                    '<i class="material-icons-round track-recorder-pending-discard" data-on-click="discardPendingChangeClicked(\'' + entry.id + '\');" title="' + t('common.delete') + '">delete</i>' +
                 '</div>';
         }
         return '' +
@@ -289,12 +289,12 @@ function renderPendingChangesScreen() {
                     '<span class="track-recorder-pending-name">' + escapeHTML(name) + '</span>' +
                     '<span class="track-recorder-pending-meta">' + t('offline_sync.operation_' + entry.operation) + '</span>' +
                 '</div>' +
-                '<i class="material-icons-round track-recorder-pending-upload" onclick="uploadPendingChangeClicked(\'' + entry.id + '\');" title="' + t('offline_sync.upload_button') + '">cloud_upload</i>' +
-                '<i class="material-icons-round track-recorder-pending-discard" onclick="discardPendingChangeClicked(\'' + entry.id + '\');" title="' + t('common.delete') + '">delete</i>' +
+                '<i class="material-icons-round track-recorder-pending-upload" data-on-click="uploadPendingChangeClicked(\'' + entry.id + '\');" title="' + t('offline_sync.upload_button') + '">cloud_upload</i>' +
+                '<i class="material-icons-round track-recorder-pending-discard" data-on-click="discardPendingChangeClicked(\'' + entry.id + '\');" title="' + t('common.delete') + '">delete</i>' +
             '</div>';
     }).join('');
     const bulkButton = pendingChangesCache.length > 1
-        ? '<button type="button" class="nav-btn-secondary" onclick="syncPendingChanges({manual:true});">' + t('offline_sync.sync_all_button') + '</button>'
+        ? '<button type="button" class="nav-btn-secondary" data-on-click="syncPendingChanges({manual:true});">' + t('offline_sync.sync_all_button') + '</button>'
         : '';
     body.innerHTML = '<div class="track-recorder-pending-list">' + rows + '</div>' + bulkButton;
 }

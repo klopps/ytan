@@ -42,7 +42,7 @@ const USER_RIGHT_DESCRIPTIONS = {
     export_routes_own: t('admin_user.export_routes_own_desc'),
     export_routes_public: t('admin_user.export_routes_public_desc'),
 };
-const USER_ADMIN_NEW_BUTTON_HTML = '<button type="button" class="btn btn-primary btn-sm" onclick="showUserCreateForm();"><i class="bi bi-person-plus me-1"></i>' + t('admin_user.new_user') + '</button>';
+const USER_ADMIN_NEW_BUTTON_HTML = '<button type="button" class="btn btn-primary btn-sm" data-on-click="showUserCreateForm();"><i class="bi bi-person-plus me-1"></i>' + t('admin_user.new_user') + '</button>';
 let adminUserFilters = {}; // { is_admin: 1, tour_manage: 1, ... } - AND'ed together, see loadUserList()
 let adminUserFilterPanelOpen = false; // whether the collapsible "Filter by right" panel is expanded
 let adminUserLastList = []; // last list rendered, so toggling the filter panel/typing a search can re-render without a re-fetch
@@ -118,7 +118,7 @@ function userFilterPanelHtml() {
     var fields = ['is_admin'].concat(TOUR_RIGHT_FIELDS).concat(OTHER_RIGHT_FIELDS);
     var activeCount = Object.keys(adminUserFilters).length;
 
-    var html = '<button type="button" class="btn btn-outline-secondary btn-sm mb-2 d-flex align-items-center gap-2" onclick="toggleUserFilterPanel();">' +
+    var html = '<button type="button" class="btn btn-outline-secondary btn-sm mb-2 d-flex align-items-center gap-2" data-on-click="toggleUserFilterPanel();">' +
         '<i class="bi bi-sliders"></i>' +
         '<span>' + t('admin_user.filter_by_right') + (activeCount > 0 ? ' (' + activeCount + ')' : '') + '</span>' +
         '<i class="bi ' + (adminUserFilterPanelOpen ? 'bi-chevron-up' : 'bi-chevron-down') + '"></i>' +
@@ -130,7 +130,7 @@ function userFilterPanelHtml() {
             var field = fields[i];
             var checked = adminUserFilters.hasOwnProperty(field);
             html += '<div class="form-check">' +
-                '<input class="form-check-input" type="checkbox" id="userFilter_' + field + '"' + (checked ? ' checked' : '') + ' onchange="toggleUserFilter(\'' + field + '\');">' +
+                '<input class="form-check-input" type="checkbox" id="userFilter_' + field + '"' + (checked ? ' checked' : '') + ' data-on-change="toggleUserFilter(\'' + field + '\');">' +
                 '<label class="form-check-label" for="userFilter_' + field + '">' + USER_RIGHT_LABELS[field] + '</label>' +
                 '</div>';
         }
@@ -145,7 +145,7 @@ function iconButton(icon, title, onclick) {
     // argument, i.e. embedded double quotes) being placed inside a
     // double-quoted HTML attribute, so it must be HTML-escaped here -
     // the browser HTML-attribute-decodes it before running it as JS.
-    return '<button type="button" class="btn btn-sm btn-outline-secondary" title="' + escapeHTML(title) + '" onclick="' + escapeHTML(onclick) + '">' +
+    return '<button type="button" class="btn btn-sm btn-outline-secondary" title="' + escapeHTML(title) + '" data-on-click="' + escapeHTML(onclick) + '">' +
         '<i class="bi ' + icon + '"></i>' +
         '</button>';
 }
@@ -162,7 +162,7 @@ function renderUserTable(users) {
 
     var html = '<div class="input-group mb-3">' +
         '<span class="input-group-text"><i class="bi bi-search"></i></span>' +
-        '<input type="text" class="form-control" id="userSearchInput" placeholder="' + t('admin_user.search_placeholder') + '" value="' + escapeHTML(adminUserSearchQuery) + '" oninput="onAdminUserSearchInput();">' +
+        '<input type="text" class="form-control" id="userSearchInput" placeholder="' + t('admin_user.search_placeholder') + '" value="' + escapeHTML(adminUserSearchQuery) + '" data-on-input="onAdminUserSearchInput();">' +
         '</div>';
 
     html += userFilterPanelHtml();
@@ -172,7 +172,7 @@ function renderUserTable(users) {
     // below, since that depends on the current (filtered) result count.
     html += '<div class="d-flex align-items-center gap-2 mb-3">' +
         '<label for="userPageSize" class="form-label mb-0 small">' + t('common.rows_per_page') + '</label>' +
-        '<select id="userPageSize" class="form-select form-select-sm w-auto" onchange="onAdminUserPageSizeChange();">' + sizeOptions + '</select>' +
+        '<select id="userPageSize" class="form-select form-select-sm w-auto" data-on-change="onAdminUserPageSizeChange();">' + sizeOptions + '</select>' +
     '</div>';
 
     html += '<div id="adminUserTableResults"></div>';
@@ -289,9 +289,9 @@ function renderFilteredUserRows() {
 
 function adminUserPaginationHtml(totalMatches, totalPages) {
     return '<div class="d-flex align-items-center justify-content-center gap-3 mt-2">' +
-        '<button type="button" class="btn btn-sm btn-outline-secondary" ' + (adminUserPage <= 1 ? 'disabled' : '') + ' onclick="' + (adminUserPage > 1 ? 'goToAdminUserPage(-1);' : '') + '"><i class="bi bi-chevron-left"></i></button>' +
+        '<button type="button" class="btn btn-sm btn-outline-secondary" ' + (adminUserPage <= 1 ? 'disabled' : '') + ' data-on-click="' + (adminUserPage > 1 ? 'goToAdminUserPage(-1);' : '') + '"><i class="bi bi-chevron-left"></i></button>' +
         '<span class="small text-secondary">' + (totalMatches === 0 ? t('admin_user.zero_users') : t('common.page_of', { page: adminUserPage, total: totalPages })) + '</span>' +
-        '<button type="button" class="btn btn-sm btn-outline-secondary" ' + (adminUserPage >= totalPages ? 'disabled' : '') + ' onclick="' + (adminUserPage < totalPages ? 'goToAdminUserPage(1);' : '') + '"><i class="bi bi-chevron-right"></i></button>' +
+        '<button type="button" class="btn btn-sm btn-outline-secondary" ' + (adminUserPage >= totalPages ? 'disabled' : '') + ' data-on-click="' + (adminUserPage < totalPages ? 'goToAdminUserPage(1);' : '') + '"><i class="bi bi-chevron-right"></i></button>' +
         '</div>';
 }
 
@@ -341,8 +341,8 @@ function userFormHtml(u) {
         formCheckRow('userFormExportRoutesOwn', u.export_routes_own, t('admin_user.export_routes_own_label'), USER_RIGHT_DESCRIPTIONS.export_routes_own) +
         formCheckRow('userFormExportRoutesPublic', u.export_routes_public, t('admin_user.export_routes_public_label'), USER_RIGHT_DESCRIPTIONS.export_routes_public) +
         '<div class="mt-3">' +
-            '<button id="userFormSaveBtn" class="btn btn-primary" type="button" onclick="' + saveCall + '">' + t('common.save') + '</button>&nbsp;' +
-            '<button class="btn btn-outline-secondary" type="button" onclick="closeUserForm();">' + t('common.cancel') + '</button>' +
+            '<button id="userFormSaveBtn" class="btn btn-primary" type="button" data-on-click="' + saveCall + '">' + t('common.save') + '</button>&nbsp;' +
+            '<button class="btn btn-outline-secondary" type="button" data-on-click="closeUserForm();">' + t('common.cancel') + '</button>' +
         '</div>' +
         '</div>';
 }
@@ -442,13 +442,13 @@ function showSetPasswordForm(id, username) {
             '<label for="setPasswordNew" class="form-label">' + t('admin_user.new_password_label') + '</label>' +
             '<div class="input-group">' +
                 '<input id="setPasswordNew" type="password" class="form-control" autocomplete="new-password">' +
-                '<button type="button" class="btn btn-outline-secondary" onclick="togglePasswordVisibility(\'setPasswordNew\', this);" aria-label="' + t('common.show_password') + '"><i class="bi bi-eye"></i></button>' +
+                '<button type="button" class="btn btn-outline-secondary" data-on-click="togglePasswordVisibility(\'setPasswordNew\', this);" aria-label="' + t('common.show_password') + '"><i class="bi bi-eye"></i></button>' +
             '</div>' +
         '</div>' +
         '<div id="setPasswordMessage" class="text-danger small mb-2"></div>' +
         '<div>' +
-            '<button id="setPasswordSaveBtn" class="btn btn-primary" type="button" onclick="submitSetPassword(' + id + ');">' + t('common.save') + '</button>&nbsp;' +
-            '<button class="btn btn-outline-secondary" type="button" onclick="closeUserForm();">' + t('common.cancel') + '</button>' +
+            '<button id="setPasswordSaveBtn" class="btn btn-primary" type="button" data-on-click="submitSetPassword(' + id + ');">' + t('common.save') + '</button>&nbsp;' +
+            '<button class="btn btn-outline-secondary" type="button" data-on-click="closeUserForm();">' + t('common.cancel') + '</button>' +
         '</div>' +
         '</div>'
     ;

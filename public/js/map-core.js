@@ -269,7 +269,7 @@ function showMapContextMenu(latLng) {
 
     var content = '';
     for (let i = 0; i < mapContextMenuItems.length; i++) {
-        content += '<div class="contextMenuItem" onclick="invokeMapContextMenuItem(' + i + ');"><i class="material-icons-round">' + mapContextMenuItems[i].icon + '</i>' + t(mapContextMenuItems[i].labelKey) + '</div>';
+        content += '<div class="contextMenuItem" data-on-click="invokeMapContextMenuItem(' + i + ');"><i class="material-icons-round">' + mapContextMenuItems[i].icon + '</i>' + t(mapContextMenuItems[i].labelKey) + '</div>';
     }
     // No extra "Cancel" row here - the InfoWindow's own native close button
     // (top-right "x", not something this app draws itself) already closes it.
@@ -1060,11 +1060,11 @@ function initMap() {
                 // kept on that vendored icon font rather than pulling in
                 // Bootstrap Icons (only loaded for the AdminLTE /admin/*
                 // pages, never the map SPA) for a glyph the app already has.
-                '<button type="button" class="my-location-copy-btn" onClick="myPositionMarker.copyCoordinates();" aria-label="' + t('map.my_location.copy_coordinates') + '" title="' + t('map.my_location.copy_coordinates') + '"><i class="material-icons-round">content_copy</i></button>' +
+                '<button type="button" class="my-location-copy-btn" data-on-click="myPositionCopyCoordinates();" aria-label="' + t('map.my_location.copy_coordinates') + '" title="' + t('map.my_location.copy_coordinates') + '"><i class="material-icons-round">content_copy</i></button>' +
                 '</div>' +
                 '<div class="infoWindowBottom">' +
-                '<button class="button" onClick="infoWindow.close(); openWeatherTimelineForLocation(myPositionMarker.position);">' + t('map.my_location.weather_forecast') + '</button>&nbsp;' +
-                '<button class="button" onClick="myPositionMarker.setVisible(false); infoWindow.close();">' + t('common.remove') + '</button>' +
+                '<button class="button" data-on-click="myPositionShowWeather();">' + t('map.my_location.weather_forecast') + '</button>&nbsp;' +
+                '<button class="button" data-on-click="myPositionRemove();">' + t('common.remove') + '</button>' +
                 '</div>' +
                 '</div>';
             infoWindow.setPosition(this.position);
@@ -1074,8 +1074,8 @@ function initMap() {
 
         /**
          * "Copy coordinates" button's click handler (todo.md). A method
-         * here (called via "myPositionMarker.copyCoordinates()" in the
-         * inline onClick above) rather than inlining the already-formatted
+         * here (called via myPositionCopyCoordinates() from the button's
+         * data-on-click above) rather than inlining the already-formatted
          * coords string straight into that attribute - formatCoordinates()
          * can return a "°" character, and the attribute itself is
          * double-quoted, so a second, differently-quoted string built into
@@ -1143,6 +1143,25 @@ function initMap() {
             showToast(t('route.context.share_link_route_not_found'), 'error');
         });
     }
+}
+
+/*
+ * Buttons of the "my location" InfoWindow (PulsingPositionMarker.showInfo()).
+ * Top-level functions because csp-events.js only calls global functions -
+ * myPositionMarker/infoWindow are `let`s, not window properties.
+ */
+function myPositionCopyCoordinates() {
+    myPositionMarker.copyCoordinates();
+}
+
+function myPositionShowWeather() {
+    infoWindow.close();
+    openWeatherTimelineForLocation(myPositionMarker.position);
+}
+
+function myPositionRemove() {
+    myPositionMarker.setVisible(false);
+    infoWindow.close();
 }
 
 function panToGeolocation() {
@@ -1435,7 +1454,7 @@ function showSearchResultOnMap(place) {
     });
 
     searchInfoWindow.setContent(
-        '<div class="search-remove-badge" onclick="clearSearchMarker()" title="' + t('common.remove') + '"><i class="material-icons-round">close</i></div>'
+        '<div class="search-remove-badge" data-on-click="clearSearchMarker()" title="' + t('common.remove') + '"><i class="material-icons-round">close</i></div>'
     );
     searchInfoWindow.open({ map: map, anchor: searchMarker.advanced });
 

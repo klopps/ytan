@@ -40,17 +40,17 @@
         </div>
     </div>
 
-    <script src="<?= $baseUrl ?>/js/config.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/config.js') ?>"></script>
-    <script src="<?= $baseUrl ?>/js/i18n.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/i18n.js') ?>"></script>
-    <script src="<?= $baseUrl ?>/js/helper.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/helper.js') ?>"></script>
-    <script src="<?= $baseUrl ?>/js/api-client.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/api-client.js') ?>"></script>
-    <script src="<?= $baseUrl ?>/js/settings.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/settings.js') ?>"></script>
-    <script src="<?= $baseUrl ?>/js/admin-auth.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/admin-auth.js') ?>"></script>
-    <script src="<?= $baseUrl ?>/js/admin-common.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/admin-common.js') ?>"></script>
-    <script src="<?= $baseUrl ?>/lib/bootstrap/bootstrap.bundle.min.js?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/bootstrap/bootstrap.bundle.min.js') ?>"></script>
-    <script src="<?= $baseUrl ?>/lib/adminlte/adminlte.min.js?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/adminlte/adminlte.min.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="<?= $baseUrl ?>/js/config.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/config.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="<?= $baseUrl ?>/js/i18n.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/i18n.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="<?= $baseUrl ?>/js/helper.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/helper.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="<?= $baseUrl ?>/js/api-client.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/api-client.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="<?= $baseUrl ?>/js/settings.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/settings.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="<?= $baseUrl ?>/js/admin-auth.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/admin-auth.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="<?= $baseUrl ?>/js/admin-common.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/admin-common.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="<?= $baseUrl ?>/lib/bootstrap/bootstrap.bundle.min.js?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/bootstrap/bootstrap.bundle.min.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="<?= $baseUrl ?>/lib/adminlte/adminlte.min.js?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/adminlte/adminlte.min.js') ?>"></script>
     <?php foreach ($pageScripts ?? [] as $src): ?>
-    <script src="<?= $baseUrl . $src ?>?v=<?= \Ytan\App::assetVersion($rootDir, $src) ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="<?= $baseUrl . $src ?>?v=<?= \Ytan\App::assetVersion($rootDir, $src) ?>"></script>
     <?php endforeach; ?>
 </body>
 </html>

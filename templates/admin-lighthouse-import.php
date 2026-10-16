@@ -20,7 +20,7 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
     <div class="card-body">
         <h2 class="h6"><?= $t('admin.lighthouse_import.nga_title') ?></h2>
         <p class="small text-secondary mb-2"><?= $t('admin.lighthouse_import.nga_hint') ?></p>
-        <form id="liNgaForm" class="row g-2 align-items-end" onsubmit="return false;">
+        <form id="liNgaForm" class="row g-2 align-items-end" data-on-submit="return false;">
             <div class="col-12 col-md-8">
                 <label for="liNgaVolume" class="form-label small mb-1"><?= $t('admin.lighthouse_import.nga_volume') ?></label>
                 <select class="form-select form-select-sm" id="liNgaVolume">
@@ -44,7 +44,7 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
     <div class="card-body">
         <h2 class="h6"><?= $t('admin.lighthouse_import.osm_title') ?></h2>
         <p class="small text-secondary mb-2"><?= $t('admin.lighthouse_import.osm_hint') ?></p>
-        <form id="liOsmForm" class="row g-2 align-items-end" onsubmit="return false;">
+        <form id="liOsmForm" class="row g-2 align-items-end" data-on-submit="return false;">
             <div class="col-12 col-md-4">
                 <label for="liOsmPreset" class="form-label small mb-1"><?= $t('admin.lighthouse_import.osm_preset') ?></label>
                 <select class="form-select form-select-sm" id="liOsmPreset">
@@ -102,13 +102,13 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
             </div>
             <div id="liAreaMap" class="border rounded" style="height:55vh;min-height:280px;"></div>
         </div>
-        <script>window.YTAN_MAPS_API_KEY = <?= json_encode($mapsApiKey ?? '') ?>;</script>
+        <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_MAPS_API_KEY = <?= json_encode($mapsApiKey ?? '') ?>;</script>
     </div>
 </div>
 
 <div class="card mb-3">
     <div class="card-body">
-        <form id="liFilterForm" class="row g-2" onsubmit="return false;">
+        <form id="liFilterForm" class="row g-2" data-on-submit="return false;">
             <div class="col-6 col-md-2">
                 <label for="liFilterDkNo" class="form-label small mb-1"><?= $t('admin.lighthouse_import.col_dk_no') ?></label>
                 <input type="text" class="form-control form-control-sm" id="liFilterDkNo" data-filter="dk_no" autocomplete="off">

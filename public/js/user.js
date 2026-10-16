@@ -17,21 +17,21 @@ function showUserWindow() {
         document.getElementById('userWindow').innerHTML =
             '<div class="nav-field">' +
                 '<label for="userLoginUsername">' + t('user.login.username_label') + '</label>' +
-                '<input id="userLoginUsername" type="text" placeholder="' + t('user.login.username_placeholder') + '" autocomplete="username" title="' + t('user.login.username_title') + '" onkeypress="focusOnEnter(event, \'userLoginPassword\');">' +
+                '<input id="userLoginUsername" type="text" placeholder="' + t('user.login.username_placeholder') + '" autocomplete="username" title="' + t('user.login.username_title') + '" data-on-keypress="focusOnEnter(event, \'userLoginPassword\');">' +
             '</div>' +
             '<div class="nav-field">' +
                 '<label for="userLoginPassword">' + t('user.login.password_label') + '</label>' +
                 '<div class="password-input-wrapper">' +
-                    '<input id="userLoginPassword" type="password" placeholder="' + t('user.login.password_placeholder') + '" autocomplete="current-password" onkeypress="clickOnEnter(event, \'userLoginBtn\');">' +
+                    '<input id="userLoginPassword" type="password" placeholder="' + t('user.login.password_placeholder') + '" autocomplete="current-password" data-on-keypress="clickOnEnter(event, \'userLoginBtn\');">' +
                     passwordToggleButtonHtml('userLoginPassword') +
                 '</div>' +
             '</div>' +
-            '<button id="userLoginBtn" class="nav-btn-primary" type="button" onClick="loginUser()"><i class="material-icons-round">login</i>&nbsp;' + t('user.login.button') + '</button>' +
-            '<span class="nav-link-small" onclick="goToForgotPassword();">' + t('user.login.forgot_password') + '</span>'
+            '<button id="userLoginBtn" class="nav-btn-primary" type="button" data-on-click="loginUser()"><i class="material-icons-round">login</i>&nbsp;' + t('user.login.button') + '</button>' +
+            '<span class="nav-link-small" data-on-click="goToForgotPassword();">' + t('user.login.forgot_password') + '</span>'
         ;
     } else {
         var pendingEmailNotice = user.pending_email
-            ? '<div class="nav-form-message" style="color: var(--color-warning);">' + t('user.pending_email_notice', { email: escapeHTML(user.pending_email) }) + ' <span class="nav-link-small" onclick="cancelPendingEmailChange();">' + t('common.cancel') + '</span></div>'
+            ? '<div class="nav-form-message" style="color: var(--color-warning);">' + t('user.pending_email_notice', { email: escapeHTML(user.pending_email) }) + ' <span class="nav-link-small" data-on-click="cancelPendingEmailChange();">' + t('common.cancel') + '</span></div>'
             : '';
 
         document.getElementById('userWindow').innerHTML =
@@ -49,8 +49,8 @@ function showUserWindow() {
                 profileSubRowHtml('userDefaultSpeedBtn', 'showDefaultSpeedForm();', 'speed', t('user.default_speed_button')) +
                 profileSubRowHtml('userWatchBtn', 'showWatchSection();', 'watch', t('watch.title')) +
             '</ul>' +
-            '<button id="userLogoutBtn" class="nav-btn-secondary nav-btn-danger" type="button" onClick="logoutUser()"><i class="material-icons-round">logout</i>&nbsp;' + t('user.logout_button') + '</button>' +
-            '<button id="userLogoutAllBtn" class="nav-btn-secondary" type="button" onClick="logoutEverywhere()"><i class="material-icons-round">devices</i>&nbsp;' + t('user.logout_all_button') + '</button>'
+            '<button id="userLogoutBtn" class="nav-btn-secondary nav-btn-danger" type="button" data-on-click="logoutUser()"><i class="material-icons-round">logout</i>&nbsp;' + t('user.logout_button') + '</button>' +
+            '<button id="userLogoutAllBtn" class="nav-btn-secondary" type="button" data-on-click="logoutEverywhere()"><i class="material-icons-round">devices</i>&nbsp;' + t('user.logout_all_button') + '</button>'
         ;
     }
     document.getElementById('userWindow').insertAdjacentHTML('beforeend', navCancelButtonHtml());
@@ -65,7 +65,7 @@ function showUserWindow() {
  * "profile-sub" screen) - same look as the drawer's own rows.
  */
 function profileSubRowHtml(id, onclick, icon, label) {
-    return '<li><button id="' + id + '" type="button" class="nav-menu-row" onclick="' + onclick + '">' +
+    return '<li><button id="' + id + '" type="button" class="nav-menu-row" data-on-click="' + onclick + '">' +
         '<i class="material-icons-round nav-menu-row-icon">' + icon + '</i>' +
         '<span class="nav-menu-row-labels">' + label + '</span>' +
         '<i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>';
@@ -77,7 +77,7 @@ function profileSubRowHtml(id, onclick, icon, label) {
  * the arrow at the top.
  */
 function navCancelButtonHtml() {
-    return '<button type="button" class="nav-btn-secondary nav-cancel-btn" onclick="navMenuBack();">' + t('common.cancel') + '</button>';
+    return '<button type="button" class="nav-btn-secondary nav-cancel-btn" data-on-click="navMenuBack();">' + t('common.cancel') + '</button>';
 }
 
 /**
@@ -130,7 +130,7 @@ function showChangePasswordForm() {
         '<div class="nav-field"><label for="userChangePasswordNew">' + t('user.new_password_label') + '</label><div class="password-input-wrapper"><input id="userChangePasswordNew" type="password" autocomplete="new-password">' + passwordToggleButtonHtml('userChangePasswordNew') + '</div></div>' +
         '<div class="nav-field"><label for="userChangePasswordConfirm">' + t('user.confirm_new_password_label') + '</label><div class="password-input-wrapper"><input id="userChangePasswordConfirm" type="password" autocomplete="new-password">' + passwordToggleButtonHtml('userChangePasswordConfirm') + '</div></div>' +
         '<div class="nav-form-message" id="userChangePasswordMessage"></div>' +
-        '<button id="userChangePasswordSaveBtn" class="nav-btn-primary" type="button" onClick="submitChangePassword();"><i class="material-icons-round">check</i>&nbsp;' + t('user.save_password_button') + '</button>' +
+        '<button id="userChangePasswordSaveBtn" class="nav-btn-primary" type="button" data-on-click="submitChangePassword();"><i class="material-icons-round">check</i>&nbsp;' + t('user.save_password_button') + '</button>' +
         navCancelButtonHtml()
     );
 }
@@ -188,7 +188,7 @@ function showDefaultSpeedForm() {
             '<div class="nav-field"><label for="userDefaultSpeed">' + t('user.default_speed_label', { unit: knots ? 'kn' : 'km/h' }) + '</label>' +
             '<input id="userDefaultSpeed" type="number" inputmode="decimal" min="0" step="0.1" value="' + shown + '"></div>' +
             '<div class="nav-form-message">' + t('user.default_speed_hint') + '</div>' +
-            '<button id="userDefaultSpeedSaveBtn" class="nav-btn-primary" type="button" onClick="submitDefaultSpeed();"><i class="material-icons-round">check</i>&nbsp;' + t('common.save') + '</button>' +
+            '<button id="userDefaultSpeedSaveBtn" class="nav-btn-primary" type="button" data-on-click="submitDefaultSpeed();"><i class="material-icons-round">check</i>&nbsp;' + t('common.save') + '</button>' +
             navCancelButtonHtml());
     }).catch(err => {
         openProfileSub(title, '<div class="nav-form-message">' + apiErrorMessage(err) + '</div>' + navCancelButtonHtml());
@@ -223,7 +223,7 @@ function showEditProfileForm() {
         '<div class="nav-field"><label for="userEditProfileEmail">' + t('user.email_label') + '</label><input id="userEditProfileEmail" type="email" value="' + escapeHTML(user.email) + '"></div>' +
         '<div class="nav-field"><label for="userEditProfileCurrentPassword">' + t('user.current_password_label') + '</label><div class="password-input-wrapper"><input id="userEditProfileCurrentPassword" type="password" autocomplete="current-password">' + passwordToggleButtonHtml('userEditProfileCurrentPassword') + '</div></div>' +
         '<div class="nav-form-message" id="userEditProfileMessage"></div>' +
-        '<button id="userEditProfileSaveBtn" class="nav-btn-primary" type="button" onClick="submitEditProfile();"><i class="material-icons-round">check</i>&nbsp;' + t('user.save_profile_button') + '</button>' +
+        '<button id="userEditProfileSaveBtn" class="nav-btn-primary" type="button" data-on-click="submitEditProfile();"><i class="material-icons-round">check</i>&nbsp;' + t('user.save_profile_button') + '</button>' +
         navCancelButtonHtml()
     );
 }

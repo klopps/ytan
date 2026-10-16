@@ -44,7 +44,7 @@ function renderGpxImportStart() {
     gpxImportBody(
         '<p>' + t('gpx_import.intro') + '</p>' +
         '<label class="nav-btn-primary gpx-import-file-btn"><i class="material-icons-round">file_upload</i>&nbsp;' + t('gpx_import.choose_file') +
-            '<input type="file" id="gpxImportFile" accept=".gpx,application/gpx+xml,application/xml,text/xml" onchange="gpxImportFileChosen(this);" hidden>' +
+            '<input type="file" id="gpxImportFile" accept=".gpx,application/gpx+xml,application/xml,text/xml" data-on-change="gpxImportFileChosen(this);" hidden>' +
         '</label>' +
         '<div class="gpx-import-private-note"><i class="material-icons-round">lock</i><span>' + t('gpx_import.private_note') + '</span></div>'
     );
@@ -114,7 +114,7 @@ function renderGpxImportPreview() {
 
     if (p.tracks.length > 0) {
         html += '<div class="gpx-import-select-all">' +
-            '<input type="checkbox" id="gpxImportAll" checked onchange="gpxImportToggleAll(this.checked);"><label for="gpxImportAll">' + t('gpx_import.select_all', { count: p.tracks.length }) + '</label>' +
+            '<input type="checkbox" id="gpxImportAll" checked data-on-change="gpxImportToggleAll(this.checked);"><label for="gpxImportAll">' + t('gpx_import.select_all', { count: p.tracks.length }) + '</label>' +
             '</div>';
     }
     html += '<ul class="gpx-import-tracks">';
@@ -128,7 +128,7 @@ function renderGpxImportPreview() {
             meta.push(t('gpx_import.kind_route'));
         }
         html += '<li class="gpx-import-track">' +
-            '<input type="checkbox" id="gpxImportTrack' + track.index + '" class="gpx-import-track-check" data-index="' + track.index + '" checked onchange="gpxImportSelectionChanged();">' +
+            '<input type="checkbox" id="gpxImportTrack' + track.index + '" class="gpx-import-track-check" data-index="' + track.index + '" checked data-on-change="gpxImportSelectionChanged();">' +
             '<label for="gpxImportTrack' + track.index + '">' +
                 '<span class="gpx-import-track-name">' + escapeHTML(gpxImportTrackName(track)) + '</span>' +
                 ' <span class="gpx-import-track-points">' + escapeHTML(gpxImportPointCount(track)) + '</span>' +
@@ -140,8 +140,8 @@ function renderGpxImportPreview() {
 
     html += '<div class="gpx-import-options" id="gpxImportOptions">' +
         '<div class="nav-segmented">' +
-            '<input type="radio" id="gpxImportModeSeparate" name="gpxImportMode" value="separate" checked onchange="gpxImportSelectionChanged();"><label for="gpxImportModeSeparate">' + t('gpx_import.mode_separate') + '</label>' +
-            '<input type="radio" id="gpxImportModeMerge" name="gpxImportMode" value="merge" onchange="gpxImportSelectionChanged();"><label for="gpxImportModeMerge">' + t('gpx_import.mode_merge') + '</label>' +
+            '<input type="radio" id="gpxImportModeSeparate" name="gpxImportMode" value="separate" checked data-on-change="gpxImportSelectionChanged();"><label for="gpxImportModeSeparate">' + t('gpx_import.mode_separate') + '</label>' +
+            '<input type="radio" id="gpxImportModeMerge" name="gpxImportMode" value="merge" data-on-change="gpxImportSelectionChanged();"><label for="gpxImportModeMerge">' + t('gpx_import.mode_merge') + '</label>' +
         '</div>';
     if (canCreateTours()) {
         html += '<div class="gpx-import-tour-option">' +
@@ -154,15 +154,15 @@ function renderGpxImportPreview() {
     // default; the names are listed in a collapsed <details> below it.
     if (p.waypoints.length > 0) {
         html += '<div class="gpx-import-waypoints">' +
-            '<input type="checkbox" id="gpxImportWaypoints"' + (p.tracks.length === 0 ? ' checked' : '') + ' onchange="gpxImportSelectionChanged();">' +
+            '<input type="checkbox" id="gpxImportWaypoints"' + (p.tracks.length === 0 ? ' checked' : '') + ' data-on-change="gpxImportSelectionChanged();">' +
             '<label for="gpxImportWaypoints">' + t('gpx_import.with_waypoints', { count: p.waypoints.length }) + '</label>' +
             '<details><summary>' + t('gpx_import.show_waypoints') + '</summary><ul>' +
             p.waypoints.map(function (waypoint) { return '<li>' + escapeHTML(waypoint.name) + '</li>'; }).join('') +
             '</ul></details></div>';
     }
 
-    html += '<button type="button" class="nav-btn-primary" id="gpxImportSubmit" onclick="submitGpxImport();"><i class="material-icons-round">check</i>&nbsp;<span id="gpxImportSubmitLabel"></span></button>' +
-        '<button type="button" class="nav-btn-secondary" onclick="renderGpxImportStart();">' + t('gpx_import.other_file') + '</button>';
+    html += '<button type="button" class="nav-btn-primary" id="gpxImportSubmit" data-on-click="submitGpxImport();"><i class="material-icons-round">check</i>&nbsp;<span id="gpxImportSubmitLabel"></span></button>' +
+        '<button type="button" class="nav-btn-secondary" data-on-click="renderGpxImportStart();">' + t('gpx_import.other_file') + '</button>';
 
     gpxImportBody(html);
     gpxImportSelectionChanged();
@@ -275,11 +275,11 @@ function renderGpxImportResult(result) {
         '<div class="gpx-import-private-note"><i class="material-icons-round">lock</i><span>' + t('gpx_import.private_note_done') + '</span></div>';
 
     if (result.tour) {
-        html += '<button type="button" class="nav-btn-primary" onclick="gpxImportShowTour(' + Number(result.tour.id) + ');"><i class="material-icons-round">tour</i>&nbsp;' + t('gpx_import.tour_details') + '</button>';
+        html += '<button type="button" class="nav-btn-primary" data-on-click="gpxImportShowTour(' + Number(result.tour.id) + ');"><i class="material-icons-round">tour</i>&nbsp;' + t('gpx_import.tour_details') + '</button>';
     } else if (result.routes.length === 1) {
-        html += '<button type="button" class="nav-btn-primary" onclick="gpxImportShowRoute(' + Number(result.routes[0].id) + ');"><i class="material-icons-round">visibility</i>&nbsp;' + t('gpx_import.show_route') + '</button>';
+        html += '<button type="button" class="nav-btn-primary" data-on-click="gpxImportShowRoute(' + Number(result.routes[0].id) + ');"><i class="material-icons-round">visibility</i>&nbsp;' + t('gpx_import.show_route') + '</button>';
     }
-    html += '<button type="button" class="nav-btn-secondary" onclick="renderGpxImportStart();">' + t('gpx_import.import_another') + '</button>';
+    html += '<button type="button" class="nav-btn-secondary" data-on-click="renderGpxImportStart();">' + t('gpx_import.import_another') + '</button>';
     gpxImportBody(html);
 }
 

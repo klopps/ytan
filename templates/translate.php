@@ -6,9 +6,9 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
 ?>
 <div class="card mb-0">
     <div class="card-header d-flex flex-wrap align-items-center gap-2" id="toolbar">
-        <input type="text" class="form-control flex-grow-1" id="searchInput" placeholder="<?= $t('admin.translate.filter_placeholder') ?>" oninput="applyFilter();" style="min-width:200px;">
+        <input type="text" class="form-control flex-grow-1" id="searchInput" placeholder="<?= $t('admin.translate.filter_placeholder') ?>" data-on-input="applyFilter();" style="min-width:200px;">
         <span id="dirtyCount" class="text-warning small text-nowrap"></span>
-        <button type="button" class="btn btn-primary btn-sm" id="saveAllBtn" onclick="saveAll();" disabled><?= $t('admin.translate.save_all') ?></button>
+        <button type="button" class="btn btn-primary btn-sm" id="saveAllBtn" data-on-click="saveAll();" disabled><?= $t('admin.translate.save_all') ?></button>
     </div>
     <div class="card-body p-0">
         <div id="panes" class="d-flex flex-column flex-lg-row" style="height:70vh;">

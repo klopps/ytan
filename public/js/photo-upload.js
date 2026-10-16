@@ -111,7 +111,7 @@ function photoUploadGridHtml() {
         var img = visibleImages[i];
         html += '<div class="tour-photo-tile">' +
             '<img data-photo-entity-type="' + photoUploadEntityType + '" data-photo-entity-id="' + photoUploadEntityId + '" data-image-id="' + img.id + '">' +
-            '<div class="tour-photo-remove" onclick="removeExistingPhotoUpload(' + img.id + ');"><i class="material-icons-round">close</i></div>' +
+            '<div class="tour-photo-remove" data-on-click="removeExistingPhotoUpload(' + img.id + ');"><i class="material-icons-round">close</i></div>' +
             '</div>';
     }
     for (let i = 0; i < photoUploadPendingUploads.length; i++) {
@@ -120,7 +120,7 @@ function photoUploadGridHtml() {
         // for photos that already exist on the server.
         html += '<div class="tour-photo-tile tour-photo-tile-pending" title="' + t('photo_upload.pending_title') + '">' +
             '<img src="' + URL.createObjectURL(photoUploadPendingUploads[i]) + '">' +
-            '<div class="tour-photo-remove" onclick="removePendingPhotoUpload(' + i + ');"><i class="material-icons-round">close</i></div>' +
+            '<div class="tour-photo-remove" data-on-click="removePendingPhotoUpload(' + i + ');"><i class="material-icons-round">close</i></div>' +
             '</div>';
     }
     for (let i = 0; i < photoUploadProcessingCount; i++) {
@@ -130,11 +130,11 @@ function photoUploadGridHtml() {
             '</div>';
     }
     if (totalCount < photoUploadMaxCount) {
-        html += '<div class="tour-photo-tile tour-photo-add" onclick="document.getElementById(\'photoUploadInput\').click();">' +
+        html += '<div class="tour-photo-tile tour-photo-add" data-on-click="clickElementById(\'photoUploadInput\');">' +
             '<i class="material-icons-round">add</i></div>';
     }
     html += '</div>' +
-        '<input type="file" id="photoUploadInput" accept="image/jpeg,image/png,image/webp" multiple style="display:none;" onchange="stagePhotoUpload(event);">' +
+        '<input type="file" id="photoUploadInput" accept="image/jpeg,image/png,image/webp" multiple style="display:none;" data-on-change="stagePhotoUpload(event);">' +
         '<p class="hint tour-photo-hint">' + t('photo_upload.hint') + '</p>';
 
     return html;

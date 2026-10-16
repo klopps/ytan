@@ -13,7 +13,7 @@ test.describe('Login', () => {
     await page.waitForFunction(() => typeof mapInitialized !== 'undefined' && mapInitialized === true, null, { timeout: 20_000 });
 
     await page.locator('#sidemenu-toggle').click();
-    await page.locator('button[onclick="showUserWindow();"]').click();
+    await page.locator('button[data-on-click="showUserWindow();"]').click();
 
     await expect(page.locator('#userLoginUsername')).toBeVisible();
     await page.locator('#userLoginUsername').fill(credentials.username);
@@ -30,7 +30,7 @@ test.describe('Login', () => {
     await page.waitForFunction(() => typeof mapInitialized !== 'undefined' && mapInitialized === true, null, { timeout: 20_000 });
 
     await page.locator('#sidemenu-toggle').click();
-    await page.locator('button[onclick="showUserWindow();"]').click();
+    await page.locator('button[data-on-click="showUserWindow();"]').click();
 
     await page.locator('#userLoginUsername').fill(credentials.username);
     await page.locator('#userLoginPassword').fill('definitely-the-wrong-password');

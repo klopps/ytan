@@ -15,7 +15,7 @@
          If storage is unavailable the URL is left alone and linkParam() falls
          back to reading it. Code that needs a URL parameter must therefore use
          linkParam(), never location.search/ytanUrl directly. -->
-    <script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>
       (function () {
         try {
           var url = new URL(window.location.href);
@@ -28,14 +28,14 @@
         } catch (e) { /* leave the URL as it is */ }
       })();
     </script>
-    <script>window.YTAN_API_BASE = "<?= htmlspecialchars($baseUrl, ENT_QUOTES) ?>/api/v1";</script>
-    <script>window.YTAN_GOOGLE_SEARCH_REQUIRES_LOGIN = <?= $googleSearchRequiresLogin ? 'true' : 'false' ?>;</script>
-    <script>window.YTAN_MAPS_ID = <?= json_encode($mapsId) ?>;</script>
-    <script>window.YTAN_GPX_EXPORT_PUBLIC = <?= $gpxExportPublic ? 'true' : 'false' ?>;</script>
-    <script>window.YTAN_TRACK_DISTANCE_FILTER_PRESETS = <?= json_encode($trackDistanceFilterPresets) ?>;</script>
-    <script>window.YTAN_ROUTE_LABEL_FONT_SIZE_RANGE = <?= json_encode($routeLabelFontSizeRange) ?>;</script>
-    <script>window.YTAN_LOCALE = "<?= htmlspecialchars($translator->locale(), ENT_QUOTES) ?>";</script>
-    <script>window.YTAN_TRANSLATIONS = <?= json_encode($translator->all(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;</script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_API_BASE = "<?= htmlspecialchars($baseUrl, ENT_QUOTES) ?>/api/v1";</script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_GOOGLE_SEARCH_REQUIRES_LOGIN = <?= $googleSearchRequiresLogin ? 'true' : 'false' ?>;</script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_MAPS_ID = <?= json_encode($mapsId) ?>;</script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_GPX_EXPORT_PUBLIC = <?= $gpxExportPublic ? 'true' : 'false' ?>;</script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_TRACK_DISTANCE_FILTER_PRESETS = <?= json_encode($trackDistanceFilterPresets) ?>;</script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_ROUTE_LABEL_FONT_SIZE_RANGE = <?= json_encode($routeLabelFontSizeRange) ?>;</script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_LOCALE = "<?= htmlspecialchars($translator->locale(), ENT_QUOTES) ?>";</script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_TRANSLATIONS = <?= json_encode($translator->all(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;</script>
     <!-- Must be declared before applyStoredTheme() runs below (right after
          <body> opens) - that call's own catch block logs via log()
          (settings.js), which reads this global. It used to be declared much
@@ -45,45 +45,46 @@
          malformed/corrupted "settings" cookie hits that catch block and
          crashes on "logLevel is not defined" instead of just logging a
          warning - the exception then aborts the rest of that inline
-         <script>, so initSplashScreen() (the very next statement) never
+         &lt;script&gt;, so initSplashScreen() (the very next statement) never
          runs either, leaving the splash screen stuck forever. Matches the
          pattern templates/partials/admin-shell-header.php already used
          correctly. -->
-    <script>let logLevel = <?= (int) $logLevel ?>;</script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>let logLevel = <?= (int) $logLevel ?>;</script>
 
-    <script src="./lib/measuretool-googlemap-v3/gmaps-measuretool.umd.js?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/measuretool-googlemap-v3/gmaps-measuretool.umd.js') ?>"></script>
-    <script src="./lib/marked/marked.min.js?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/marked/marked.min.js') ?>"></script>
-    <script src="./lib/dompurify/purify.min.js?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/dompurify/purify.min.js') ?>"></script>
-    <script src="./lib/markerWithLabel/markerwithlabel.min.js?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/markerWithLabel/markerwithlabel.min.js') ?>"></script>
-    <script src="./lib/light-characteristics/lightcharacteristic.js?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/light-characteristics/lightcharacteristic.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./lib/measuretool-googlemap-v3/gmaps-measuretool.umd.js?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/measuretool-googlemap-v3/gmaps-measuretool.umd.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./lib/marked/marked.min.js?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/marked/marked.min.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./lib/dompurify/purify.min.js?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/dompurify/purify.min.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./lib/markerWithLabel/markerwithlabel.min.js?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/markerWithLabel/markerwithlabel.min.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./lib/light-characteristics/lightcharacteristic.js?v=<?= \Ytan\App::assetVersion($rootDir, '/lib/light-characteristics/lightcharacteristic.js') ?>"></script>
 
-    <script src="./js/config.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/config.js') ?>"></script>
-    <script src="./js/i18n.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/i18n.js') ?>"></script>
-    <script src="./js/helper.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/helper.js') ?>"></script>
-    <script src="./js/api-client.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/api-client.js') ?>"></script>
-    <script src="./js/offline-cache.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/offline-cache.js') ?>"></script>
-    <script src="./js/offline-sync.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/offline-sync.js') ?>"></script>
-    <script src="./js/settings.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/settings.js') ?>"></script>
-    <script src="./js/ui.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/ui.js') ?>"></script>
-    <script src="./js/toast.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/toast.js') ?>"></script>
-    <script src="./js/photo-upload.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/photo-upload.js') ?>"></script>
-    <script src="./js/capacitor-bridge.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/capacitor-bridge.js') ?>"></script>
-    <script src="./js/native-app.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/native-app.js') ?>"></script>
-    <script src="./js/splashscreen.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/splashscreen.js') ?>"></script>
-    <script src="./js/confirm-dialog.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/confirm-dialog.js') ?>"></script>
-    <script src="./js/nav-menu.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/nav-menu.js') ?>"></script>
-    <script src="./js/marker.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/marker.js') ?>"></script>
-    <script src="./js/map-core.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/map-core.js') ?>"></script>
-    <script src="./js/weather.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/weather.js') ?>"></script>
-    <script src="./js/poi.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/poi.js') ?>"></script>
-    <script src="./js/route.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/route.js') ?>"></script>
-    <script src="./js/track-recorder.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/track-recorder.js') ?>"></script>
-    <script src="./js/area.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/area.js') ?>"></script>
-    <script src="./js/tour.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/tour.js') ?>"></script>
-    <script src="./js/tour-admin.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/tour-admin.js') ?>"></script>
-    <script src="./js/gpx-import.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/gpx-import.js') ?>"></script>
-    <script src="./js/user.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/user.js') ?>"></script>
-    <script src="./js/watch.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/watch.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/csp-events.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/csp-events.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/config.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/config.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/i18n.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/i18n.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/helper.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/helper.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/api-client.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/api-client.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/offline-cache.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/offline-cache.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/offline-sync.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/offline-sync.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/settings.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/settings.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/ui.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/ui.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/toast.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/toast.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/photo-upload.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/photo-upload.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/capacitor-bridge.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/capacitor-bridge.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/native-app.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/native-app.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/splashscreen.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/splashscreen.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/confirm-dialog.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/confirm-dialog.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/nav-menu.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/nav-menu.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/marker.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/marker.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/map-core.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/map-core.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/weather.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/weather.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/poi.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/poi.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/route.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/route.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/track-recorder.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/track-recorder.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/area.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/area.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/tour.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/tour.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/tour-admin.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/tour-admin.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/gpx-import.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/gpx-import.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/user.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/user.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/watch.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/watch.js') ?>"></script>
     <!-- admin-user.js moved to /admin/users (templates/admin-users.php) -
          no longer part of the main SPA's script chain. -->
 
@@ -103,7 +104,7 @@
   </head>
   <body>
     <div id="splashScreen"><div class="splash-logo"></div></div>
-    <script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>
       // applyStoredTheme() must run before initSplashScreen() paints
       // anything - otherwise the splash screen itself would flash the light
       // palette for a moment on a dark-mode return visit, the same bug this
@@ -112,7 +113,7 @@
       initSplashScreen();
     </script>
 
-    <div id="gotomylocation" onclick="panToGeolocation();">
+    <div id="gotomylocation" data-on-click="panToGeolocation();">
       <i class="material-icons-round">my_location</i>
     </div>
     <div id="gdpr">
@@ -124,13 +125,13 @@
         ]) ?></p>
 
         <p>
-        <input id="agreement" type="checkbox" name="agreement" onclick="toggleDisabled('startBtn')"><label for="agreement"><span></span><?= $t('app.gdpr.checkbox', [
+        <input id="agreement" type="checkbox" name="agreement" data-on-click="toggleDisabled('startBtn')"><label for="agreement"><span></span><?= $t('app.gdpr.checkbox', [
           'link_open' => '<a href="' . htmlspecialchars($baseUrl, ENT_QUOTES) . '/legal/privacy" target="_blank">',
           'link_close' => '</a>',
         ]) ?></label>
         </p>
         <p>
-          <button id="startBtn" class="startbtn" onclick="loadGoogleMaps('<?= htmlspecialchars($mapsApiKey) ?>')" disabled><?= $t('app.gdpr.start') ?></button>
+          <button id="startBtn" class="startbtn" data-on-click="loadGoogleMaps('<?= htmlspecialchars($mapsApiKey) ?>')" disabled><?= $t('app.gdpr.start') ?></button>
         </p>
       </div>
       <div class="logo_large"></div>
@@ -150,26 +151,26 @@
       <span><?= $t('app.update_required.banner') ?></span>
     </div>
     <div id="map"></div>
-    <div id="sidemenu-toggle" onclick="toggleMenu()">
+    <div id="sidemenu-toggle" data-on-click="toggleMenu()">
       <i class="material-icons-round" id="sidemenu-opener">menu</i>
     </div>
 
     <div id="mapSearchWrapper" class="map-search-wrapper">
       <div id="mapSearchContainer" class="map-search-container">
-        <button id="mapSearchToggle" type="button" onclick="toggleMapSearch()" aria-label="<?= htmlspecialchars($t('app.search.aria_label'), ENT_QUOTES) ?>">
+        <button id="mapSearchToggle" type="button" data-on-click="toggleMapSearch()" aria-label="<?= htmlspecialchars($t('app.search.aria_label'), ENT_QUOTES) ?>">
           <i class="material-icons-round">search</i>
         </button>
         <input type="text" id="mapSearchInput" class="map-search-input" placeholder="<?= htmlspecialchars($t('app.search.placeholder'), ENT_QUOTES) ?>" autocomplete="off">
         <!-- Only shown while expanded - the same collapse as clicking the
              magnifying glass again, which nobody recognized as "close". -->
-        <button id="mapSearchClose" type="button" onclick="toggleMapSearch()" aria-label="<?= htmlspecialchars($t('app.search.close'), ENT_QUOTES) ?>">
+        <button id="mapSearchClose" type="button" data-on-click="toggleMapSearch()" aria-label="<?= htmlspecialchars($t('app.search.close'), ENT_QUOTES) ?>">
           <i class="material-icons-round">close</i>
         </button>
       </div>
       <div id="mapSearchDropdown" class="map-search-dropdown" hidden>
         <div id="mapSearchModeToggle" class="map-search-mode-toggle" hidden>
-          <button type="button" class="map-search-mode-btn" data-mode="google" onclick="setSearchMode('google')">Google</button>
-          <button type="button" class="map-search-mode-btn" data-mode="own" onclick="setSearchMode('own')"><?= $t('app.nav.pois') ?></button>
+          <button type="button" class="map-search-mode-btn" data-mode="google" data-on-click="setSearchMode('google')">Google</button>
+          <button type="button" class="map-search-mode-btn" data-mode="own" data-on-click="setSearchMode('own')"><?= $t('app.nav.pois') ?></button>
         </div>
         <ul id="mapSearchResultsList" class="map-search-results-list"></ul>
       </div>
@@ -181,95 +182,95 @@
       <div class="nav-screen nav-screen-active" data-nav-screen="root">
         <div class="nav-brand-row">
           <strong class="nav-brand-name"><?= htmlspecialchars($appName) ?></strong>
-          <button type="button" class="nav-close-x" onclick="closeMenu();" aria-label="<?= htmlspecialchars($t('app.nav.close_menu'), ENT_QUOTES) ?>"><i class="material-icons-round">close</i></button>
+          <button type="button" class="nav-close-x" data-on-click="closeMenu();" aria-label="<?= htmlspecialchars($t('app.nav.close_menu'), ENT_QUOTES) ?>"><i class="material-icons-round">close</i></button>
         </div>
         <div class="nav-screen-body">
           <p class="nav-field-label"><?= $t('app.map.label') ?></p>
           <form name="maptype">
             <div class="nav-segmented">
-              <input type="radio" id="maptype1" name="maptypeselector" onclick="editMapType(this)" value="hybrid" checked><label for="maptype1"><?= $t('app.map.hybrid') ?></label>
-              <input type="radio" id="maptype2" name="maptypeselector" onclick="editMapType(this)" value="terrain"><label for="maptype2"><?= $t('app.map.terrain') ?></label>
-              <input type="radio" id="maptype3" name="maptypeselector" onclick="editMapType(this)" value="satellite"><label for="maptype3"><?= $t('app.map.sat') ?></label>
+              <input type="radio" id="maptype1" name="maptypeselector" data-on-click="editMapType(this)" value="hybrid" checked><label for="maptype1"><?= $t('app.map.hybrid') ?></label>
+              <input type="radio" id="maptype2" name="maptypeselector" data-on-click="editMapType(this)" value="terrain"><label for="maptype2"><?= $t('app.map.terrain') ?></label>
+              <input type="radio" id="maptype3" name="maptypeselector" data-on-click="editMapType(this)" value="satellite"><label for="maptype3"><?= $t('app.map.sat') ?></label>
             </div>
           </form>
 
           <ul class="nav-menu-list">
-            <li><button type="button" class="nav-menu-row" onclick="navMenuGoTo('pois');"><i class="material-icons-round nav-menu-row-icon">place</i><span class="nav-menu-row-labels"><?= $t('app.nav.pois') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
-            <li><button type="button" class="nav-menu-row" onclick="openTourAdminMenu();"><i class="material-icons-round nav-menu-row-icon">tour</i><span class="nav-menu-row-labels"><?= $t('app.nav.tours') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
+            <li><button type="button" class="nav-menu-row" data-on-click="navMenuGoTo('pois');"><i class="material-icons-round nav-menu-row-icon">place</i><span class="nav-menu-row-labels"><?= $t('app.nav.pois') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
+            <li><button type="button" class="nav-menu-row" data-on-click="openTourAdminMenu();"><i class="material-icons-round nav-menu-row-icon">tour</i><span class="nav-menu-row-labels"><?= $t('app.nav.tours') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
             <!-- Signed in only - shown by user.js/gpx-import.js's
                  updateGpxImportMenuVisibility(). -->
-            <li id="gpxImportMenuRow" style="display:none;"><button type="button" class="nav-menu-row" onclick="openGpxImportMenu();"><i class="material-icons-round nav-menu-row-icon">file_upload</i><span class="nav-menu-row-labels"><?= $t('app.nav.gpx_import') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
+            <li id="gpxImportMenuRow" style="display:none;"><button type="button" class="nav-menu-row" data-on-click="openGpxImportMenu();"><i class="material-icons-round nav-menu-row-icon">file_upload</i><span class="nav-menu-row-labels"><?= $t('app.nav.gpx_import') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
             <!-- Native Capacitor shell only - hidden by default, shown by
                  track-recorder.js's initTrackRecorder() (no-op in a normal
                  browser/PWA, matching capacitor-bridge.js's own guard). -->
-            <li id="trackRecorderMenuRow" style="display:none;"><button type="button" class="nav-menu-row" onclick="openTrackRecorderScreen();"><i class="material-icons-round nav-menu-row-icon">fiber_manual_record</i><span class="nav-menu-row-labels"><?= $t('app.nav.track_recorder') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
+            <li id="trackRecorderMenuRow" style="display:none;"><button type="button" class="nav-menu-row" data-on-click="openTrackRecorderScreen();"><i class="material-icons-round nav-menu-row-icon">fiber_manual_record</i><span class="nav-menu-row-labels"><?= $t('app.nav.track_recorder') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
             <!-- Not Capacitor-gated like the row above - offline
                  create/edit/delete (offline-sync.js) works in a plain
                  browser tab too, not just the native shell. -->
-            <li id="pendingChangesMenuRow" style="display:none;"><button type="button" class="nav-menu-row" onclick="openPendingChangesScreen();"><i class="material-icons-round nav-menu-row-icon">sync</i><span class="nav-menu-row-labels"><?= $t('app.nav.pending_changes') ?><span class="nav-menu-row-sub" id="pendingChangesRowSub"></span></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
-            <li><button type="button" class="nav-menu-row" onclick="shareMap();"><i class="material-icons-round nav-menu-row-icon">share</i><span class="nav-menu-row-labels"><?= $t('app.nav.share') ?></span></button></li>
-            <li><button type="button" class="nav-menu-row" onclick="openWeatherForCurrentLocation();"><i class="material-icons-round nav-menu-row-icon">cloud</i><span class="nav-menu-row-labels"><?= $t('app.nav.weather_current_location') ?></span></button></li>
-            <li><button type="button" class="nav-menu-row" onclick="showUserWindow();"><i class="material-icons-round nav-menu-row-icon">account_circle</i><span class="nav-menu-row-labels"><?= $t('app.nav.profile') ?><span class="nav-menu-row-sub" id="profileRowSub"><?= $t('app.nav.not_signed_in') ?></span></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
-            <li><button type="button" class="nav-menu-row" onclick="navMenuGoTo('preferences');"><i class="material-icons-round nav-menu-row-icon">tune</i><span class="nav-menu-row-labels"><?= $t('app.nav.preferences') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
-            <li id="adminMenuBtn" style="display:none;"><button type="button" class="nav-menu-row" onclick="window.location.href='<?= $baseUrl ?>/admin';"><i class="material-icons-round nav-menu-row-icon">settings</i><span class="nav-menu-row-labels"><?= $t('app.nav.administration') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
+            <li id="pendingChangesMenuRow" style="display:none;"><button type="button" class="nav-menu-row" data-on-click="openPendingChangesScreen();"><i class="material-icons-round nav-menu-row-icon">sync</i><span class="nav-menu-row-labels"><?= $t('app.nav.pending_changes') ?><span class="nav-menu-row-sub" id="pendingChangesRowSub"></span></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
+            <li><button type="button" class="nav-menu-row" data-on-click="shareMap();"><i class="material-icons-round nav-menu-row-icon">share</i><span class="nav-menu-row-labels"><?= $t('app.nav.share') ?></span></button></li>
+            <li><button type="button" class="nav-menu-row" data-on-click="openWeatherForCurrentLocation();"><i class="material-icons-round nav-menu-row-icon">cloud</i><span class="nav-menu-row-labels"><?= $t('app.nav.weather_current_location') ?></span></button></li>
+            <li><button type="button" class="nav-menu-row" data-on-click="showUserWindow();"><i class="material-icons-round nav-menu-row-icon">account_circle</i><span class="nav-menu-row-labels"><?= $t('app.nav.profile') ?><span class="nav-menu-row-sub" id="profileRowSub"><?= $t('app.nav.not_signed_in') ?></span></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
+            <li><button type="button" class="nav-menu-row" data-on-click="navMenuGoTo('preferences');"><i class="material-icons-round nav-menu-row-icon">tune</i><span class="nav-menu-row-labels"><?= $t('app.nav.preferences') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
+            <li id="adminMenuBtn" style="display:none;"><button type="button" class="nav-menu-row" data-on-click="navigateTo('<?= $baseUrl ?>/admin');"><i class="material-icons-round nav-menu-row-icon">settings</i><span class="nav-menu-row-labels"><?= $t('app.nav.administration') ?></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
             <!-- Both hidden by default, shown by native-app.js: the install
                  row only in a browser/PWA on Android without the app, the
                  update row only inside the app when a newer APK exists. -->
             <li id="appInstallMenuRow" style="display:none;"><button type="button" class="nav-menu-row"><i class="material-icons-round nav-menu-row-icon">android</i><span class="nav-menu-row-labels"><?= $t('app.nav.install_app') ?><span class="nav-menu-row-sub"></span></span></button></li>
-            <li id="appUpdateMenuRow" style="display:none;"><button type="button" class="nav-menu-row nav-menu-row-highlight" onclick="NativeApp.installUpdate();"><i class="material-icons-round nav-menu-row-icon">system_update</i><span class="nav-menu-row-labels"><span class="app-update-row-label"></span><span class="app-update-progress"><span class="app-update-progress-bar"></span></span></span></button></li>
+            <li id="appUpdateMenuRow" style="display:none;"><button type="button" class="nav-menu-row nav-menu-row-highlight" data-on-click="installAppUpdate();"><i class="material-icons-round nav-menu-row-icon">system_update</i><span class="nav-menu-row-labels"><span class="app-update-row-label"></span><span class="app-update-progress"><span class="app-update-progress-bar"></span></span></span></button></li>
           </ul>
 
           <div class="nav-divider"></div>
 
           <ul class="nav-menu-list nav-menu-footer">
-            <li><button type="button" class="nav-menu-row" onclick="openHelpMenu('<?= $baseUrl ?>/help?embed=1', '<?= $t('app.nav.help') ?>');"><i class="material-icons-round nav-menu-row-icon">menu_book</i><span class="nav-menu-row-labels"><?= $t('app.nav.help') ?></span></button></li>
-            <li><button type="button" class="nav-menu-row" onclick="openLegalMenu('<?= $baseUrl ?>/about', '<?= $t('app.nav.about') ?>');"><i class="material-icons-round nav-menu-row-icon">info</i><span class="nav-menu-row-labels"><?= $t('app.nav.about') ?></span></button></li>
-            <li><button type="button" class="nav-menu-row" onclick="openLegalMenu('<?= $baseUrl ?>/legal/imprint', '<?= $t('app.nav.imprint') ?>');"><i class="material-icons-round nav-menu-row-icon">description</i><span class="nav-menu-row-labels"><?= $t('app.nav.imprint') ?></span></button></li>
-            <li><button type="button" class="nav-menu-row" onclick="openLegalMenu('<?= $baseUrl ?>/legal/privacy', '<?= $t('app.nav.privacy_note') ?>');"><i class="material-icons-round nav-menu-row-icon">privacy_tip</i><span class="nav-menu-row-labels"><?= $t('app.nav.privacy_note') ?></span></button></li>
-            <li><button type="button" class="nav-menu-row" onclick="openCookieMenu();"><i class="material-icons-round nav-menu-row-icon">verified_user</i><span class="nav-menu-row-labels"><?= $t('app.nav.cookies') ?></span></button></li>
+            <li><button type="button" class="nav-menu-row" data-on-click="openHelpMenu('<?= $baseUrl ?>/help?embed=1', '<?= $t('app.nav.help') ?>');"><i class="material-icons-round nav-menu-row-icon">menu_book</i><span class="nav-menu-row-labels"><?= $t('app.nav.help') ?></span></button></li>
+            <li><button type="button" class="nav-menu-row" data-on-click="openLegalMenu('<?= $baseUrl ?>/about', '<?= $t('app.nav.about') ?>');"><i class="material-icons-round nav-menu-row-icon">info</i><span class="nav-menu-row-labels"><?= $t('app.nav.about') ?></span></button></li>
+            <li><button type="button" class="nav-menu-row" data-on-click="openLegalMenu('<?= $baseUrl ?>/legal/imprint', '<?= $t('app.nav.imprint') ?>');"><i class="material-icons-round nav-menu-row-icon">description</i><span class="nav-menu-row-labels"><?= $t('app.nav.imprint') ?></span></button></li>
+            <li><button type="button" class="nav-menu-row" data-on-click="openLegalMenu('<?= $baseUrl ?>/legal/privacy', '<?= $t('app.nav.privacy_note') ?>');"><i class="material-icons-round nav-menu-row-icon">privacy_tip</i><span class="nav-menu-row-labels"><?= $t('app.nav.privacy_note') ?></span></button></li>
+            <li><button type="button" class="nav-menu-row" data-on-click="openCookieMenu();"><i class="material-icons-round nav-menu-row-icon">verified_user</i><span class="nav-menu-row-labels"><?= $t('app.nav.cookies') ?></span></button></li>
           </ul>
 
           <div class="nav-version-text">v<?= htmlspecialchars($appVersion) ?></div>
 
-          <div class="panel-logo" id="sidemenuLogo" onclick="handleSidemenuLogoClick();"></div>
+          <div class="panel-logo" id="sidemenuLogo" data-on-click="handleSidemenuLogoClick();"></div>
         </div>
       </div>
 
       <!-- POIS -->
       <div class="nav-screen nav-screen-off-right" data-nav-screen="pois">
         <div class="nav-screen-header">
-          <button type="button" class="nav-back" onclick="navMenuBack();"><i class="material-icons-round">arrow_back</i></button>
+          <button type="button" class="nav-back" data-on-click="navMenuBack();"><i class="material-icons-round">arrow_back</i></button>
           <h3><?= $t('app.nav.pois') ?></h3>
         </div>
         <div class="nav-screen-body">
           <div class="nav-quick-actions">
-            <button type="button" class="nav-chip-btn" onclick="selectAllPois();"><?= $t('app.pois.select_all') ?></button>
-            <button type="button" class="nav-chip-btn" onclick="selectNonePois();"><?= $t('app.pois.select_none') ?></button>
+            <button type="button" class="nav-chip-btn" data-on-click="selectAllPois();"><?= $t('app.pois.select_all') ?></button>
+            <button type="button" class="nav-chip-btn" data-on-click="selectNonePois();"><?= $t('app.pois.select_none') ?></button>
           </div>
-          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#8886c9"></span><span class="nav-toggle-text"><?= $t('app.poitype.0') ?></span><input type="checkbox" id="detail0" name="detail0" class="nav-switch-input" onclick="toggleMarkerByType(this, 0);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
-          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#5f9e6e"></span><span class="nav-toggle-text"><?= $t('app.poitype.1') ?></span><input type="checkbox" id="detail1" name="detail1" class="nav-switch-input" onclick="toggleMarkerByType(this, 1);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
-          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#7a8fae"></span><span class="nav-toggle-text"><?= $t('app.poitype.10') ?></span><input type="checkbox" id="detail10" name="detail10" class="nav-switch-input" onclick="toggleMarkerByType(this, 10);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
-          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#4f9d68"></span><span class="nav-toggle-text"><?= $t('app.poitype.11') ?></span><input type="checkbox" id="detail11" name="detail11" class="nav-switch-input" onclick="toggleMarkerByType(this, 11);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
-          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#c98a3b"></span><span class="nav-toggle-text"><?= $t('app.poitype.2') ?></span><input type="checkbox" id="detail2" name="detail2" class="nav-switch-input" onclick="toggleMarkerByType(this, 2);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
-          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#3f9dbf"></span><span class="nav-toggle-text"><?= $t('app.poitype.3') ?></span><input type="checkbox" id="detail3" name="detail3" class="nav-switch-input" onclick="toggleMarkerByType(this, 3);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
-          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#8c8c8c"></span><span class="nav-toggle-text"><?= $t('app.poitype.4') ?></span><input type="checkbox" id="detail4" name="detail4" class="nav-switch-input" onclick="toggleMarkerByType(this, 4);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
-          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#a2793f"></span><span class="nav-toggle-text"><?= $t('app.poitype.5') ?></span><input type="checkbox" id="detail5" name="detail5" class="nav-switch-input" onclick="toggleMarkerByType(this, 5);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
-          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#c0524a"></span><span class="nav-toggle-text"><?= $t('app.poitype.6') ?></span><input type="checkbox" id="detail6" name="detail6" class="nav-switch-input" onclick="toggleMarkerByType(this, 6);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
-          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#5aa568"></span><span class="nav-toggle-text"><?= $t('app.poitype.7') ?></span><input type="checkbox" id="detail7" name="detail7" class="nav-switch-input" onclick="toggleMarkerByType(this, 7);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
-          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#c77db0"></span><span class="nav-toggle-text"><?= $t('app.poitype.8') ?></span><input type="checkbox" id="detail8" name="detail8" class="nav-switch-input" onclick="toggleMarkerByType(this, 8);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
-          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#b08b3f"></span><span class="nav-toggle-text"><?= $t('app.poitype.9') ?></span><input type="checkbox" id="detail9" name="detail9" class="nav-switch-input" onclick="toggleMarkerByType(this, 9);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
-          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#d15f6c"></span><span class="nav-toggle-text"><?= $t('app.poitype.12') ?></span><input type="checkbox" id="detail12" name="detail12" class="nav-switch-input" onclick="toggleMarkerByType(this, 12);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
-          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#6b7fc9"></span><span class="nav-toggle-text"><?= $t('app.poitype.13') ?></span><input type="checkbox" id="detail13" name="detail13" class="nav-switch-input" onclick="toggleMarkerByType(this, 13);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
-          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#d1a63f"></span><span class="nav-toggle-text"><?= $t('app.poitype.14') ?></span><input type="checkbox" id="detail14" name="detail14" class="nav-switch-input" onclick="toggleMarkerByType(this, 14);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
-          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#5b6b8c"></span><span class="nav-toggle-text"><?= $t('app.poitype.15') ?></span><input type="checkbox" id="detail15" name="detail15" class="nav-switch-input" onclick="toggleMarkerByType(this, 15);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
-          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#3f8f8f"></span><span class="nav-toggle-text"><?= $t('app.poitype.16') ?></span><input type="checkbox" id="detail16" name="detail16" class="nav-switch-input" onclick="toggleMarkerByType(this, 16);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
+          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#8886c9"></span><span class="nav-toggle-text"><?= $t('app.poitype.0') ?></span><input type="checkbox" id="detail0" name="detail0" class="nav-switch-input" data-on-click="toggleMarkerByType(this, 0);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
+          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#5f9e6e"></span><span class="nav-toggle-text"><?= $t('app.poitype.1') ?></span><input type="checkbox" id="detail1" name="detail1" class="nav-switch-input" data-on-click="toggleMarkerByType(this, 1);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
+          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#7a8fae"></span><span class="nav-toggle-text"><?= $t('app.poitype.10') ?></span><input type="checkbox" id="detail10" name="detail10" class="nav-switch-input" data-on-click="toggleMarkerByType(this, 10);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
+          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#4f9d68"></span><span class="nav-toggle-text"><?= $t('app.poitype.11') ?></span><input type="checkbox" id="detail11" name="detail11" class="nav-switch-input" data-on-click="toggleMarkerByType(this, 11);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
+          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#c98a3b"></span><span class="nav-toggle-text"><?= $t('app.poitype.2') ?></span><input type="checkbox" id="detail2" name="detail2" class="nav-switch-input" data-on-click="toggleMarkerByType(this, 2);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
+          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#3f9dbf"></span><span class="nav-toggle-text"><?= $t('app.poitype.3') ?></span><input type="checkbox" id="detail3" name="detail3" class="nav-switch-input" data-on-click="toggleMarkerByType(this, 3);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
+          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#8c8c8c"></span><span class="nav-toggle-text"><?= $t('app.poitype.4') ?></span><input type="checkbox" id="detail4" name="detail4" class="nav-switch-input" data-on-click="toggleMarkerByType(this, 4);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
+          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#a2793f"></span><span class="nav-toggle-text"><?= $t('app.poitype.5') ?></span><input type="checkbox" id="detail5" name="detail5" class="nav-switch-input" data-on-click="toggleMarkerByType(this, 5);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
+          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#c0524a"></span><span class="nav-toggle-text"><?= $t('app.poitype.6') ?></span><input type="checkbox" id="detail6" name="detail6" class="nav-switch-input" data-on-click="toggleMarkerByType(this, 6);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
+          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#5aa568"></span><span class="nav-toggle-text"><?= $t('app.poitype.7') ?></span><input type="checkbox" id="detail7" name="detail7" class="nav-switch-input" data-on-click="toggleMarkerByType(this, 7);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
+          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#c77db0"></span><span class="nav-toggle-text"><?= $t('app.poitype.8') ?></span><input type="checkbox" id="detail8" name="detail8" class="nav-switch-input" data-on-click="toggleMarkerByType(this, 8);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
+          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#b08b3f"></span><span class="nav-toggle-text"><?= $t('app.poitype.9') ?></span><input type="checkbox" id="detail9" name="detail9" class="nav-switch-input" data-on-click="toggleMarkerByType(this, 9);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
+          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#d15f6c"></span><span class="nav-toggle-text"><?= $t('app.poitype.12') ?></span><input type="checkbox" id="detail12" name="detail12" class="nav-switch-input" data-on-click="toggleMarkerByType(this, 12);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
+          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#6b7fc9"></span><span class="nav-toggle-text"><?= $t('app.poitype.13') ?></span><input type="checkbox" id="detail13" name="detail13" class="nav-switch-input" data-on-click="toggleMarkerByType(this, 13);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
+          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#d1a63f"></span><span class="nav-toggle-text"><?= $t('app.poitype.14') ?></span><input type="checkbox" id="detail14" name="detail14" class="nav-switch-input" data-on-click="toggleMarkerByType(this, 14);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
+          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#5b6b8c"></span><span class="nav-toggle-text"><?= $t('app.poitype.15') ?></span><input type="checkbox" id="detail15" name="detail15" class="nav-switch-input" data-on-click="toggleMarkerByType(this, 15);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
+          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#3f8f8f"></span><span class="nav-toggle-text"><?= $t('app.poitype.16') ?></span><input type="checkbox" id="detail16" name="detail16" class="nav-switch-input" data-on-click="toggleMarkerByType(this, 16);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
           <div class="nav-divider"></div>
-          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#60609f"></span><span class="nav-toggle-text"><?= $t('app.detail.routes') ?></span><input type="checkbox" id="detailroutes" name="detailroutes" class="nav-switch-input" onchange="toggleRoutes(this);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
-          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#8886c9"></span><span class="nav-toggle-text"><?= $t('app.detail.areas') ?></span><input type="checkbox" id="detailareas" name="detailareas" class="nav-switch-input" onchange="toggleAreas(this);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
-          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#9c99ad"></span><span class="nav-toggle-text"><?= $t('app.detail.wsi') ?></span><input type="checkbox" id="detailwsi" name="detailwsi" class="nav-switch-input" onchange="toggleWsiMarkers(this);"><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
+          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#60609f"></span><span class="nav-toggle-text"><?= $t('app.detail.routes') ?></span><input type="checkbox" id="detailroutes" name="detailroutes" class="nav-switch-input" data-on-change="toggleRoutes(this);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
+          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#8886c9"></span><span class="nav-toggle-text"><?= $t('app.detail.areas') ?></span><input type="checkbox" id="detailareas" name="detailareas" class="nav-switch-input" data-on-change="toggleAreas(this);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
+          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#9c99ad"></span><span class="nav-toggle-text"><?= $t('app.detail.wsi') ?></span><input type="checkbox" id="detailwsi" name="detailwsi" class="nav-switch-input" data-on-change="toggleWsiMarkers(this);"><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
           <div class="nav-divider"></div>
           <ul class="nav-menu-list">
-            <li><button type="button" class="nav-menu-row" onclick="fitToPoiBounds(); closeMenu();"><i class="material-icons-round nav-menu-row-icon">fit_screen</i><span class="nav-menu-row-labels"><?= $t('app.pois.fit_all') ?></span></button></li>
+            <li><button type="button" class="nav-menu-row" data-on-click="fitToPoiBounds(); closeMenu();"><i class="material-icons-round nav-menu-row-icon">fit_screen</i><span class="nav-menu-row-labels"><?= $t('app.pois.fit_all') ?></span></button></li>
           </ul>
         </div>
       </div>
@@ -277,22 +278,22 @@
       <!-- PREFERENCES -->
       <div class="nav-screen nav-screen-off-right" data-nav-screen="preferences">
         <div class="nav-screen-header">
-          <button type="button" class="nav-back" onclick="navMenuBack();"><i class="material-icons-round">arrow_back</i></button>
+          <button type="button" class="nav-back" data-on-click="navMenuBack();"><i class="material-icons-round">arrow_back</i></button>
           <h3><?= $t('app.nav.preferences') ?></h3>
         </div>
         <div class="nav-screen-body">
           <p class="nav-field-label"><?= $t('app.preferences.appearance') ?></p>
           <form name="themeselector">
             <div class="nav-segmented">
-              <input type="radio" id="theme1" name="themeselector" onclick="setTheme('light')" value="light" checked><label for="theme1"><?= $t('app.theme.light') ?></label>
-              <input type="radio" id="theme2" name="themeselector" onclick="setTheme('dark')" value="dark"><label for="theme2"><?= $t('app.theme.dark') ?></label>
+              <input type="radio" id="theme1" name="themeselector" data-on-click="setTheme('light')" value="light" checked><label for="theme1"><?= $t('app.theme.light') ?></label>
+              <input type="radio" id="theme2" name="themeselector" data-on-click="setTheme('dark')" value="dark"><label for="theme2"><?= $t('app.theme.dark') ?></label>
             </div>
           </form>
           <p class="nav-field-label"><?= $t('app.preferences.units') ?></p>
           <form name="units">
             <div class="nav-segmented">
-              <input type="radio" id="unit1" name="unitselector" onclick="editUnit(this)" value="metric" checked><label for="unit1"><?= $t('app.unit.metric') ?></label>
-              <input type="radio" id="unit2" name="unitselector" onclick="editUnit(this)" value="nautical"><label for="unit2"><?= $t('app.unit.nautical') ?></label>
+              <input type="radio" id="unit1" name="unitselector" data-on-click="editUnit(this)" value="metric" checked><label for="unit1"><?= $t('app.unit.metric') ?></label>
+              <input type="radio" id="unit2" name="unitselector" data-on-click="editUnit(this)" value="nautical"><label for="unit2"><?= $t('app.unit.nautical') ?></label>
             </div>
           </form>
           <div class="nav-example-card">
@@ -305,25 +306,25 @@
           <p class="nav-field-label"><?= $t('app.preferences.wind_unit') ?></p>
           <form name="windunit">
             <div class="nav-segmented">
-              <input type="radio" id="windunit1" name="windunitselector" onclick="editWindUnit(this)" value="bft"><label for="windunit1"><?= $t('app.wind_unit.bft') ?></label>
-              <input type="radio" id="windunit2" name="windunitselector" onclick="editWindUnit(this)" value="ms"><label for="windunit2"><?= $t('app.wind_unit.ms') ?></label>
-              <input type="radio" id="windunit3" name="windunitselector" onclick="editWindUnit(this)" value="kmh" checked><label for="windunit3"><?= $t('app.wind_unit.kmh') ?></label>
-              <input type="radio" id="windunit4" name="windunitselector" onclick="editWindUnit(this)" value="kn"><label for="windunit4"><?= $t('app.wind_unit.kn') ?></label>
+              <input type="radio" id="windunit1" name="windunitselector" data-on-click="editWindUnit(this)" value="bft"><label for="windunit1"><?= $t('app.wind_unit.bft') ?></label>
+              <input type="radio" id="windunit2" name="windunitselector" data-on-click="editWindUnit(this)" value="ms"><label for="windunit2"><?= $t('app.wind_unit.ms') ?></label>
+              <input type="radio" id="windunit3" name="windunitselector" data-on-click="editWindUnit(this)" value="kmh" checked><label for="windunit3"><?= $t('app.wind_unit.kmh') ?></label>
+              <input type="radio" id="windunit4" name="windunitselector" data-on-click="editWindUnit(this)" value="kn"><label for="windunit4"><?= $t('app.wind_unit.kn') ?></label>
             </div>
           </form>
           <p class="nav-field-label"><?= $t('app.preferences.wind_direction') ?></p>
           <form name="winddirection">
             <div class="nav-segmented">
-              <input type="radio" id="winddirection1" name="winddirectionselector" onclick="editWindDirectionDisplay(this)" value="text"><label for="winddirection1"><?= $t('app.wind_direction.text') ?></label>
-              <input type="radio" id="winddirection2" name="winddirectionselector" onclick="editWindDirectionDisplay(this)" value="arrow" checked><label for="winddirection2"><?= $t('app.wind_direction.arrow') ?></label>
+              <input type="radio" id="winddirection1" name="winddirectionselector" data-on-click="editWindDirectionDisplay(this)" value="text"><label for="winddirection1"><?= $t('app.wind_direction.text') ?></label>
+              <input type="radio" id="winddirection2" name="winddirectionselector" data-on-click="editWindDirectionDisplay(this)" value="arrow" checked><label for="winddirection2"><?= $t('app.wind_direction.arrow') ?></label>
             </div>
           </form>
           <p class="nav-field-label"><?= $t('app.preferences.coordinate_format') ?></p>
           <form name="coordformat">
             <div class="nav-segmented">
-              <input type="radio" id="coordformat1" name="coordformatselector" onclick="editCoordinateFormat(this)" value="dd" checked><label for="coordformat1"><?= $t('app.coordinate_format.dd') ?></label>
-              <input type="radio" id="coordformat2" name="coordformatselector" onclick="editCoordinateFormat(this)" value="mm"><label for="coordformat2"><?= $t('app.coordinate_format.mm') ?></label>
-              <input type="radio" id="coordformat3" name="coordformatselector" onclick="editCoordinateFormat(this)" value="dms"><label for="coordformat3"><?= $t('app.coordinate_format.dms') ?></label>
+              <input type="radio" id="coordformat1" name="coordformatselector" data-on-click="editCoordinateFormat(this)" value="dd" checked><label for="coordformat1"><?= $t('app.coordinate_format.dd') ?></label>
+              <input type="radio" id="coordformat2" name="coordformatselector" data-on-click="editCoordinateFormat(this)" value="mm"><label for="coordformat2"><?= $t('app.coordinate_format.mm') ?></label>
+              <input type="radio" id="coordformat3" name="coordformatselector" data-on-click="editCoordinateFormat(this)" value="dms"><label for="coordformat3"><?= $t('app.coordinate_format.dms') ?></label>
             </div>
           </form>
           <div class="nav-example-card">
@@ -336,14 +337,14 @@
           <p class="nav-field-label"><?= $t('app.preferences.route_smoothing') ?></p>
           <form name="routesmoothing">
             <div class="nav-segmented">
-              <input type="radio" id="routesmoothing1" name="routesmoothingselector" onclick="editRouteSmoothing(this)" value="smooth" checked><label for="routesmoothing1"><?= $t('app.route_smoothing.smooth') ?></label>
-              <input type="radio" id="routesmoothing2" name="routesmoothingselector" onclick="editRouteSmoothing(this)" value="straight"><label for="routesmoothing2"><?= $t('app.route_smoothing.straight') ?></label>
+              <input type="radio" id="routesmoothing1" name="routesmoothingselector" data-on-click="editRouteSmoothing(this)" value="smooth" checked><label for="routesmoothing1"><?= $t('app.route_smoothing.smooth') ?></label>
+              <input type="radio" id="routesmoothing2" name="routesmoothingselector" data-on-click="editRouteSmoothing(this)" value="straight"><label for="routesmoothing2"><?= $t('app.route_smoothing.straight') ?></label>
             </div>
           </form>
           <p class="nav-field-label"><?= $t('app.preferences.route_label_font_size') ?></p>
           <input type="range" id="routeLabelFontSize" class="nav-slider"
                  min="<?= (int) $routeLabelFontSizeRange['min'] ?>" max="<?= (int) $routeLabelFontSizeRange['max'] ?>" step="1" value="12"
-                 oninput="previewRouteLabelFontSize(this.value)" onchange="editRouteLabelFontSize(this)">
+                 data-on-input="previewRouteLabelFontSize(this.value)" data-on-change="editRouteLabelFontSize(this)">
           <div class="nav-example-card">
             <div>
               <div class="nav-example-value" id="routeLabelFontSizeExampleValue" style="font-size: 12px;"><span style="color: green">2.4km </span> | <span style="color: red">9.8km</span></div>
@@ -354,8 +355,8 @@
           <p class="nav-field-label"><?= $t('app.preferences.language') ?></p>
           <form name="language">
             <div class="nav-segmented">
-              <input type="radio" id="language1" name="languageselector" onclick="setLanguage('en')" value="en" <?= $translator->locale() === 'en' ? 'checked' : '' ?>><label for="language1"><?= $t('app.language.en') ?></label>
-              <input type="radio" id="language2" name="languageselector" onclick="setLanguage('de')" value="de" <?= $translator->locale() === 'de' ? 'checked' : '' ?>><label for="language2"><?= $t('app.language.de') ?></label>
+              <input type="radio" id="language1" name="languageselector" data-on-click="setLanguage('en')" value="en" <?= $translator->locale() === 'en' ? 'checked' : '' ?>><label for="language1"><?= $t('app.language.en') ?></label>
+              <input type="radio" id="language2" name="languageselector" data-on-click="setLanguage('de')" value="de" <?= $translator->locale() === 'de' ? 'checked' : '' ?>><label for="language2"><?= $t('app.language.de') ?></label>
             </div>
           </form>
         </div>
@@ -368,7 +369,7 @@
            body approach as e.g. the Tours panel. -->
       <div class="nav-screen nav-screen-off-right" data-nav-screen="record">
         <div class="nav-screen-header">
-          <button type="button" class="nav-back" onclick="navMenuBack();"><i class="material-icons-round">arrow_back</i></button>
+          <button type="button" class="nav-back" data-on-click="navMenuBack();"><i class="material-icons-round">arrow_back</i></button>
           <h3><?= $t('app.nav.track_recorder') ?></h3>
         </div>
         <div class="nav-screen-body" id="trackRecorderScreenBody"></div>
@@ -381,7 +382,7 @@
            Recorder screen above. -->
       <div class="nav-screen nav-screen-off-right" data-nav-screen="pending-changes">
         <div class="nav-screen-header">
-          <button type="button" class="nav-back" onclick="navMenuBack();"><i class="material-icons-round">arrow_back</i></button>
+          <button type="button" class="nav-back" data-on-click="navMenuBack();"><i class="material-icons-round">arrow_back</i></button>
           <h3><?= $t('app.nav.pending_changes') ?></h3>
         </div>
         <div class="nav-screen-body" id="pendingChangesScreenBody"></div>
@@ -390,7 +391,7 @@
       <!-- PROFILE -->
       <div class="nav-screen nav-screen-off-right" data-nav-screen="profile">
         <div class="nav-screen-header">
-          <button type="button" class="nav-back" onclick="navMenuBack();"><i class="material-icons-round">arrow_back</i></button>
+          <button type="button" class="nav-back" data-on-click="navMenuBack();"><i class="material-icons-round">arrow_back</i></button>
           <h3><?= $t('app.nav.profile') ?></h3>
         </div>
         <div class="nav-screen-body">
@@ -404,7 +405,7 @@
            #userWindowSub, watch.js re-renders into it in place. -->
       <div class="nav-screen nav-screen-off-right" data-nav-screen="profile-sub">
         <div class="nav-screen-header">
-          <button type="button" class="nav-back" onclick="navMenuBack();"><i class="material-icons-round">arrow_back</i></button>
+          <button type="button" class="nav-back" data-on-click="navMenuBack();"><i class="material-icons-round">arrow_back</i></button>
           <h3 id="profileSubTitle"></h3>
         </div>
         <div class="nav-screen-body">
@@ -418,15 +419,15 @@
     <div id="cookiemenu" class="cookiemenu">
       <div class="cm_content cm_content-compact">
         <div class="cm-panel-header">
-          <button type="button" class="nav-back" onclick="closeCookieMenu();"><i class="material-icons-round">arrow_back</i></button>
+          <button type="button" class="nav-back" data-on-click="closeCookieMenu();"><i class="material-icons-round">arrow_back</i></button>
           <h2 class="cm-panel-title"><?= $t('app.nav.cookies') ?></h2>
         </div>
         <div class="cookieConsentBody">
           <p>
             <?= $t('app.cookies.body', ['app' => htmlspecialchars($appName)]) ?>
           </p>
-          <div class="button" onclick="closeCookieMenu();"><i class="material-icons-round">check</i>&nbsp;<?= $t('app.cookies.agree') ?></div>
-          <div class="button" onclick="revokeConsent();"><i class="material-icons-round">not_interested</i>&nbsp;<?= $t('app.cookies.delete') ?></div>
+          <div class="button" data-on-click="closeCookieMenu();"><i class="material-icons-round">check</i>&nbsp;<?= $t('app.cookies.agree') ?></div>
+          <div class="button" data-on-click="revokeConsent();"><i class="material-icons-round">not_interested</i>&nbsp;<?= $t('app.cookies.delete') ?></div>
         </div>
         <div class="panel-logo"></div>
       </div>
@@ -437,7 +438,7 @@
     <div id="helpmenu" class="cookiemenu">
       <div class="cm_content cm_content-compact helpmenu-content">
         <div class="cm-panel-header">
-          <button type="button" class="nav-back" onclick="closeHelpMenu();"><i class="material-icons-round">arrow_back</i></button>
+          <button type="button" class="nav-back" data-on-click="closeHelpMenu();"><i class="material-icons-round">arrow_back</i></button>
           <h2 id="helpmenu-title" class="cm-panel-title"></h2>
         </div>
         <iframe id="helpmenu-frame" class="helpmenu-frame" title="<?= htmlspecialchars($t('app.nav.help'), ENT_QUOTES) ?>"></iframe>
@@ -448,7 +449,7 @@
     <div id="legalmenu" class="cookiemenu">
       <div class="cm_content cm_content-compact">
         <div class="cm-panel-header">
-          <button type="button" class="nav-back" onclick="closeLegalMenu();"><i class="material-icons-round">arrow_back</i></button>
+          <button type="button" class="nav-back" data-on-click="closeLegalMenu();"><i class="material-icons-round">arrow_back</i></button>
           <h2 id="legalmenu-title" class="cm-panel-title"></h2>
         </div>
         <div id="legalmenu-content"></div>
@@ -478,7 +479,7 @@
     <div id="gpximportmenu" class="cookiemenu">
       <div class="cm_content cm_content-compact">
         <div class="cm-panel-header">
-          <button type="button" class="nav-back" onclick="closeGpxImportMenu();"><i class="material-icons-round">arrow_back</i></button>
+          <button type="button" class="nav-back" data-on-click="closeGpxImportMenu();"><i class="material-icons-round">arrow_back</i></button>
           <h2 class="cm-panel-title"><?= $t('app.nav.gpx_import') ?></h2>
         </div>
         <div id="gpximportmenu-body"></div>
@@ -498,7 +499,7 @@
         <span id="tourModeBadgeName" class="tour-mode-badge-name"></span>
         <span class="tour-mode-badge-sub"><?= $t('app.tour_mode.label') ?></span>
       </div>
-      <div class="tour-mode-badge-close" onclick="exitTourMode();"><i class="material-icons-round">close</i></div>
+      <div class="tour-mode-badge-close" data-on-click="exitTourMode();"><i class="material-icons-round">close</i></div>
     </div>
 
     <!-- TRACK RECORDING BADGE - native Capacitor shell only, shown while a
@@ -540,7 +541,7 @@
             <span id="weatherTimelineTitle" class="weather-timeline-title"></span>
             <span id="weatherTimelineCoords" class="weather-timeline-coords"></span>
           </div>
-          <div class="weather-timeline-close" onclick="closeWeatherTimeline();" aria-label="<?= htmlspecialchars($t('weather.widget.close_aria_label'), ENT_QUOTES) ?>"><i class="material-icons-round">close</i></div>
+          <div class="weather-timeline-close" data-on-click="closeWeatherTimeline();" aria-label="<?= htmlspecialchars($t('weather.widget.close_aria_label'), ENT_QUOTES) ?>"><i class="material-icons-round">close</i></div>
         </div>
         <!-- Filled by weather.js's weatherFormatFetchedAt() once data
              arrives - source/model plus when the shown forecast was
@@ -549,7 +550,7 @@
              (reloadWeatherTimeline()) for whenever that's not fresh enough. -->
         <div class="weather-timeline-meta">
           <span id="weatherTimelineFetchedAt" class="weather-timeline-fetched-at"></span>
-          <button type="button" class="weather-timeline-reload-btn" onclick="reloadWeatherTimeline();" aria-label="<?= htmlspecialchars($t('weather.timeline.reload_aria_label'), ENT_QUOTES) ?>"><i class="material-icons-round">refresh</i></button>
+          <button type="button" class="weather-timeline-reload-btn" data-on-click="reloadWeatherTimeline();" aria-label="<?= htmlspecialchars($t('weather.timeline.reload_aria_label'), ENT_QUOTES) ?>"><i class="material-icons-round">refresh</i></button>
         </div>
       </div>
       <div id="weatherTimelineMarineNotice" class="weather-timeline-marine-notice" style="display:none;"><?= htmlspecialchars($t('weather.marine.unavailable'), ENT_QUOTES) ?></div>
@@ -606,12 +607,12 @@
 
     <!-- EDIT TOOLBAR -------------------------------------->
     <div id="editToolbar">
-      <div id="routeButton" class="toolbar-icon-btn" title="<?= htmlspecialchars($t('app.toolbar.create_route'), ENT_QUOTES) ?>" onclick="editRouteBtnClick('routeButton');"><svg viewBox="0 -960 960 960"><path d="M247-167q-47-47-47-113v-327q-35-13-57.5-43.5T120-720q0-50 35-85t85-35q50 0 85 35t35 85q0 39-22.5 69.5T280-607v327q0 33 23.5 56.5T360-200q33 0 56.5-23.5T440-280v-400q0-66 47-113t113-47q66 0 113 47t47 113v327q35 13 57.5 43.5T840-240q0 50-35 85t-85 35q-50 0-85-35t-35-85q0-39 22.5-70t57.5-43v-327q0-33-23.5-56.5T600-760q-33 0-56.5 23.5T520-680v400q0 66-47 113t-113 47q-66 0-113-47Zm-7-513q17 0 28.5-11.5T280-720q0-17-11.5-28.5T240-760q-17 0-28.5 11.5T200-720q0 17 11.5 28.5T240-680Zm480 480q17 0 28.5-11.5T760-240q0-17-11.5-28.5T720-280q-17 0-28.5 11.5T680-240q0 17 11.5 28.5T720-200ZM240-720Zm480 480Z"/></svg></div>
-      <div id="poiButton" class="toolbar-icon-btn disabled" title="<?= htmlspecialchars($t('app.toolbar.create_poi'), ENT_QUOTES) ?>" onclick="editPoiBtnClick('poiButton');"><svg viewBox="0 -960 960 960"><path d="M440-520v80q0 17 11.5 28.5T480-400q17 0 28.5-11.5T520-440v-80h80q17 0 28.5-11.5T640-560q0-17-11.5-28.5T600-600h-80v-80q0-17-11.5-28.5T480-720q-17 0-28.5 11.5T440-680v80h-80q-17 0-28.5 11.5T320-560q0 17 11.5 28.5T360-520h80Zm40 334q122-112 181-203.5T720-552q0-109-69.5-178.5T480-800q-101 0-170.5 69.5T240-552q0 71 59 162.5T480-186Zm-28 74q-14-5-25-15-65-60-115-117t-83.5-110.5q-33.5-53.5-51-103T160-552q0-150 96.5-239T480-880q127 0 223.5 89T800-552q0 45-17.5 94.5t-51 103Q698-301 648-244T533-127q-11 10-25 15t-28 5q-14 0-28-5Zm28-448Z"/></svg></div>
-      <div id="areaButton" class="toolbar-icon-btn" title="<?= htmlspecialchars($t('app.toolbar.create_area'), ENT_QUOTES) ?>" onclick="editAreaBtnClick('areaButton');"><svg viewBox="0 -960 960 960"><path d="M298-200h364l123-369-305-213-305 213 123 369Zm0 80q-26 0-47-15t-29-40L99-543q-8-26 0-51t30-40l305-214q21-14 46-14t46 14l305 214q22 15 30 40t0 51L738-175q-8 25-29 40t-47 15H298Zm182-371Z"/></svg></div>
+      <div id="routeButton" class="toolbar-icon-btn" title="<?= htmlspecialchars($t('app.toolbar.create_route'), ENT_QUOTES) ?>" data-on-click="editRouteBtnClick('routeButton');"><svg viewBox="0 -960 960 960"><path d="M247-167q-47-47-47-113v-327q-35-13-57.5-43.5T120-720q0-50 35-85t85-35q50 0 85 35t35 85q0 39-22.5 69.5T280-607v327q0 33 23.5 56.5T360-200q33 0 56.5-23.5T440-280v-400q0-66 47-113t113-47q66 0 113 47t47 113v327q35 13 57.5 43.5T840-240q0 50-35 85t-85 35q-50 0-85-35t-35-85q0-39 22.5-70t57.5-43v-327q0-33-23.5-56.5T600-760q-33 0-56.5 23.5T520-680v400q0 66-47 113t-113 47q-66 0-113-47Zm-7-513q17 0 28.5-11.5T280-720q0-17-11.5-28.5T240-760q-17 0-28.5 11.5T200-720q0 17 11.5 28.5T240-680Zm480 480q17 0 28.5-11.5T760-240q0-17-11.5-28.5T720-280q-17 0-28.5 11.5T680-240q0 17 11.5 28.5T720-200ZM240-720Zm480 480Z"/></svg></div>
+      <div id="poiButton" class="toolbar-icon-btn disabled" title="<?= htmlspecialchars($t('app.toolbar.create_poi'), ENT_QUOTES) ?>" data-on-click="editPoiBtnClick('poiButton');"><svg viewBox="0 -960 960 960"><path d="M440-520v80q0 17 11.5 28.5T480-400q17 0 28.5-11.5T520-440v-80h80q17 0 28.5-11.5T640-560q0-17-11.5-28.5T600-600h-80v-80q0-17-11.5-28.5T480-720q-17 0-28.5 11.5T440-680v80h-80q-17 0-28.5 11.5T320-560q0 17 11.5 28.5T360-520h80Zm40 334q122-112 181-203.5T720-552q0-109-69.5-178.5T480-800q-101 0-170.5 69.5T240-552q0 71 59 162.5T480-186Zm-28 74q-14-5-25-15-65-60-115-117t-83.5-110.5q-33.5-53.5-51-103T160-552q0-150 96.5-239T480-880q127 0 223.5 89T800-552q0 45-17.5 94.5t-51 103Q698-301 648-244T533-127q-11 10-25 15t-28 5q-14 0-28-5Zm28-448Z"/></svg></div>
+      <div id="areaButton" class="toolbar-icon-btn" title="<?= htmlspecialchars($t('app.toolbar.create_area'), ENT_QUOTES) ?>" data-on-click="editAreaBtnClick('areaButton');"><svg viewBox="0 -960 960 960"><path d="M298-200h364l123-369-305-213-305 213 123 369Zm0 80q-26 0-47-15t-29-40L99-543q-8-26 0-51t30-40l305-214q21-14 46-14t46 14l305 214q22 15 30 40t0 51L738-175q-8 25-29 40t-47 15H298Zm182-371Z"/></svg></div>
     </div>
 
-    <script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>
       // logLevel is now declared in <head> (see its own comment there) -
       // needed before applyStoredTheme() runs, further up, not here.
 

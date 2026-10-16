@@ -53,12 +53,12 @@ function renderSection(items, kind, titleHtml, hintHtml, hasSize) {
                 '<h2 class="h6 mb-1">' + titleHtml + '</h2>' +
                 '<p class="text-secondary small mb-0">' + hintHtml + '</p>' +
             '</div>' +
-            '<button type="button" class="btn btn-danger btn-sm" onclick="deleteSelected(\'' + kind + '\');">' + t('admin.image_cleanup.delete_selected') + '</button>' +
+            '<button type="button" class="btn btn-danger btn-sm" data-on-click="deleteSelected(\'' + kind + '\');">' + t('admin.image_cleanup.delete_selected') + '</button>' +
         '</div>' +
         '<div class="table-responsive">' +
         '<table class="table table-sm table-hover align-middle mb-0">' +
         '<thead><tr>' +
-            '<th style="width:2.5rem;"><input type="checkbox" class="form-check-input" onchange="toggleAll(\'' + kind + '\', this.checked);"></th>' +
+            '<th style="width:2.5rem;"><input type="checkbox" class="form-check-input" data-on-change="toggleAll(\'' + kind + '\', this.checked);"></th>' +
             '<th>' + t('admin.image_cleanup.col_type') + '</th>' +
             '<th>' + t('admin.image_cleanup.col_id') + '</th>' +
             '<th>' + t('admin.image_cleanup.col_filename') + '</th>' +

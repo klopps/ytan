@@ -4,8 +4,9 @@
     <title><?= htmlspecialchars($appName) ?> | <?= $t('page_title.forgot_password') ?></title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta charset="utf-8" />
-    <script>window.YTAN_TRANSLATIONS = <?= json_encode($translator->all(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;</script>
-    <script src="<?= $baseUrl ?>/js/i18n.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/i18n.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_TRANSLATIONS = <?= json_encode($translator->all(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;</script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="<?= $baseUrl ?>/js/csp-events.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/csp-events.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="<?= $baseUrl ?>/js/i18n.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/i18n.js') ?>"></script>
     <link rel="stylesheet" type="text/css" href="<?= $baseUrl ?>/css/style.css?v=<?= \Ytan\App::assetVersion($rootDir, '/css/style.css') ?>" />
     <link rel="shortcut icon" href="<?= $baseUrl ?>/favicon.ico">
     <style>
@@ -48,12 +49,12 @@
         </div>
         <div id="forgotPasswordMessage"></div>
         <p>
-            <button id="forgotPasswordBtn" class="startbtn" onclick="submitForgotPassword()"><?= $t('forgot.send_button') ?></button>
+            <button id="forgotPasswordBtn" class="startbtn" data-on-click="submitForgotPassword()"><?= $t('forgot.send_button') ?></button>
         </p>
         <p><a href="<?= htmlspecialchars($baseUrl, ENT_QUOTES) ?>/"><?= $t('common.back_to_app', ['app' => htmlspecialchars($appName)]) ?></a></p>
     </div>
 
-    <script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>
         var apiBase = "<?= htmlspecialchars($baseUrl, ENT_QUOTES) ?>/api/v1";
 
         function submitForgotPassword() {

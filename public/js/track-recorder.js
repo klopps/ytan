@@ -325,7 +325,7 @@
                 '<p class="track-recorder-permission-warning-title"><i class="material-icons-round">warning</i>' + t('trackrecorder.permission_warning_title') + '</p>' +
                 '<ul>' + missing.map(function (m) { return '<li>' + m + '</li>'; }).join('') + '</ul>' +
                 '<p class="track-recorder-permission-warning-hint">' + t('trackrecorder.permission_open_settings_hint') + '</p>' +
-                '<button type="button" class="nav-btn-secondary" onclick="openTrackRecorderSettings();"><i class="material-icons-round">settings</i>&nbsp;' + t('trackrecorder.permission_open_settings_button') + '</button>' +
+                '<button type="button" class="nav-btn-secondary" data-on-click="openTrackRecorderSettings();"><i class="material-icons-round">settings</i>&nbsp;' + t('trackrecorder.permission_open_settings_button') + '</button>' +
             '</div>';
     }
 
@@ -931,7 +931,7 @@
             // Same nav-btn-primary treatment as "Tour-Modus aktivieren"
             // (tour-admin.js) - just a different icon (fiber_manual_record,
             // matching the recording badge's own icon) instead of explore.
-            '<button type="button" class="nav-btn-primary" onclick="trackRecorderStartClicked();"><i class="material-icons-round">fiber_manual_record</i>&nbsp;' + t('trackrecorder.start_button') + '</button>' +
+            '<button type="button" class="nav-btn-primary" data-on-click="trackRecorderStartClicked();"><i class="material-icons-round">fiber_manual_record</i>&nbsp;' + t('trackrecorder.start_button') + '</button>' +
             renderPendingTracksSection();
     }
 
@@ -957,12 +957,12 @@
                         '<span class="track-recorder-pending-name">' + escapeHTML(entry.name) + '</span>' +
                         '<span class="track-recorder-pending-meta">' + distanceKm + ' km &middot; ' + duration + '</span>' +
                     '</div>' +
-                    '<i class="material-icons-round track-recorder-pending-upload" onclick="uploadPendingTrackClicked(\'' + entry.id + '\');" title="' + t('trackrecorder.pending_upload_button') + '">cloud_upload</i>' +
-                    '<i class="material-icons-round track-recorder-pending-discard" onclick="discardPendingTrackClicked(\'' + entry.id + '\');" title="' + t('common.delete') + '">delete</i>' +
+                    '<i class="material-icons-round track-recorder-pending-upload" data-on-click="uploadPendingTrackClicked(\'' + entry.id + '\');" title="' + t('trackrecorder.pending_upload_button') + '">cloud_upload</i>' +
+                    '<i class="material-icons-round track-recorder-pending-discard" data-on-click="discardPendingTrackClicked(\'' + entry.id + '\');" title="' + t('common.delete') + '">delete</i>' +
                 '</div>';
         }).join('');
         const bulkButton = pendingTracksCache.length > 1
-            ? '<button type="button" class="nav-btn-secondary" onclick="syncPendingTracks({manual:true});">' + t('trackrecorder.pending_upload_all_button') + '</button>'
+            ? '<button type="button" class="nav-btn-secondary" data-on-click="syncPendingTracks({manual:true});">' + t('trackrecorder.pending_upload_all_button') + '</button>'
             : '';
         return '' +
             '<p class="nav-field-label">' + t('trackrecorder.pending_section_title', { count: pendingTracksCache.length }) + '</p>' +
@@ -980,16 +980,16 @@
                 '<div><span class="track-recorder-live-value">' + livePointCount + '</span><span class="track-recorder-live-label">' + t('trackrecorder.stat_points') + '</span></div>' +
             '</div>' +
             (isPaused
-                ? '<button type="button" class="button" onclick="resumeRecording();"><i class="material-icons-round">play_arrow</i>&nbsp;' + t('trackrecorder.resume_button') + '</button>'
-                : '<button type="button" class="button" onclick="pauseRecording();"><i class="material-icons-round">pause</i>&nbsp;' + t('trackrecorder.pause_button') + '</button>') +
+                ? '<button type="button" class="button" data-on-click="resumeRecording();"><i class="material-icons-round">play_arrow</i>&nbsp;' + t('trackrecorder.resume_button') + '</button>'
+                : '<button type="button" class="button" data-on-click="pauseRecording();"><i class="material-icons-round">pause</i>&nbsp;' + t('trackrecorder.pause_button') + '</button>') +
             // A single-point track has no distance/duration between points to
             // review - stopRecording() would hand saveRecordedTrackLocally() a
             // 1-point track it can't sensibly draw as a line, so this stays
             // disabled until there's at least a two-point segment. Pause and
             // Verwerfen have no such requirement, they stay enabled from the
             // first point onward.
-            '<button type="button" class="button" onclick="stopRecording();"' + (livePointCount < 2 ? ' disabled' : '') + '><i class="material-icons-round">stop_circle</i>&nbsp;' + t('trackrecorder.stop_button') + '</button>' +
-            '<button type="button" class="button button-danger" onclick="discardRecording();"><i class="material-icons-round">delete</i>&nbsp;' + t('trackrecorder.discard_button') + '</button>';
+            '<button type="button" class="button" data-on-click="stopRecording();"' + (livePointCount < 2 ? ' disabled' : '') + '><i class="material-icons-round">stop_circle</i>&nbsp;' + t('trackrecorder.stop_button') + '</button>' +
+            '<button type="button" class="button button-danger" data-on-click="discardRecording();"><i class="material-icons-round">delete</i>&nbsp;' + t('trackrecorder.discard_button') + '</button>';
     }
 
     window.trackRecorderStartClicked = function () {
@@ -1017,7 +1017,7 @@
         });
     };
 
-    // Exposed for the onclick="" handlers in renderActiveState() above.
+    // Exposed for the data-on-click="" handlers in renderActiveState() above.
     window.pauseRecording = pauseRecording;
     window.resumeRecording = resumeRecording;
     window.stopRecording = stopRecording;

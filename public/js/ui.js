@@ -377,7 +377,7 @@ function showSecondToolbar(elementId) {
         : '<div class="second-toolbar-icon" title="' + label.title + '">' + TOOLBAR_ICON_SVG[elementId] + '</div>';
     secondToolbar.innerHTML =
         lead +
-        '<button type="button" class="second-toolbar-end-btn" onclick="' + label.onclick + '">' + label.action + '</button>';
+        '<button type="button" class="second-toolbar-end-btn" data-on-click="' + label.onclick + '">' + label.action + '</button>';
     updateSecondToolbarLength();
 
     var editToolbarRect = document.getElementById('editToolbar').getBoundingClientRect();

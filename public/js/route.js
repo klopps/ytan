@@ -95,12 +95,12 @@ function showRouteEditWindow(i, latLng) {
                 '<label for="editRouteName">' + t('route.edit.name_label') + '</label>' +
             '</div>' +
             '<div class="rightCol">' +
-                '<input id="editRouteName" type="text" oninput="validateRouteEditForm();" placeholder="' + t('route.edit.name_placeholder') + '" title="' + t('common.min_3_chars_title') + '" value="' + escapeText(route.name) + '">' +
+                '<input id="editRouteName" type="text" data-on-input="validateRouteEditForm();" placeholder="' + t('route.edit.name_placeholder') + '" title="' + t('common.min_3_chars_title') + '" value="' + escapeText(route.name) + '">' +
             '</div>' +
         '</div>' +
         '<div class="infoWindowElement">' +
             '<label for="editRouteDescription">' + t('route.edit.description_label') + '</label><br>' +
-            '<textarea id="editRouteDescription" rows="5" oninput="validateRouteEditForm();"placeholder="' + t('route.edit.description_placeholder') + '">' + escapeText(route.description) + '</textarea>' +
+            '<textarea id="editRouteDescription" rows="5" data-on-input="validateRouteEditForm();"placeholder="' + t('route.edit.description_placeholder') + '">' + escapeText(route.description) + '</textarea>' +
         '</div>' +
         '<div class="infoWindowElement">' +
             '<div class="leftCol">' +
@@ -154,14 +154,14 @@ function showRouteEditWindow(i, latLng) {
 
     content +=
         '<div class="infoWindowElement">' +
-            '<button id="editRouteSaveBtn" class="button" onClick="saveRoute(' + i + ')" disabled>' + t('common.save') + '</button>&nbsp;';
+            '<button id="editRouteSaveBtn" class="button" data-on-click="saveRoute(' + i + ')" disabled>' + t('common.save') + '</button>&nbsp;';
 
     if (((i !== null) && (typeof i !== 'undefined')) && (routes[i].user_id == user.id)) {
         content = content +
-            '<button id="editRouteRemoveBtn" class="button" onClick="removeRoute(' + i + ')">' + t('common.remove') + '</button>&nbsp;';
+            '<button id="editRouteRemoveBtn" class="button" data-on-click="removeRoute(' + i + ')">' + t('common.remove') + '</button>&nbsp;';
     }
 
-    content += '<button class="button" onClick="cancelEditRoute(' + i + ')">' + t('common.cancel') + '</button>' +
+    content += '<button class="button" data-on-click="cancelEditRoute(' + i + ')">' + t('common.cancel') + '</button>' +
         '</div>';
 
     routeEditWindow.setContent(content);
@@ -1186,11 +1186,11 @@ function showRouteContextMenu(event, i) {
     var content = contextMenuHeading(routes[i].name);
     if (canEdit) {
         content +=
-            '<div class="contextMenuItem" onClick="routeContextMenuEditRoute(' + i + ', null, null);"><i class="material-icons-round">edit</i>' + t('route.context.edit_route') + '</div>' +
-            '<div class="contextMenuItem" onClick="routeContextMenuEditInfo(' + i + ');"><i class="material-icons-round">description</i>' + t('route.context.edit_info') + '</div>';
+            '<div class="contextMenuItem" data-on-click="routeContextMenuEditRoute(' + i + ', null, null);"><i class="material-icons-round">edit</i>' + t('route.context.edit_route') + '</div>' +
+            '<div class="contextMenuItem" data-on-click="routeContextMenuEditInfo(' + i + ');"><i class="material-icons-round">description</i>' + t('route.context.edit_info') + '</div>';
 
         if (routes[i].user_id == user.id) {
-            content += '<div class="contextMenuItem" onClick="routeContextMenuAddToTour(' + i + ');"><i class="material-icons-round">playlist_add</i>' + t('route.context.add_to_tour') + '</div>';
+            content += '<div class="contextMenuItem" data-on-click="routeContextMenuAddToTour(' + i + ');"><i class="material-icons-round">playlist_add</i>' + t('route.context.add_to_tour') + '</div>';
         }
 
         // Same gating as tour-admin.js's "Share" button on the tour
@@ -1200,23 +1200,23 @@ function showRouteContextMenu(event, i) {
         // Share Tour feature already left alone), but offering a share
         // link for something not meant to be public would be misleading.
         if (routes[i].public == 1) {
-            content += '<div class="contextMenuItem" onClick="shareRoute(' + i + ');"><i class="material-icons-round">share</i>' + t('route.context.share') + '</div>';
+            content += '<div class="contextMenuItem" data-on-click="shareRoute(' + i + ');"><i class="material-icons-round">share</i>' + t('route.context.share') + '</div>';
         }
 
         if (isWatchUsable()) {
-            content += '<div class="contextMenuItem" onClick="routeContextMenuSendToWatch(' + i + ');"><i class="material-icons-round">watch</i>' + t('route.context.send_to_watch') + '</div>';
+            content += '<div class="contextMenuItem" data-on-click="routeContextMenuSendToWatch(' + i + ');"><i class="material-icons-round">watch</i>' + t('route.context.send_to_watch') + '</div>';
         }
     }
 
     if (canExport) {
-        content += '<div class="contextMenuItem" onClick="routeContextMenuExportGpx(' + i + ');"><i class="material-icons-round">file_download</i>' + t('route.context.export_gpx') + '</div>';
+        content += '<div class="contextMenuItem" data-on-click="routeContextMenuExportGpx(' + i + ');"><i class="material-icons-round">file_download</i>' + t('route.context.export_gpx') + '</div>';
     }
 
     if (canEdit) {
-        content += '<div class="contextMenuItem" onClick="routeContextMenuRemoveRoute(' + i + ');"><i class="material-icons-round">delete</i>' + t('route.context.delete_route') + '</div>';
+        content += '<div class="contextMenuItem" data-on-click="routeContextMenuRemoveRoute(' + i + ');"><i class="material-icons-round">delete</i>' + t('route.context.delete_route') + '</div>';
     }
 
-    content += '<div class="contextMenuItem" onClick="closeContextMenu();"><i class="material-icons-round">close</i>' + t('common.cancel') + '</div>';
+    content += '<div class="contextMenuItem" data-on-click="closeContextMenu();"><i class="material-icons-round">close</i>' + t('common.cancel') + '</div>';
 
     contextMenu.setPosition(event.latLng);
     contextMenu.setContent(content);
@@ -1398,8 +1398,8 @@ function showRouteInfoWindow(event, i) {
         if (routes[i].user_id == user.id) {
             content +=
             '<div class="infoWindowBottom">' +
-                '<div class="lefthalf"><i class="material-icons-round" title="' + t('route.context.add_to_tour') + '" onClick="toggleAddToTourMenu(' + i + ');">playlist_add</i>' + watchRouteIconHtml(i) + '</div>' +
-                '<div class="routeEdit"><i class="material-icons-round" onClick="editRoute(' + i + ', ' + event.latLng.lat() + ', ' + event.latLng.lng() +');">edit</i></div>' +
+                '<div class="lefthalf"><i class="material-icons-round" title="' + t('route.context.add_to_tour') + '" data-on-click="toggleAddToTourMenu(' + i + ');">playlist_add</i>' + watchRouteIconHtml(i) + '</div>' +
+                '<div class="routeEdit"><i class="material-icons-round" data-on-click="editRoute(' + i + ', ' + event.latLng.lat() + ', ' + event.latLng.lng() +');">edit</i></div>' +
             '</div>' +
             '<div id="addToTourMenu" class="addToTourMenu" style="display:none;"></div>';
         } else if (isWatchUsable()) {
@@ -1463,12 +1463,12 @@ function renderAddToTourMenu() {
     }
 
     var html = '<div class="search-bar"><i class="material-icons-round">search</i>' +
-            '<input type="text" id="addToTourMenuSearchInput" placeholder="' + t('route.add_to_tour.search_placeholder') + '" oninput="onAddToTourMenuSearchInput();"></div>' +
+            '<input type="text" id="addToTourMenuSearchInput" placeholder="' + t('route.add_to_tour.search_placeholder') + '" data-on-input="onAddToTourMenuSearchInput();"></div>' +
         '<div class="tour-length-filter">' +
             '<span class="nav-field-label" style="margin:0;">' + (settings.unit === 'nautical' ? t('common.length_nm') : t('common.length_km')) + '</span>' +
-            '<input type="number" min="0" id="addToTourMenuLengthMin" placeholder="' + t('common.from') + '" oninput="onAddToTourMenuLengthFilterChange();">' +
+            '<input type="number" min="0" id="addToTourMenuLengthMin" placeholder="' + t('common.from') + '" data-on-input="onAddToTourMenuLengthFilterChange();">' +
             '<span>&ndash;</span>' +
-            '<input type="number" min="0" id="addToTourMenuLengthMax" placeholder="' + t('common.to') + '" oninput="onAddToTourMenuLengthFilterChange();">' +
+            '<input type="number" min="0" id="addToTourMenuLengthMax" placeholder="' + t('common.to') + '" data-on-input="onAddToTourMenuLengthFilterChange();">' +
         '</div>' +
         '<div id="addToTourMenuResults"></div>';
 
@@ -1510,14 +1510,14 @@ function renderFilteredAddToTourMenuList() {
         html += '<div class="addToTourMenuItem addToTourMenuEmpty">' + t('route.add_to_tour.no_tours_found') + '</div>';
     } else {
         for (let x = 0; x < ownTours.length; x++) {
-            html += '<div class="addToTourMenuItem" onclick="addRouteToTourFromPopup(' + i + ', ' + ownTours[x].id + ');">' + escapeHTML(ownTours[x].name) + '</div>';
+            html += '<div class="addToTourMenuItem" data-on-click="addRouteToTourFromPopup(' + i + ', ' + ownTours[x].id + ');">' + escapeHTML(ownTours[x].name) + '</div>';
         }
         if (allOwnTours.length > ownTours.length) {
             html += '<div class="addToTourMenuItem addToTourMenuEmpty">' + t('route.add_to_tour.more_refine', { count: allOwnTours.length - ownTours.length }) + '</div>';
         }
     }
     if (canCreateTours()) {
-        html += '<div class="addToTourMenuItem addToTourMenuNew" onclick="addRouteToTourFromPopupAsNewTour(' + i + ');">' + t('route.add_to_tour.new_tour') + '</div>';
+        html += '<div class="addToTourMenuItem addToTourMenuNew" data-on-click="addRouteToTourFromPopupAsNewTour(' + i + ');">' + t('route.add_to_tour.new_tour') + '</div>';
     }
 
     document.getElementById('addToTourMenuResults').innerHTML = html;
@@ -1819,8 +1819,8 @@ function showRouteSplitMenu(index) {
     contextMenu.setPosition(new google.maps.LatLng(points[index].lat, points[index].lng));
     contextMenu.setContent(
         '<div class="contextMenuTitle">' + t('route.split.question') + '</div>' +
-        '<div class="contextMenuItem" onClick="confirmRouteSplit();"><i class="material-icons-round">call_split</i>' + t('route.split.confirm') + '</div>' +
-        '<div class="contextMenuItem" onClick="closeContextMenu();"><i class="material-icons-round">close</i>' + t('common.cancel') + '</div>'
+        '<div class="contextMenuItem" data-on-click="confirmRouteSplit();"><i class="material-icons-round">call_split</i>' + t('route.split.confirm') + '</div>' +
+        '<div class="contextMenuItem" data-on-click="closeContextMenu();"><i class="material-icons-round">close</i>' + t('common.cancel') + '</div>'
     );
     contextMenu.open(map);
 }

@@ -43,7 +43,7 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
                 </div>
             </div>
         </div>
-        <button type="button" class="btn btn-primary mt-3" id="settingTrackFilterSaveBtn" onclick="saveTrackDistanceFilterPresets();"><?= $t('common.save') ?></button>
+        <button type="button" class="btn btn-primary mt-3" id="settingTrackFilterSaveBtn" data-on-click="saveTrackDistanceFilterPresets();"><?= $t('common.save') ?></button>
     </div>
 </div>
 <div class="card mt-3">
@@ -66,7 +66,7 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
                 </div>
             </div>
         </div>
-        <button type="button" class="btn btn-primary mt-3" id="settingRouteLabelFontSizeSaveBtn" onclick="saveRouteLabelFontSizeRange();"><?= $t('common.save') ?></button>
+        <button type="button" class="btn btn-primary mt-3" id="settingRouteLabelFontSizeSaveBtn" data-on-click="saveRouteLabelFontSizeRange();"><?= $t('common.save') ?></button>
     </div>
 </div>
 <?php require $rootDir . '/templates/partials/admin-shell-footer.php'; ?>

@@ -23,9 +23,9 @@ test.describe('Tours', () => {
     const route = (await routeResponse.json()).data;
 
     await page.locator('#sidemenu-toggle').click();
-    await page.locator('button[onclick="openTourAdminMenu();"]').click();
+    await page.locator('button[data-on-click="openTourAdminMenu();"]').click();
 
-    await page.locator('[onclick="showTourCreateForm();"]').click();
+    await page.locator('[data-on-click="showTourCreateForm();"]').click();
     await expect(page.locator('#tourFormName')).toBeVisible();
     await page.locator('#tourFormName').fill('E2E Test Tour');
 
@@ -36,9 +36,9 @@ test.describe('Tours', () => {
     expect(createResponse.ok()).toBeTruthy();
     const tour = (await createResponse.json()).data;
 
-    await page.locator(`[onclick="manageTourRoutes(${tour.id});"]`).click();
-    await expect(page.locator(`[onclick="addRouteToTour(${route.id});"]`)).toBeVisible({ timeout: 10_000 });
-    await page.locator(`[onclick="addRouteToTour(${route.id});"]`).click();
+    await page.locator(`[data-on-click="manageTourRoutes(${tour.id});"]`).click();
+    await expect(page.locator(`[data-on-click="addRouteToTour(${route.id});"]`)).toBeVisible({ timeout: 10_000 });
+    await page.locator(`[data-on-click="addRouteToTour(${route.id});"]`).click();
 
     const [addResponse] = await Promise.all([
       page.waitForResponse((res) => res.url().includes(`/tours/${tour.id}/routes`) && res.request().method() === 'POST'),

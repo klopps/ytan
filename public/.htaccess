@@ -15,12 +15,12 @@ AddType application/vnd.android.package-archive .apk
     # help page's iframe is same-origin), no full URLs as Referer to other
     # sites (Google's referrer-restricted Maps key only needs the origin),
     # and HSTS - only on an HTTPS request, so plain-HTTP dev setups
-    # (localhost, LAN IP, watch simulator) are unaffected. A full
-    # Content-Security-Policy is still open (todo.md): the app relies on
-    # inline scripts and onclick attributes.
+    # (localhost, LAN IP, watch simulator) are unaffected. The
+    # Content-Security-Policy is NOT set here: it carries a per-request
+    # nonce and comes from PHP (src/Http/ContentSecurityPolicy.php) - a
+    # "Header set" here would replace it.
     Header always set X-Content-Type-Options "nosniff"
     Header always set X-Frame-Options "SAMEORIGIN"
-    Header always set Content-Security-Policy "frame-ancestors 'self'"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
     Header always set Strict-Transport-Security "max-age=15552000" env=HTTPS
 </IfModule>

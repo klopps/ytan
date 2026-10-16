@@ -545,7 +545,7 @@ function showPoiInfoWindow(event, i, marker) {
                 content += '<div class="InfoWindowElement"><p class="LighthouseCharacteristic">' + escapeText(pois[i].characteristic) + '</p></div>';
 
                 var lighthouseId = "lighthouse" +  pois[i].id;
-                content += '<div class="InfoWindowLighthouseContainer" onClick="switchSectorLight(' + i + ')">';
+                content += '<div class="InfoWindowLighthouseContainer" data-on-click="switchSectorLight(' + i + ')">';
                 content += '<div id="' + lighthouseId + '" class="InfoWindowLighthouseCharacteristic"></div>';
                 content += '</div>';
 
@@ -574,12 +574,12 @@ function showPoiInfoWindow(event, i, marker) {
         // (or, when it is on the map already, hides) the sector light.
         if (pois[i].poitype_id == '14' && poiHasSectorLight(i)) {
             var sectorLightShown = typeof(sectorLights[i]) != "undefined";
-            content += '<a href="#" class="poiSectorLightButton" onClick="poiInfoWindowSwitchSectorLight(' + i + '); return false;"><i class="material-icons-round">lightbulb_outline</i>&nbsp;' +
+            content += '<a href="#" class="poiSectorLightButton" data-on-click="poiInfoWindowSwitchSectorLight(' + i + '); return false;"><i class="material-icons-round">lightbulb_outline</i>&nbsp;' +
                 t(sectorLightShown ? 'poi.info.hide_sector_light' : 'poi.info.show_sector_light') + '</a>';
         }
 
         if ((pois[i].user_id == user.id) || user.is_admin) {
-            content += '<div class="poiEdit"><i class="material-icons-round" onClick="editPoi(' + i + ');">edit</i></div>';
+            content += '<div class="poiEdit"><i class="material-icons-round" data-on-click="editPoi(' + i + ');">edit</i></div>';
         }
         content += '</div>';
 
@@ -639,7 +639,7 @@ function showPoiContextMenu(event, i) {
     // can't see this function's own `event` closure - same pattern
     // route.js's showRouteContextMenu() already uses.
     contextMenuLastLatLng = event.latLng;
-    var content = '<div class="contextMenuItem" onClick="poiContextMenuShowWeather();"><i class="material-icons-round">cloud</i>' + t('weather.context_menu.item') + '</div>';
+    var content = '<div class="contextMenuItem" data-on-click="poiContextMenuShowWeather();"><i class="material-icons-round">cloud</i>' + t('weather.context_menu.item') + '</div>';
 
     if (pois[i].poitype_id == 14) {
         log('show contextMenu(Sector Light Switch)', LOG_DEBUG);
@@ -654,7 +654,7 @@ function showPoiContextMenu(event, i) {
                     sectorLightVisible = true;
                     sectorLightCommand = t('poi.context.show_sector_light');
                 }
-                content += '<div class="contextMenuItem" onClick="poiContextMenuSwitchSectorLight(' + i + ', ' + sectorLightVisible + ');"><i class="material-icons-round">lightbulb_outline</i>' + sectorLightCommand + '</div>';
+                content += '<div class="contextMenuItem" data-on-click="poiContextMenuSwitchSectorLight(' + i + ', ' + sectorLightVisible + ');"><i class="material-icons-round">lightbulb_outline</i>' + sectorLightCommand + '</div>';
             }
         }
     }
@@ -664,14 +664,14 @@ function showPoiContextMenu(event, i) {
             log('show contextMenu (Edit)', LOG_DEBUG);
 
             content +=
-                '<div class="contextMenuItem" onClick="poiContextMenuEditPoi(' + i + ', null, null);"><i class="material-icons-round">edit</i>' + t('common.edit') + '</div>' +
-                '<div class="contextMenuItem" onClick="poiContextMenuRemovePoi(' + i + ');"><i class="material-icons-round">delete</i>' + t('common.delete') + '</div>';
+                '<div class="contextMenuItem" data-on-click="poiContextMenuEditPoi(' + i + ', null, null);"><i class="material-icons-round">edit</i>' + t('common.edit') + '</div>' +
+                '<div class="contextMenuItem" data-on-click="poiContextMenuRemovePoi(' + i + ');"><i class="material-icons-round">delete</i>' + t('common.delete') + '</div>';
         }
     }
 
     if (content != '') {
         content = contextMenuHeading(pois[i].name) + content +
-            '<div class="contextMenuItem" onClick="closeContextMenu();"><i class="material-icons-round">close</i>' + t('common.cancel') + '</div>';
+            '<div class="contextMenuItem" data-on-click="closeContextMenu();"><i class="material-icons-round">close</i>' + t('common.cancel') + '</div>';
 
         contextMenu.setPosition(event.latLng);
         contextMenu.setContent(content);
@@ -829,7 +829,7 @@ function initPoiEditWindow(i) {
                 '<label for="editPoiName">' + t('poi.edit.name_label') + '</label>' +
             '</div>' +
             '<div class="rightCol">' +
-                '<input id="editPoiName" type="text" oninput="validatePoiEditForm();" placeholder="' + t('poi.edit.name_placeholder') + '" title="' + t('poi.edit.name_title') + '" value="' + escapeText(poi.name) + '">' +
+                '<input id="editPoiName" type="text" data-on-input="validatePoiEditForm();" placeholder="' + t('poi.edit.name_placeholder') + '" title="' + t('poi.edit.name_title') + '" value="' + escapeText(poi.name) + '">' +
             '</div>' +
         '</div>' +
         '<div class="infoWindowElement">' +
@@ -837,7 +837,7 @@ function initPoiEditWindow(i) {
                 '<label for="editPoiType">' + t('poi.edit.type_label') + '</label>&nbsp;' +
             '</div>' +
             '<div class="rightCol">' +
-                '<select id="editPoiType" class="select-css" onChange="changePoiType(event); validatePoiEditForm();" placeholder="' + t('poi.edit.type_placeholder') + '">' +
+                '<select id="editPoiType" class="select-css" data-on-change="changePoiType(event); validatePoiEditForm();" placeholder="' + t('poi.edit.type_placeholder') + '">' +
                     '<option value="0"'  + selected[0]  + '>' + t('poi.edit.type_choose') + '</option>' +
                     '<option value="1"'  + selected[1]  + '>' + t('poi.type.1') + '</option>' +
                     '<option value="10"' + selected[10] + '>' + t('poi.type.10') + '</option>' +
@@ -859,14 +859,14 @@ function initPoiEditWindow(i) {
         '</div>' +
         '<div class="infoWindowElement">' +
             '<label for="editPoiDescription">' + t('poi.edit.description_label') + '</label><br>' +
-            '<textarea id="editPoiDescription" rows="5"  oninput="validatePoiEditForm();"placeholder="' + t('poi.edit.description_placeholder') + '">' + escapeText(poi.description) + '</textarea>' +
+            '<textarea id="editPoiDescription" rows="5"  data-on-input="validatePoiEditForm();"placeholder="' + t('poi.edit.description_placeholder') + '">' + escapeText(poi.description) + '</textarea>' +
         '</div>' +
         '<div id="infoWindowElement" class="infoWindowElement">' +
             '<div class="leftCol">' +
                 '<label for="editPoiUrl">' + t('poi.edit.url_label') + '</label>' +
             '</div>' +
             '<div class="rightCol">' +
-                '<input id="editPoiURL" type="text" maxlength="300" oninput="validatePoiEditForm();" placeholder="https://www.mypoi.tld" title="' + t('poi.edit.url_title') + '" value="' + escapeText(poi.url) + '">' +
+                '<input id="editPoiURL" type="text" maxlength="300" data-on-input="validatePoiEditForm();" placeholder="https://www.mypoi.tld" title="' + t('poi.edit.url_title') + '" value="' + escapeText(poi.url) + '">' +
             '</div>' +
         '</div>' +
         '<div id="editPoiWSIContainer" class="infoWindowElement"' + styleWsi +'>' +
@@ -874,21 +874,21 @@ function initPoiEditWindow(i) {
                 '<label for="editPoiWSI">' + t('poi.edit.wsi_label') + '</label>' +
                 '<p class="wsi-instructions">' + t('poi.edit.wsi_text_instructions') + '</p>' +
             '</div>' +
-            '<input id="editPoiWSI" type="text" maxlength="16" oninput="validatePoiEditForm();" placeholder="0011222222221100" title="' + t('poi.edit.wsi_title') + '" value="' + escapeText(poi.direction) + '">' +
-            '<button type="button" class="button wsi-editor-btn" onclick="openWsiEditorModal();"><i class="material-icons-round">explore</i>' + t('poi.edit.wsi_editor_button') + '</button>' +
+            '<input id="editPoiWSI" type="text" maxlength="16" data-on-input="validatePoiEditForm();" placeholder="0011222222221100" title="' + t('poi.edit.wsi_title') + '" value="' + escapeText(poi.direction) + '">' +
+            '<button type="button" class="button wsi-editor-btn" data-on-click="openWsiEditorModal();"><i class="material-icons-round">explore</i>' + t('poi.edit.wsi_editor_button') + '</button>' +
         '</div>' +
         '<div id="editPoiLighthouseContainer" class="infoWindowElement"' + styleLighthouse +'>' +
             '<div class="leftCol">' +
                 '<label for="editPoiLighthouseCharacteristic">' + t('poi.edit.characteristic_label') + ' </label>' +
             '</div>' +
             '<div class="rightCol">' +
-                '<input id="editPoiLighthouseCharacteristic" type="text" maxlength="50" oninput="validatePoiEditForm();" placeholder="Iso WRG 6s" title="' + t('poi.edit.characteristic_title') + '" value="' + escapeText(poi.characteristic) + '">' +
+                '<input id="editPoiLighthouseCharacteristic" type="text" maxlength="50" data-on-input="validatePoiEditForm();" placeholder="Iso WRG 6s" title="' + t('poi.edit.characteristic_title') + '" value="' + escapeText(poi.characteristic) + '">' +
             '</div>' +
             '<div class="infoWindowElement">' +
                 '<label for="editPoiLighthouseSectorCharacteristic">' + t('poi.edit.sector_characteristic_label') + ' </label>' +
             '</div>' +
             '<div class="infoWindowElement">' +
-                '<textarea id="editPoiLighthouseSectorCharacteristic" rows="6" maxlength="250" oninput="validatePoiEditForm();" placeholder="G 8M 30-110&#10;W 10M 110-195&#10;R 8M 195-275" title="' + t('poi.edit.sector_characteristic_title') + '">' + escapeText(poi.sector_characteristic) + '</textarea>' +
+                '<textarea id="editPoiLighthouseSectorCharacteristic" rows="6" maxlength="250" data-on-input="validatePoiEditForm();" placeholder="G 8M 30-110&#10;W 10M 110-195&#10;R 8M 195-275" title="' + t('poi.edit.sector_characteristic_title') + '">' + escapeText(poi.sector_characteristic) + '</textarea>' +
             '</div>' +
         '</div>'+
     '</div>';
@@ -928,12 +928,12 @@ function initPoiEditWindow(i) {
     }
     content +=
         '<div class="infoWindowElement">' +
-            '<button id="editPoiSaveBtn" class="button" onClick="savePoi(' + i + ')" disabled>' + t('common.save') + '</button>&nbsp;';
+            '<button id="editPoiSaveBtn" class="button" data-on-click="savePoi(' + i + ')" disabled>' + t('common.save') + '</button>&nbsp;';
 
     if ((i !== null) && (typeof i !== 'undefined')) {
-        content += '<button id="editPoiRemoveBtn" class="button" onClick="removePoi(' + i + ')">' + t('common.remove') + '</button>&nbsp;';
+        content += '<button id="editPoiRemoveBtn" class="button" data-on-click="removePoi(' + i + ')">' + t('common.remove') + '</button>&nbsp;';
     }
-    content += '<button class="button" onClick="cancelEditPoi(' + i +')">' + t('common.cancel') + '</button>' +
+    content += '<button class="button" data-on-click="cancelEditPoi(' + i +')">' + t('common.cancel') + '</button>' +
         '</div>';
 
     content += '<div id="poiCoordinates" class="poiEditWindowCoordinates"><i class="material-icons-round">navigation</i>' + formatCoordinates(Number.parseFloat(poi.latitude), Number.parseFloat(poi.longitude)) + '</div>';
@@ -1051,7 +1051,7 @@ function renderWsiDialPaths(code) {
         var angle1 = i * (360 / WSI_SECTOR_COUNT);
         var angle2 = (i + 1) * (360 / WSI_SECTOR_COUNT);
         var value = code.charAt(i);
-        svg += '<path class="wsi-hit" d="' + wsiDescribeHitSector(WSI_DIAL_CENTER, WSI_DIAL_CENTER, WSI_DIAL_HIT_RADIUS, angle1, angle2) + '" onclick="wsiDialSectorClick(' + i + ');"></path>';
+        svg += '<path class="wsi-hit" d="' + wsiDescribeHitSector(WSI_DIAL_CENTER, WSI_DIAL_CENTER, WSI_DIAL_HIT_RADIUS, angle1, angle2) + '" data-on-click="wsiDialSectorClick(' + i + ');"></path>';
         svg += '<path id="wsiSector' + i + '" class="wsi-sector wsi-sector-' + value + '" d="' + wsiDescribeAnnularSector(WSI_DIAL_CENTER, WSI_DIAL_CENTER, WSI_DIAL_INNER_RADIUS, WSI_DIAL_OUTER_RADIUS, angle1, angle2) + '"></path>';
     }
     return svg;

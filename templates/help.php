@@ -23,7 +23,7 @@ $title = $t('help.title');
     <link rel="stylesheet" type="text/css" href="<?= $baseUrl ?>/css/fonts.css?v=<?= $assetV('/css/fonts.css') ?>" />
     <link rel="stylesheet" type="text/css" href="<?= $baseUrl ?>/css/help.css?v=<?= $assetV('/css/help.css') ?>" />
     <link rel="shortcut icon" href="<?= $baseUrl ?>/favicon.ico">
-    <script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>
         // Same theme as the app: inside the app's panel the parent page's,
         // standalone the one stored in the settings cookie.
         (function () {
@@ -52,7 +52,7 @@ $title = $t('help.title');
             <button type="button" id="helpSearchClear" class="help-search-clear" title="<?= $e($t('help.search_clear')) ?>" aria-label="<?= $e($t('help.search_clear')) ?>" hidden><i class="material-icons-round">close</i></button>
         </div>
         <button type="button" id="helpTocToggle" class="help-icon-btn help-toc-toggle" aria-expanded="false" aria-controls="helpToc" title="<?= $e($t('help.toc_toggle')) ?>" aria-label="<?= $e($t('help.toc_toggle')) ?>"><i class="material-icons-round">menu_book</i></button>
-        <button type="button" class="help-icon-btn" onclick="window.print();" title="<?= $e($t('help.print')) ?>" aria-label="<?= $e($t('help.print')) ?>"><i class="material-icons-round">print</i></button>
+        <button type="button" class="help-icon-btn" data-on-click="printPage();" title="<?= $e($t('help.print')) ?>" aria-label="<?= $e($t('help.print')) ?>"><i class="material-icons-round">print</i></button>
     </header>
 
     <div class="help-layout">
@@ -131,7 +131,8 @@ $title = $t('help.title');
 
     <button type="button" id="helpToTop" class="help-to-top" title="<?= $e($t('help.back_to_top')) ?>" aria-label="<?= $e($t('help.back_to_top')) ?>" hidden><i class="material-icons-round">arrow_upward</i></button>
 
-    <script>window.HELP_I18N = <?= json_encode(['results' => $t('help.search_results', ['count' => '{count}'])], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;</script>
-    <script src="<?= $baseUrl ?>/js/help.js?v=<?= $assetV('/js/help.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.HELP_I18N = <?= json_encode(['results' => $t('help.search_results', ['count' => '{count}'])], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;</script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="<?= $baseUrl ?>/js/csp-events.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/csp-events.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="<?= $baseUrl ?>/js/help.js?v=<?= $assetV('/js/help.js') ?>"></script>
 </body>
 </html>

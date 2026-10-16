@@ -33,7 +33,7 @@ function apiErrorMessage(err) {
  * per call site since there are only two of them.
  */
 function passwordToggleButtonHtml(inputId) {
-    return '<button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility(\'' + inputId + '\', this);" aria-label="' + t('common.show_password') + '"><i class="material-icons-round">visibility</i></button>';
+    return '<button type="button" class="password-toggle-btn" data-on-click="togglePasswordVisibility(\'' + inputId + '\', this);" aria-label="' + t('common.show_password') + '"><i class="material-icons-round">visibility</i></button>';
 }
 
 /**
@@ -89,7 +89,9 @@ function escapeHTML(unsafe) {
  * @returns {string} sanitized HTML
  */
 function renderMarkdown(text) {
-    return DOMPurify.sanitize(marked.parse(String(text ?? '')));
+    // ALLOW_DATA_ATTR: false - a data-on-click="..." attribute would be run
+    // by csp-events.js on the next click.
+    return DOMPurify.sanitize(marked.parse(String(text ?? '')), { ALLOW_DATA_ATTR: false });
 }
 
 /**

@@ -228,6 +228,13 @@ auth required. `lat` must be -90..90, `lng` -180..180 (else 422). Both call
 external services (Open-Meteo/SMHI, Nominatim), so together they are limited
 to 120 requests per IP in 10 minutes (429, `auth.too_many_attempts`).
 
+## CSP reports
+
+`POST /api/v1/csp-report` - target of the HTML pages' Content-Security-Policy
+`report-uri`; browsers send violation reports here. The body is written,
+shortened to 2,000 characters, to the PHP error log; at most 30 reports per IP
+in 10 minutes, always `204`.
+
 ## Health
 
 `GET /api/v1/health` → `{"status": "ok"}`, no DB access - useful for

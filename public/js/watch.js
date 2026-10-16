@@ -87,7 +87,7 @@ function watchRouteIconHtml(i) {
     }
     const isCurrent = watchStatus.route && watchStatus.route.id == routes[i].id;
     const title = isCurrent ? t('watch.route_is_current') : t('watch.send_route');
-    return '<i class="material-icons-round watch-route-icon' + (isCurrent ? ' is-current' : '') + '" title="' + escapeHTML(title) + '" onClick="sendRouteToWatch(' + i + ');">watch</i>';
+    return '<i class="material-icons-round watch-route-icon' + (isCurrent ? ' is-current' : '') + '" title="' + escapeHTML(title) + '" data-on-click="sendRouteToWatch(' + i + ');">watch</i>';
 }
 
 function sendRouteToWatch(i) {
@@ -142,14 +142,14 @@ function showWatchSection(newToken) {
             html +=
                 '<div class="nav-field"><label for="watchTokenValue">' + escapeHTML(t('watch.token_label')) + '</label>' +
                 '<div class="watch-token-row"><input id="watchTokenValue" type="text" readonly value="' + escapeHTML(newToken) + '">' +
-                '<button type="button" class="nav-chip-btn" onclick="copyWatchToken();">' + escapeHTML(t('watch.copy')) + '</button></div></div>' +
+                '<button type="button" class="nav-chip-btn" data-on-click="copyWatchToken();">' + escapeHTML(t('watch.copy')) + '</button></div></div>' +
                 '<div class="nav-form-message">' + escapeHTML(t('watch.token_hint')) + '</div>';
         }
 
         // The settings file with the key stays available until a new key is created.
         if (status.has_settings_file) {
             html += '<div class="nav-form-message">' + escapeHTML(t('watch.settings_file_hint')) + '</div>' +
-                '<button type="button" class="nav-btn-secondary" onclick="downloadWatchSettingsFile();"><i class="material-icons-round">file_download</i>&nbsp;' +
+                '<button type="button" class="nav-btn-secondary" data-on-click="downloadWatchSettingsFile();"><i class="material-icons-round">file_download</i>&nbsp;' +
                 escapeHTML(t('watch.settings_file_download')) + '</button>';
         } else if (status.has_token) {
             html += '<div class="nav-form-message">' + escapeHTML(t('watch.settings_file_missing')) + '</div>';
@@ -160,7 +160,7 @@ function showWatchSection(newToken) {
                 ? t('watch.current_route', { name: status.route.name })
                 : t('watch.no_route')) + '</div>';
             if (status.route) {
-                html += '<span class="nav-link-small" onclick="clearWatchRoute();">' + escapeHTML(t('watch.clear_route')) + '</span>';
+                html += '<span class="nav-link-small" data-on-click="clearWatchRoute();">' + escapeHTML(t('watch.clear_route')) + '</span>';
             }
         }
 
@@ -168,10 +168,10 @@ function showWatchSection(newToken) {
             html += watchColorsHtml(status);
         }
 
-        html += '<button type="button" class="nav-btn-secondary" onclick="createWatchToken();"><i class="material-icons-round">vpn_key</i>&nbsp;' +
+        html += '<button type="button" class="nav-btn-secondary" data-on-click="createWatchToken();"><i class="material-icons-round">vpn_key</i>&nbsp;' +
             escapeHTML(status.has_token ? t('watch.regenerate_token') : t('watch.create_token')) + '</button>';
         if (status.has_token) {
-            html += '<button type="button" class="nav-btn-secondary nav-btn-danger" onclick="unpairWatch();"><i class="material-icons-round">link_off</i>&nbsp;' + escapeHTML(t('watch.unpair')) + '</button>';
+            html += '<button type="button" class="nav-btn-secondary nav-btn-danger" data-on-click="unpairWatch();"><i class="material-icons-round">link_off</i>&nbsp;' + escapeHTML(t('watch.unpair')) + '</button>';
         }
         openProfileSub(title, html + navCancelButtonHtml());
     });
@@ -202,14 +202,19 @@ function watchColorsHtml(status) {
             html += '<label class="watch-color-cell is-' + background + '">' +
                 '<span class="watch-color-sample" style="color:' + color + '">' + escapeHTML(element.sample) + '</span>' +
                 '<input type="color" data-element="' + element.key + '" data-background="' + background + '" value="' + color + '" ' +
-                'oninput="this.previousElementSibling.style.color = this.value;"></label>';
+                'data-on-input="previewWatchColor(this);"></label>';
         });
     });
     html += '</div>' +
         '<div class="nav-form-message">' + escapeHTML(t('watch.colors_hint')) + '</div>' +
-        '<button type="button" class="nav-btn-secondary" onclick="saveWatchColors();"><i class="material-icons-round">palette</i>&nbsp;' + escapeHTML(t('watch.colors_save')) + '</button>' +
-        '<span class="nav-link-small" onclick="resetWatchColors();">' + escapeHTML(t('watch.colors_reset')) + '</span>';
+        '<button type="button" class="nav-btn-secondary" data-on-click="saveWatchColors();"><i class="material-icons-round">palette</i>&nbsp;' + escapeHTML(t('watch.colors_save')) + '</button>' +
+        '<span class="nav-link-small" data-on-click="resetWatchColors();">' + escapeHTML(t('watch.colors_reset')) + '</span>';
     return html;
+}
+
+/** Live preview: the sample text next to a color picker takes its color. */
+function previewWatchColor(input) {
+    input.previousElementSibling.style.color = input.value;
 }
 
 function saveWatchColors() {

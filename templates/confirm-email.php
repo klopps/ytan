@@ -4,8 +4,9 @@
     <title><?= htmlspecialchars($appName) ?> | <?= $t('page_title.confirm_email') ?></title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta charset="utf-8" />
-    <script>window.YTAN_TRANSLATIONS = <?= json_encode($translator->all(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;</script>
-    <script src="<?= $baseUrl ?>/js/i18n.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/i18n.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_TRANSLATIONS = <?= json_encode($translator->all(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;</script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="<?= $baseUrl ?>/js/csp-events.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/csp-events.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="<?= $baseUrl ?>/js/i18n.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/i18n.js') ?>"></script>
     <link rel="stylesheet" type="text/css" href="<?= $baseUrl ?>/css/style.css?v=<?= \Ytan\App::assetVersion($rootDir, '/css/style.css') ?>" />
     <link rel="shortcut icon" href="<?= $baseUrl ?>/favicon.ico">
     <style>
@@ -30,11 +31,11 @@
         <p><?= $t('confirmemail.subtitle') ?></p>
         <div id="confirmEmailMessage"></div>
         <p>
-            <button id="confirmEmailBtn" class="startbtn" onclick="submitConfirmEmail()"><?= $t('confirmemail.button') ?></button>
+            <button id="confirmEmailBtn" class="startbtn" data-on-click="submitConfirmEmail()"><?= $t('confirmemail.button') ?></button>
         </p>
     </div>
 
-    <script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>
         var token = <?= json_encode($_GET['token'] ?? '') ?>;
         var apiBase = "<?= htmlspecialchars($baseUrl, ENT_QUOTES) ?>/api/v1";
 

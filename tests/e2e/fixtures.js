@@ -21,6 +21,30 @@ function readCredentials() {
  *   itself, which drives the real form.
  */
 const test = base.test.extend({
+  /**
+   * Every page fails its test on a Content-Security-Policy violation or a
+   * handler csp-events.js couldn't run (e.g. a new onclick="..." that
+   * slipped in, or a data-on-click calling a non-global function) - the
+   * browser only logs those to the console, the UI just silently does
+   * nothing.
+   */
+  page: async ({ page }, use) => {
+    const problems = [];
+    page.on('console', (msg) => {
+      const text = msg.text();
+      if (msg.type() === 'error' && /Content Security Policy|csp-events/.test(text)) {
+        problems.push(text);
+      }
+    });
+    page.on('pageerror', (err) => {
+      if (/csp-events/.test(String(err))) {
+        problems.push(String(err));
+      }
+    });
+    await use(page);
+    base.expect(problems, 'CSP violations / failed data-on-* handlers').toEqual([]);
+  },
+
   credentials: async ({}, use) => {
     await use(readCredentials());
   },

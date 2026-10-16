@@ -28,7 +28,7 @@
     <!-- Verhindert einen Theme-Flash beim Laden, analog zum Inline-Snippet
          in admin-shell-header.php - eigener localStorage-Key, unabhängig
          vom Settings-Cookie der Haupt-App. -->
-    <script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>
         (function () {
             var dark = false;
             try {
@@ -46,9 +46,9 @@
     <link rel="stylesheet" type="text/css" href="<?= $baseUrl ?>/css/fonts.css?v=<?= \Ytan\App::assetVersion($rootDir, '/css/fonts.css') ?>" />
     <link rel="shortcut icon" href="<?= $baseUrl ?>/favicon.ico">
 
-    <script>window.YTAN_API_BASE = "<?= htmlspecialchars($baseUrl, ENT_QUOTES) ?>/api/v1";</script>
-    <script>window.YTAN_LOCALE = "<?= htmlspecialchars($translator->locale(), ENT_QUOTES) ?>";</script>
-    <script>window.YTAN_TRANSLATIONS = <?= json_encode($translator->all(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;</script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_API_BASE = "<?= htmlspecialchars($baseUrl, ENT_QUOTES) ?>/api/v1";</script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_LOCALE = "<?= htmlspecialchars($translator->locale(), ENT_QUOTES) ?>";</script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_TRANSLATIONS = <?= json_encode($translator->all(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;</script>
 
     <style>
         body {
@@ -177,10 +177,10 @@
             <label for="loginPassword"><?= $t('admin.login.password') ?></label>
             <div class="password-input-wrapper">
                 <input id="loginPassword" type="password" autocomplete="current-password">
-                <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('loginPassword', this);" aria-label="<?= htmlspecialchars($t('common.show_password'), ENT_QUOTES) ?>"><i class="material-icons-round">visibility</i></button>
+                <button type="button" class="password-toggle-btn" data-on-click="togglePasswordVisibility('loginPassword', this);" aria-label="<?= htmlspecialchars($t('common.show_password'), ENT_QUOTES) ?>"><i class="material-icons-round">visibility</i></button>
             </div>
         </div>
-        <button type="button" class="nav-btn-primary" onclick="submitAdminLogin();"><i class="material-icons-round">login</i>&nbsp;<?= $t('admin.login.submit') ?></button>
+        <button type="button" class="nav-btn-primary" data-on-click="submitAdminLogin();"><i class="material-icons-round">login</i>&nbsp;<?= $t('admin.login.submit') ?></button>
         <div id="loginMessage" class="nav-form-message"></div>
     </div>
 
@@ -192,9 +192,9 @@
                     <p><?= $t('admin.styleguide.intro') ?></p>
                 </div>
                 <div class="nav-segmented" id="styleguideThemeToggle">
-                    <input type="radio" id="styleguideThemeLight" name="styleguideTheme" value="light" onclick="setStyleguideTheme('light');">
+                    <input type="radio" id="styleguideThemeLight" name="styleguideTheme" value="light" data-on-click="setStyleguideTheme('light');">
                     <label for="styleguideThemeLight"><?= $t('admin.theme.light') ?></label>
-                    <input type="radio" id="styleguideThemeDark" name="styleguideTheme" value="dark" onclick="setStyleguideTheme('dark');">
+                    <input type="radio" id="styleguideThemeDark" name="styleguideTheme" value="dark" data-on-click="setStyleguideTheme('dark');">
                     <label for="styleguideThemeDark"><?= $t('admin.theme.dark') ?></label>
                 </div>
             </div>
@@ -281,7 +281,7 @@
                         <label for="sgPlainPassword"><?= $t('admin.login.password') ?></label>
                         <div class="password-input-wrapper">
                             <input id="sgPlainPassword" type="password" autocomplete="off">
-                            <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('sgPlainPassword', this);" aria-label="<?= htmlspecialchars($t('common.show_password'), ENT_QUOTES) ?>"><i class="material-icons-round">visibility</i></button>
+                            <button type="button" class="password-toggle-btn" data-on-click="togglePasswordVisibility('sgPlainPassword', this);" aria-label="<?= htmlspecialchars($t('common.show_password'), ENT_QUOTES) ?>"><i class="material-icons-round">visibility</i></button>
                         </div>
                     </div>
                     <span class="styleguide-swatch-label">.nav-field .password-input-wrapper</span>
@@ -297,7 +297,7 @@
                     <div class="form-floating password-input-wrapper styleguide-field">
                         <input type="password" class="form-control" id="sgFloatingPassword" autocomplete="off" placeholder=" ">
                         <label for="sgFloatingPassword"><?= $t('admin.styleguide.floating_label_password') ?></label>
-                        <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('sgFloatingPassword', this);" aria-label="<?= htmlspecialchars($t('common.show_password'), ENT_QUOTES) ?>"><i class="material-icons-round">visibility</i></button>
+                        <button type="button" class="password-toggle-btn" data-on-click="togglePasswordVisibility('sgFloatingPassword', this);" aria-label="<?= htmlspecialchars($t('common.show_password'), ENT_QUOTES) ?>"><i class="material-icons-round">visibility</i></button>
                     </div>
                     <span class="styleguide-swatch-label">.form-floating + .password-input-wrapper</span>
                 </div>
@@ -348,10 +348,10 @@
             <h2><?= $t('admin.styleguide.section_toasts') ?></h2>
             <p class="styleguide-source"><?= $t('admin.styleguide.source_label') ?> <code>public/js/toast.js</code> - die einzige bereits durchgängig wiederverwendete Komponente. Live-Demo, kein Screenshot.</p>
             <div class="styleguide-row">
-                <button type="button" class="nav-btn-secondary" onclick="styleguideShowToast('info');">Info</button>
-                <button type="button" class="nav-btn-secondary" onclick="styleguideShowToast('success');">Success</button>
-                <button type="button" class="nav-btn-secondary" onclick="styleguideShowToast('warning');">Warning</button>
-                <button type="button" class="nav-btn-secondary" onclick="styleguideShowToast('error');">Error</button>
+                <button type="button" class="nav-btn-secondary" data-on-click="styleguideShowToast('info');">Info</button>
+                <button type="button" class="nav-btn-secondary" data-on-click="styleguideShowToast('success');">Success</button>
+                <button type="button" class="nav-btn-secondary" data-on-click="styleguideShowToast('warning');">Warning</button>
+                <button type="button" class="nav-btn-secondary" data-on-click="styleguideShowToast('error');">Error</button>
             </div>
         </section>
 
@@ -371,14 +371,15 @@
 
     <div id="toastContainer" class="toast-container"></div>
 
-    <script src="<?= $baseUrl ?>/js/config.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/config.js') ?>"></script>
-    <script src="<?= $baseUrl ?>/js/i18n.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/i18n.js') ?>"></script>
-    <script src="<?= $baseUrl ?>/js/helper.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/helper.js') ?>"></script>
-    <script src="<?= $baseUrl ?>/js/api-client.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/api-client.js') ?>"></script>
-    <script src="<?= $baseUrl ?>/js/toast.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/toast.js') ?>"></script>
-    <script src="<?= $baseUrl ?>/js/admin-auth.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/admin-auth.js') ?>"></script>
-    <script src="<?= $baseUrl ?>/js/admin-styleguide.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/admin-styleguide.js') ?>"></script>
-    <script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="<?= $baseUrl ?>/js/csp-events.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/csp-events.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="<?= $baseUrl ?>/js/config.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/config.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="<?= $baseUrl ?>/js/i18n.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/i18n.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="<?= $baseUrl ?>/js/helper.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/helper.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="<?= $baseUrl ?>/js/api-client.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/api-client.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="<?= $baseUrl ?>/js/toast.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/toast.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="<?= $baseUrl ?>/js/admin-auth.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/admin-auth.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="<?= $baseUrl ?>/js/admin-styleguide.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/admin-styleguide.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>
         initStyleguideTheme();
         initAdminAuth({ contentId: 'styleguideContent' });
     </script>

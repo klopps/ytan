@@ -202,3 +202,8 @@ const NativeApp = (() => {
 })();
 
 document.addEventListener('DOMContentLoaded', () => NativeApp.init());
+
+/** Drawer row "Update app" (data-on-click, csp-events.js calls only global functions). */
+function installAppUpdate() {
+    NativeApp.installUpdate();
+}

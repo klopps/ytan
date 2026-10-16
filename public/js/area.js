@@ -58,12 +58,12 @@ function showAreaEditWindow(i, latLng) {
                 '<label for="editAreaName">' + t('area.edit.name_label') + '</label>' +
             '</div>' +
             '<div class="rightCol">' +
-                '<input id="editAreaName" type="text" oninput="validateAreaEditForm();" placeholder="' + t('area.edit.name_placeholder') + '" title="' + t('common.min_3_chars_title') + '" value="' + escapeText(area.name) + '">' +
+                '<input id="editAreaName" type="text" data-on-input="validateAreaEditForm();" placeholder="' + t('area.edit.name_placeholder') + '" title="' + t('common.min_3_chars_title') + '" value="' + escapeText(area.name) + '">' +
             '</div>' +
         '</div>' +
         '<div class="infoWindowElement">' +
             '<label for="editAreaDescription">' + t('area.edit.description_label') + '</label><br>' +
-            '<textarea id="editAreaDescription" rows="5" oninput="validateAreaEditForm();"placeholder="' + t('area.edit.description_placeholder') + '">' + escapeText(area.description) + '</textarea>' +
+            '<textarea id="editAreaDescription" rows="5" data-on-input="validateAreaEditForm();"placeholder="' + t('area.edit.description_placeholder') + '">' + escapeText(area.description) + '</textarea>' +
         '</div>' +
         '<div class="infoWindowElement">' +
             '<div class="leftCol">' +
@@ -80,7 +80,7 @@ function showAreaEditWindow(i, latLng) {
                 '<label for="editAreaOpacity">' + t('area.edit.opacity_label') + '</label>' +
             '</div>' +
             '<div class="rightCol">' +
-                '<input id="editAreaOpacity" class="slider" type="range" min="0" max="20" oninput="validateAreaEditForm();" title="' + t('area.edit.opacity_title') + '" value="' + area.opacity * 20 + '">' +
+                '<input id="editAreaOpacity" class="slider" type="range" min="0" max="20" data-on-input="validateAreaEditForm();" title="' + t('area.edit.opacity_title') + '" value="' + area.opacity * 20 + '">' +
                 '&nbsp;<span id="editAreaOpacityValue">' + area.opacity.toFixed(2) + '</span>' +
             '</div>' +
         '</div>' +
@@ -89,7 +89,7 @@ function showAreaEditWindow(i, latLng) {
                 '<label for="editAreaZindex">' + t('area.edit.zindex_label') + '</label>' +
             '</div>' +
             '<div class="rightCol">' +
-                '<input id="editAreaZindex" type="text" oninput="validateAreaEditForm();" placeholder="1" title="' + t('area.edit.zindex_title') + '" value="' + escapeHTML(area.zindex) + '">' +
+                '<input id="editAreaZindex" type="text" data-on-input="validateAreaEditForm();" placeholder="1" title="' + t('area.edit.zindex_title') + '" value="' + escapeHTML(area.zindex) + '">' +
             '</div>' +
         '</div>'
         ;
@@ -127,14 +127,14 @@ function showAreaEditWindow(i, latLng) {
 
     content +=
         '<div class="infoWindowElement">' +
-            '<button id="editAreaSaveBtn" class="button" onClick="saveArea(' + i + ')" disabled>' + t('common.save') + '</button>&nbsp;';
+            '<button id="editAreaSaveBtn" class="button" data-on-click="saveArea(' + i + ')" disabled>' + t('common.save') + '</button>&nbsp;';
 
     if (((i !== null) && (typeof i !== 'undefined')) && (areas[i].user_id == user.id)) {
         content = content +
-            '<button id="editAreaRemoveBtn" class="button" onClick="removeArea(' + i + ')">' + t('common.remove') + '</button>&nbsp;';
+            '<button id="editAreaRemoveBtn" class="button" data-on-click="removeArea(' + i + ')">' + t('common.remove') + '</button>&nbsp;';
     }
 
-    content += '<button class="button" onClick="cancelEditArea(' + i + ')">' + t('common.cancel') + '</button>' +
+    content += '<button class="button" data-on-click="cancelEditArea(' + i + ')">' + t('common.cancel') + '</button>' +
         '</div>';
 
     areaEditWindow.setContent(content);
@@ -630,10 +630,10 @@ function showAreaContextMenu(event, i) {
 
             var content =
                 contextMenuHeading(areas[i].name) +
-                '<div class="contextMenuItem" onClick="areaContextMenuEditArea(' + i + ', null, null);"><i class="material-icons-round">edit</i>' + t('area.context.edit_area') + '</div>' +
-                '<div class="contextMenuItem" onClick="areaContextMenuEditInfo(' + i + ');"><i class="material-icons-round">description</i>' + t('common.edit_info') + '</div>' +
-                '<div class="contextMenuItem" onClick="areaContextMenuRemoveArea(' + i + ');"><i class="material-icons-round">delete</i>' + t('area.context.delete_area') + '</div>' +
-                '<div class="contextMenuItem" onClick="closeContextMenu();"><i class="material-icons-round">close</i>' + t('common.cancel') + '</div>'
+                '<div class="contextMenuItem" data-on-click="areaContextMenuEditArea(' + i + ', null, null);"><i class="material-icons-round">edit</i>' + t('area.context.edit_area') + '</div>' +
+                '<div class="contextMenuItem" data-on-click="areaContextMenuEditInfo(' + i + ');"><i class="material-icons-round">description</i>' + t('common.edit_info') + '</div>' +
+                '<div class="contextMenuItem" data-on-click="areaContextMenuRemoveArea(' + i + ');"><i class="material-icons-round">delete</i>' + t('area.context.delete_area') + '</div>' +
+                '<div class="contextMenuItem" data-on-click="closeContextMenu();"><i class="material-icons-round">close</i>' + t('common.cancel') + '</div>'
                 ;
 
             contextMenu.setPosition(event.latLng);
@@ -683,7 +683,7 @@ function showAreaInfoWindow(event, i) {
             '<div class="lefthalf"><i>' + areaSizeText + '</i></div>';
     if ((user.id !== null) && ((areas[i].user_id == user.id) || user.is_admin)) {
         content +=
-            '<div class="righthalf areaEdit"><i class="material-icons-round" onClick="editArea(' + i + ', ' + event.latLng.lat() + ', ' + event.latLng.lng() +');">edit</i></div>';
+            '<div class="righthalf areaEdit"><i class="material-icons-round" data-on-click="editArea(' + i + ', ' + event.latLng.lat() + ', ' + event.latLng.lng() +');">edit</i></div>';
     } else {
         content +=
             '<div class="righthalf"></div>';

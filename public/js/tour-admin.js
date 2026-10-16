@@ -185,20 +185,20 @@ function renderTourList() {
         sizeOptions += '<option value="' + size + '"' + (size === tourAdminPageSize ? ' selected' : '') + '>' + size + '</option>';
     }
 
-    setTourAdminHeader(t('tour_admin.title'), closeTourAdminMenu, canCreateTours() ? '<div class="startbtn" onclick="showTourCreateForm();"><i class="material-icons-round">add</i>&nbsp;' + t('tour_admin.new_tour') + '</div>' : '');
+    setTourAdminHeader(t('tour_admin.title'), closeTourAdminMenu, canCreateTours() ? '<div class="startbtn" data-on-click="showTourCreateForm();"><i class="material-icons-round">add</i>&nbsp;' + t('tour_admin.new_tour') + '</div>' : '');
 
     var html = '<div class="search-bar"><i class="material-icons-round">search</i>' +
-            '<input type="text" id="tourSearchInput" placeholder="' + t('tour_admin.search_placeholder') + '" oninput="onTourSearchInput();"></div>' +
+            '<input type="text" id="tourSearchInput" placeholder="' + t('tour_admin.search_placeholder') + '" data-on-input="onTourSearchInput();"></div>' +
         '<div class="tour-list-toolbar-row">' +
             '<div class="tour-length-filter">' +
                 '<span class="nav-field-label" style="margin:0;">' + (settings.unit === 'nautical' ? t('common.length_nm') : t('common.length_km')) + '</span>' +
-                '<input type="number" min="0" id="tourLengthMin" placeholder="' + t('common.from') + '" value="' + escapeHTML(tourAdminLengthFilter.min) + '" oninput="onTourLengthFilterChange();">' +
+                '<input type="number" min="0" id="tourLengthMin" placeholder="' + t('common.from') + '" value="' + escapeHTML(tourAdminLengthFilter.min) + '" data-on-input="onTourLengthFilterChange();">' +
                 '<span>&ndash;</span>' +
-                '<input type="number" min="0" id="tourLengthMax" placeholder="' + t('common.to') + '" value="' + escapeHTML(tourAdminLengthFilter.max) + '" oninput="onTourLengthFilterChange();">' +
+                '<input type="number" min="0" id="tourLengthMax" placeholder="' + t('common.to') + '" value="' + escapeHTML(tourAdminLengthFilter.max) + '" data-on-input="onTourLengthFilterChange();">' +
             '</div>' +
             '<div class="admin-pagination-size tour-page-size-row">' +
                 '<label for="tourPageSize">' + t('common.rows_per_page') + '</label>' +
-                '<select id="tourPageSize" class="select-css select-css-compact" onchange="onTourAdminPageSizeChange();">' + sizeOptions + '</select>' +
+                '<select id="tourPageSize" class="select-css select-css-compact" data-on-change="onTourAdminPageSizeChange();">' + sizeOptions + '</select>' +
             '</div>' +
         '</div>' +
         '<div id="tourListResults"></div>';
@@ -280,7 +280,7 @@ function tourListSectionHtml(title, list, showCreator, sectionKey) {
             tags += '<span class="tag-chip">+' + (tour.tags.length - 3) + '</span>';
         }
 
-        html += '<div class="tour-list-row" onclick="showTourDetail(' + tour.id + ');">' +
+        html += '<div class="tour-list-row" data-on-click="showTourDetail(' + tour.id + ');">' +
                 '<strong>' + escapeHTML(tour.name) + '</strong>' +
                 (tour.public == 1 ? ' <span class="admin-badge">' + t('common.public_badge') + '</span>' : '') +
                 '<br><span class="tour-list-meta">' + formatDistance(tour.total_length || 0, settings.unit) +
@@ -296,9 +296,9 @@ function tourListSectionHtml(title, list, showCreator, sectionKey) {
         var page = tourAdminPage[sectionKey];
         html += '<div class="admin-pagination admin-pagination-section-only">' +
             '<div class="admin-pagination-nav">' +
-                '<span class="admin-pagination-nav-btn' + (page <= 1 ? ' disabled' : '') + '" onclick="' + (page > 1 ? "goToTourAdminPage('" + sectionKey + "', -1);" : '') + '"><i class="material-icons-round">chevron_left</i></span>' +
+                '<span class="admin-pagination-nav-btn' + (page <= 1 ? ' disabled' : '') + '" data-on-click="' + (page > 1 ? "goToTourAdminPage('" + sectionKey + "', -1);" : '') + '"><i class="material-icons-round">chevron_left</i></span>' +
                 '<span class="admin-pagination-page">' + t('common.page_of', { page: page, total: totalPages }) + '</span>' +
-                '<span class="admin-pagination-nav-btn' + (page >= totalPages ? ' disabled' : '') + '" onclick="' + (page < totalPages ? "goToTourAdminPage('" + sectionKey + "', 1);" : '') + '"><i class="material-icons-round">chevron_right</i></span>' +
+                '<span class="admin-pagination-nav-btn' + (page >= totalPages ? ' disabled' : '') + '" data-on-click="' + (page < totalPages ? "goToTourAdminPage('" + sectionKey + "', 1);" : '') + '"><i class="material-icons-round">chevron_right</i></span>' +
             '</div>' +
         '</div>';
     }
@@ -379,28 +379,28 @@ function renderTourDetail(tour, routesInTour) {
     // of landing back on the clean map Tour Mode is meant to show.
     var activateTourModeCall = 'activateTourMode(' + tour.id + ', ' + JSON.stringify(tour.name) + '); closeTourAdminMenu(); closeMenu();';
     html += '<div class="tour-detail-actions">' +
-        '<div class="nav-btn-primary" onclick="' + escapeHTML(activateTourModeCall) + '">' +
+        '<div class="nav-btn-primary" data-on-click="' + escapeHTML(activateTourModeCall) + '">' +
             '<i class="material-icons-round">explore</i>&nbsp;' + t('tour_admin.activate_tour_mode') +
         '</div>' +
         '<div class="tour-action-row">';
 
     if (canManageTour(tour)) {
         html +=
-            '<div class="button" onclick="showTourEditForm(' + tour.id + ');"><i class="material-icons-round">edit</i>&nbsp;' + t('common.edit') + '</div>' +
-            '<div class="button" onclick="manageTourRoutes(' + tour.id + ');"><i class="material-icons-round">reorder</i>&nbsp;' + t('tour_admin.edit_routes') + '</div>';
+            '<div class="button" data-on-click="showTourEditForm(' + tour.id + ');"><i class="material-icons-round">edit</i>&nbsp;' + t('common.edit') + '</div>' +
+            '<div class="button" data-on-click="manageTourRoutes(' + tour.id + ');"><i class="material-icons-round">reorder</i>&nbsp;' + t('tour_admin.edit_routes') + '</div>';
     }
     if (canPublishTour(tour)) {
-        html += '<div class="button" onclick="toggleTourPublic(' + tour.id + ', ' + (tour.public == 1 ? 'false' : 'true') + ');"><i class="material-icons-round">public</i>&nbsp;' + (tour.public == 1 ? t('tour_admin.unpublish') : t('tour_admin.publish')) + '</div>';
+        html += '<div class="button" data-on-click="toggleTourPublic(' + tour.id + ', ' + (tour.public == 1 ? 'false' : 'true') + ');"><i class="material-icons-round">public</i>&nbsp;' + (tour.public == 1 ? t('tour_admin.unpublish') : t('tour_admin.publish')) + '</div>';
     }
     if (canCopyTours()) {
-        html += '<div class="button" onclick="copyTourRow(' + tour.id + ');"><i class="material-icons-round">content_copy</i>&nbsp;' + t('tour_admin.copy') + '</div>';
+        html += '<div class="button" data-on-click="copyTourRow(' + tour.id + ');"><i class="material-icons-round">content_copy</i>&nbsp;' + t('tour_admin.copy') + '</div>';
     }
     if (canManageTour(tour)) {
-        html += '<div class="button" onclick="deleteTourRow(' + tour.id + ');"><i class="material-icons-round">delete</i>&nbsp;' + t('common.delete') + '</div>';
+        html += '<div class="button" data-on-click="deleteTourRow(' + tour.id + ');"><i class="material-icons-round">delete</i>&nbsp;' + t('common.delete') + '</div>';
     }
-    html += '<div class="button" onclick="downloadTourDocument(' + tour.id + ');"><i class="material-icons-round">picture_as_pdf</i>&nbsp;' + t('tour_admin.download_document') + '</div>';
+    html += '<div class="button" data-on-click="downloadTourDocument(' + tour.id + ');"><i class="material-icons-round">picture_as_pdf</i>&nbsp;' + t('tour_admin.download_document') + '</div>';
     if (canExportTour(tour)) {
-        html += '<div class="button" data-name="' + escapeHTML(tour.name || '') + '" onclick="downloadTourGpx(' + tour.id + ', this.dataset.name);"><i class="material-icons-round">file_download</i>&nbsp;' + t('tour_admin.export_gpx') + '</div>';
+        html += '<div class="button" data-name="' + escapeHTML(tour.name || '') + '" data-on-click="downloadTourGpx(' + tour.id + ', this.dataset.name);"><i class="material-icons-round">file_download</i>&nbsp;' + t('tour_admin.export_gpx') + '</div>';
     }
 
     // Only a published tour has a meaningful shareable link - a private
@@ -409,7 +409,7 @@ function renderTourDetail(tour, routesInTour) {
     // back on.
     if (tour.public == 1) {
         var shareTourCall = 'shareTour(' + tour.id + ', ' + JSON.stringify(tour.name) + ');';
-        html += '<div class="button" onclick="' + escapeHTML(shareTourCall) + '"><i class="material-icons-round">share</i>&nbsp;' + t('tour_admin.share') + '</div>';
+        html += '<div class="button" data-on-click="' + escapeHTML(shareTourCall) + '"><i class="material-icons-round">share</i>&nbsp;' + t('tour_admin.share') + '</div>';
     }
 
     html += '</div></div>';
@@ -520,8 +520,8 @@ function tourFormHtml(tour) {
         '<div class="adminFormRow">' +
             '<div class="adminFormLabel">&nbsp;</div>' +
             '<div class="adminFormField">' +
-                '<button id="tourFormSaveBtn" class="button" type="button" onclick="' + saveCall + '">' + t('common.save') + '</button>&nbsp;' +
-                '<button class="button" type="button" onclick="' + cancelCall + ';">' + t('common.cancel') + '</button>' +
+                '<button id="tourFormSaveBtn" class="button" type="button" data-on-click="' + saveCall + '">' + t('common.save') + '</button>&nbsp;' +
+                '<button class="button" type="button" data-on-click="' + cancelCall + ';">' + t('common.cancel') + '</button>' +
             '</div>' +
         '</div>' +
         '</div>';
@@ -535,9 +535,9 @@ function tourFormTagsInnerHtml() {
     var html = '<div class="chip-input">';
     for (let i = 0; i < tourFormTagList.length; i++) {
         html += '<span class="tag-chip tag-chip-removable">' + escapeHTML(tourFormTagList[i]) +
-            ' <i class="material-icons-round" onclick="removeTourFormTag(' + i + ');">close</i></span>';
+            ' <i class="material-icons-round" data-on-click="removeTourFormTag(' + i + ');">close</i></span>';
     }
-    html += '<input type="text" id="tourFormTagInput" placeholder="' + t('tour_admin.add_tag_placeholder') + '" onkeydown="handleTourFormTagKeydown(event);">';
+    html += '<input type="text" id="tourFormTagInput" placeholder="' + t('tour_admin.add_tag_placeholder') + '" data-on-keydown="handleTourFormTagKeydown(event);">';
     html += '</div>';
 
     return html;
@@ -588,7 +588,7 @@ function tourFormPhotosInnerHtml() {
         var img = visibleImages[i];
         html += '<div class="tour-photo-tile">' +
             '<img data-tour-id="' + tourFormTourId + '" data-image-id="' + img.id + '">' +
-            '<div class="tour-photo-remove" onclick="removeTourFormImage(' + img.id + ');"><i class="material-icons-round">close</i></div>' +
+            '<div class="tour-photo-remove" data-on-click="removeTourFormImage(' + img.id + ');"><i class="material-icons-round">close</i></div>' +
             '</div>';
     }
     for (let i = 0; i < tourFormPendingPhotoUploads.length; i++) {
@@ -597,7 +597,7 @@ function tourFormPhotosInnerHtml() {
         // only for photos that already exist on the server.
         html += '<div class="tour-photo-tile tour-photo-tile-pending" title="' + t('tour_admin.pending_photo_title') + '">' +
             '<img src="' + URL.createObjectURL(tourFormPendingPhotoUploads[i]) + '">' +
-            '<div class="tour-photo-remove" onclick="removePendingTourFormPhoto(' + i + ');"><i class="material-icons-round">close</i></div>' +
+            '<div class="tour-photo-remove" data-on-click="removePendingTourFormPhoto(' + i + ');"><i class="material-icons-round">close</i></div>' +
             '</div>';
     }
     // Placeholder tiles for photos currently running through
@@ -611,11 +611,11 @@ function tourFormPhotosInnerHtml() {
             '</div>';
     }
     if (totalCount < TOUR_PHOTO_MAX_COUNT) {
-        html += '<div class="tour-photo-tile tour-photo-add" onclick="document.getElementById(\'tourFormPhotoInput\').click();">' +
+        html += '<div class="tour-photo-tile tour-photo-add" data-on-click="clickElementById(\'tourFormPhotoInput\');">' +
             '<i class="material-icons-round">add</i></div>';
     }
     html += '</div>' +
-        '<input type="file" id="tourFormPhotoInput" accept="image/jpeg,image/png,image/webp" multiple style="display:none;" onchange="stageTourFormPhoto(event);">' +
+        '<input type="file" id="tourFormPhotoInput" accept="image/jpeg,image/png,image/webp" multiple style="display:none;" data-on-change="stageTourFormPhoto(event);">' +
         '<p class="hint tour-photo-hint">' + t('tour_admin.photos_hint') + '</p>';
 
     return html;
@@ -901,8 +901,8 @@ function renderTourRouteManager(searchQuery) {
     // of this panel can be a long scroll away, which made the buttons hard
     // to reach in practice.
     html += '<div class="tour-action-row tour-route-manager-actions">' +
-        '<button id="tourRouteManagerSaveBtn" class="button" type="button" onclick="saveTourRouteManager();">' + t('common.save') + '</button>' +
-        '<button class="button" type="button" onclick="cancelTourRouteManager();">' + t('common.cancel') + '</button>' +
+        '<button id="tourRouteManagerSaveBtn" class="button" type="button" data-on-click="saveTourRouteManager();">' + t('common.save') + '</button>' +
+        '<button class="button" type="button" data-on-click="cancelTourRouteManager();">' + t('common.cancel') + '</button>' +
     '</div>';
 
     html += '<p class="nav-field-label">' + t('tour_admin.in_this_tour', { count: tourRouteManagerInTour.length }) + ' &middot; ' + formatDistance(totalLength, settings.unit) + '</p>';
@@ -910,7 +910,7 @@ function renderTourRouteManager(searchQuery) {
 
     html += '<p class="nav-field-label">' + t('tour_admin.add_more_routes') + '</p>' +
         '<div class="search-bar"><i class="material-icons-round">search</i>' +
-            '<input type="text" id="tourRouteSearchInput" placeholder="' + t('tour_admin.search_your_routes') + '" value="' + escapeHTML(searchQuery) + '" oninput="filterTourRouteManager();"></div>' +
+            '<input type="text" id="tourRouteSearchInput" placeholder="' + t('tour_admin.search_your_routes') + '" value="' + escapeHTML(searchQuery) + '" data-on-input="filterTourRouteManager();"></div>' +
         '<div id="tourRouteManagerCandidatesResults"></div>';
 
     document.getElementById('touradminmenu-body').innerHTML = html;
@@ -940,10 +940,10 @@ function renderTourRouteManagerInTourList() {
         var r = tourRouteManagerInTour[i];
         var dragging = tourRouteDragState && tourRouteDragState.routeId === r.id;
         html += '<div class="tour-route-manager-row tour-route-manager-row-selected' + (dragging ? ' tour-route-manager-row-dragging' : '') + '">' +
-            '<i class="material-icons-round tour-route-manager-handle" onpointerdown="startRouteDrag(event, ' + r.id + ');">drag_indicator</i>' +
+            '<i class="material-icons-round tour-route-manager-handle" data-on-pointerdown="startRouteDrag(event, ' + r.id + ');">drag_indicator</i>' +
             '<span class="tour-route-manager-name">' + escapeHTML(r.name) + '</span>' +
             '<span class="tour-list-meta">' + formatDistance(r.length || 0, settings.unit) + '</span>' +
-            '<i class="material-icons-round tour-route-manager-remove" title="' + t('tour_admin.remove_from_tour_title') + '" onclick="removeRouteFromTour(' + r.id + ');">close</i>' +
+            '<i class="material-icons-round tour-route-manager-remove" title="' + t('tour_admin.remove_from_tour_title') + '" data-on-click="removeRouteFromTour(' + r.id + ');">close</i>' +
             '</div>';
     }
     html += '</div>';
@@ -981,7 +981,7 @@ function renderFilteredTourRouteManagerCandidates() {
             html += '<div class="tour-route-manager-row">' +
                 '<span class="tour-route-manager-name">' + escapeHTML(c.name) + '</span>' +
                 '<span class="tour-list-meta">' + formatDistance(c.length || 0, settings.unit) + '</span>' +
-                '<i class="material-icons-round tour-route-manager-add" title="' + t('common.add_to_tour') + '" onclick="addRouteToTour(' + c.id + ');">add_circle</i>' +
+                '<i class="material-icons-round tour-route-manager-add" title="' + t('common.add_to_tour') + '" data-on-click="addRouteToTour(' + c.id + ');">add_circle</i>' +
                 '</div>';
         }
     }
@@ -1008,12 +1008,12 @@ function tourRouteManagerCandidatePaginationHtml(totalMatches, totalPages) {
     return '<div class="admin-pagination">' +
         '<div class="admin-pagination-size">' +
             '<label for="tourRouteCandidatePageSize">' + t('common.rows_per_page') + '</label>' +
-            '<select id="tourRouteCandidatePageSize" class="select-css select-css-compact" onchange="onTourRouteManagerCandidatePageSizeChange();">' + sizeOptions + '</select>' +
+            '<select id="tourRouteCandidatePageSize" class="select-css select-css-compact" data-on-change="onTourRouteManagerCandidatePageSizeChange();">' + sizeOptions + '</select>' +
         '</div>' +
         '<div class="admin-pagination-nav">' +
-            '<span class="admin-pagination-nav-btn' + (tourRouteManagerCandidatePage <= 1 ? ' disabled' : '') + '" onclick="' + (tourRouteManagerCandidatePage > 1 ? 'goToTourRouteManagerCandidatePage(-1);' : '') + '"><i class="material-icons-round">chevron_left</i></span>' +
+            '<span class="admin-pagination-nav-btn' + (tourRouteManagerCandidatePage <= 1 ? ' disabled' : '') + '" data-on-click="' + (tourRouteManagerCandidatePage > 1 ? 'goToTourRouteManagerCandidatePage(-1);' : '') + '"><i class="material-icons-round">chevron_left</i></span>' +
             '<span class="admin-pagination-page">' + (totalMatches === 0 ? t('tour_admin.zero_routes') : t('common.page_of', { page: tourRouteManagerCandidatePage, total: totalPages })) + '</span>' +
-            '<span class="admin-pagination-nav-btn' + (tourRouteManagerCandidatePage >= totalPages ? ' disabled' : '') + '" onclick="' + (tourRouteManagerCandidatePage < totalPages ? 'goToTourRouteManagerCandidatePage(1);' : '') + '"><i class="material-icons-round">chevron_right</i></span>' +
+            '<span class="admin-pagination-nav-btn' + (tourRouteManagerCandidatePage >= totalPages ? ' disabled' : '') + '" data-on-click="' + (tourRouteManagerCandidatePage < totalPages ? 'goToTourRouteManagerCandidatePage(1);' : '') + '"><i class="material-icons-round">chevron_right</i></span>' +
         '</div>' +
         '</div>';
 }
@@ -1071,7 +1071,9 @@ function startRouteDrag(event, routeId) {
         return;
     }
 
-    var row = event.currentTarget.closest('.tour-route-manager-row');
+    // event.target, not currentTarget: the handler runs through
+    // csp-events.js's document-level delegation (currentTarget = document).
+    var row = event.target.closest('.tour-route-manager-row');
     if (!row) {
         return;
     }

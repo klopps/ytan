@@ -4,13 +4,14 @@
     <title><?= htmlspecialchars($appName) ?> | <?= $t('page_title.set_password') ?></title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta charset="utf-8" />
-    <script>window.YTAN_TRANSLATIONS = <?= json_encode($translator->all(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;</script>
-    <script src="<?= $baseUrl ?>/js/i18n.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/i18n.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_TRANSLATIONS = <?= json_encode($translator->all(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;</script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="<?= $baseUrl ?>/js/csp-events.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/csp-events.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="<?= $baseUrl ?>/js/i18n.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/i18n.js') ?>"></script>
     <!-- helper.js just for togglePasswordVisibility() (the show/hide-password
          toggle, shared with the main SPA) - pulls in a lot of unrelated map/
          route helpers too, but that's a few KB and avoids a third copy of
          the toggle logic living only here. -->
-    <script src="<?= $baseUrl ?>/js/helper.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/helper.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="<?= $baseUrl ?>/js/helper.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/helper.js') ?>"></script>
     <link rel="stylesheet" type="text/css" href="<?= $baseUrl ?>/css/style.css?v=<?= \Ytan\App::assetVersion($rootDir, '/css/style.css') ?>" />
     <!-- Needed for the show/hide-password toggle's eye icon
          (.material-icons-round) - app.php loads this too but this
@@ -58,23 +59,23 @@
             <div class="leftCol"><label for="password"><?= $t('setpw.password_label') ?> </label></div>
             <div class="rightCol"><div class="password-input-wrapper">
                 <input id="password" type="password" autocomplete="new-password">
-                <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('password', this);" aria-label="<?= htmlspecialchars($t('common.show_password'), ENT_QUOTES) ?>"><i class="material-icons-round">visibility</i></button>
+                <button type="button" class="password-toggle-btn" data-on-click="togglePasswordVisibility('password', this);" aria-label="<?= htmlspecialchars($t('common.show_password'), ENT_QUOTES) ?>"><i class="material-icons-round">visibility</i></button>
             </div></div>
         </div>
         <div class="infoWindowElement">
             <div class="leftCol"><label for="passwordConfirm"><?= $t('setpw.confirm_label') ?> </label></div>
             <div class="rightCol"><div class="password-input-wrapper">
                 <input id="passwordConfirm" type="password" autocomplete="new-password">
-                <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('passwordConfirm', this);" aria-label="<?= htmlspecialchars($t('common.show_password'), ENT_QUOTES) ?>"><i class="material-icons-round">visibility</i></button>
+                <button type="button" class="password-toggle-btn" data-on-click="togglePasswordVisibility('passwordConfirm', this);" aria-label="<?= htmlspecialchars($t('common.show_password'), ENT_QUOTES) ?>"><i class="material-icons-round">visibility</i></button>
             </div></div>
         </div>
         <div id="setPasswordMessage"></div>
         <p>
-            <button id="setPasswordBtn" class="startbtn" onclick="submitPassword()"><?= $t('setpw.submit_button') ?></button>
+            <button id="setPasswordBtn" class="startbtn" data-on-click="submitPassword()"><?= $t('setpw.submit_button') ?></button>
         </p>
     </div>
 
-    <script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>
         var token = <?= json_encode($_GET['token'] ?? '') ?>;
         var apiBase = "<?= htmlspecialchars($baseUrl, ENT_QUOTES) ?>/api/v1";
 

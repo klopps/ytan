@@ -41,6 +41,7 @@ use Ytan\Http\Controllers\LighthouseImportController;
 use Ytan\Domain\Poi\LighthouseDuplicateRepository;
 use Ytan\Service\LighthouseDuplicateService;
 use Ytan\Http\Middleware\AuthMiddleware;
+use Ytan\Http\Middleware\ContentSecurityPolicyMiddleware;
 use Ytan\Domain\LighthouseImport\LighthouseImportRepository;
 use Ytan\Service\LighthouseImportService;
 use Ytan\Service\LighthouseList\OsmLightMapper;
@@ -239,6 +240,7 @@ final class App
         $app->add(new CorsMiddleware($_ENV['ALLOWED_ORIGINS'] ?? ''));
         $app->add(new AppVersionMiddleware((int) ($_ENV['MIN_APP_VERSION_CODE'] ?? 0)));
         $app->add(new AuthMiddleware($authService));
+        $app->add(new ContentSecurityPolicyMiddleware($baseUrl));
         $app->addRoutingMiddleware();
 
         $displayErrors = ($_ENV['APP_DEBUG'] ?? 'false') === 'true';
@@ -275,6 +277,21 @@ final class App
         );
 
         $app->get('/api/v1/health', fn (Request $req, Response $res) => self::jsonOk($res, ['status' => 'ok']));
+
+        // Content-Security-Policy violation reports (report-uri of
+        // ContentSecurityPolicy): written to the PHP error log, shortened
+        // and rate-limited per IP; always 204, also when throttled.
+        $app->post('/api/v1/csp-report', function (Request $req, Response $res) use ($requestThrottle) {
+            try {
+                $requestThrottle->hit(RequestThrottle::CSP_REPORT, (string) ($req->getServerParams()['REMOTE_ADDR'] ?? ''));
+                $report = mb_substr(preg_replace('/\s+/', ' ', (string) $req->getBody()), 0, 2000);
+                error_log('YTAN CSP violation: ' . $report);
+            } catch (\Ytan\Exception\TooManyRequestsException) {
+                // dropped
+            }
+
+            return $res->withStatus(204);
+        });
 
         $app->post('/api/v1/auth/login', [$authController, 'login']);
         $app->get('/api/v1/auth/me', [$authController, 'me']);
