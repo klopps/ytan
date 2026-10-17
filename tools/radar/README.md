@@ -9,7 +9,8 @@ Background, measurements and decisions: `wetterradar.md` in the repo root.
 ```
 radar_job.py              cron entry point (lock, logging)
 ytanradar/opera.py        download, ODIM HDF5 decoding, grid geometry
-ytanradar/reproject.py    LAEA composite -> Web Mercator mosaic (cv2.remap)
+ytanradar/reproject.py    LAEA composite -> Web Mercator mosaic (cv2.remap),
+                          1.5 km display smoothing (less flicker in the animation)
 ytanradar/palette.py      dBZ -> mm/h classes (Marshall-Palmer) and colours
 ytanradar/tiles.py        mosaic -> {z}/{x}/{y}.png pyramid, zoom 5-8
 ytanradar/nowcast.py      optical flow + semi-Lagrangian extrapolation, CSI

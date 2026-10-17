@@ -6,7 +6,8 @@ storage/radar/
                            o202610170415 = observation, f202610170415-030 =
                            forecast from that base time, +30 minutes. A frame
                            directory never changes once published (renamed
-                           into place complete), so tiles may be cached long.
+                           into place complete, with a .complete marker), so
+                           tiles may be cached long.
   raw/{YYYYMMDDHHMM}.npz   cropped dBZ fields, for the nowcast and verification
   verify.csv               forecast skill against the observation that followed
 """
@@ -28,12 +29,17 @@ import numpy as np
 
 from . import nowcast, opera, palette
 from .mercator import TileGrid
-from .reproject import Reprojector
+from .reproject import Reprojector, smooth_for_display
 from .tiles import write_pyramid
 
 log = logging.getLogger("ytanradar")
 
 STEP = timedelta(minutes=5)
+
+# Written into a frame directory just before it is renamed into place. A
+# directory without it is a leftover (e.g. only the PHP overzoom cache
+# survived a failed delete) and must not count as published.
+COMPLETE_MARKER = ".complete"
 
 SOURCE = {
     "name": "EUMETNET OPERA",
@@ -91,11 +97,14 @@ def publish_frame(frames_dir: str, grid: TileGrid, rp: Reprojector, frame_id: st
     logging setup).
     """
     final = os.path.join(frames_dir, frame_id)
-    if os.path.isdir(final):
+    if is_published(frames_dir, frame_id):
         return frame_id, True, -1, None
+    if os.path.isdir(final):  # incomplete leftover
+        shutil.rmtree(final, ignore_errors=True)
     tmp = tempfile.mkdtemp(prefix=f".tmp-{frame_id}-", dir=frames_dir)
-    idx = palette.classify(rp.render(field))
+    idx = palette.classify(rp.render(smooth_for_display(field, rp.geom)))
     count = write_pyramid(grid, idx, tmp)
+    open(os.path.join(tmp, COMPLETE_MARKER), "w").close()
     # On Windows a virus scanner/indexer briefly holding a fresh file makes
     # the rename fail (seen in local runs) - retry before giving up.
     for attempt in range(10):
@@ -103,7 +112,7 @@ def publish_frame(frames_dir: str, grid: TileGrid, rp: Reprojector, frame_id: st
             os.rename(tmp, final)
             return frame_id, True, count, None
         except OSError as e:
-            if os.path.isdir(final):  # a concurrent run published it
+            if is_published(frames_dir, frame_id):  # a concurrent run published it
                 shutil.rmtree(tmp, ignore_errors=True)
                 return frame_id, True, -1, None
             if attempt == 9:
@@ -111,6 +120,10 @@ def publish_frame(frames_dir: str, grid: TileGrid, rp: Reprojector, frame_id: st
                 return frame_id, False, 0, str(e)
             time.sleep(0.3)
     return frame_id, False, 0, "rename failed"
+
+
+def is_published(frames_dir: str, frame_id: str) -> bool:
+    return os.path.exists(os.path.join(frames_dir, frame_id, COMPLETE_MARKER))
 
 
 _WORKER: dict = {}
@@ -246,7 +259,7 @@ class Job:
         for t in history:
             if t != newest and not self.fetch(t):
                 continue
-            if not os.path.isdir(os.path.join(self.frames_dir, obs_id(t))):
+            if not is_published(self.frames_dir, obs_id(t)):
                 field = self.load(t)
                 if field is None:
                     continue

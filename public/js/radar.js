@@ -19,6 +19,7 @@
  */
 
 const RADAR_OPACITY = 0.65;
+const RADAR_FADE_MS = 350; // crossfade between frames (a hard switch flickers: ~30% of pixels change per step)
 const RADAR_PLAY_INTERVAL_MS = 700;
 const RADAR_PRELOAD = 3;
 const RADAR_REFRESH_MS = 5 * 60 * 1000;
@@ -28,9 +29,11 @@ let radarManifest = null;
 let radarFrames = []; // manifest.frames: {id, time, type, lead_minutes?}
 let radarFrameIndex = 0;
 let radarLayers = new Map(); // frame id -> ImageMapType currently in map.overlayMapTypes
-let radarLoaded = new Set(); // frame ids whose layer has loaded its tiles at least once
+let radarLoaded = new Set(); // frame ids whose tiles for the current view are loaded and decoded
+let radarPreloadView = ''; // view (zoom + tile range) radarLoaded refers to
 let radarShownId = null; // frame id whose layer is visible right now
 let radarShowTimer = null;
+let radarFade = null; // running crossfade {from, to, start, raf}
 let radarActive = false;
 let radarPlayTimer = null;
 let radarRefreshTimer = null;
@@ -89,6 +92,7 @@ function showRadarLayer() {
     radarActive = true;
     document.getElementById('radarControls').style.display = '';
     radarMapListeners.push(map.addListener('idle', updateRadarCoverageHint));
+    radarMapListeners.push(map.addListener('idle', onRadarViewChanged));
     loadRadarManifest();
     radarRefreshTimer = setInterval(loadRadarManifest, RADAR_REFRESH_MS);
 }
@@ -101,8 +105,13 @@ function hideRadarLayer() {
     radarMapListeners.forEach((l) => google.maps.event.removeListener(l));
     radarMapListeners = [];
     clearTimeout(radarShowTimer);
+    if (radarFade) {
+        cancelAnimationFrame(radarFade.raf);
+        radarFade = null;
+    }
     syncRadarLayers([]);
     radarShownId = null;
+    radarPreloadView = '';
     document.getElementById('radarControls').style.display = 'none';
 }
 
@@ -197,7 +206,7 @@ function syncRadarLayers(ids) {
         if (!radarLayers.has(id)) {
             const frame = radarFrames.find((f) => f.id === id);
             const layer = radarLayerFor(frame);
-            layer.addListener('tilesloaded', () => onRadarLayerLoaded(id));
+            preloadRadarFrame(frame);
             map.overlayMapTypes.push(layer);
             radarLayers.set(id, layer);
         }
@@ -218,15 +227,97 @@ function setRadarFrame(index) {
     // jump to a frame that isn't preloaded shows an empty map for a moment.
     const keepShown = radarShownId && radarShownId !== target && !radarLoaded.has(target)
         && radarLayers.has(radarShownId);
-    syncRadarLayers(keepShown ? ids.concat([radarShownId]) : ids);
+    // the visible frame stays a layer until the crossfade away from it is done
+    syncRadarLayers(radarShownId && radarLayers.has(radarShownId) ? ids.concat([radarShownId]) : ids);
     clearTimeout(radarShowTimer);
     if (keepShown) {
-        // tilesloaded may never come (e.g. map not idle); don't wait forever
+        // a tile that never answers must not stall the radar
         radarShowTimer = setTimeout(() => showRadarLayerOf(target), 2000);
     } else {
         showRadarLayerOf(target);
     }
     updateRadarControls();
+}
+
+/**
+ * Load and decode a frame's tiles for the current view with plain Image
+ * objects (same URLs as its ImageMapType, so the layer then gets them from
+ * the browser cache - tiles are immutable). Google's own 'tilesloaded'
+ * event on an ImageMapType is unreliable: measured, some preloaded layers
+ * never fired it, and each of those steps stalled until the timeout.
+ */
+function preloadRadarFrame(frame) {
+    const view = radarCurrentView();
+    if (!view) {
+        return;
+    }
+    const urls = radarViewTileUrls(frame, view);
+    Promise.all(urls.map((url) => new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => img.decode().catch(() => {}).then(resolve);
+        img.onerror = resolve; // a missing tile mustn't block the frame
+        img.src = url;
+    }))).then(() => {
+        if (view.key === radarPreloadView && radarLayers.has(frame.id)) {
+            onRadarLayerLoaded(frame.id);
+        }
+    });
+}
+
+/** Visible tile range at the current zoom, clipped to the radar area. */
+function radarCurrentView() {
+    const bounds = map.getBounds();
+    if (!bounds || !radarManifest) {
+        return null;
+    }
+    const zoom = Math.round(map.getZoom());
+    if (zoom < radarManifest.zoom.min) {
+        return { key: 'z' + zoom, zoom: zoom, x0: 1, x1: 0, y0: 1, y1: 0 };
+    }
+    const n = Math.pow(2, zoom);
+    const tx = (lng) => Math.floor((lng + 180) / 360 * n);
+    const ty = (lat) => {
+        const s = Math.sin(lat * Math.PI / 180);
+        return Math.floor((0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * n);
+    };
+    const r = radarTileRange(zoom);
+    const ne = bounds.getNorthEast();
+    const sw = bounds.getSouthWest();
+    const v = {
+        zoom: zoom,
+        x0: Math.max(tx(sw.lng()), r.x0), x1: Math.min(tx(ne.lng()), r.x1),
+        y0: Math.max(ty(ne.lat()), r.y0), y1: Math.min(ty(sw.lat()), r.y1),
+    };
+    v.key = [zoom, v.x0, v.x1, v.y0, v.y1].join('/');
+    radarPreloadView = radarPreloadView || v.key;
+    return v;
+}
+
+function radarViewTileUrls(frame, view) {
+    const base = (window.YTAN_API_BASE || '/api/v1') + '/radar/tiles/' + frame.id + '/' + view.zoom + '/';
+    const urls = [];
+    for (let x = view.x0; x <= view.x1; x++) {
+        for (let y = view.y0; y <= view.y1; y++) {
+            urls.push(base + x + '/' + y + '.png');
+        }
+    }
+    return urls;
+}
+
+/** Map moved/zoomed: the preloaded tiles no longer cover the view. */
+function onRadarViewChanged() {
+    const view = radarCurrentView();
+    if (!view || view.key === radarPreloadView) {
+        return;
+    }
+    radarPreloadView = view.key;
+    radarLoaded.clear();
+    radarLayers.forEach((layer, id) => {
+        const frame = radarFrames.find((f) => f.id === id);
+        if (frame) {
+            preloadRadarFrame(frame);
+        }
+    });
 }
 
 function onRadarLayerLoaded(id) {
@@ -241,12 +332,65 @@ function showRadarLayerOf(id) {
     if (!radarFrames[radarFrameIndex] || radarFrames[radarFrameIndex].id !== id) {
         return; // the user moved on meanwhile
     }
+    finishRadarFade();
+    const from = radarShownId;
     radarShownId = id;
+    if (!from || from === id || !radarLayers.has(from) || document.hidden) {
+        showOnlyRadarLayer(id);
+        return;
+    }
+    radarFade = { from: from, to: id, start: performance.now(), raf: 0 };
+    radarFade.raf = requestAnimationFrame(stepRadarFade);
+}
+
+/**
+ * Crossfade: both layers' opacities are chosen so that where both frames
+ * have rain the combined opacity stays RADAR_OPACITY all the way
+ * ((1 - a_from) * (1 - a_to) = 1 - RADAR_OPACITY) - a plain linear fade
+ * would visibly lighten mid-way.
+ */
+function stepRadarFade(now) {
+    const fade = radarFade;
+    if (!fade) {
+        return;
+    }
+    const p = Math.min(1, (now - fade.start) / RADAR_FADE_MS);
+    const e = p * p * (3 - 2 * p); // smoothstep
+    const rest = 1 - RADAR_OPACITY;
+    const to = radarLayers.get(fade.to);
+    const from = radarLayers.get(fade.from);
+    if (to) {
+        to.setOpacity(1 - Math.pow(rest, e));
+    }
+    if (from) {
+        from.setOpacity(1 - Math.pow(rest, 1 - e));
+    }
+    if (p < 1) {
+        fade.raf = requestAnimationFrame(stepRadarFade);
+    } else {
+        radarFade = null;
+        showOnlyRadarLayer(fade.to);
+    }
+}
+
+/** Jump a running crossfade to its end. */
+function finishRadarFade() {
+    if (radarFade) {
+        cancelAnimationFrame(radarFade.raf);
+        radarFade = null;
+        showOnlyRadarLayer(radarShownId);
+    }
+}
+
+function showOnlyRadarLayer(id) {
     radarLayers.forEach((layer, layerId) => layer.setOpacity(layerId === id ? RADAR_OPACITY : 0));
-    // drop a previous frame that was only kept visible while this one loaded
+    // drop the previous frame (kept for loading/crossfading)
     const ids = [];
     for (let i = 0; i <= RADAR_PRELOAD && i < radarFrames.length; i++) {
         ids.push(radarFrames[(radarFrameIndex + i) % radarFrames.length].id);
+    }
+    if (radarShownId && !ids.includes(radarShownId)) {
+        ids.push(radarShownId);
     }
     syncRadarLayers(ids);
 }

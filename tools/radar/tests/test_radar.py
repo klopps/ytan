@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from ytanradar import nowcast, opera, palette  # noqa: E402
 from ytanradar.job import Config, Job, floor_step  # noqa: E402
 from ytanradar.mercator import TILE, TileGrid, lat_to_px, lon_to_px, px_to_lat, px_to_lon  # noqa: E402
-from ytanradar.reproject import Reprojector  # noqa: E402
+from ytanradar.reproject import Reprojector, smooth_for_display  # noqa: E402
 from ytanradar.tiles import write_pyramid  # noqa: E402
 
 # The real OPERA grid as measured 2026-10-17.
@@ -93,6 +93,19 @@ class ReprojectTest(unittest.TestCase):
         cr0, cr1, cc0, cc1 = rp.crop
         field = np.full((cr1 - cr0, cc1 - cc0), np.nan, np.float32)
         self.assertTrue(np.isnan(rp.render(field)).all())
+
+
+class SmoothingTest(unittest.TestCase):
+    def test_single_noisy_pixel_is_damped_and_nodata_stays_nodata(self):
+        f = np.full((40, 40), opera.UNDETECT_DBZ, np.float32)
+        f[:, :5] = np.nan
+        f[20, 20] = 40.0  # one isolated 1 km pixel
+        f[5:35, 25:35] = 30.0  # a real rain area
+        out = smooth_for_display(f, OPERA)
+        self.assertTrue(np.isnan(out[:, :5]).all())
+        self.assertFalse(np.isnan(out[:, 5:]).any())
+        self.assertLess(out[20, 20], palette.rate_to_dbz(0.1))  # speckle gone
+        self.assertGreater(out[20, 30], 25.0)  # area kept
 
 
 class TilesTest(unittest.TestCase):
