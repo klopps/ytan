@@ -1931,6 +1931,12 @@ img.wsi {
   font-size: 19px;
 }
 
+/* The radar frames are drawn into this canvas (radar.js, OverlayView in the map pane) */
+.radar-canvas {
+  position: absolute;
+  pointer-events: none;
+}
+
 /**
 * Rain radar controls (radar.js) - shown only while the rain radar is on.
 * Bottom-left above the Google logo, same panel chrome as .tour-mode-badge;
