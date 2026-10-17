@@ -18,7 +18,7 @@ Zusätzlich bietet das Kartenkontextmenü **Auf Windy öffnen** und **Regenradar
 
 ## Regenradar auf der Karte
 
-YTAN kann den Niederschlag direkt über die Karte legen: Menü > **POIs** > Schalter **Regenradar**, oder im Kartenkontextmenü **Regenradar ein-/ausblenden**. Das Radar gibt es für **Deutschland, Dänemark und Schweden** samt Ostsee, bis in die Zoomstufen, mit denen du paddelst.
+YTAN kann den Niederschlag direkt über die Karte legen: lang auf einen leeren Kartenpunkt drücken (Rechtsklick) und **Regenradar ein-/ausblenden** wählen. YTAN merkt sich die Einstellung. Das Radar gibt es für **Deutschland, Dänemark und Schweden** samt Ostsee, bis in die Zoomstufen, mit denen du paddelst.
 
 | Teil | Bedeutung |
 |---|---|
@@ -27,8 +27,9 @@ YTAN kann den Niederschlag direkt über die Karte legen: Menü > **POIs** > Scha
 | **Radar** / **Prognose +30 Min.** | Zeigt, ob das Bild gemessen oder vorhergesagt ist. |
 | **Farbskala** | Regenrate in mm pro Stunde, von hellblau (Niesel) bis violett (Wolkenbruch). |
 | **Stand** | Uhrzeit des neuesten Radarbilds. Die Messung ist etwa 10 Minuten alt, wenn sie ankommt. |
+| **×** (oben rechts am Feld) | Blendet das Regenradar wieder aus, ebenso **Regenradar ein-/ausblenden** im Kartenkontextmenü. |
 
-Die Vorhersage reicht **zwei Stunden** weit. Sie schiebt den gemessenen Regen in seiner Zugrichtung weiter, Schauer wachsen oder verschwinden darin nicht. Sie wird deshalb mit jeder Minute unsicherer - für die nächste halbe Stunde ist sie meist brauchbar, bei Gewittern schon früher nicht mehr. Steht **Radardaten veraltet** unten im Feld, kamen länger als 30 Minuten keine neuen Daten. Ohne Internetverbindung ist der Schalter gesperrt.
+Die Vorhersage reicht **zwei Stunden** weit. Sie schiebt den gemessenen Regen in seiner Zugrichtung weiter, Schauer wachsen oder verschwinden darin nicht. Sie wird deshalb mit jeder Minute unsicherer - für die nächste halbe Stunde ist sie meist brauchbar, bei Gewittern schon früher nicht mehr. Steht **Radardaten veraltet** unten im Feld, kamen länger als 30 Minuten keine neuen Daten. Ohne Internetverbindung verschwindet das Radar und kommt mit der Verbindung zurück.
 
 Die Radardaten stammen von **EUMETNET OPERA**, dem Verbund der europäischen Wetterdienste (Lizenz CC BY 4.0).
 

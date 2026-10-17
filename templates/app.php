@@ -269,8 +269,6 @@
           <label class="nav-toggle-row"><span class="nav-swatch" style="background:#60609f"></span><span class="nav-toggle-text"><?= $t('app.detail.routes') ?></span><input type="checkbox" id="detailroutes" name="detailroutes" class="nav-switch-input" data-on-change="toggleRoutes(this);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
           <label class="nav-toggle-row"><span class="nav-swatch" style="background:#8886c9"></span><span class="nav-toggle-text"><?= $t('app.detail.areas') ?></span><input type="checkbox" id="detailareas" name="detailareas" class="nav-switch-input" data-on-change="toggleAreas(this);" checked><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
           <label class="nav-toggle-row"><span class="nav-swatch" style="background:#9c99ad"></span><span class="nav-toggle-text"><?= $t('app.detail.wsi') ?></span><input type="checkbox" id="detailwsi" name="detailwsi" class="nav-switch-input" data-on-change="toggleWsiMarkers(this);"><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
-          <label class="nav-toggle-row"><span class="nav-swatch" style="background:#2a6fdb"></span><span class="nav-toggle-text"><?= $t('app.detail.radar') ?></span><input type="checkbox" id="detailradar" name="detailradar" class="nav-switch-input" data-on-change="toggleRadarLayer(this);"><span class="nav-switch-track"><span class="nav-switch-thumb"></span></span></label>
-          <div id="radarOfflineHint" class="nav-toggle-hint" style="display:none;"><?= $t('radar.offline') ?></div>
           <div class="nav-divider"></div>
           <ul class="nav-menu-list">
             <li><button type="button" class="nav-menu-row" data-on-click="fitToPoiBounds(); closeMenu();"><i class="material-icons-round nav-menu-row-icon">fit_screen</i><span class="nav-menu-row-labels"><?= $t('app.pois.fit_all') ?></span></button></li>
@@ -496,10 +494,11 @@
          left-aligned rather than centered so it never crowds #editToolbar
          on the opposite corner - editToolbar stays fully usable while a
          tour is active, it's just a route filter, not an overlay. -->
-    <!-- RAIN RADAR CONTROLS (radar.js) - shown while the "Regenradar" toggle
-         (#detailradar) is on. Bottom-center, clear of the corner-anchored
-         #gotomylocation/#editToolbar and the top-left #tourModeBadge. -->
+    <!-- RAIN RADAR CONTROLS (radar.js) - shown while the rain radar is on
+         (map context menu, settings.detailradar). Bottom-left, leaving room
+         for #gotomylocation (bottom-right). -->
     <div id="radarControls" class="radar-controls" style="display:none;">
+      <button type="button" class="radar-controls-close" data-on-click="closeRadarLayer();" aria-label="<?= htmlspecialchars($t('radar.close_aria_label'), ENT_QUOTES) ?>" title="<?= htmlspecialchars($t('radar.close_aria_label'), ENT_QUOTES) ?>"><i class="material-icons-round">close</i></button>
       <div class="radar-controls-row">
         <button type="button" id="radarPlayPauseBtn" class="radar-controls-playpause" data-on-click="toggleRadarPlayback();" aria-label="<?= htmlspecialchars($t('radar.play_aria_label'), ENT_QUOTES) ?>"><i class="material-icons-round" id="radarPlayPauseIcon">play_arrow</i></button>
         <input type="range" id="radarFrameSlider" class="radar-controls-slider" min="0" max="0" value="0" data-on-input="onRadarFrameSliderInput(this);" aria-label="<?= htmlspecialchars($t('radar.slider_aria_label'), ENT_QUOTES) ?>">

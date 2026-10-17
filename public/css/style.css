@@ -1932,7 +1932,7 @@ img.wsi {
 }
 
 /**
-* Rain radar controls (radar.js) - shown only while #detailradar is on.
+* Rain radar controls (radar.js) - shown only while the rain radar is on.
 * Bottom-left above the Google logo, same panel chrome as .tour-mode-badge;
 * the right edge keeps 70px free for #gotomylocation (bottom-right).
 */
@@ -2014,6 +2014,37 @@ img.wsi {
   white-space: nowrap;
 }
 
+/* Round button on the panel's top-right corner, outside the controls row
+   (which has no width left on a phone with "Prognose +120 Min."). The
+   ::before enlarges the touch target to 40px without a bigger circle. */
+.radar-controls-close {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  background-color: var(--color-bg-panel);
+  box-shadow: var(--shadow-panel);
+  color: var(--color-text-faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.radar-controls-close::before {
+  content: "";
+  position: absolute;
+  inset: -7px;
+}
+
+.radar-controls-close .material-icons-round {
+  font-size: 18px;
+}
+
 .radar-controls-tag {
   font-size: 10.5px;
   font-weight: 700;
@@ -2087,12 +2118,6 @@ img.wsi {
 
 .radar-controls-attribution:hover {
   text-decoration: underline;
-}
-
-.nav-toggle-hint {
-  font-size: 11px;
-  color: var(--color-text-faint);
-  padding: 0 16px 6px;
 }
 
 .tour-mode-badge-text {

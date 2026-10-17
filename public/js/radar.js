@@ -1,6 +1,8 @@
 /**
- * Rain radar overlay with nowcast (drawer toggle #detailradar, map context
- * menu "Show/hide rain radar"). Frames and tiles come from our own backend
+ * Rain radar overlay with nowcast, switched on/off from the map context menu
+ * ("Show/hide rain radar") and off by the x on its panel; the state is
+ * settings.detailradar (saved with the other settings, no drawer switch).
+ * Frames and tiles come from our own backend
  * (RadarController: GET /radar/manifest, /radar/tiles/{frame}/{z}/{x}/{y}.png),
  * produced every 5 minutes by the Python job in tools/radar/ from EUMETNET
  * OPERA composites - observations of the last 60 minutes plus an
@@ -45,15 +47,15 @@ function initRadar() {
             loadRadarManifest();
         }
     });
-    updateRadarOnlineState();
     if (settings.detailradar && navigator.onLine) {
         showRadarLayer();
     }
 }
 
-/** Drawer toggle (templates/app.php, #detailradar). */
-function toggleRadarLayer(element) {
-    if (element.checked) {
+/** Switch the radar on/off and remember it (settings cookie). */
+function setRadarEnabled(enabled) {
+    settings.detailradar = enabled;
+    if (enabled) {
         showRadarLayer();
     } else {
         hideRadarLayer();
@@ -62,24 +64,23 @@ function toggleRadarLayer(element) {
 }
 
 function radarContextMenuToggle() {
-    const box = document.getElementById('detailradar');
-    if (box.disabled) {
+    if (!settings.detailradar && !navigator.onLine) {
         showToast(t('radar.offline'));
         return;
     }
-    box.checked = !box.checked;
-    toggleRadarLayer(box);
+    setRadarEnabled(!settings.detailradar);
 }
 
+/** The x in the radar panel. */
+function closeRadarLayer() {
+    setRadarEnabled(false);
+}
+
+/** Offline: hide the layer but keep it switched on, it comes back online. */
 function updateRadarOnlineState() {
-    const box = document.getElementById('detailradar');
-    const hint = document.getElementById('radarOfflineHint');
-    const offline = !navigator.onLine;
-    box.disabled = offline;
-    hint.style.display = offline ? '' : 'none';
-    if (offline && radarActive) {
+    if (!navigator.onLine && radarActive) {
         hideRadarLayer();
-    } else if (!offline && box.checked && !radarActive) {
+    } else if (navigator.onLine && settings.detailradar && !radarActive) {
         showRadarLayer();
     }
 }
@@ -134,9 +135,7 @@ function loadRadarManifest() {
             log('loadRadarManifest() failed', LOG_ERROR, err);
             if (radarActive && radarFrames.length === 0) {
                 showToast(t('radar.load_failed'));
-                hideRadarLayer();
-                document.getElementById('detailradar').checked = false;
-                saveSettings();
+                setRadarEnabled(false);
             }
         });
 }
