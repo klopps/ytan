@@ -39,8 +39,10 @@ tools/radar/.venv/bin/python tools/radar/radar_job.py   # first run: ~2 min (13 
 Locally (Windows): `python -m venv tools/radar/.venv` and
 `tools/radar/.venv/Scripts/python -m pip install -r tools/radar/requirements.txt`.
 
-Cron, every 5 minutes (a run takes ~1-1.5 minutes; overlapping runs skip
-themselves via `storage/radar/.lock`):
+Cron, every 5 minutes (overlapping runs skip themselves via
+`storage/radar/.lock`). `--workers N` sets how many processes render frames
+in parallel (default 4, `1` = sequential); on Linux they share the
+reprojection lookup via fork, on Windows (spawn) each builds its own (~5 s):
 
 ```
 */5 * * * * /path/to/ytan/tools/radar/.venv/bin/python /path/to/ytan/tools/radar/radar_job.py >> /path/to/ytan/storage/logs/radar.log 2>&1
@@ -54,6 +56,9 @@ The deploy scripts upload `tools/radar/` but neither `.venv` nor
 - ~480 tiles per frame, ~3 KB each; 37 frames (13 observations + 24
   forecasts) = ~57 MB / 17,500 files, plus up to two older forecast sets
   for 10 minutes after they left the manifest.
-- Reprojection lookup ~5 s per run, ~2.7 s per frame (mostly PNG writing).
+- Reprojection lookup ~5 s per run, ~2.7 s per frame locally (mostly PNG
+  writing), ~8 s per frame on the production host.
+- Full first run (37 frames) on the production host: 324 s sequential,
+  110 s with 4 workers; locally 120 s -> 75 s (downloads stay sequential).
 - Verification (`verify.csv`, CSI at 1 mm/h): +15 min 0.68 vs. 0.51 for
   persistence, +30 min 0.58 vs. 0.42.

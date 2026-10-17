@@ -15,10 +15,12 @@ from __future__ import annotations
 
 import json
 import logging
+import multiprocessing
 import os
 import shutil
 import tempfile
 import time
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
@@ -54,6 +56,7 @@ class Config:
     stale_frame_minutes: int = 10  # unreferenced frames stay that long (open clients)
     verify_leads: tuple[int, ...] = (15, 30, 60)
     verify_threshold_mm_h: float = 1.0
+    workers: int = 4  # processes rendering frames in parallel; 1 = no pool
 
 
 def default_grid() -> TileGrid:
@@ -76,6 +79,51 @@ def obs_id(t: datetime) -> str:
 
 def fc_id(base: datetime, lead: int) -> str:
     return f"f{base:%Y%m%d%H%M}-{lead:03d}"
+
+
+def publish_frame(frames_dir: str, grid: TileGrid, rp: Reprojector, frame_id: str,
+                  field: np.ndarray) -> tuple[str, bool, int, str | None]:
+    """Write a frame's tiles and move them into place.
+
+    Returns (frame_id, published, tile count, error). Not published = the
+    frame must stay out of the manifest. Module-level, so pool workers can
+    run it; they report back instead of logging (spawned workers have no
+    logging setup).
+    """
+    final = os.path.join(frames_dir, frame_id)
+    if os.path.isdir(final):
+        return frame_id, True, -1, None
+    tmp = tempfile.mkdtemp(prefix=f".tmp-{frame_id}-", dir=frames_dir)
+    idx = palette.classify(rp.render(field))
+    count = write_pyramid(grid, idx, tmp)
+    # On Windows a virus scanner/indexer briefly holding a fresh file makes
+    # the rename fail (seen in local runs) - retry before giving up.
+    for attempt in range(10):
+        try:
+            os.rename(tmp, final)
+            return frame_id, True, count, None
+        except OSError as e:
+            if os.path.isdir(final):  # a concurrent run published it
+                shutil.rmtree(tmp, ignore_errors=True)
+                return frame_id, True, -1, None
+            if attempt == 9:
+                shutil.rmtree(tmp, ignore_errors=True)
+                return frame_id, False, 0, str(e)
+            time.sleep(0.3)
+    return frame_id, False, 0, "rename failed"
+
+
+_WORKER: dict = {}
+
+
+def _init_worker(frames_dir: str, grid: TileGrid, geom: opera.Geometry, rp: Reprojector | None) -> None:
+    # fork: rp is the parent's object, shared copy-on-write (~250 MB lookup).
+    # spawn (Windows): rp is None - rebuilding (~5 s) beats pickling it.
+    _WORKER.update(frames_dir=frames_dir, grid=grid, rp=rp or Reprojector(grid, geom))
+
+
+def _publish_in_worker(frame_id: str, field: np.ndarray) -> tuple[str, bool, int, str | None]:
+    return publish_frame(_WORKER["frames_dir"], _WORKER["grid"], _WORKER["rp"], frame_id, field)
 
 
 class Job:
@@ -141,32 +189,31 @@ class Job:
 
     # -- frames -----------------------------------------------------------
 
-    def publish_frame(self, frame_id: str, field: np.ndarray) -> bool:
-        """Write the frame's tiles and move them into place. False if that
-        failed - the frame must then stay out of the manifest."""
-        final = os.path.join(self.frames_dir, frame_id)
-        if os.path.isdir(final):
-            return True
-        tmp = tempfile.mkdtemp(prefix=f".tmp-{frame_id}-", dir=self.frames_dir)
-        idx = palette.classify(self._reprojector.render(field))
-        count = write_pyramid(self.cfg.grid, idx, tmp)
-        # On Windows a virus scanner/indexer briefly holding a fresh file makes
-        # the rename fail (seen in local runs) - retry before giving up.
-        for attempt in range(10):
-            try:
-                os.rename(tmp, final)
-                log.info("frame %s: %d tiles", frame_id, count)
-                return True
-            except OSError as e:
-                if os.path.isdir(final):  # a concurrent run published it
-                    shutil.rmtree(tmp, ignore_errors=True)
-                    return True
-                if attempt == 9:
-                    log.warning("frame %s not published: %s", frame_id, e)
-                    shutil.rmtree(tmp, ignore_errors=True)
-                    return False
-                time.sleep(0.3)
-        return False
+    def publish_frames(self, items: list[tuple[str, np.ndarray]]) -> set[str]:
+        """Publish (frame_id, field) pairs, in parallel with cfg.workers > 1.
+        Returns the ids that are in place afterwards."""
+        rp = self._reprojector
+        if not items:
+            return set()
+        workers = max(1, min(self.cfg.workers, len(items)))
+        if workers == 1:
+            results = [publish_frame(self.frames_dir, self.cfg.grid, rp, fid, f) for fid, f in items]
+        else:
+            method = "fork" if "fork" in multiprocessing.get_all_start_methods() else "spawn"
+            ctx = multiprocessing.get_context(method)
+            with ProcessPoolExecutor(max_workers=workers, mp_context=ctx, initializer=_init_worker,
+                                     initargs=(self.frames_dir, self.cfg.grid, self._geom,
+                                               rp if method == "fork" else None)) as pool:
+                results = list(pool.map(_publish_in_worker, [i[0] for i in items], [i[1] for i in items]))
+        done = set()
+        for frame_id, ok, count, error in results:
+            if ok:
+                done.add(frame_id)
+                if count >= 0:
+                    log.info("frame %s: %d tiles", frame_id, count)
+            else:
+                log.warning("frame %s not published: %s", frame_id, error)
+        return done
 
     # -- run --------------------------------------------------------------
 
@@ -194,15 +241,17 @@ class Job:
             return previous
 
         frames = []
+        items = []  # frames still to render: (id, field)
         history = [newest - STEP * i for i in range(cfg.history_minutes // 5, -1, -1)]
         for t in history:
             if t != newest and not self.fetch(t):
                 continue
-            field = self.load(t)
-            if field is None:
-                continue
-            if self.publish_frame(obs_id(t), field):
-                frames.append({"id": obs_id(t), "time": iso(t), "type": "observation"})
+            if not os.path.isdir(os.path.join(self.frames_dir, obs_id(t))):
+                field = self.load(t)
+                if field is None:
+                    continue
+                items.append((obs_id(t), field))
+            frames.append({"id": obs_id(t), "time": iso(t), "type": "observation"})
 
         latest = self.load(newest)
         past = [self.load(newest - STEP * i) for i in (2, 1)]
@@ -210,9 +259,13 @@ class Job:
         steps = cfg.forecast_minutes // 5
         for k, field in enumerate(nowcast.extrapolate(latest, motion, steps), start=1):
             lead = k * 5
-            if self.publish_frame(fc_id(newest, lead), field):
-                frames.append({"id": fc_id(newest, lead), "time": iso(newest + STEP * k),
-                               "type": "forecast", "base_time": iso(newest), "lead_minutes": lead})
+            items.append((fc_id(newest, lead), field))
+            frames.append({"id": fc_id(newest, lead), "time": iso(newest + STEP * k),
+                           "type": "forecast", "base_time": iso(newest), "lead_minutes": lead})
+
+        published = self.publish_frames(items)
+        pending = {fid for fid, _ in items}
+        frames = [f for f in frames if f["id"] not in pending or f["id"] in published]
 
         manifest = {
             "version": 1,

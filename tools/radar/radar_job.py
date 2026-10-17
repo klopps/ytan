@@ -47,6 +47,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--storage", default=os.path.normpath(os.path.join(HERE, "..", "..", "storage", "radar")),
                         help="output directory (default: storage/radar of this checkout)")
+    parser.add_argument("-w", "--workers", type=int, default=Config.workers,
+                        help=f"processes rendering frames in parallel (default {Config.workers}, 1 = none)")
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args()
 
@@ -61,7 +63,8 @@ def main() -> int:
             return 0
         started = time.monotonic()
         try:
-            manifest = Job(Config(storage=args.storage, grid=default_grid())).run()
+            cfg = Config(storage=args.storage, grid=default_grid(), workers=max(1, args.workers))
+            manifest = Job(cfg).run()
         except Exception:
             log.exception("run failed")
             return 1

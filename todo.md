@@ -11,7 +11,8 @@ Phase 0 (2026-10-17): Quelle ist OPERA über EUMETNET Open Radar Data (CC BY 4.0
 Phase 1-4 (2026-10-17) gebaut und lokal getestet: `tools/radar/` (Python-Job, 13 Unit-Tests), `RadarController`/`RadarTileService` (PHPUnit), `public/js/radar.js` (Drawer-Schalter, Kontextmenü, Zeitleiste mit Prognose-Teil, Legende, Offline-Sperre, "veraltet"-Hinweis), Anwenderdoku, About-Seite, docs/API.md. Kacheln bis Zoomstufe 8 statt 9, darüber vergrößert PHP. Abweichungen und Messwerte in wetterradar.md, "Stand der Umsetzung".
 
 Offen:
-- Deploy, dann auf dem Server venv anlegen, ersten Lauf starten und Cron einrichten (Befehle in `tools/radar/README.md`).
+- Deployt (2026-10-17) auf test.pesr.org und ytan.pesr.org, venv + Cron (`*/5`, Log `storage/logs/radar.log`) auf beiden eingerichtet; der Test-Cron ist auskommentiert (seit 2026-10-17, entlastet den gemeinsamen Host; zum Testen die Zeile in `crontab -e` wieder aktivieren).
+- **Laufzeit:** war auf dem Server ~220 s pro normalem Lauf, knapp am 5-Minuten-Takt. Seit 2026-10-17 rendert der Job die Frames parallel (`--workers N`, Standard 4, `Config.workers`): voller erster Lauf auf dem Server 324 s -> 110 s. Noch zu deployen; danach im `radar.log` die Laufzeit normaler Läufe prüfen und ggf. die Zahl der Worker anpassen.
 - In der Android-App testen.
 - `storage/radar/verify.csv` über einige Regentage auswerten: bis zu welcher Vorlaufzeit schlägt der Nowcast die Persistenz? Ggf. die Prognose kürzer anbieten.
 - Speicherbedarf nach einer Woche messen.

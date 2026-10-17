@@ -15,7 +15,7 @@ from PIL import Image
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from ytanradar import nowcast, opera, palette  # noqa: E402
-from ytanradar.job import floor_step  # noqa: E402
+from ytanradar.job import Config, Job, floor_step  # noqa: E402
 from ytanradar.mercator import TILE, TileGrid, lat_to_px, lon_to_px, px_to_lat, px_to_lon  # noqa: E402
 from ytanradar.reproject import Reprojector  # noqa: E402
 from ytanradar.tiles import write_pyramid  # noqa: E402
@@ -151,6 +151,35 @@ class JobTest(unittest.TestCase):
     def test_floor_step(self):
         t = datetime(2026, 10, 17, 4, 19, 59, tzinfo=timezone.utc)
         self.assertEqual(floor_step(t), datetime(2026, 10, 17, 4, 15, tzinfo=timezone.utc))
+
+    def publish(self, storage: str, workers: int) -> tuple[set, dict]:
+        grid = TileGrid(south=54.0, west=10.0, north=56.0, east=13.0, zmin=7, zmax=8)
+        job = Job(Config(storage=storage, grid=grid, workers=workers))
+        job._geom = OPERA
+        job._reprojector = Reprojector(grid, OPERA)
+        cr0, cr1, cc0, cc1 = job._reprojector.crop
+        items = []
+        for i in range(3):
+            field = np.full((cr1 - cr0, cc1 - cc0), opera.UNDETECT_DBZ, np.float32)
+            field[50 + 40 * i:120 + 40 * i, 60:200] = 20.0 + 10 * i
+            items.append((f"f202610170440-{5 * (i + 1):03d}", field))
+        done = job.publish_frames(items)
+        files = {}
+        for root, _, names in os.walk(job.frames_dir):
+            for n in names:
+                path = os.path.join(root, n)
+                with open(path, "rb") as f:
+                    files[os.path.relpath(path, job.frames_dir)] = f.read()
+        return done, files
+
+    def test_parallel_publishing_writes_the_same_tiles_as_sequential(self):
+        with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b:
+            done_seq, files_seq = self.publish(a, 1)
+            done_par, files_par = self.publish(b, 2)
+        self.assertEqual(len(done_seq), 3)
+        self.assertEqual(done_seq, done_par)
+        self.assertTrue(files_seq)
+        self.assertEqual(files_seq, files_par)
 
 
 if __name__ == "__main__":
