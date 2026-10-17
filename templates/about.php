@@ -41,5 +41,10 @@
         <?php endforeach; ?>
     </ul>
     <?php endif; ?>
+    <h2><?= $t('about.radar_title') ?></h2>
+    <p><?= $t('about.radar_text', [
+        'source_link' => '<a href="https://www.eumetnet.eu/observations/weather-radar-network/" target="_blank" rel="noopener">EUMETNET OPERA</a>',
+        'license_link' => '<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>',
+    ]) ?></p>
 </body>
 </html>

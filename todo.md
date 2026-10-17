@@ -1,5 +1,25 @@
 # Offene Punkte
 
+## Regenradar mit Kurzfristvorhersage als Kartenebene
+
+Eigenes Regenradar über Google Maps für DE, DK und SE: Beobachtung der letzten 60 Minuten plus Vorhersage bis +120 Minuten, nutzbar bei Zoomstufe 12-16 (Grund für den neuen Anlauf: RainViewer liefert kostenlos nur bis Zoomstufe 7, siehe done.md "Regenradar-Layer").
+
+Aufbau: Python-Job (Cron) holt Radar-Composites (bevorzugt OPERA, sonst DWD/SMHI/DMI), projiziert nach Web Mercator, rechnet den Nowcast (OpenCV-Optical-Flow) und schreibt PNG-Kacheln Zoom 5-8 plus manifest.json nach storage/radar. Neuer RadarController liefert Manifest und Kacheln unter /api/v1/radar/ (nicht außerhalb von /api/, sonst cached sw.php die PNGs dauerhaft) und skaliert ab Zoomstufe 9 die Zoom-8-Kachel per GD hoch. Neues public/js/radar.js (Vorlage: entfernte Version aus der Git-Historie) mit Zeitleiste, Prognose-Kennzeichnung, Legende und Quellenangabe.
+
+Phase 0 (2026-10-17): Quelle ist OPERA über EUMETNET Open Radar Data (CC BY 4.0, ohne Schlüssel, anonym 200 Anfragen/h), `DBZH` alle 5 Minuten mit ~7 Minuten Verzögerung, 1-km-Raster in LAEA (die Doku sagt noch 2 km); nationale Quellen entfallen. DMI hat keine "nicht verändern"-Klausel (CC BY 4.0). Der Job läuft auf dem Webhost; per SSH geprüft: Python 3.13.5 und Cron vorhanden, kein pip/Compiler (venv mit `--without-pip` + `get-pip.py` geht, alle Pakete als Wheels außer pysteps - der Nowcast wird daher mit OpenCV-Optical-Flow + SciPy gebaut), GD fest eingebaut, kein Inode-Limit.
+
+Phase 1-4 (2026-10-17) gebaut und lokal getestet: `tools/radar/` (Python-Job, 13 Unit-Tests), `RadarController`/`RadarTileService` (PHPUnit), `public/js/radar.js` (Drawer-Schalter, Kontextmenü, Zeitleiste mit Prognose-Teil, Legende, Offline-Sperre, "veraltet"-Hinweis), Anwenderdoku, About-Seite, docs/API.md. Kacheln bis Zoomstufe 8 statt 9, darüber vergrößert PHP. Abweichungen und Messwerte in wetterradar.md, "Stand der Umsetzung".
+
+Offen:
+- Deploy, dann auf dem Server venv anlegen, ersten Lauf starten und Cron einrichten (Befehle in `tools/radar/README.md`).
+- In der Android-App testen.
+- `storage/radar/verify.csv` über einige Regentage auswerten: bis zu welcher Vorlaufzeit schlägt der Nowcast die Persistenz? Ggf. die Prognose kürzer anbieten.
+- Speicherbedarf nach einer Woche messen.
+- Möglich: Overzoom ab Zoomstufe 13 wirkt blockig (1-km-Pixel), ggf. weicher vergrößern.
+
+Ein detaillierter Plan steht in wetterradar.md.
+
+
 ## Performance: offene Punkte aus der Analyse vom 2026-10-16
 
 Kompression, Browser-Caching, WSI-Icons, Marker bei Bedarf, das doppelte Laden, die Prüfung in Produktion, gerundete Koordinaten, `data_sources` in der POI-Liste, Controller bei Bedarf und schnellere Routen-/Gebietslinien sind erledigt (done.md).

@@ -35,7 +35,10 @@ a fork of PESR. It runs in the browser, as an installable PWA, and as an
   ([Open-Meteo](https://open-meteo.com/)): temperature, rain, wind, gusts,
   wind direction, waves, tide curve, sunrise/sunset, a week overview with
   frost and thunderstorm hints.
-- Rain radar for the current map view (opens [Windy](https://www.windy.com/)).
+- Rain radar on the map for Germany, Denmark and Sweden: the last hour plus a
+  2-hour forecast, animated, usable down to close zoom levels (own tiles from
+  [EUMETNET OPERA](https://www.eumetnet.eu/observations/weather-radar-network/)
+  composites, CC BY 4.0). Also a link to [Windy](https://www.windy.com/)'s radar.
 
 **On the water (Android app)**
 - **GPS track recording** in the background with the screen locked;
@@ -78,6 +81,9 @@ A Garmin ConnectIQ app that provides navigation assistance on routes to the next
   monolithic script.
 - **Database**: MySQL/MariaDB, schema in `database/migrations/*.sql`,
   applied with `bin/migrate.php` (no external migration tool required).
+- **Rain radar job**: Python 3 (`tools/radar/`, numpy/h5py/pyproj/OpenCV),
+  run by cron every 5 minutes, writes the radar tiles to `storage/radar/` -
+  see [tools/radar/README.md](tools/radar/README.md).
 - **Android app**: a [Capacitor 8](https://capacitorjs.com/) shell
   (`android/`, plus the repo-root `package.json`/`capacitor.config.json`)
   that loads the live site in a WebView and adds native capabilities the

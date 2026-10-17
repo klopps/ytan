@@ -54,7 +54,7 @@ Fast alles, was man mit der Karte und ihren Inhalten tun kann, steht im Kontextm
 - **Am Rechner:** rechte Maustaste.
 - **Auf dem Smartphone:** lange auf die Stelle drücken, bis das Menü erscheint.
 
-Auf einem leeren Kartenpunkt bietet das Menü **Wetterdaten**, **Windy** und **POI erstellen**. Auf einer Route, einem POI oder einem Gebiet gibt es die passenden Aktionen - siehe [Karteninhalte](#chapter-karteninhalte).
+Auf einem leeren Kartenpunkt bietet das Menü **Wetterdaten**, **Windy**, **Regenradar ein-/ausblenden** und **POI erstellen**. Auf einer Route, einem POI oder einem Gebiet gibt es die passenden Aktionen - siehe [Karteninhalte](#chapter-karteninhalte).
 
 ## Helles und dunkles Erscheinungsbild
 

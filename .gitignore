@@ -48,3 +48,9 @@ Thumbs.db
 storage/static-maps-cache/*
 /storage/overpass-last-request
 /storage/nga-msi-last-request
+
+# Rain radar (tools/radar/): the job's output and the Python venv
+/storage/radar/*
+!/storage/radar/.gitkeep
+/tools/radar/.venv/
+__pycache__/

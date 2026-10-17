@@ -636,6 +636,7 @@ var settings = { // muss wegen JSON.stringify() ein Objekt sein
     detailroutes: true, // Routes
     detailareas: true,  // Areas
     detailwsi: false,  // Wind Shelter Indicators
+    detailradar: false, // Rain radar overlay (radar.js)
     trackDistanceFilter: 'battery', // GPS track recording (native shell only, track-recorder.js)
     maptype: "hybrid",
     center: null,
@@ -1122,6 +1123,7 @@ function initMap() {
 
     initWeatherWidget(); // weather.js - registers its "Weather data for this location" map context menu item
     initPoiMapContextMenu(); // poi.js - registers its "Create POI" map context menu item
+    initRadar(); // radar.js - context menu item, offline handling, re-enables the layer if it was on
     if (typeof initTrackRecorder === 'function') {
         initTrackRecorder(); // track-recorder.js - no-op outside the native Capacitor shell
     }

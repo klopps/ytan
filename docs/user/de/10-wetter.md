@@ -1,6 +1,6 @@
 ---
 title: Wetter
-keywords: Wetter, Wind, Böen, Regen, Welle, Gezeiten, Tide, Sonnenaufgang, Open-Meteo, DWD, DMI, SMHI, Windy, Regenradar, Beaufort
+keywords: Wetter, Wind, Böen, Regen, Welle, Gezeiten, Tide, Sonnenaufgang, Open-Meteo, DWD, DMI, SMHI, Windy, Regenradar, Niederschlagsprognose, OPERA, Beaufort
 ---
 
 Für jeden Kartenpunkt zeigt YTAN eine Wettervorhersage für die nächsten **sieben Tage**, stündlich, mit Wind, Böen, Regen, Wellenhöhe und Gezeiten.
@@ -15,6 +15,22 @@ Für jeden Kartenpunkt zeigt YTAN eine Wettervorhersage für die nächsten **sie
 | **Dein Standort** | Menü > **Wetter für aktuellen Standort**, oder den Standort-Punkt antippen und **Wetter für Standort** wählen. |
 
 Zusätzlich bietet das Kartenkontextmenü **Auf Windy öffnen** und **Regenradar auf Windy öffnen**: Das öffnet die Seite windy.com mit genau diesem Ort und dem aktuellen Zoom - der aktuelle Niederschlag lässt sich dort als Radar ansehen. Das Menü bietet außerdem **POI erstellen**.
+
+## Regenradar auf der Karte
+
+YTAN kann den Niederschlag direkt über die Karte legen: Menü > **POIs** > Schalter **Regenradar**, oder im Kartenkontextmenü **Regenradar ein-/ausblenden**. Das Radar gibt es für **Deutschland, Dänemark und Schweden** samt Ostsee, bis in die Zoomstufen, mit denen du paddelst.
+
+| Teil | Bedeutung |
+|---|---|
+| **Abspielen** | Spielt die letzte Stunde und die Vorhersage als Film ab. |
+| **Schieberegler** | Wählt einen Zeitpunkt. Der graue Teil ist gemessen, der **orange** Teil ist Vorhersage. |
+| **Radar** / **Prognose +30 Min.** | Zeigt, ob das Bild gemessen oder vorhergesagt ist. |
+| **Farbskala** | Regenrate in mm pro Stunde, von hellblau (Niesel) bis violett (Wolkenbruch). |
+| **Stand** | Uhrzeit des neuesten Radarbilds. Die Messung ist etwa 10 Minuten alt, wenn sie ankommt. |
+
+Die Vorhersage reicht **zwei Stunden** weit. Sie schiebt den gemessenen Regen in seiner Zugrichtung weiter, Schauer wachsen oder verschwinden darin nicht. Sie wird deshalb mit jeder Minute unsicherer - für die nächste halbe Stunde ist sie meist brauchbar, bei Gewittern schon früher nicht mehr. Steht **Radardaten veraltet** unten im Feld, kamen länger als 30 Minuten keine neuen Daten. Ohne Internetverbindung ist der Schalter gesperrt.
+
+Die Radardaten stammen von **EUMETNET OPERA**, dem Verbund der europäischen Wetterdienste (Lizenz CC BY 4.0).
 
 ## Woher kommen die Daten?
 

@@ -1,0 +1,9 @@
+# Radar tile job (see README.md). Only packages with binary wheels for
+# manylinux/cp313: the production host has no C compiler (which is also why
+# pysteps is not used - it ships as source only).
+numpy>=2.0
+h5py>=3.10
+pyproj>=3.6
+pillow>=10.0
+scipy>=1.12
+opencv-python-headless>=4.9

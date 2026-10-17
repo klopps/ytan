@@ -1931,6 +1931,170 @@ img.wsi {
   font-size: 19px;
 }
 
+/**
+* Rain radar controls (radar.js) - shown only while #detailradar is on.
+* Bottom-left above the Google logo, same panel chrome as .tour-mode-badge;
+* the right edge keeps 70px free for #gotomylocation (bottom-right).
+*/
+.radar-controls {
+  position: absolute;
+  bottom: 28px;
+  left: 10px;
+  width: min(360px, calc(100% - 80px));
+  box-sizing: border-box;
+  background-color: var(--color-bg-panel);
+  color: var(--color-text);
+  box-shadow: var(--shadow-panel);
+  border-radius: 15px;
+  padding: 6px 10px 6px 6px;
+  z-index: 5;
+}
+
+.radar-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.radar-controls-playpause {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.radar-controls-playpause .material-icons-round {
+  font-size: 20px;
+}
+
+/* Observation part of the track neutral, forecast part (from --radar-split) tinted */
+.radar-controls-slider {
+  flex: 1 1 auto;
+  min-width: 60px;
+  height: 6px;
+  margin: 0;
+  border-radius: 3px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: linear-gradient(to right,
+    var(--color-border-subtle) 0, var(--color-border-subtle) var(--radar-split, 100%),
+    var(--color-warning) var(--radar-split, 100%), var(--color-warning) 100%);
+  cursor: pointer;
+}
+
+.radar-controls-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  border: 2px solid var(--color-bg-panel);
+}
+
+.radar-controls-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  border: 2px solid var(--color-bg-panel);
+}
+
+.radar-controls-time {
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.radar-controls-tag {
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.radar-controls-tag-forecast {
+  background-color: var(--color-warning);
+  color: var(--color-bg-panel);
+}
+
+.radar-controls-hint {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-faint);
+  margin: 4px 0 0 4px;
+}
+
+.radar-legend {
+  display: flex;
+  align-items: flex-end;
+  margin: 6px 0 0 4px;
+}
+
+.radar-legend-step {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.radar-legend-swatch {
+  height: 6px;
+}
+
+.radar-legend-value,
+.radar-legend-unit {
+  font-size: 9px;
+  color: var(--color-text-faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.radar-legend-unit {
+  margin-left: 4px;
+}
+
+.radar-controls-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 3px 0 0 4px;
+  font-size: 9px;
+  color: var(--color-text-faint);
+}
+
+.radar-controls-status-stale {
+  color: var(--color-warning);
+  font-weight: 700;
+}
+
+.radar-controls-attribution {
+  color: var(--color-text-faint);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.radar-controls-attribution:hover {
+  text-decoration: underline;
+}
+
+.nav-toggle-hint {
+  font-size: 11px;
+  color: var(--color-text-faint);
+  padding: 0 16px 6px;
+}
+
 .tour-mode-badge-text {
   display: flex;
   flex-direction: column;

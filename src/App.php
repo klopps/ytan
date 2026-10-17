@@ -33,6 +33,7 @@ use Ytan\Http\Controllers\SettingsController;
 use Ytan\Http\Controllers\TourController;
 use Ytan\Http\Controllers\TranslationController;
 use Ytan\Http\Controllers\UserController;
+use Ytan\Http\Controllers\RadarController;
 use Ytan\Http\Controllers\WeatherController;
 use Ytan\Http\Controllers\WsiController;
 use Ytan\Http\Middleware\AppVersionMiddleware;
@@ -73,6 +74,7 @@ use Ytan\Service\Weather\OpenMeteoWeatherProvider;
 use Ytan\Service\Weather\SmhiWeatherProvider;
 use Ytan\Service\Weather\WeatherRegionResolver;
 use Ytan\Service\WeatherService;
+use Ytan\Service\RadarTileService;
 use Ytan\Service\WsiRenderer;
 use Ytan\Domain\Watch\WatchLinkRepository;
 use Ytan\Service\UserGuideService;
@@ -219,6 +221,7 @@ final class App
         ));
         $c->set(AuthController::class, fn ($c) => new AuthController($authService, $userRepository, $mailService, $appUrl, $c->get(RequestThrottle::class)));
         $c->set(UserController::class, fn () => new UserController($userRepository, $mailService, $authService, $appUrl));
+        $c->set(RadarController::class, fn () => new RadarController(new RadarTileService($rootDir . '/storage/radar')));
         $c->set(WsiController::class, fn () => new WsiController(new WsiRenderer($rootDir . '/public/images/wsi')));
         $c->set(SettingsController::class, fn ($c) => new SettingsController($c->get(SettingsRepository::class)));
         $c->set(GpxExportController::class, fn ($c) => new GpxExportController($c->get(RouteRepository::class), $c->get(TourRepository::class), $c->get(SettingsRepository::class), $appName));
@@ -391,6 +394,8 @@ final class App
         $app->get('/api/v1/wsi/{code}', [WsiController::class, 'show']);
 
         $app->get('/api/v1/weather', [WeatherController::class, 'show']);
+        $app->get('/api/v1/radar/manifest', [RadarController::class, 'manifest']);
+        $app->get('/api/v1/radar/tiles/{frame:[of][0-9-]+}/{z:[0-9]+}/{x:[0-9]+}/{y:[0-9]+}.png', [RadarController::class, 'tile']);
         $app->get('/api/v1/geocode/reverse', [GeocodingController::class, 'reverse']);
 
         $app->get('/api/v1/watch', [WatchController::class, 'status']);

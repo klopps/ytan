@@ -228,6 +228,46 @@ auth required. `lat` must be -90..90, `lng` -180..180 (else 422). Both call
 external services (Open-Meteo/SMHI, Nominatim), so together they are limited
 to 120 requests per IP in 10 minutes (429, `auth.too_many_attempts`).
 
+## Rain radar
+
+Produced by the Python job in `tools/radar/` (see its README.md), served
+read-only from `storage/radar/`, no auth required.
+
+`GET /api/v1/radar/manifest` → `{data: {...}}`, `Cache-Control: max-age=60`;
+404 `radar.not_available` until the job has run once.
+
+```json
+{
+  "version": 1,
+  "generated": "2026-10-17T04:49:40Z",
+  "latest_observation": "2026-10-17T04:40:00Z",
+  "step_minutes": 5,
+  "source": {"name": "EUMETNET OPERA", "url": "...", "license": "CC BY 4.0", "license_url": "...", "modified": true},
+  "zoom": {"min": 5, "max": 8},
+  "bounds": {"south": 47, "west": 5, "north": 70, "east": 25},
+  "legend": [{"mm_h": 0.1, "color": "#9fd4ff"}, "..."],
+  "motion": "optical-flow",
+  "frames": [
+    {"id": "o202610170440", "time": "2026-10-17T04:40:00Z", "type": "observation"},
+    {"id": "f202610170440-030", "time": "2026-10-17T05:10:00Z", "type": "forecast",
+     "base_time": "2026-10-17T04:40:00Z", "lead_minutes": 30}
+  ]
+}
+```
+
+`motion` is `null` when there was too little rain to estimate a movement (the
+forecast frames then repeat the latest observation).
+
+`GET /api/v1/radar/tiles/{frame}/{z}/{x}/{y}.png` - Google/OSM tile scheme,
+256 px, palette PNG, `Cache-Control: max-age=86400, immutable` (a frame never
+changes). Below `zoom.min` and where there is no rain: a transparent tile
+(200). Above `zoom.max` the matching part of the `zoom.max` tile is enlarged
+(nearest neighbour) and cached inside the frame's directory. Errors: 422
+`radar.invalid_frame` (id not `o` + 12 digits or `f` + 12 digits + `-NNN`),
+422 `radar.invalid_tile` (z > 20 or x/y outside 0..2^z-1), 404
+`radar.frame_not_found` (expired: the job deletes a frame ~10 minutes after it
+left the manifest).
+
 ## CSP reports
 
 `POST /api/v1/csp-report` - target of the HTML pages' Content-Security-Policy
