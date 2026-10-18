@@ -234,10 +234,7 @@ class Job:
                 return True
             os.remove(self.raw_path(t))  # cut for another area: fetch again
         h5 = os.path.join(self.dl_dir, f"{t:%Y%m%d%H%M}.h5")
-        if self.download["start"] is None:
-            self.download["start"] = iso_now()
         found = opera.download(opera.frame_url(t), h5)
-        self.download["end"] = iso_now()
         if not found:
             return False
         self.download["bytes"] += os.path.getsize(h5)
@@ -364,6 +361,11 @@ class Job:
     def run(self) -> dict:
         """One run; records what it did in status.json, also when it fails."""
         started = iso_now()
+        # Phases that add up to the whole run (/admin/radar): download = start
+        # until processing begins (incl. building the reprojection lookup and
+        # checking cached raw data), processing, finishing = the rest
+        # (verifying the forecast, manifest, cleanup).
+        self.download["start"] = started
         status = self.read_status()
         trigger = (status.get("running") or {}).get("trigger") or ("manual" if self.cfg.force else "cron")
         try:
@@ -372,14 +374,16 @@ class Job:
             self.write_status(status, {"start": started, "end": iso_now(), "outcome": "failed",
                                        "trigger": trigger, "error": str(e)[:300]}, None)
             raise
+        ended = iso_now()
         processed = None
         if outcome == "processed":
             processed = {
-                "start": started, "end": iso_now(),
+                "start": started, "end": ended,
                 "regions": [r.get("name", "") for r in self.cfg.regions],
                 "download": self.download, "processing": self.processing,
+                "finishing": {"start": self.processing["end"], "end": ended},
             }
-        self.write_status(status, {"start": started, "end": iso_now(), "outcome": outcome, "trigger": trigger},
+        self.write_status(status, {"start": started, "end": ended, "outcome": outcome, "trigger": trigger},
                           processed)
         return manifest
 
@@ -432,6 +436,7 @@ class Job:
 
         # -- processing phase: render observations, nowcast, publish
         self.processing["start"] = iso_now()
+        self.download["end"] = self.processing["start"]
         frames = []
         items = []  # frames still to render: (id, field)
         for t in available:

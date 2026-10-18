@@ -71,6 +71,10 @@ $minuteOptions = function (int $from, int $to, int $step, int $selected, ?string
                     <tr><td><?= $t('admin.radar.duration') ?></td><td id="radarProcessingDuration"></td></tr>
                     <tr><td><?= $t('admin.radar.workers_used') ?></td><td id="radarProcessingWorkers"></td></tr>
                     <tr><td><?= $t('admin.radar.generated') ?></td><td id="radarProcessingSize"></td></tr>
+                    <tr class="table-light"><th colspan="2"><?= $t('admin.radar.finishing') ?></th></tr>
+                    <tr><td><?= $t('admin.radar.start') ?></td><td id="radarFinishingStart"></td></tr>
+                    <tr><td><?= $t('admin.radar.end') ?></td><td id="radarFinishingEnd"></td></tr>
+                    <tr><td><?= $t('admin.radar.duration') ?></td><td id="radarFinishingDuration"></td></tr>
                 </tbody>
             </table>
         </div>
@@ -104,6 +108,18 @@ $minuteOptions = function (int $from, int $to, int $step, int $selected, ?string
             </div>
         </div>
         <p class="small text-secondary"><?= $t('admin.radar.interval_hint') ?></p>
+        <div class="row g-3 mb-3">
+            <div class="col-sm-6 col-md-4">
+                <label for="radarMaxMosaic" class="form-label"><?= $t('admin.radar.max_mosaic') ?></label>
+                <div class="input-group">
+                    <input type="number" class="form-control" id="radarMaxMosaic"
+                           min="<?= RadarConfig::MAX_MOSAIC_PIXELS_MIN / 1_000_000 ?>" max="<?= RadarConfig::MAX_MOSAIC_PIXELS_LIMIT / 1_000_000 ?>" step="1"
+                           value="<?= (int) round($radarSettings['max_mosaic_pixels'] / 1_000_000) ?>">
+                    <span class="input-group-text"><?= $t('admin.radar.max_mosaic_unit') ?></span>
+                </div>
+            </div>
+            <div class="col-sm-6 col-md-8 small text-secondary align-self-end"><?= $t('admin.radar.max_mosaic_hint') ?></div>
+        </div>
 
         <h3 class="h6 small text-uppercase text-secondary"><?= $t('admin.settings.radar_presets') ?></h3>
         <p class="small text-secondary mb-2"><?= $t('admin.settings.radar_presets_hint') ?></p>
@@ -133,6 +149,7 @@ window.YTAN_RADAR_SETTINGS = <?= json_encode($radarSettings + [
     'status' => RadarConfig::readStatus($rootDir . '/storage/radar'),
     'running' => (new \Ytan\Service\RadarJobRunner($rootDir))->isRunning(),
     'preset_regions' => RadarConfig::PRESETS,
-    'max_mosaic_pixels' => RadarConfig::MAX_MOSAIC_PIXELS,
+    'max_mosaic_pixels_min' => RadarConfig::MAX_MOSAIC_PIXELS_MIN,
+    'max_mosaic_pixels_limit' => RadarConfig::MAX_MOSAIC_PIXELS_LIMIT,
 ], JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) ?>;</script>
 <?php require $rootDir . '/templates/partials/admin-shell-footer.php'; ?>

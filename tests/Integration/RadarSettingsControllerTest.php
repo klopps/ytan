@@ -46,6 +46,8 @@ final class RadarSettingsControllerTest extends ControllerTestCase
 
         $this->assertSame(60, $data['forecast_minutes']);
         $this->assertSame([60, 5, 4], [$data['history_minutes'], $data['fetch_interval_minutes'], $data['workers']]);
+        $this->assertSame(120_000_000, $data['max_mosaic_pixels']);
+        $this->assertSame(50_000_000, $data['max_mosaic_pixels_min']);
         $this->assertNull($data['status']); // the job has not run yet
         $this->assertSame(['de', 'dk', 'se'], $data['presets']);
         $this->assertSame([], $data['custom']);
@@ -61,6 +63,7 @@ final class RadarSettingsControllerTest extends ControllerTestCase
             'forecast_minutes' => 45,
             'fetch_interval_minutes' => 15,
             'workers' => 8,
+            'max_mosaic_pixels' => 80_000_000,
             'presets' => ['dk'],
             'custom' => [['name' => 'Bornholm', 'south' => 54.9, 'west' => 14.6, 'north' => 55.4, 'east' => 15.3]],
         ];
@@ -69,6 +72,7 @@ final class RadarSettingsControllerTest extends ControllerTestCase
         $stored = (new SettingsRepository($this->pdo))->radarSettings();
         $this->assertSame(45, $stored['forecast_minutes']);
         $this->assertSame([30, 15, 8], [$stored['history_minutes'], $stored['fetch_interval_minutes'], $stored['workers']]);
+        $this->assertSame(80_000_000, $stored['max_mosaic_pixels']);
         $this->assertSame(['dk'], $stored['presets']);
         $this->assertSame('Bornholm', $stored['custom'][0]['name']);
 
@@ -90,7 +94,7 @@ final class RadarSettingsControllerTest extends ControllerTestCase
     {
         $admin = $this->authPayload($this->createUser(), ['is_admin' => true]);
         try {
-            $this->controller->update($this->request('PUT', '/api/v1/settings/radar', $admin, ['history_minutes' => 60, 'forecast_minutes' => 7, 'fetch_interval_minutes' => 5, 'workers' => 4, 'presets' => ['de']]), $this->response());
+            $this->controller->update($this->request('PUT', '/api/v1/settings/radar', $admin, ['history_minutes' => 60, 'forecast_minutes' => 7, 'fetch_interval_minutes' => 5, 'workers' => 4, 'max_mosaic_pixels' => 120_000_000, 'presets' => ['de']]), $this->response());
             $this->fail('expected a ValidationException');
         } catch (ValidationException) {
         }

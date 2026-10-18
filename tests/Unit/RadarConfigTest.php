@@ -14,7 +14,7 @@ final class RadarConfigTest extends TestCase
     {
         return $override + [
             'history_minutes' => 30, 'forecast_minutes' => 60, 'fetch_interval_minutes' => 10, 'workers' => 6,
-            'presets' => ['se', 'de'], 'custom' => [],
+            'max_mosaic_pixels' => 120_000_000, 'presets' => ['se', 'de'], 'custom' => [],
         ];
     }
 
@@ -48,7 +48,7 @@ final class RadarConfigTest extends TestCase
     public static function invalidInputs(): array
     {
         $base = ['history_minutes' => 60, 'forecast_minutes' => 60, 'fetch_interval_minutes' => 5, 'workers' => 4,
-            'presets' => ['de'], 'custom' => []];
+            'max_mosaic_pixels' => 120_000_000, 'presets' => ['de'], 'custom' => []];
         $rect = ['name' => 'x', 'south' => 54.0, 'west' => 10.0, 'north' => 55.0, 'east' => 11.0];
 
         return [
@@ -62,6 +62,9 @@ final class RadarConfigTest extends TestCase
             'interval 7' => [['fetch_interval_minutes' => 7] + $base, 'radar.settings_invalid_interval'],
             'workers 0' => [['workers' => 0] + $base, 'radar.settings_invalid_workers'],
             'workers 13' => [['workers' => 13] + $base, 'radar.settings_invalid_workers'],
+            'limit below 50 M' => [['max_mosaic_pixels' => 49_999_999] + $base, 'radar.settings_invalid_max_mosaic'],
+            'limit above 500 M' => [['max_mosaic_pixels' => 500_000_001] + $base, 'radar.settings_invalid_max_mosaic'],
+            'limit missing' => [array_diff_key($base, ['max_mosaic_pixels' => 1]), 'radar.settings_invalid_max_mosaic'],
             'history missing' => [array_diff_key($base, ['history_minutes' => 1]), 'radar.settings_invalid_history'],
             'unknown preset' => [['presets' => ['xx']] + $base, 'radar.settings_unknown_region'],
             'no region at all' => [['presets' => []] + $base, 'radar.settings_no_region'],
@@ -81,6 +84,24 @@ final class RadarConfigTest extends TestCase
         }
     }
 
+    public function testTheConfiguredLimitDecidesWhatIsTooLarge(): void
+    {
+        // ES + DE + SE: about 65 M pixels
+        $regions = ['presets' => ['es', 'de', 'se']];
+        $box = RadarConfig::enclosing(RadarConfig::regions(['presets' => $regions['presets'], 'custom' => []]));
+        $pixels = RadarConfig::mosaicPixels($box);
+        $this->assertGreaterThan(60_000_000, $pixels);
+        $this->assertLessThan(70_000_000, $pixels);
+        try {
+            RadarConfig::normalize($this->valid($regions + ['max_mosaic_pixels' => 60_000_000]));
+            $this->fail('expected too large');
+        } catch (ValidationException $e) {
+            $this->assertSame('radar.settings_too_large', $e->getErrorCode());
+        }
+        $ok = RadarConfig::normalize($this->valid($regions + ['max_mosaic_pixels' => 70_000_000]));
+        $this->assertSame(70_000_000, $ok['max_mosaic_pixels']);
+    }
+
     public function testForecastZeroIsAllowed(): void
     {
         $this->assertSame(0, RadarConfig::normalize($this->valid(['forecast_minutes' => 0]))['forecast_minutes']);
@@ -90,6 +111,7 @@ final class RadarConfigTest extends TestCase
     {
         $d = RadarConfig::defaults();
         $this->assertSame([60, 60, 5, 4], [$d['history_minutes'], $d['forecast_minutes'], $d['fetch_interval_minutes'], $d['workers']]);
+        $this->assertSame(120_000_000, $d['max_mosaic_pixels']); // the former fixed constant
         $this->assertSame($d, RadarConfig::normalize($d)); // the defaults are valid input
     }
 
@@ -102,7 +124,7 @@ final class RadarConfigTest extends TestCase
         $this->assertEqualsWithDelta(24.2, $box['east'], 1e-9);
         // the original fixed area 47-70 N / 5-25 E measured ~30 M pixels
         $this->assertGreaterThan(20_000_000, RadarConfig::mosaicPixels($box));
-        $this->assertLessThan(RadarConfig::MAX_MOSAIC_PIXELS, RadarConfig::mosaicPixels($box));
+        $this->assertLessThan(RadarConfig::MAX_MOSAIC_PIXELS_MIN, RadarConfig::mosaicPixels($box));
     }
 
     public function testReadStatusReturnsTheJobReportOrNull(): void

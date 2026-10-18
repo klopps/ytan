@@ -19,7 +19,7 @@ use Ytan\Exception\ValidationException;
  * PRESETS (country boxes) or one the admin draws on a map. The job renders
  * the rectangle enclosing all regions and leaves everything outside the
  * regions transparent; its memory and runtime grow with that enclosing
- * rectangle, hence MAX_MOSAIC_PIXELS.
+ * rectangle, hence the admin setting max_mosaic_pixels.
  */
 final class RadarConfig
 {
@@ -40,11 +40,14 @@ final class RadarConfig
     public const NAME_MAX_LENGTH = 60;
 
     /**
-     * Pixels of the enclosing rectangle at the job's tile zoom 8. DE+DK+SE
-     * (the original fixed area) is ~30 M; the job's reprojection lookup
-     * takes 8 bytes per pixel, so 60 M is about 0.5 GB on the server.
+     * Limit for the pixels of the enclosing rectangle at the job's tile zoom
+     * 8 (admin setting max_mosaic_pixels). DE+DK+SE is ~26 M; the job's
+     * reprojection lookup takes about 8 bytes per pixel, so the default of
+     * 120 M is about 1 GB on the server, the upper bound 500 M about 4 GB.
      */
-    public const MAX_MOSAIC_PIXELS = 120_000_000;
+    public const MAX_MOSAIC_PIXELS_DEFAULT = 120_000_000;
+    public const MAX_MOSAIC_PIXELS_MIN = 50_000_000;
+    public const MAX_MOSAIC_PIXELS_LIMIT = 500_000_000;
 
     /** Composite coverage (EUMETNET OPERA, roughly): regions must lie inside. */
     public const COVERAGE = ['south' => 32.0, 'west' => -30.0, 'north' => 72.0, 'east' => 45.0];
@@ -126,6 +129,9 @@ final class RadarConfig
             'fetch_interval_minutes must be 5, 10 or 15.', 'radar.settings_invalid_interval');
         $workers = self::steppedInt($input['workers'] ?? null, self::WORKERS_MIN, self::WORKERS_MAX, 1,
             'workers must be 1 to 12.', 'radar.settings_invalid_workers');
+        $maxPixels = self::steppedInt($input['max_mosaic_pixels'] ?? null, self::MAX_MOSAIC_PIXELS_MIN,
+            self::MAX_MOSAIC_PIXELS_LIMIT, 1, 'max_mosaic_pixels must be 50 to 500 million.',
+            'radar.settings_invalid_max_mosaic');
 
         $presets = [];
         foreach ((array) ($input['presets'] ?? []) as $code) {
@@ -149,13 +155,14 @@ final class RadarConfig
         $config = [
             'history_minutes' => $history, 'forecast_minutes' => $minutes,
             'fetch_interval_minutes' => $interval, 'workers' => $workers,
+            'max_mosaic_pixels' => $maxPixels,
             'presets' => $presets, 'custom' => $custom,
         ];
         $regions = self::regions($config);
         if ($regions === []) {
             throw new ValidationException('Choose at least one region.', 'radar.settings_no_region');
         }
-        if (self::mosaicPixels(self::enclosing($regions)) > self::MAX_MOSAIC_PIXELS) {
+        if (self::mosaicPixels(self::enclosing($regions)) > $maxPixels) {
             throw new ValidationException('The regions together are too large.', 'radar.settings_too_large');
         }
 
@@ -204,6 +211,7 @@ final class RadarConfig
             'forecast_minutes' => self::FORECAST_DEFAULT_MINUTES,
             'fetch_interval_minutes' => self::INTERVAL_DEFAULT_MINUTES,
             'workers' => self::WORKERS_DEFAULT,
+            'max_mosaic_pixels' => self::MAX_MOSAIC_PIXELS_DEFAULT,
             'presets' => self::DEFAULT_PRESETS,
             'custom' => [],
         ];

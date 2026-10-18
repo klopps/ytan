@@ -60,7 +60,8 @@ final class RadarSettingsController extends BaseController
             'preset_regions' => RadarConfig::PRESETS,
             'mosaic_pixels' => RadarConfig::regions($config) === [] ? 0
                 : (int) RadarConfig::mosaicPixels(RadarConfig::enclosing(RadarConfig::regions($config))),
-            'max_mosaic_pixels' => RadarConfig::MAX_MOSAIC_PIXELS,
+            'max_mosaic_pixels_min' => RadarConfig::MAX_MOSAIC_PIXELS_MIN,
+            'max_mosaic_pixels_limit' => RadarConfig::MAX_MOSAIC_PIXELS_LIMIT,
         ];
     }
 }

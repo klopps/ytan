@@ -1,5 +1,11 @@
 # Erledigt
 
+## Maximale Pixelanzahl für Regenradar konfigurierbar
+
+~~RadarConfig::MAX_MOSAIC_PIXELS ist derzeit hart auf 120 Millionen eingestellt. Der Wert soll unter admin/radar konfigurierbar, aber nicht kleiner 50 Millionen sein.~~
+
+Gelöst (2026-10-18): Die feste Konstante `RadarConfig::MAX_MOSAIC_PIXELS` (120 Mio.) ist jetzt die Einstellung "Maximale Rechenfläche" in /admin/radar (Eingabe in Mio. Bildpunkten, Standard 120 Mio., mindestens 50 Mio.; als Schutz zusätzlich höchstens 500 Mio., weil der Radar-Job etwa 8 Byte Speicher pro Bildpunkt braucht, 500 Mio. also rund 4 GB). Gespeichert in `app_settings.radar_max_mosaic_pixels` (Migration 045), Teil von `PUT /api/v1/settings/radar` (`max_mosaic_pixels`, ungültig: 422 `radar.settings_invalid_max_mosaic`); `RadarConfig::normalize()` prüft die Regionen gegen diesen Wert. Die Seite rechnet die Flächenanzeige und die Sperre von "Speichern" live mit dem eingegebenen Wert. Tests: PHPUnit `RadarConfigTest` (Grenzen 50/500 Mio., der eingestellte Wert entscheidet über "zu groß"), `RadarSettingsControllerTest`.
+
 ## Konfiguration des Regenradars im Admin-Bereich
 
 ~~Das Regenradar soll im Admin-Bereich konfigurierbar sein.~~

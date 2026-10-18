@@ -22,7 +22,18 @@ var radarSettings = {
 };
 
 function radarSettingsData() {
-    return window.YTAN_RADAR_SETTINGS || { forecast_minutes: 120, presets: [], custom: [], preset_regions: {}, max_mosaic_pixels: 0 };
+    return window.YTAN_RADAR_SETTINGS || { forecast_minutes: 60, presets: [], custom: [], preset_regions: {}, max_mosaic_pixels: 0 };
+}
+
+/** The limit as typed in #radarMaxMosaic (million pixels), in pixels; NaN while invalid. */
+function radarMaxMosaicPixels() {
+    var data = radarSettingsData();
+    var millions = Number(document.getElementById('radarMaxMosaic').value);
+    var px = Math.round(millions) * 1e6;
+    if (!Number.isFinite(millions) || px < data.max_mosaic_pixels_min || px > data.max_mosaic_pixels_limit) {
+        return NaN;
+    }
+    return px;
 }
 
 function radarCheckedPresets() {
@@ -74,13 +85,22 @@ function radarUpdateSize() {
     var boxes = radarAllBoxes();
     var el = document.getElementById('radarSize');
     var px = radarMosaicPixels(boxes);
-    var tooLarge = px > data.max_mosaic_pixels;
+    var limit = radarMaxMosaicPixels();
+    if (Number.isNaN(limit)) {
+        el.textContent = t('admin.radar.max_mosaic_invalid', {
+            min: data.max_mosaic_pixels_min / 1e6, max: data.max_mosaic_pixels_limit / 1e6
+        });
+        el.className = 'small mb-0 text-danger';
+        document.getElementById('radarSaveBtn').disabled = true;
+        return;
+    }
+    var tooLarge = px > limit;
     if (boxes.length === 0) {
         el.textContent = t('admin.settings.radar_no_region');
     } else {
         el.textContent = t('admin.settings.radar_size', {
             size: (px / 1e6).toLocaleString(undefined, { maximumFractionDigits: 1 }),
-            max: (data.max_mosaic_pixels / 1e6).toLocaleString(undefined, { maximumFractionDigits: 0 })
+            max: (limit / 1e6).toLocaleString(undefined, { maximumFractionDigits: 0 })
         }) + (tooLarge ? ' ' + t('admin.settings.radar_too_large') : '');
     }
     el.className = 'small mb-0 ' + (tooLarge || boxes.length === 0 ? 'text-danger' : 'text-secondary');
@@ -203,6 +223,7 @@ function saveRadarSettings() {
         forecast_minutes: parseInt(document.getElementById('radarForecastMinutes').value, 10),
         fetch_interval_minutes: parseInt(document.getElementById('radarFetchInterval').value, 10),
         workers: parseInt(document.getElementById('radarWorkers').value, 10),
+        max_mosaic_pixels: radarMaxMosaicPixels(),
         presets: radarCheckedPresets(),
         custom: custom
     };
@@ -306,6 +327,10 @@ function renderRadarStatus() {
     radarSetText('radarProcessingEnd', radarFormatTime(p.processing && p.processing.end));
     radarSetText('radarProcessingDuration', p.processing ? radarFormatDuration(p.processing.start, p.processing.end) : '-');
     radarSetText('radarProcessingWorkers', p.processing ? String(p.processing.workers) : '-');
+    var fin = p.finishing || null; // missing in status.json files of older job versions
+    radarSetText('radarFinishingStart', radarFormatTime(fin && fin.start));
+    radarSetText('radarFinishingEnd', radarFormatTime(fin && fin.end));
+    radarSetText('radarFinishingDuration', fin ? radarFormatDuration(fin.start, fin.end) : '-');
     radarSetText('radarProcessingSize', p.processing
         ? radarFormatMb(p.processing.bytes) + ' - ' + t('admin.radar.frames', { n: p.processing.frames })
         : '-');
@@ -412,6 +437,7 @@ async function initRadarSettings() {
         });
     });
     document.getElementById('radarAddRegion').addEventListener('click', radarAddCustomInView);
+    document.getElementById('radarMaxMosaic').addEventListener('input', radarUpdateSize);
     document.getElementById('radarSaveBtn').addEventListener('click', saveRadarSettings);
     radarUpdateSize();
     try {

@@ -210,3 +210,50 @@
 2026-10-18 15:34:33,919 INFO frame f202610181325-060: 270 tiles
 2026-10-18 15:34:42,676 WARNING raw C:\dev\www\ytan\storage\radar\raw\202610181215.npz has a different crop, ignored
 2026-10-18 15:34:43,144 INFO done in 141.6 s, latest observation 2026-10-18T13:25:00Z, 25 frames
+2026-10-18 16:51:01,319 INFO reprojection lookup built in 10.5 s, crop (418, 4271, 181, 3253)
+2026-10-18 16:51:02,007 INFO fetched 2026-10-18 14:45
+2026-10-18 16:51:02,949 INFO fetched 2026-10-18 13:45
+2026-10-18 16:51:03,864 INFO fetched 2026-10-18 13:50
+2026-10-18 16:51:04,791 INFO fetched 2026-10-18 13:55
+2026-10-18 16:51:05,831 INFO fetched 2026-10-18 14:00
+2026-10-18 16:51:06,759 INFO fetched 2026-10-18 14:05
+2026-10-18 16:51:07,697 INFO fetched 2026-10-18 14:10
+2026-10-18 16:51:08,634 INFO fetched 2026-10-18 14:15
+2026-10-18 16:51:09,558 INFO fetched 2026-10-18 14:20
+2026-10-18 16:51:10,529 INFO fetched 2026-10-18 14:25
+2026-10-18 16:51:11,565 INFO fetched 2026-10-18 14:30
+2026-10-18 16:51:12,612 INFO fetched 2026-10-18 14:35
+2026-10-18 16:51:13,685 INFO fetched 2026-10-18 14:40
+2026-10-18 16:51:14,765 INFO fetched 2026-10-18 13:40
+2026-10-18 16:51:17,041 INFO 13:45: 7 radar(s) missing (esahr, esalm, esgld, eslpa, espdg, essft), 701342 km2 filled from 5 minutes earlier
+2026-10-18 16:51:21,893 INFO 13:55: 8 radar(s) missing (esahr, esalm, esclg, esgld, eslpa, espdg), 764488 km2 filled from 5 minutes earlier
+2026-10-18 16:51:26,117 INFO 14:05: 9 radar(s) missing (esahr, esalm, esclg, esgld, eslpa, espdg), 911065 km2 filled from 5 minutes earlier
+2026-10-18 16:51:30,292 INFO 14:15: 8 radar(s) missing (esahr, esalm, esclg, esgld, eslpa, espdg), 725492 km2 filled from 5 minutes earlier
+2026-10-18 16:51:34,312 INFO 14:25: 10 radar(s) missing (esahr, esalm, esclg, esgld, eslid, eslpa), 907907 km2 filled from 5 minutes earlier
+2026-10-18 16:51:38,597 INFO 14:45: 6 radar(s) missing (esahr, esalm, esgld, espdg, essft, estjv), 708816 km2 filled from 5 minutes earlier
+2026-10-18 16:52:55,596 INFO frame o202610181345: 293 tiles
+2026-10-18 16:52:55,597 INFO frame o202610181350: 267 tiles
+2026-10-18 16:52:55,597 INFO frame o202610181355: 273 tiles
+2026-10-18 16:52:55,597 INFO frame o202610181400: 274 tiles
+2026-10-18 16:52:55,597 INFO frame o202610181405: 277 tiles
+2026-10-18 16:52:55,597 INFO frame o202610181410: 269 tiles
+2026-10-18 16:52:55,597 INFO frame o202610181415: 276 tiles
+2026-10-18 16:52:55,597 INFO frame o202610181420: 283 tiles
+2026-10-18 16:52:55,597 INFO frame o202610181425: 296 tiles
+2026-10-18 16:52:55,598 INFO frame o202610181430: 261 tiles
+2026-10-18 16:52:55,598 INFO frame o202610181435: 278 tiles
+2026-10-18 16:52:55,598 INFO frame o202610181440: 285 tiles
+2026-10-18 16:52:55,598 INFO frame o202610181445: 288 tiles
+2026-10-18 16:52:55,598 INFO frame f202610181445-005: 292 tiles
+2026-10-18 16:52:55,598 INFO frame f202610181445-010: 282 tiles
+2026-10-18 16:52:55,598 INFO frame f202610181445-015: 285 tiles
+2026-10-18 16:52:55,598 INFO frame f202610181445-020: 291 tiles
+2026-10-18 16:52:55,598 INFO frame f202610181445-025: 293 tiles
+2026-10-18 16:52:55,598 INFO frame f202610181445-030: 286 tiles
+2026-10-18 16:52:55,598 INFO frame f202610181445-035: 286 tiles
+2026-10-18 16:52:55,598 INFO frame f202610181445-040: 288 tiles
+2026-10-18 16:52:55,598 INFO frame f202610181445-045: 289 tiles
+2026-10-18 16:52:55,598 INFO frame f202610181445-050: 283 tiles
+2026-10-18 16:52:55,598 INFO frame f202610181445-055: 291 tiles
+2026-10-18 16:52:55,598 INFO frame f202610181445-060: 286 tiles
+2026-10-18 16:53:09,553 INFO done in 139.4 s, latest observation 2026-10-18T14:45:00Z, 25 frames

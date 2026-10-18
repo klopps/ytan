@@ -323,8 +323,11 @@ class StatusTest(unittest.TestCase):
         self.assertEqual(p["regions"], ["de"])
         self.assertEqual(p["download"]["files"], 4)  # the newest + 10 minutes of history + 1 to fill the oldest
         self.assertGreater(p["download"]["bytes"], 0)
-        self.assertLessEqual(p["download"]["start"], p["download"]["end"])
-        self.assertLessEqual(p["download"]["end"], p["processing"]["start"])
+        # the three phases follow each other without gaps and make up the whole run
+        self.assertEqual(p["download"]["start"], p["start"])
+        self.assertEqual(p["download"]["end"], p["processing"]["start"])
+        self.assertEqual(p["finishing"]["start"], p["processing"]["end"])
+        self.assertEqual(p["finishing"]["end"], p["end"])
         self.assertEqual(p["processing"]["frames"], 3 + 2)  # 3 observations + 10 min forecast
         self.assertEqual(p["processing"]["workers"], 1)
         self.assertGreater(p["processing"]["bytes"], 0)

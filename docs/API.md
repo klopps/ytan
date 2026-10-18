@@ -265,20 +265,21 @@ settings, below); outside them there is no data, `bounds` encloses them.
 
 **Settings** (admin only, page /admin/radar): `GET /api/v1/settings/radar` and
 `PUT /api/v1/settings/radar` with
-`{history_minutes, forecast_minutes, fetch_interval_minutes, workers, presets: ["de", ...], custom: [{name, south, west, north, east}]}`
+`{history_minutes, forecast_minutes, fetch_interval_minutes, workers, max_mosaic_pixels, presets: ["de", ...], custom: [{name, south, west, north, east}]}`
 → the same plus `status` (the job's `storage/radar/status.json`, null before
 its first run: `last_run {start, end, outcome: processed|no_new_data|skipped_interval|no_composite|failed, error?}`,
 `last_processing {start, end, regions, download {start, end, bytes, files}, processing {start, end, workers, bytes, frames}}`,
 `storage_bytes`, `storage_measured_at`), `preset_regions` (code → box),
-`mosaic_pixels` and `max_mosaic_pixels`. All fields are required:
+`mosaic_pixels`, `max_mosaic_pixels_min` and `max_mosaic_pixels_limit`. All fields are required:
 `history_minutes` 5-60 and `forecast_minutes` 0-120 in steps of 5,
 `fetch_interval_minutes` 5, 10 or 15 (the cron job still runs every 5
 minutes, the job skips runs in between), `workers` 1-12; presets are the
 codes of `RadarConfig::PRESETS` - every European country by its lower-case
 ISO 3166 code (de, dk, se, ..., Kosovo xk; Russia only up to 45 E); at
 most 10 own rectangles inside the OPERA coverage (32-72 N, 30 W-45 E); the
-rectangle enclosing all regions may have at most 60 M pixels at zoom 8 (the
-job's memory). `POST /api/v1/settings/radar/run` (admin only) starts the job right away in
+rectangle enclosing all regions may have at most `max_mosaic_pixels` pixels at
+zoom 8 (the job's memory, ~8 bytes per pixel; the setting itself 50-500 M,
+default 120 M, 422 `radar.settings_invalid_max_mosaic` outside). `POST /api/v1/settings/radar/run` (admin only) starts the job right away in
 the background (`radar_job.py --force`, the fetch interval doesn't apply):
 202 `{started: true}`; 409 `radar.job_running` while a run holds the job's
 lock (`storage/radar/.lock`, the same check gives `running` in the GET
