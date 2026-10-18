@@ -16,7 +16,8 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-from ytanradar.job import Config, Job, default_grid  # noqa: E402
+from ytanradar.job import Config, Job  # noqa: E402
+from ytanradar.settings import grid_for, load_settings, regions_hash  # noqa: E402
 
 
 class Lock:
@@ -47,8 +48,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--storage", default=os.path.normpath(os.path.join(HERE, "..", "..", "storage", "radar")),
                         help="output directory (default: storage/radar of this checkout)")
-    parser.add_argument("-w", "--workers", type=int, default=Config.workers,
-                        help=f"processes rendering frames in parallel (default {Config.workers}, 1 = none)")
+    parser.add_argument("-w", "--workers", type=int, default=None,
+                        help="processes rendering frames in parallel (default: the admin setting, "
+                             "storage/radar/config.json; 1 = none)")
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args()
 
@@ -63,13 +65,20 @@ def main() -> int:
             return 0
         started = time.monotonic()
         try:
-            cfg = Config(storage=args.storage, grid=default_grid(), workers=max(1, args.workers))
+            settings = load_settings(args.storage)
+            workers = settings.workers if args.workers is None else max(1, args.workers)
+            cfg = Config(storage=args.storage, grid=grid_for(settings.regions), workers=workers,
+                         regions=settings.regions, regions_hash=regions_hash(settings.regions),
+                         history_minutes=settings.history_minutes,
+                         forecast_minutes=settings.forecast_minutes,
+                         fetch_interval_minutes=settings.fetch_interval_minutes)
             manifest = Job(cfg).run()
         except Exception:
             log.exception("run failed")
             return 1
-        log.info("done in %.1f s, latest observation %s, %d frames",
-                 time.monotonic() - started, manifest["latest_observation"], len(manifest["frames"]))
+        if manifest:
+            log.info("done in %.1f s, latest observation %s, %d frames",
+                     time.monotonic() - started, manifest["latest_observation"], len(manifest["frames"]))
     return 0
 
 

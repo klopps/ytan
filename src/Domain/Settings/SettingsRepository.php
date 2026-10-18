@@ -96,4 +96,46 @@ final class SettingsRepository
         $stmt = $this->db->prepare('UPDATE app_settings SET route_label_font_size_min = ?, route_label_font_size_max = ? WHERE id = 1');
         $stmt->execute([$min, $max]);
     }
+
+    /**
+     * Rain radar settings (RadarConfig): forecast length and regions. A row
+     * that was never saved (radar_regions NULL) gets RadarConfig::defaults().
+     *
+     * @return array{forecast_minutes: int, presets: list<string>, custom: list<array<string, mixed>>}
+     */
+    public function radarSettings(): array
+    {
+        $stmt = $this->db->query('SELECT radar_history_minutes, radar_forecast_minutes, radar_fetch_interval_minutes, radar_workers, radar_regions FROM app_settings WHERE id = 1');
+        $row = $stmt->fetch();
+        $config = \Ytan\Service\RadarConfig::defaults();
+        if ($row === false) {
+            return $config;
+        }
+        $config['history_minutes'] = (int) $row['radar_history_minutes'];
+        $config['forecast_minutes'] = (int) $row['radar_forecast_minutes'];
+        $config['fetch_interval_minutes'] = (int) $row['radar_fetch_interval_minutes'];
+        $config['workers'] = (int) $row['radar_workers'];
+        $regions = $row['radar_regions'] !== null ? json_decode((string) $row['radar_regions'], true) : null;
+        if (is_array($regions)) {
+            // a code no longer in PRESETS (renamed/removed) is dropped, not an error
+            $config['presets'] = array_values(array_filter((array) ($regions['presets'] ?? []),
+                fn ($code) => is_string($code) && isset(\Ytan\Service\RadarConfig::PRESETS[$code])));
+            $config['custom'] = array_values(array_filter((array) ($regions['custom'] ?? []), 'is_array'));
+        }
+
+        return $config;
+    }
+
+    /** @param array<string, mixed> $config normalized by RadarConfig::normalize() */
+    public function setRadarSettings(array $config): void
+    {
+        $stmt = $this->db->prepare('UPDATE app_settings SET radar_history_minutes = ?, radar_forecast_minutes = ?, radar_fetch_interval_minutes = ?, radar_workers = ?, radar_regions = ? WHERE id = 1');
+        $stmt->execute([
+            $config['history_minutes'],
+            $config['forecast_minutes'],
+            $config['fetch_interval_minutes'],
+            $config['workers'],
+            json_encode(['presets' => $config['presets'], 'custom' => $config['custom']], JSON_UNESCAPED_UNICODE),
+        ]);
+    }
 }

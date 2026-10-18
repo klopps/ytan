@@ -25,7 +25,6 @@ var liArea = {
     map: null,
     polygon: null,
     drawing: false,
-    mapsPromise: null,
 };
 var LI_AREA_MAX_VERTICES = 100;
 
@@ -88,28 +87,9 @@ function liAreaUpdateUi() {
     }
 }
 
-/** Loads the Google Maps script once; the promise resolves when google.maps.Map is usable. */
+/** Loads the Google Maps script once (admin-common.js). */
 function liAreaLoadMaps() {
-    if (liArea.mapsPromise) {
-        return liArea.mapsPromise;
-    }
-    liArea.mapsPromise = new Promise(function (resolve, reject) {
-        var key = window.YTAN_MAPS_API_KEY || '';
-        if (key === '') {
-            reject(new Error('no key'));
-            return;
-        }
-        window.liAreaMapsReady = function () {
-            google.maps.importLibrary('maps').then(resolve, reject);
-        };
-        var script = document.createElement('script');
-        script.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(key)
-            + '&loading=async&v=weekly&callback=liAreaMapsReady';
-        script.async = true;
-        script.onerror = function () { reject(new Error('script')); };
-        document.head.appendChild(script);
-    });
-    return liArea.mapsPromise;
+    return loadAdminGoogleMaps();
 }
 
 /** Creates the map (and the empty polygon) the first time the panel opens. */

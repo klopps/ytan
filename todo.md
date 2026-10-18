@@ -1,37 +1,5 @@
 # Offene Punkte
 
-## Langer Tap auf Mobilgerät öffnet Kontextmenü entfernter Orte
-
-Macht man einen langen Tap auf einem Mobilgerät auf die Karte, ohne das dabei POIs, Routen oder Areass in der der Nähe, wird häufig das Kontextmenü z. B. einer Route angezeigt, die gar nicht in der Nähe ist. Dies geschieht besonders bei kleinen Zoomstufen. Beispiel:
-1. Zoom ungefähr auf Deutschland,
-2. langer Tap auf Karte zwischen Hannover und Kassel
-3. Es öffnet sich das Kontextmenü für die Route "Kleven Havn - Rinstinge" (s. ![Screenshot](image.png))
-
-Das ist offenkundig falsch.
-
-
-## Konfiguration des Regenradars im Admin-Bereich
-
-Die Konfiguration des Regenradars soll im Admin-Bereich konfigurierbar sein.
-
-Einstellungsmäöglichkeiten:
-- Zeitraum für die vergangenen Daten in 5-Minuten-Schritten von 5 bis 60 Minuten (default 60)
-- Zeitraum der Vorausberechnung in 5-Minuten-Schritten von 0 bis 120 Minuten (default 60)
-- Festlegen der Regionen/Gebiete, für die Regenradardaten angezeigt werden können.
-- Festlegen des Abrufintervalls in 5-Minuten-Schritten von 5 bis 15 Minuten (default 5) (Anmerkung: der cron-Job läuft weiterhin alle 5 Minuten)
-
-Außerdem sollen folgende Daten angezeigt werden:
-- derzeitige Regionen/Gebiete 
-- Letzte Datenverarbeitung:
-  - Startzeit gesamt
-  - Endzeit gesamt
-  - Regionen/Gebiete des letzten Abrufs
-  - Download der Daten
-    - Startzeit
-    - Endzeit
-  - Größe des letzten Datenabrufs/Downloads in MB mit 2 Nachkommastellen
-  - 
-
 ## Regenradar mit Kurzfristvorhersage als Kartenebene
 
 Eigenes Regenradar über Google Maps für DE, DK und SE: Beobachtung der letzten 60 Minuten plus Vorhersage bis +120 Minuten, nutzbar bei Zoomstufe 12-16 (Grund für den neuen Anlauf: RainViewer liefert kostenlos nur bis Zoomstufe 7, siehe done.md "Regenradar-Layer").

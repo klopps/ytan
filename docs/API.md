@@ -244,7 +244,10 @@ read-only from `storage/radar/`, no auth required.
   "step_minutes": 5,
   "source": {"name": "EUMETNET OPERA", "url": "...", "license": "CC BY 4.0", "license_url": "...", "modified": true},
   "zoom": {"min": 5, "max": 8},
-  "bounds": {"south": 47, "west": 5, "north": 70, "east": 25},
+  "bounds": {"south": 47.2, "west": 5.8, "north": 69.1, "east": 24.2},
+  "regions": [{"name": "de", "south": 47.2, "west": 5.8, "north": 55.1, "east": 15.1}, "..."],
+  "regions_hash": "3f1c0a9b2d7e",
+  "forecast_minutes": 120,
   "legend": [{"mm_h": 0.1, "color": "#9fd4ff"}, "..."],
   "motion": "optical-flow",
   "frames": [
@@ -256,7 +259,32 @@ read-only from `storage/radar/`, no auth required.
 ```
 
 `motion` is `null` when there was too little rain to estimate a movement (the
-forecast frames then repeat the latest observation).
+forecast frames then repeat the latest observation), or with
+`forecast_minutes` 0. `regions` are the rectangles the job computes (admin
+settings, below); outside them there is no data, `bounds` encloses them.
+
+**Settings** (admin only, page /admin/radar): `GET /api/v1/settings/radar` and
+`PUT /api/v1/settings/radar` with
+`{history_minutes, forecast_minutes, fetch_interval_minutes, workers, presets: ["de", ...], custom: [{name, south, west, north, east}]}`
+→ the same plus `status` (the job's `storage/radar/status.json`, null before
+its first run: `last_run {start, end, outcome: processed|no_new_data|skipped_interval|no_composite|failed, error?}`,
+`last_processing {start, end, regions, download {start, end, bytes, files}, processing {start, end, workers, bytes, frames}}`,
+`storage_bytes`, `storage_measured_at`), `preset_regions` (code → box),
+`mosaic_pixels` and `max_mosaic_pixels`. All fields are required:
+`history_minutes` 5-60 and `forecast_minutes` 0-120 in steps of 5,
+`fetch_interval_minutes` 5, 10 or 15 (the cron job still runs every 5
+minutes, the job skips runs in between), `workers` 1-12; presets are the
+codes of `RadarConfig::PRESETS` - every European country by its lower-case
+ISO 3166 code (de, dk, se, ..., Kosovo xk; Russia only up to 45 E); at
+most 10 own rectangles inside the OPERA coverage (32-72 N, 30 W-45 E); the
+rectangle enclosing all regions may have at most 60 M pixels at zoom 8 (the
+job's memory). Errors (422): `radar.settings_invalid_history`, `radar.settings_invalid_forecast`,
+`radar.settings_invalid_interval`, `radar.settings_invalid_workers`,
+`radar.settings_unknown_region`, `radar.settings_too_many_regions`,
+`radar.settings_invalid_region`, `radar.settings_no_region`,
+`radar.settings_too_large`. Saving also writes `storage/radar/config.json`,
+which the job reads on its next run; changed regions make it recompute every
+frame.
 
 `GET /api/v1/radar/tiles/{frame}/{z}/{x}/{y}.png` - Google/OSM tile scheme,
 256 px, palette PNG, `Cache-Control: max-age=86400, immutable` (a frame never

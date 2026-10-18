@@ -34,6 +34,7 @@ use Ytan\Http\Controllers\TourController;
 use Ytan\Http\Controllers\TranslationController;
 use Ytan\Http\Controllers\UserController;
 use Ytan\Http\Controllers\RadarController;
+use Ytan\Http\Controllers\RadarSettingsController;
 use Ytan\Http\Controllers\WeatherController;
 use Ytan\Http\Controllers\WsiController;
 use Ytan\Http\Middleware\AppVersionMiddleware;
@@ -224,6 +225,7 @@ final class App
         $c->set(RadarController::class, fn () => new RadarController(new RadarTileService($rootDir . '/storage/radar')));
         $c->set(WsiController::class, fn () => new WsiController(new WsiRenderer($rootDir . '/public/images/wsi')));
         $c->set(SettingsController::class, fn ($c) => new SettingsController($c->get(SettingsRepository::class)));
+        $c->set(RadarSettingsController::class, fn ($c) => new RadarSettingsController($c->get(SettingsRepository::class), $rootDir . '/storage/radar'));
         $c->set(GpxExportController::class, fn ($c) => new GpxExportController($c->get(RouteRepository::class), $c->get(TourRepository::class), $c->get(SettingsRepository::class), $appName));
         $c->set(RouteSplitController::class, fn ($c) => new RouteSplitController($c->get(RouteRepository::class), $c->get(TourRepository::class), $c->get('images.route'), $pdo));
         $c->set(GpxImportController::class, fn ($c) => new GpxImportController($c->get(RouteRepository::class), $c->get(TourRepository::class), $c->get(PoiRepository::class), new GpxImportService(), $pdo));
@@ -413,6 +415,8 @@ final class App
         $app->put('/api/v1/settings/gpx-export-public', [SettingsController::class, 'updateGpxExportPublic']);
         $app->put('/api/v1/settings/track-distance-filter', [SettingsController::class, 'updateTrackDistanceFilterPresets']);
         $app->put('/api/v1/settings/route-label-font-size-range', [SettingsController::class, 'updateRouteLabelFontSizeRange']);
+        $app->get('/api/v1/settings/radar', [RadarSettingsController::class, 'show']);
+        $app->put('/api/v1/settings/radar', [RadarSettingsController::class, 'update']);
 
         $app->get('/', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $c, $translator) {
             ob_start();
@@ -656,6 +660,20 @@ final class App
             $trackDistanceFilterPresets = $c->get(SettingsRepository::class)->trackDistanceFilterPresets();
             $routeLabelFontSizeRange = $c->get(SettingsRepository::class)->routeLabelFontSizeRange();
             require $rootDir . '/templates/admin-settings.php';
+            $res->getBody()->write(ob_get_clean());
+
+            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
+        });
+
+        // Rain radar: the radar job's settings and its last runs (RadarSettingsController).
+        $app->get('/admin/radar', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator, $c) {
+            ob_start();
+            $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
+            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
+            $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
+            $radarSettings = $c->get(SettingsRepository::class)->radarSettings();
+            $mapsApiKey = $_ENV['MAPS_API_KEY'] ?? '';
+            require $rootDir . '/templates/admin-radar.php';
             $res->getBody()->write(ob_get_clean());
 
             return $res->withHeader('Content-Type', 'text/html; charset=utf-8');

@@ -15,8 +15,19 @@ ytanradar/palette.py      dBZ -> mm/h classes (Marshall-Palmer) and colours
 ytanradar/tiles.py        mosaic -> {z}/{x}/{y}.png pyramid, zoom 5-8
 ytanradar/nowcast.py      optical flow + semi-Lagrangian extrapolation, CSI
 ytanradar/job.py          one run: fetch, tile, forecast, manifest, cleanup, verify
+ytanradar/settings.py     regions + forecast length from config.json (admin settings)
 tests/test_radar.py       python -m unittest discover -s tools/radar/tests
 ```
+
+Settings come from `storage/radar/config.json`, written by PHP when an admin
+saves them in /admin/radar (`ytanradar/settings.py`): regions, history (5-60
+min), forecast (0-120 min), fetch interval (5/10/15 min - cron keeps running
+every 5 minutes, the job skips the runs in between) and parallel processes
+(1-12). Missing file = DE, DK, SE, 60/60/5 minutes, 4 processes. Changed
+regions make the next run rebuild every frame. Each run reports in
+`storage/radar/status.json` (outcome, download and processing phase with
+start/end/bytes, processes, total size of storage/radar), shown on
+/admin/radar.
 
 Output in `storage/radar/` (see `job.py`'s docstring): `manifest.json`,
 `frames/{id}/{z}/{x}/{y}.png`, `raw/*.npz` (cropped fields, 80 minutes),
@@ -41,9 +52,10 @@ Locally (Windows): `python -m venv tools/radar/.venv` and
 `tools/radar/.venv/Scripts/python -m pip install -r tools/radar/requirements.txt`.
 
 Cron, every 5 minutes (overlapping runs skip themselves via
-`storage/radar/.lock`). `--workers N` sets how many processes render frames
-in parallel (default 4, `1` = sequential); on Linux they share the
-reprojection lookup via fork, on Windows (spawn) each builds its own (~5 s):
+`storage/radar/.lock`). The number of rendering processes comes from the
+admin setting; `--workers N` overrides it for one run (`1` = sequential). On
+Linux they share the reprojection lookup via fork, on Windows (spawn) each
+builds its own (~5 s, and needs the regions too):
 
 ```
 */5 * * * * /path/to/ytan/tools/radar/.venv/bin/python /path/to/ytan/tools/radar/radar_job.py >> /path/to/ytan/storage/logs/radar.log 2>&1

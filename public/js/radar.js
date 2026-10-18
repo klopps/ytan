@@ -300,10 +300,29 @@ function radarFrameTiles(frameId, view) {
     const tiles = [];
     for (let x = view.x0; x <= view.x1; x++) {
         for (let y = view.y0; y <= view.y1; y++) {
-            tiles.push({ x: x, y: y, tile: radarTile(radarTileUrl(frameId, view.zoom, x, y)) });
+            if (radarTileInRegions(x, y, view.n)) {
+                tiles.push({ x: x, y: y, tile: radarTile(radarTileUrl(frameId, view.zoom, x, y)) });
+            }
         }
     }
     return tiles;
+}
+
+/**
+ * The radar regions (admin settings, manifest.regions): rectangles the job
+ * computes. Older manifests without them: the enclosing bounds.
+ */
+function radarRegions() {
+    return (radarManifest.regions && radarManifest.regions.length) ? radarManifest.regions : [radarManifest.bounds];
+}
+
+/** Whether a tile touches any region - tiles in between are empty, no request for them. */
+function radarTileInRegions(x, y, n) {
+    const west = x / n * 360 - 180;
+    const east = (x + 1) / n * 360 - 180;
+    const north = Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) * 180 / Math.PI;
+    const south = Math.atan(Math.sinh(Math.PI * (1 - 2 * (y + 1) / n))) * 180 / Math.PI;
+    return radarRegions().some((r) => r.west <= east && r.east >= west && r.south <= north && r.north >= south);
 }
 
 function radarFrameReady(frameId, view) {
@@ -558,9 +577,9 @@ function updateRadarCoverageHint() {
     if (!radarManifest || !map.getBounds()) {
         return;
     }
-    const b = radarManifest.bounds;
-    const covered = map.getBounds().intersects(new google.maps.LatLngBounds(
-        { lat: b.south, lng: b.west }, { lat: b.north, lng: b.east }));
+    const view = map.getBounds();
+    const covered = radarRegions().some((r) => view.intersects(new google.maps.LatLngBounds(
+        { lat: r.south, lng: r.west }, { lat: r.north, lng: r.east })));
     const tooFar = map.getZoom() < radarManifest.zoom.min;
     const hint = document.getElementById('radarCoverageHint');
     hint.textContent = !covered ? t('radar.outside_area') : (tooFar ? t('radar.zoom_in_hint') : '');

@@ -88,3 +88,35 @@ function adminOnAuthenticated(userData) {
         });
     }
 }
+
+/**
+ * Loads the Google Maps script once for an admin page (the admin pages don't
+ * load it otherwise); resolves when google.maps.Map is usable, rejects
+ * without a key (window.YTAN_MAPS_API_KEY, set by the page's template from
+ * .env's MAPS_API_KEY) or when the script fails. Used by the lighthouse
+ * import's area filter and the rain radar regions in /admin/settings.
+ */
+var adminMapsPromise = null;
+
+function loadAdminGoogleMaps() {
+    if (adminMapsPromise) {
+        return adminMapsPromise;
+    }
+    adminMapsPromise = new Promise(function (resolve, reject) {
+        var key = window.YTAN_MAPS_API_KEY || '';
+        if (key === '') {
+            reject(new Error('no key'));
+            return;
+        }
+        window.adminMapsReady = function () {
+            google.maps.importLibrary('maps').then(resolve, reject);
+        };
+        var script = document.createElement('script');
+        script.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(key)
+            + '&loading=async&v=weekly&callback=adminMapsReady';
+        script.async = true;
+        script.onerror = function () { reject(new Error('script')); };
+        document.head.appendChild(script);
+    });
+    return adminMapsPromise;
+}

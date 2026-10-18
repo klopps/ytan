@@ -39,6 +39,7 @@ $adminNavItems = [
     ['key' => 'lighthouse_duplicates', 'icon' => 'bi-intersect', 'label' => $t('admin.nav.lighthouse_duplicates'), 'href' => $baseUrl . '/admin/lighthouse-duplicates'],
     ['key' => 'translate', 'icon' => 'bi-translate', 'label' => $t('admin.nav.translations'), 'href' => $baseUrl . '/admin/translate', 'visible' => $translateToolEnabled],
     ['key' => 'settings', 'icon' => 'bi-gear', 'label' => $t('admin.nav.settings'), 'href' => $baseUrl . '/admin/settings'],
+    ['key' => 'radar', 'icon' => 'bi-cloud-rain', 'label' => $t('admin.nav.radar'), 'href' => $baseUrl . '/admin/radar'],
     // Own page (templates/admin-styleguide.php), NOT part of this AdminLTE
     // shell - clicking this link navigates away from it entirely. See that
     // template's doc comment for why.

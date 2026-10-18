@@ -18,8 +18,15 @@ MARGIN = 2  # source pixels kept around the crop, for bilinear sampling
 DISPLAY_SMOOTH_M = 1500.0  # Gaussian sigma before colouring, see smooth_for_display()
 
 
+# Sends a mosaic pixel outside every source pixel, so cv2.remap gives NaN there.
+OUTSIDE = -10.0
+
+
 class Reprojector:
-    def __init__(self, grid: TileGrid, geom: Geometry, strip_rows: int = 512):
+    def __init__(self, grid: TileGrid, geom: Geometry, strip_rows: int = 512,
+                 regions: list[dict] | None = None):
+        """regions: rectangles (south/west/north/east); mosaic pixels outside
+        all of them stay empty. None = the whole grid."""
         self.grid = grid
         self.geom = geom
         r0, r1, c0, c1 = grid.window
@@ -47,6 +54,15 @@ class Reprojector:
         cc1 = min(int(np.ceil(col.max())) + MARGIN + 1, geom.xsize)
         col -= cc0
         row -= cr0
+        if regions:
+            # rectangles in lon/lat are rectangles in the Mercator mosaic too
+            inside = np.zeros((h, w), bool)
+            for r in regions:
+                rows = (lat_all >= r["south"]) & (lat_all <= r["north"])
+                cols = (lon >= r["west"]) & (lon <= r["east"])
+                inside |= rows[:, None] & cols[None, :]
+            col[~inside] = OUTSIDE
+            row[~inside] = OUTSIDE
         self.crop = (cr0, cr1, cc0, cc1)
         self.map_x = col
         self.map_y = row

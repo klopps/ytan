@@ -1,5 +1,35 @@
 # Erledigt
 
+## Konfiguration des Regenradars im Admin-Bereich
+
+~~Das Regenradar soll im Admin-Bereich konfigurierbar sein.~~
+
+~~Einstellungsmäöglichkeiten:~~
+~~- Zeitraum für die vergangenen Daten in 5-Minuten-Schritten von 5 bis 60 Minuten (default 60)~~
+~~- Zeitraum der Vorausberechnung in 5-Minuten-Schritten von 0 bis 120 Minuten (default 60)~~
+~~- Regionen/Gebiete, für die Regenradardaten angezeigt werden können.~~
+~~- Abrufintervall in 5-Minuten-Schritten von 5 bis 15 Minuten (default 5) (Anmerkung: der cron-Job läuft weiterhin alle 5 Minuten)~~
+~~- Anzahl paralleler Verarbeitungs-Tasks (1 bis 12, default 4)~~
+~~- Gesamtdatenmenge für das Regenradar (storage/radar) in MB mit 2 Nachkommastellen~~
+
+~~Außerdem sollen folgende Daten angezeigt werden:~~
+~~- derzeitige Regionen/Gebiete ~~
+~~- Letzte Datenverarbeitung:~~
+~~  - Startzeit gesamt~~
+~~  - Endzeit gesamt~~
+~~  - Regionen/Gebiete des letzten Abrufs~~
+~~  - Download der Daten~~
+~~    - Startzeit~~
+~~    - Endzeit~~
+~~    - Größe des letzten Datenabrufs/Downloads in MB mit 2 Nachkommastellen~~
+~~  - Verarbeitung der Daten~~
+~~    - Startzeit~~
+~~    - Endzeit~~
+~~    - Anzahl paralleler Tasks~~
+~~    - Größe der erzeugten Daten in MB mit 2 Nachkommastellen~~
+
+Gelöst (2026-10-18): Eigene Admin-Seite **/admin/radar** (Menüpunkt "Regenradar"; zuerst hatte ich nur Vorhersage und Regionen als Karte in /admin/settings gebaut und die übrigen Anforderungen übersehen - nachgeholt). **Einstellungen**: vergangene Daten 5-60 Minuten (Standard 60), Vorhersage 0-120 Minuten (Standard 60), Abrufintervall 5/10/15 Minuten (Standard 5; der Cron-Job läuft weiter alle 5 Minuten, der Job überspringt die Läufe dazwischen - gemessen am Start der letzten Datenverarbeitung, mit einer Minute Spielraum), parallele Tasks 1-12 (Standard 4; `--workers` auf der Kommandozeile übersteuert es nur noch), Regionen: alle 47 europäischen Länder zum Ankreuzen (Rechtecke aus `RadarConfig::PRESETS` mit ISO-Codes, Kosovo `xk`, Russland nur bis 45° O = Rand der OPERA-Abdeckung, Überseegebiete ausgelassen; nach übersetztem Namen sortiert, mit `Collator` wo vorhanden; Vorgabe DE/DK/SE; ein gespeicherter Code, den es nicht mehr gibt, wird ignoriert; nicht jedes Land liefert Radardaten an OPERA - die Seite sagt das), grau auf einer Google-Karte, dazu bis zu 10 eigene Rechtecke, die der Admin dort hinzufügt, verschiebt, in der Größe ändert und benennt. **Anzeige** (Karte "Status", Knopf "Aktualisieren"): aktuelle Regionen, Gesamtdatenmenge von storage/radar in MB mit 2 Nachkommastellen (mit Messzeitpunkt), letzter Lauf mit Ergebnis (Daten verarbeitet / keine neuen Radardaten / übersprungen (Abrufintervall) / keine Radardaten verfügbar / fehlgeschlagen mit Meldung), letzte Datenverarbeitung: Start/Ende gesamt, Regionen dieses Abrufs, Download (Start, Ende, Größe in MB, Anzahl Dateien), Verarbeitung (Start, Ende, parallele Tasks, Größe der erzeugten Daten in MB, Anzahl Bilder). **Umsetzung**: gespeichert in `app_settings` (Migrationen 043/044) über `PUT /api/v1/settings/radar` (`RadarSettingsController`, nur Admin). Der Python-Job liest keine Datenbank: PHP schreibt beim Speichern `storage/radar/config.json` (`RadarConfig::writeJobConfig()`), der Job liest sie bei jedem Lauf (`ytanradar/settings.py`, fehlende/kaputte Werte = Standard). Der Job trennt jetzt Download- und Verarbeitungsphase, misst beide und schreibt nach jedem Lauf (auch bei Fehlern) `storage/radar/status.json` (`Job.write_status()`), PHP gibt sie an die Seite (`RadarConfig::readStatus()`). Regionen: der Job rechnet das Rechteck, das alle Regionen umschließt, und lässt alles außerhalb leer (Maske im `Reprojector`); ändern sie sich (`regions_hash` im Manifest), löscht er alle Frames und rechnet neu. Weil Speicher und Laufzeit mit diesem Rechteck wachsen (~8 Byte pro Pixel), begrenzt `RadarConfig::MAX_MOSAIC_PIXELS` es auf 60 Mio. Pixel bei Zoomstufe 8 (DE/DK/SE: 26 Mio.) - die Seite zeigt die Fläche live und sperrt "Speichern" darüber. Im Regenradar der App folgt der Hinweis "Kein Regenradar für diesen Kartenausschnitt" den Regionen, Kacheln zwischen den Regionen werden nicht angefragt. Beim Testen gefunden und behoben: Worker-Prozesse unter Windows (spawn) bauten ihre Umprojektion ohne die Regionen (unter Linux mit fork wäre es korrekt gewesen). Gemeinsamer Google-Maps-Lader `loadAdminGoogleMaps()` in admin-common.js (auch für den Leuchtfeuer-Import). Tests: PHPUnit `RadarConfigTest`, `RadarSettingsControllerTest`; Python `SettingsTest`, `RegionMaskTest`, `StatusTest` (ganzer Lauf offline mit synthetischem OPERA-Komposit: beide Phasen, Abrufintervall, Fehlerfall), Worker-Masken-Test.
+
 ## Langer Tap auf Mobilgerät öffnet Kontextmenü entfernter Orte
 
 ~~Macht man einen langen Tap auf einem Mobilgerät auf die Karte, ohne das dabei POIs, Routen oder Areass in der der Nähe, wird häufig das Kontextmenü z. B. einer Route angezeigt, die gar nicht in der Nähe ist. Dies geschieht besonders bei kleinen Zoomstufen. Beispiel:~~

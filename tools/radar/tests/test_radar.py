@@ -16,6 +16,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from ytanradar import nowcast, opera, palette  # noqa: E402
 from ytanradar.job import Config, Job, floor_step  # noqa: E402
+from ytanradar.settings import DEFAULT_REGIONS, JobSettings, grid_for, load_settings, regions_hash  # noqa: E402
+from ytanradar import job as jobmod  # noqa: E402
+import h5py  # noqa: E402
+import json  # noqa: E402
+from datetime import timedelta  # noqa: E402
 from ytanradar.mercator import TILE, TileGrid, lat_to_px, lon_to_px, px_to_lat, px_to_lon  # noqa: E402
 from ytanradar.reproject import Reprojector, smooth_for_display  # noqa: E402
 from ytanradar.tiles import write_pyramid  # noqa: E402
@@ -108,6 +113,75 @@ class SmoothingTest(unittest.TestCase):
         self.assertGreater(out[20, 30], 25.0)  # area kept
 
 
+class SettingsTest(unittest.TestCase):
+    def write(self, d, data):
+        with open(os.path.join(d, "config.json"), "w", encoding="utf-8") as f:
+            f.write(data if isinstance(data, str) else __import__("json").dumps(data))
+
+    def test_missing_or_broken_file_gives_the_defaults(self):
+        defaults = JobSettings()
+        self.assertEqual((defaults.history_minutes, defaults.forecast_minutes, defaults.fetch_interval_minutes,
+                          defaults.workers), (60, 60, 5, 4))  # same as RadarConfig::defaults()
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(load_settings(d), defaults)
+            self.write(d, "{not json")
+            self.assertEqual(load_settings(d), defaults)
+            self.write(d, {"forecast_minutes": 30, "regions": [{"name": "bad", "south": 5, "north": 1, "west": 0, "east": 1}]})
+            got = load_settings(d)
+            self.assertEqual((got.regions, got.forecast_minutes), (DEFAULT_REGIONS, 30))
+
+    def test_settings_from_php_are_clamped_to_their_steps(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.write(d, {"history_minutes": 42, "forecast_minutes": 47, "fetch_interval_minutes": 99,
+                           "workers": 0, "regions": [
+                               {"name": "dk", "south": 54.5, "west": 7.9, "north": 57.8, "east": 15.3},
+                               {"name": "Bornholm", "south": 54.9, "west": 14.6, "north": 55.4, "east": 15.3}]})
+            got = load_settings(d)
+        self.assertEqual((got.history_minutes, got.forecast_minutes, got.fetch_interval_minutes, got.workers),
+                         (40, 45, 15, 1))
+        regions = got.regions
+        self.assertEqual([r["name"] for r in regions], ["dk", "Bornholm"])
+        grid = grid_for(regions)
+        self.assertEqual((grid.south, grid.west, grid.north, grid.east), (54.5, 7.9, 57.8, 15.3))
+
+    def test_hash_follows_the_area_not_names_or_order(self):
+        a = [{"name": "x", "south": 1, "west": 2, "north": 3, "east": 4}, {"name": "y", "south": 5, "west": 6, "north": 7, "east": 8}]
+        b = [dict(a[1], name="other"), a[0]]
+        self.assertEqual(regions_hash(a), regions_hash(b))
+        self.assertNotEqual(regions_hash(a), regions_hash([a[0]]))
+
+
+class RegionMaskTest(unittest.TestCase):
+    def test_pixels_outside_every_region_stay_empty(self):
+        regions = [{"name": "west", "south": 54.0, "west": 10.0, "north": 55.0, "east": 11.0},
+                   {"name": "east", "south": 55.0, "west": 12.0, "north": 56.0, "east": 13.0}]
+        grid = TileGrid(south=54.0, west=10.0, north=56.0, east=13.0, zmin=7, zmax=8)
+        rp = Reprojector(grid, OPERA, regions=regions)
+        cr0, cr1, cc0, cc1 = rp.crop
+        out = rp.render(np.full((cr1 - cr0, cc1 - cc0), 30.0, np.float32))
+        ox, oy = grid.origin_px
+        r0, _, c0, _ = grid.window
+
+        def value(lat, lng):
+            r = int(lat_to_px(lat, 8) - oy - r0)
+            c = int(lon_to_px(lng, 8) - ox - c0)
+            return out[r, c]
+
+        self.assertEqual(value(54.5, 10.5), 30.0)   # inside "west"
+        self.assertEqual(value(55.5, 12.5), 30.0)   # inside "east"
+        self.assertTrue(np.isnan(value(55.5, 10.5)))  # between them
+        self.assertTrue(np.isnan(value(54.5, 12.5)))
+        # every pixel outside both regions, not just two samples (remap's
+        # 16-bit fixed point once wrapped a too large "outside" value around)
+        lat = px_to_lat(np.arange(out.shape[0]) + oy + r0 + 0.5, 8)[:, None]
+        lon = px_to_lon(np.arange(out.shape[1]) + ox + c0 + 0.5, 8)[None, :]
+        inside = np.zeros(out.shape, bool)
+        for r in regions:
+            inside |= (lat >= r["south"]) & (lat <= r["north"]) & (lon >= r["west"]) & (lon <= r["east"])
+        self.assertTrue(np.isnan(out[~inside]).all())
+        self.assertGreater(np.count_nonzero(out[inside] == 30.0), 0.95 * inside.sum())
+
+
 class TilesTest(unittest.TestCase):
     def test_pyramid_writes_only_non_empty_tiles_and_keeps_maximum(self):
         grid = TileGrid(south=54.0, west=10.0, north=55.0, east=11.0, zmin=7, zmax=8)
@@ -160,21 +234,114 @@ class NowcastTest(unittest.TestCase):
         self.assertEqual(nowcast.csi(a, b, 23.0), (1 / 3, 2))
 
 
+def fake_composite(path: str, dbz: float = 35.0) -> None:
+    """A small ODIM file like OPERA's: 500 x 500 km of the real LAEA grid
+    (around 52-58 N / 7-15 E), rain (dbz) everywhere."""
+    tr = pyproj.Transformer.from_crs(pyproj.CRS(OPERA.projdef), "EPSG:4326", always_xy=True)
+    x0, y0 = 1600000.0, -1800000.0
+    ul_lon, ul_lat = tr.transform(x0, y0)
+    data = np.full((500, 500), dbz)
+    with h5py.File(path, "w") as f:
+        w = f.create_group("where")
+        for k, v in {"projdef": OPERA.projdef.encode(), "xsize": 500, "ysize": 500, "xscale": 1000.0,
+                     "yscale": 1000.0, "UL_lon": ul_lon, "UL_lat": ul_lat}.items():
+            w.attrs[k] = v
+        d = f.create_group("dataset1/data1")
+        d.create_dataset("data", data=data)
+        what = d.create_group("what")
+        for k, v in {"quantity": b"DBZH", "gain": 1.0, "offset": 0.0, "nodata": -9999000.0,
+                     "undetect": -8888000.0}.items():
+            what.attrs[k] = v
+
+
+class StatusTest(unittest.TestCase):
+    """A whole run offline: downloads replaced by a synthetic composite."""
+
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        self.now = datetime(2026, 10, 18, 10, 2, tzinfo=timezone.utc)
+        self.regions = [{"name": "de", "south": 54.5, "west": 10.0, "north": 55.5, "east": 11.5}]
+        self.downloads = 0
+        self._orig = jobmod.opera.download
+
+        def fake_download(url, dest, timeout=60):
+            self.downloads += 1
+            fake_composite(dest)
+            return True
+
+        jobmod.opera.download = fake_download
+
+    def tearDown(self):
+        jobmod.opera.download = self._orig
+        import shutil
+        shutil.rmtree(self.dir, ignore_errors=True)
+
+    def job(self, **kw):
+        grid = grid_for(self.regions)
+        grid = TileGrid(south=grid.south, west=grid.west, north=grid.north, east=grid.east, zmin=7, zmax=8)
+        cfg = Config(storage=self.dir, grid=grid, workers=1, regions=self.regions,
+                     regions_hash=regions_hash(self.regions), history_minutes=10, forecast_minutes=10, **kw)
+        return Job(cfg, now=self.now)
+
+    def status(self):
+        with open(os.path.join(self.dir, "status.json"), encoding="utf-8") as f:
+            return json.load(f)
+
+    def test_processed_run_reports_both_phases(self):
+        manifest = self.job().run()
+        st = self.status()
+        self.assertEqual(st["last_run"]["outcome"], "processed")
+        p = st["last_processing"]
+        self.assertEqual(p["regions"], ["de"])
+        self.assertEqual(p["download"]["files"], 3)  # the newest + 10 minutes of history
+        self.assertGreater(p["download"]["bytes"], 0)
+        self.assertLessEqual(p["download"]["start"], p["download"]["end"])
+        self.assertLessEqual(p["download"]["end"], p["processing"]["start"])
+        self.assertEqual(p["processing"]["frames"], 3 + 2)  # 3 observations + 10 min forecast
+        self.assertEqual(p["processing"]["workers"], 1)
+        self.assertGreater(p["processing"]["bytes"], 0)
+        self.assertGreaterEqual(st["storage_bytes"], p["processing"]["bytes"])
+        self.assertEqual(len(manifest["frames"]), 5)
+        self.assertEqual(manifest["history_minutes"], 10)
+
+    def test_fetch_interval_skips_runs_in_between(self):
+        self.job().run()
+        first = self.status()["last_processing"]
+        downloads = self.downloads
+        # 5 minutes later with a 10 minute interval: nothing is fetched
+        self.now += timedelta(minutes=5)
+        self.job(fetch_interval_minutes=10).run()
+        st = self.status()
+        self.assertEqual(st["last_run"]["outcome"], "skipped_interval")
+        self.assertEqual(st["last_processing"], first)
+        self.assertEqual(self.downloads, downloads)
+
+    def test_a_failed_run_is_recorded(self):
+        def broken(url, dest, timeout=60):
+            raise OSError("network down")
+        jobmod.opera.download = broken
+        with self.assertRaises(OSError):
+            self.job().run()
+        st = self.status()
+        self.assertEqual(st["last_run"]["outcome"], "failed")
+        self.assertIn("network down", st["last_run"]["error"])
+        self.assertNotIn("last_processing", st)
+
+
 class JobTest(unittest.TestCase):
     def test_floor_step(self):
         t = datetime(2026, 10, 17, 4, 19, 59, tzinfo=timezone.utc)
         self.assertEqual(floor_step(t), datetime(2026, 10, 17, 4, 15, tzinfo=timezone.utc))
 
-    def publish(self, storage: str, workers: int) -> tuple[set, dict]:
+    def publish(self, storage: str, workers: int, regions: list | None = None) -> tuple[set, dict]:
         grid = TileGrid(south=54.0, west=10.0, north=56.0, east=13.0, zmin=7, zmax=8)
-        job = Job(Config(storage=storage, grid=grid, workers=workers))
+        job = Job(Config(storage=storage, grid=grid, workers=workers, regions=regions or []))
         job._geom = OPERA
-        job._reprojector = Reprojector(grid, OPERA)
+        job._reprojector = Reprojector(grid, OPERA, regions=regions)
         cr0, cr1, cc0, cc1 = job._reprojector.crop
         items = []
         for i in range(3):
-            field = np.full((cr1 - cr0, cc1 - cc0), opera.UNDETECT_DBZ, np.float32)
-            field[50 + 40 * i:120 + 40 * i, 60:200] = 20.0 + 10 * i
+            field = np.full((cr1 - cr0, cc1 - cc0), 20.0 + 10 * i, np.float32)  # rain everywhere
             items.append((f"f202610170440-{5 * (i + 1):03d}", field))
         done = job.publish_frames(items)
         files = {}
@@ -193,6 +360,29 @@ class JobTest(unittest.TestCase):
         self.assertEqual(done_seq, done_par)
         self.assertTrue(files_seq)
         self.assertEqual(files_seq, files_par)
+
+    def test_parallel_workers_keep_the_region_mask(self):
+        """Spawned workers (Windows) build their own reprojector - with the regions."""
+        regions = [{"name": "a", "south": 54.0, "west": 10.0, "north": 54.5, "east": 10.5}]
+        with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b,                 tempfile.TemporaryDirectory() as c:
+            _, files_seq = self.publish(a, 1, regions)
+            _, files_par = self.publish(b, 2, regions)
+            _, files_all = self.publish(c, 1)
+        self.assertEqual(files_seq, files_par)
+        # rain everywhere, but only tiles touching the region exist at zoom 8
+        def zoom8(files):  # paths are {frame}/{z}/{x}/{y}.png
+            return [k.split(os.sep) for k in files if k.split(os.sep)[1] == "8"]
+
+        z8 = zoom8(files_par)
+        self.assertGreater(len(z8), 0)
+        self.assertLess(len(z8), len(zoom8(files_all)))
+        r = regions[0]
+        for _, _, x, y in z8:
+            x, y = int(x), int(y[:-4])
+            west, east = float(px_to_lon(x * TILE, 8)), float(px_to_lon((x + 1) * TILE, 8))
+            north, south = float(px_to_lat(y * TILE, 8)), float(px_to_lat((y + 1) * TILE, 8))
+            self.assertTrue(west <= r["east"] and east >= r["west"] and south <= r["north"] and north >= r["south"],
+                            f"tile 8/{x}/{y} lies outside the region")
 
 
 if __name__ == "__main__":
