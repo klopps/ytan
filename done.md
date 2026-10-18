@@ -1,5 +1,16 @@
 # Erledigt
 
+## Langer Tap auf Mobilgerät öffnet Kontextmenü entfernter Orte
+
+~~Macht man einen langen Tap auf einem Mobilgerät auf die Karte, ohne das dabei POIs, Routen oder Areass in der der Nähe, wird häufig das Kontextmenü z. B. einer Route angezeigt, die gar nicht in der Nähe ist. Dies geschieht besonders bei kleinen Zoomstufen. Beispiel:~~
+~~1. Zoom ungefähr auf Deutschland,~~
+~~2. langer Tap auf Karte zwischen Hannover und Kassel~~
+~~3. Es öffnet sich das Kontextmenü für die Route "Kleven Havn - Rinstinge" (Screenshot im Bericht)~~
+
+~~Das ist offenkundig falsch.~~
+
+Gelöst (2026-10-18): Ursache war `google.maps.geometry.poly.isLocationOnEdge()`, mit der `findLongPressTarget()` (map-core.js) bei einem langen Tap prüfte, ob er auf einer Route liegt. Die Funktion misst den Abstand zur über die Endpunkte hinaus VERLÄNGERTEN Strecke: Ein 24 m kurzes, fast genau nord-südliches Teilstück einer Schlei-Route (54,67° N) "fing" bei Zoomstufe 6 einen Tap zwischen Hannover und Kassel (51,75° N, 330 km südlich), weil der Tap in Längenrichtung nur 0,13° davon entfernt war und die Toleranz (20 px, umgerechnet 0,27°) das abdeckte - je kleiner die Zoomstufe, desto größer die Toleranz in Grad und desto häufiger der Fehler. Ersetzt durch eigenes `isNearPolyline()`: Abstand zu jedem Teilstück in Bildschirmpixeln (Web-Mercator-Weltkoordinaten x 2^Zoom), auf die Endpunkte begrenzt, vorher ein Bounding-Box-Test (pro Pfad in einer WeakMap gecacht, weil der Test bei jedem touchstart für alle Routen läuft; gemessen 0,18 ms für 107 Routen). Mit Playwright nachgestellt: Tap Hannover/Kassel bei Zoom 5 und 6 trifft keine Route mehr, auf der Route und 15 px daneben trifft sie, 30 px hinter dem Routenende und 100 px daneben nicht. Gebiete (`containsLocation()`) und Marker (Pixel-Box) waren nicht betroffen. Der Rechtsklick am Desktop läuft weiter über Googles eigenes Kontextmenü-Ereignis der Linie und war nie betroffen.
+
 ## Performance: Controller bei Bedarf, schnellere Routen-/Gebietslinien
 
 ~~Aus den offenen Performance-Punkten vom 2026-10-16: `App::create()` baut bei jedem Request alle ~40 Repositories/Services/Controller (Fix: erst bei Bedarf erzeugen); verbleibende Long Tasks beim Laden (4x gedrosselt je ~0,5 s) profilieren; lokal `DB_HOST=127.0.0.1` statt `localhost`.~~

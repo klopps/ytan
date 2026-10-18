@@ -383,6 +383,77 @@ function shouldSuppressClick() {
  * visual center. A 20px radius from that bottom point left barely any
  * margin for real finger imprecision on top of that offset.
  */
+/**
+ * Whether latLng lies within tolerancePx screen pixels of the polyline, at
+ * the current zoom - the distance to each SEGMENT, clamped to its ends.
+ *
+ * Replaces google.maps.geometry.poly.isLocationOnEdge(), which measured
+ * against the segment's line extended past its ends: measured 2026-10-18,
+ * a 24 m long, almost exactly north-south segment of a route on the Schlei
+ * (54.67 N) "caught" a long tap between Hannover and Kassel (51.75 N, 3
+ * degrees further south) at zoom 6, so the context menu of a far-away route
+ * opened. The lower the zoom, the larger the tolerance in degrees and the
+ * more often it happened.
+ *
+ * Runs on every touchstart for every route on the map, so a bounding box
+ * (cached per path, WeakMap) rules out the far-away ones first.
+ */
+const polylineBoundsCache = new WeakMap(); // path MVCArray -> {length, south, north, west, east}
+
+function isNearPolyline(latLng, polyline, tolerancePx) {
+    const path = polyline.getPath();
+    const n = path.getLength();
+    if (n === 0) {
+        return false;
+    }
+    const scale = Math.pow(2, map.getZoom()); // world coordinates (256 per world) -> pixels
+    let box = polylineBoundsCache.get(path);
+    if (!box || box.length !== n) {
+        box = { length: n, south: 90, north: -90, west: 180, east: -180 };
+        path.forEach((p) => {
+            box.south = Math.min(box.south, p.lat());
+            box.north = Math.max(box.north, p.lat());
+            box.west = Math.min(box.west, p.lng());
+            box.east = Math.max(box.east, p.lng());
+        });
+        polylineBoundsCache.set(path, box);
+    }
+    const projection = map.getProjection();
+    const t = projection.fromLatLngToPoint(latLng);
+    const tx = t.x * scale;
+    const ty = t.y * scale;
+    const sw = projection.fromLatLngToPoint(new google.maps.LatLng(box.south, box.west));
+    const ne = projection.fromLatLngToPoint(new google.maps.LatLng(box.north, box.east));
+    if (tx < sw.x * scale - tolerancePx || tx > ne.x * scale + tolerancePx ||
+        ty < ne.y * scale - tolerancePx || ty > sw.y * scale + tolerancePx) {
+        return false;
+    }
+    const limit = tolerancePx * tolerancePx;
+    let prev = projection.fromLatLngToPoint(path.getAt(0));
+    let ax = prev.x * scale;
+    let ay = prev.y * scale;
+    if (n === 1) {
+        return (tx - ax) * (tx - ax) + (ty - ay) * (ty - ay) <= limit;
+    }
+    for (let k = 1; k < n; k++) {
+        const b = projection.fromLatLngToPoint(path.getAt(k));
+        const bx = b.x * scale;
+        const by = b.y * scale;
+        const dx = bx - ax;
+        const dy = by - ay;
+        const len2 = dx * dx + dy * dy;
+        const u = len2 > 0 ? Math.max(0, Math.min(1, ((tx - ax) * dx + (ty - ay) * dy) / len2)) : 0;
+        const ex = ax + u * dx - tx;
+        const ey = ay + u * dy - ty;
+        if (ex * ex + ey * ey <= limit) {
+            return true;
+        }
+        ax = bx;
+        ay = by;
+    }
+    return false;
+}
+
 function findLongPressTarget(clientX, clientY) {
     if (!overlayProjection || !overlayProjection.getProjection()) {
         return null;
@@ -436,15 +507,10 @@ function findLongPressTarget(clientX, clientY) {
         return { handler: closestMarker.handler, event: eventForHandler };
     }
 
-    // isLocationOnEdge()'s tolerance is in degrees, not pixels - convert our
-    // pixel tolerance via the standard Web Mercator meters-per-pixel formula.
-    const metersPerPixel = 156543.03392 * Math.cos(touchLatLng.lat() * Math.PI / 180) / Math.pow(2, map.getZoom());
-    const toleranceDegrees = (LONG_PRESS_HIT_TEST_TOLERANCE_PX * metersPerPixel) / 111320;
-
     for (const candidate of longPressCandidates) {
         const overlay = candidate.overlay;
         if (overlay instanceof google.maps.Polyline && overlay.getMap() &&
-            google.maps.geometry.poly.isLocationOnEdge(touchLatLng, overlay, toleranceDegrees)) {
+            isNearPolyline(touchLatLng, overlay, LONG_PRESS_HIT_TEST_TOLERANCE_PX)) {
             return { handler: candidate.handler, event: eventForHandler };
         }
     }
