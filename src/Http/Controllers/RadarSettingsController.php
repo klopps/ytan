@@ -8,6 +8,7 @@ use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Ytan\Domain\Settings\SettingsRepository;
 use Ytan\Service\RadarConfig;
+use Ytan\Service\RadarJobRunner;
 
 /**
  * Rain radar page of the admin area (/admin/radar): the job's settings
@@ -21,7 +22,17 @@ final class RadarSettingsController extends BaseController
     public function __construct(
         private readonly SettingsRepository $settings,
         private readonly string $radarDir,
+        private readonly RadarJobRunner $runner,
     ) {
+    }
+
+    /** "Update now": starts the job in the background unless a run is in progress (409). */
+    public function run(Request $request, Response $response): Response
+    {
+        $this->requireAdmin($request);
+        $this->runner->start();
+
+        return $this->json($response, ['data' => ['started' => true]], 202);
     }
 
     public function show(Request $request, Response $response): Response
@@ -45,6 +56,7 @@ final class RadarSettingsController extends BaseController
     {
         return $config + [
             'status' => RadarConfig::readStatus($this->radarDir),
+            'running' => $this->runner->isRunning(),
             'preset_regions' => RadarConfig::PRESETS,
             'mosaic_pixels' => RadarConfig::regions($config) === [] ? 0
                 : (int) RadarConfig::mosaicPixels(RadarConfig::enclosing(RadarConfig::regions($config))),

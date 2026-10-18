@@ -51,6 +51,8 @@ def main() -> int:
     parser.add_argument("-w", "--workers", type=int, default=None,
                         help="processes rendering frames in parallel (default: the admin setting, "
                              "storage/radar/config.json; 1 = none)")
+    parser.add_argument("--force", action="store_true",
+                        help="ignore the fetch interval (manual start from /admin/radar)")
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args()
 
@@ -71,8 +73,11 @@ def main() -> int:
                          regions=settings.regions, regions_hash=regions_hash(settings.regions),
                          history_minutes=settings.history_minutes,
                          forecast_minutes=settings.forecast_minutes,
-                         fetch_interval_minutes=settings.fetch_interval_minutes)
-            manifest = Job(cfg).run()
+                         fetch_interval_minutes=settings.fetch_interval_minutes,
+                         force=args.force)
+            job = Job(cfg)
+            job.mark_running("manual" if args.force else "cron")
+            manifest = job.run()
         except Exception:
             log.exception("run failed")
             return 1

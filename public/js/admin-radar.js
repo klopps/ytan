@@ -212,7 +212,7 @@ function saveRadarSettings() {
         renderRadarStatus();
         showAdminToast(t('admin.settings.radar_saved'), 'success');
     }).catch(function (err) {
-        showAdminToast(t('common.save_failed', { error: err.message }), 'error');
+        showAdminToast(t('common.save_failed', { error: err.data ? translateApiError(err.data) : err.message }), 'error');
     }).finally(function () {
         radarUpdateSize();
     });
@@ -266,6 +266,7 @@ function radarSetText(id, text) {
 function renderRadarStatus() {
     var data = radarSettingsData();
     var status = data.status || null;
+    renderRadarRunning();
 
     var configured = (data.presets || []).map(radarRegionLabel)
         .concat((data.custom || []).map(function (c, i) { return c.name || t('admin.settings.radar_region_name', { n: i + 1 }); }));
@@ -310,17 +311,94 @@ function renderRadarStatus() {
         : '-');
 }
 
-function refreshRadarStatus() {
+var RADAR_POLL_MS = 4000;
+var radarPollTimer = null;
+
+/** Reloads the job status (GET /settings/radar); resolves with whether a run is in progress. */
+function refreshRadarStatus(quiet) {
     var btn = document.getElementById('radarStatusRefresh');
     btn.disabled = true;
-    Ytan.get('/settings/radar').then(function (answer) {
+    return Ytan.get('/settings/radar').then(function (answer) {
         // only the status: unsaved edits in the settings card stay as they are
         radarSettingsData().status = answer.data.status;
+        radarSettingsData().running = answer.data.running;
         renderRadarStatus();
+        return answer.data.running;
     }).catch(function (err) {
-        showAdminToast(err.message, 'error');
+        if (quiet !== true) {
+            showAdminToast(err.message, 'error');
+        }
+        return false;
     }).finally(function () {
         btn.disabled = false;
+    });
+}
+
+/**
+ * Every 15 seconds while the page is open (not in a background tab): has
+ * a run started meanwhile, e.g. by cron? renderRadarRunning() then switches
+ * to the 4-second polling until it is over. Errors stay quiet here - the
+ * next check simply tries again.
+ */
+var RADAR_IDLE_CHECK_MS = 15000;
+
+function radarIdleCheck() {
+    if (document.hidden || radarPollTimer) {
+        return; // background tab, or the faster polling of a running job is on
+    }
+    refreshRadarStatus(true);
+}
+
+/** "Läuft gerade" box and button state; while a run is in progress the status is polled. */
+function renderRadarRunning() {
+    var data = radarSettingsData();
+    var box = document.getElementById('radarRunning');
+    var btn = document.getElementById('radarRunNow');
+    var running = !!data.running;
+    btn.disabled = running;
+    box.hidden = !running;
+    if (running) {
+        var info = (data.status && data.status.running) || null;
+        box.textContent = info
+            ? t('admin.radar.running_since', {
+                time: radarFormatTime(info.start),
+                trigger: t('admin.radar.trigger.' + (info.trigger === 'manual' ? 'manual' : 'cron'))
+            })
+            : t('admin.radar.running');
+        radarStartPolling();
+    }
+}
+
+function radarStartPolling() {
+    if (radarPollTimer) {
+        return;
+    }
+    radarPollTimer = setInterval(function () {
+        refreshRadarStatus().then(function (running) {
+            if (!running) {
+                clearInterval(radarPollTimer);
+                radarPollTimer = null;
+                showAdminToast(t('admin.radar.run_finished'), 'success');
+            }
+        });
+    }, RADAR_POLL_MS);
+}
+
+function startRadarRun() {
+    var btn = document.getElementById('radarRunNow');
+    btn.disabled = true;
+    Ytan.post('/settings/radar/run', {}).then(function () {
+        showAdminToast(t('admin.radar.run_started'), 'success');
+        // the job takes a moment to start and take its lock
+        setTimeout(function () {
+            refreshRadarStatus().then(function () {
+                radarSettingsData().running = true; // keep polling until the run is over
+                renderRadarRunning();
+            });
+        }, 1500);
+    }).catch(function (err) {
+        showAdminToast(err.data ? translateApiError(err.data) : err.message, 'error');
+        refreshRadarStatus();
     });
 }
 
@@ -361,7 +439,9 @@ async function initRadarSettings() {
 
 function initRadarPage() {
     renderRadarStatus();
-    document.getElementById('radarStatusRefresh').addEventListener('click', refreshRadarStatus);
+    document.getElementById('radarStatusRefresh').addEventListener('click', function () { refreshRadarStatus(); });
+    document.getElementById('radarRunNow').addEventListener('click', startRadarRun);
+    setInterval(radarIdleCheck, RADAR_IDLE_CHECK_MS);
     initRadarSettings();
 }
 

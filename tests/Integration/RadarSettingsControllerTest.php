@@ -9,26 +9,33 @@ use Ytan\Exception\ForbiddenException;
 use Ytan\Exception\UnauthorizedException;
 use Ytan\Exception\ValidationException;
 use Ytan\Http\Controllers\RadarSettingsController;
+use Ytan\Exception\ApiException;
 use Ytan\Service\RadarConfig;
+use Ytan\Service\RadarJobRunner;
 
 final class RadarSettingsControllerTest extends ControllerTestCase
 {
     private RadarSettingsController $controller;
     private string $radarDir;
+    private string $root;
 
     protected function setUp(): void
     {
         parent::setUp();
         // app_settings is a singleton row; the structure-only test DB has none
         $this->pdo->exec('INSERT INTO app_settings (id) VALUES (1)');
-        $this->radarDir = sys_get_temp_dir() . '/ytan-radar-settings-' . uniqid();
-        $this->controller = new RadarSettingsController(new SettingsRepository($this->pdo), $this->radarDir);
+        // a fake checkout root without tools/radar/.venv: the job is "not installed"
+        $this->root = sys_get_temp_dir() . '/ytan-radar-root-' . uniqid();
+        $this->radarDir = $this->root . '/storage/radar';
+        $this->controller = new RadarSettingsController(new SettingsRepository($this->pdo), $this->radarDir, new RadarJobRunner($this->root));
     }
 
     protected function tearDown(): void
     {
-        array_map('unlink', glob($this->radarDir . '/*') ?: []);
+        array_map('unlink', array_filter(glob($this->radarDir . '/{,.}*', GLOB_BRACE) ?: [], 'is_file'));
         @rmdir($this->radarDir);
+        @rmdir($this->root . '/storage');
+        @rmdir($this->root);
         parent::tearDown();
     }
 
@@ -93,7 +100,7 @@ final class RadarSettingsControllerTest extends ControllerTestCase
 
     public function testShowIncludesTheJobStatus(): void
     {
-        mkdir($this->radarDir);
+        mkdir($this->radarDir, 0775, true);
         file_put_contents($this->radarDir . '/status.json', json_encode([
             'last_run' => ['start' => '2026-10-18T10:00:00Z', 'outcome' => 'processed'],
             'last_processing' => ['download' => ['bytes' => 7000000], 'processing' => ['workers' => 4]],
@@ -104,6 +111,47 @@ final class RadarSettingsControllerTest extends ControllerTestCase
         $this->assertSame('processed', $data['status']['last_run']['outcome']);
         $this->assertSame(4, $data['status']['last_processing']['processing']['workers']);
         $this->assertSame(90000000, $data['status']['storage_bytes']);
+    }
+
+    public function testRunNowWhileTheJobHoldsItsLockIs409(): void
+    {
+        mkdir($this->radarDir, 0775, true);
+        $lock = fopen($this->radarDir . '/.lock', 'c');
+        $this->assertTrue(flock($lock, LOCK_EX | LOCK_NB)); // what radar_job.py does for a whole run
+        try {
+            $admin = $this->authPayload($this->createUser(), ['is_admin' => true]);
+            $show = $this->decode($this->controller->show($this->request('GET', '/api/v1/settings/radar', $admin), $this->response()))['data'];
+            $this->assertTrue($show['running']);
+            try {
+                $this->controller->run($this->request('POST', '/api/v1/settings/radar/run', $admin), $this->response());
+                $this->fail('expected an ApiException');
+            } catch (ApiException $e) {
+                $this->assertSame(409, $e->getStatusCode());
+                $this->assertSame('radar.job_running', $e->getErrorCode());
+            }
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+        $this->assertFalse((new RadarJobRunner($this->root))->isRunning());
+    }
+
+    public function testRunNowWithoutAnInstalledJobIs503(): void
+    {
+        $admin = $this->authPayload($this->createUser(), ['is_admin' => true]);
+        try {
+            $this->controller->run($this->request('POST', '/api/v1/settings/radar/run', $admin), $this->response());
+            $this->fail('expected an ApiException');
+        } catch (ApiException $e) {
+            $this->assertSame(503, $e->getStatusCode());
+            $this->assertSame('radar.job_not_installed', $e->getErrorCode());
+        }
+    }
+
+    public function testRunNowIsAdminOnly(): void
+    {
+        $this->expectException(ForbiddenException::class);
+        $this->controller->run($this->request('POST', '/api/v1/settings/radar/run', $this->authPayload($this->createUser())), $this->response());
     }
 
     public function testNonAdminIsForbidden(): void

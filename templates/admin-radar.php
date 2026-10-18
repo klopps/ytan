@@ -36,8 +36,12 @@ $minuteOptions = function (int $from, int $to, int $step, int $selected, ?string
     <div class="card-body">
         <div class="d-flex align-items-start justify-content-between gap-2">
             <h2 class="h6"><?= $t('admin.radar.status_title') ?></h2>
-            <button type="button" class="btn btn-outline-secondary btn-sm" id="radarStatusRefresh"><i class="bi bi-arrow-clockwise"></i> <?= $t('admin.radar.status_refresh') ?></button>
+            <div class="d-flex flex-wrap gap-2 justify-content-end">
+                <button type="button" class="btn btn-primary btn-sm" id="radarRunNow"><i class="bi bi-play-fill"></i> <?= $t('admin.radar.run_now') ?></button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="radarStatusRefresh"><i class="bi bi-arrow-clockwise"></i> <?= $t('admin.radar.status_refresh') ?></button>
+            </div>
         </div>
+        <div class="alert alert-info small py-2" id="radarRunning" hidden></div>
         <dl class="row small mb-2">
             <dt class="col-sm-4"><?= $t('admin.radar.current_regions') ?></dt>
             <dd class="col-sm-8" id="radarCurrentRegions"></dd>
@@ -127,6 +131,7 @@ $minuteOptions = function (int $from, int $to, int $step, int $selected, ?string
 <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_MAPS_API_KEY = <?= json_encode($mapsApiKey) ?>;
 window.YTAN_RADAR_SETTINGS = <?= json_encode($radarSettings + [
     'status' => RadarConfig::readStatus($rootDir . '/storage/radar'),
+    'running' => (new \Ytan\Service\RadarJobRunner($rootDir))->isRunning(),
     'preset_regions' => RadarConfig::PRESETS,
     'max_mosaic_pixels' => RadarConfig::MAX_MOSAIC_PIXELS,
 ], JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) ?>;</script>

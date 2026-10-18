@@ -60,6 +60,7 @@ class Config:
     history_minutes: int = 60
     forecast_minutes: int = 60
     fetch_interval_minutes: int = 5  # cron runs every 5 minutes, runs in between are skipped
+    force: bool = False  # started by hand (/admin/radar): ignore the fetch interval
     look_back_minutes: int = 30   # how far back to look for the newest composite
     keep_raw_minutes: int = 80    # verification needs base - 10 min for a 60 min lead
     stale_frame_minutes: int = 10  # unreferenced frames stay that long (open clients)
@@ -287,11 +288,12 @@ class Job:
         """One run; records what it did in status.json, also when it fails."""
         started = iso_now()
         status = self.read_status()
+        trigger = (status.get("running") or {}).get("trigger") or ("manual" if self.cfg.force else "cron")
         try:
             outcome, manifest = self._run(status)
         except Exception as e:
             self.write_status(status, {"start": started, "end": iso_now(), "outcome": "failed",
-                                       "error": str(e)[:300]}, None)
+                                       "trigger": trigger, "error": str(e)[:300]}, None)
             raise
         processed = None
         if outcome == "processed":
@@ -300,7 +302,8 @@ class Job:
                 "regions": [r.get("name", "") for r in self.cfg.regions],
                 "download": self.download, "processing": self.processing,
             }
-        self.write_status(status, {"start": started, "end": iso_now(), "outcome": outcome}, processed)
+        self.write_status(status, {"start": started, "end": iso_now(), "outcome": outcome, "trigger": trigger},
+                          processed)
         return manifest
 
     def _run(self, status: dict) -> tuple[str, dict | None]:
@@ -310,7 +313,7 @@ class Job:
 
         # Fetch interval: cron runs every 5 minutes, data is processed only every N.
         last = (status.get("last_processing") or {}).get("start")
-        if last and cfg.fetch_interval_minutes > 5 and previous is not None:
+        if last and cfg.fetch_interval_minutes > 5 and previous is not None and not cfg.force:
             age = (self.now - parse_iso(last)).total_seconds()
             if age < cfg.fetch_interval_minutes * 60 - 60:  # a minute of slack for cron jitter
                 log.info("fetch interval %d min not reached (last processing %d s ago), skipped",
@@ -411,15 +414,26 @@ class Job:
         except (OSError, ValueError):
             return {}
 
+    def mark_running(self, trigger: str) -> None:
+        """status.json says a run is in progress (shown on /admin/radar); the
+        lock file is what actually prevents a second run."""
+        status = self.read_status()
+        status["running"] = {"start": iso_now(), "pid": os.getpid(), "trigger": trigger}
+        self._write_status_file(status)
+
     def write_status(self, status: dict, last_run: dict, processed: dict | None) -> None:
         """status.json: the last run (whatever it did), the last run that
         processed data, and the size of storage/radar right now."""
         status = dict(status)
+        status.pop("running", None)
         status["last_run"] = last_run
         if processed is not None:
             status["last_processing"] = processed
         status["storage_bytes"] = directory_size(self.cfg.storage)
         status["storage_measured_at"] = iso_now()
+        self._write_status_file(status)
+
+    def _write_status_file(self, status: dict) -> None:
         tmp = self.status_path() + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(status, f, indent=1)

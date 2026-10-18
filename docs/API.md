@@ -278,7 +278,15 @@ codes of `RadarConfig::PRESETS` - every European country by its lower-case
 ISO 3166 code (de, dk, se, ..., Kosovo xk; Russia only up to 45 E); at
 most 10 own rectangles inside the OPERA coverage (32-72 N, 30 W-45 E); the
 rectangle enclosing all regions may have at most 60 M pixels at zoom 8 (the
-job's memory). Errors (422): `radar.settings_invalid_history`, `radar.settings_invalid_forecast`,
+job's memory). `POST /api/v1/settings/radar/run` (admin only) starts the job right away in
+the background (`radar_job.py --force`, the fetch interval doesn't apply):
+202 `{started: true}`; 409 `radar.job_running` while a run holds the job's
+lock (`storage/radar/.lock`, the same check gives `running` in the GET
+above); 503 `radar.job_not_installed` (no `tools/radar/.venv`) or
+`radar.job_cannot_start` (`exec` disabled). The job's output goes to
+`storage/logs/radar.log` like the cron runs'.
+
+Errors (422): `radar.settings_invalid_history`, `radar.settings_invalid_forecast`,
 `radar.settings_invalid_interval`, `radar.settings_invalid_workers`,
 `radar.settings_unknown_region`, `radar.settings_too_many_regions`,
 `radar.settings_invalid_region`, `radar.settings_no_region`,

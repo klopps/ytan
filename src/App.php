@@ -75,6 +75,7 @@ use Ytan\Service\Weather\OpenMeteoWeatherProvider;
 use Ytan\Service\Weather\SmhiWeatherProvider;
 use Ytan\Service\Weather\WeatherRegionResolver;
 use Ytan\Service\WeatherService;
+use Ytan\Service\RadarJobRunner;
 use Ytan\Service\RadarTileService;
 use Ytan\Service\WsiRenderer;
 use Ytan\Domain\Watch\WatchLinkRepository;
@@ -225,7 +226,7 @@ final class App
         $c->set(RadarController::class, fn () => new RadarController(new RadarTileService($rootDir . '/storage/radar')));
         $c->set(WsiController::class, fn () => new WsiController(new WsiRenderer($rootDir . '/public/images/wsi')));
         $c->set(SettingsController::class, fn ($c) => new SettingsController($c->get(SettingsRepository::class)));
-        $c->set(RadarSettingsController::class, fn ($c) => new RadarSettingsController($c->get(SettingsRepository::class), $rootDir . '/storage/radar'));
+        $c->set(RadarSettingsController::class, fn ($c) => new RadarSettingsController($c->get(SettingsRepository::class), $rootDir . '/storage/radar', new RadarJobRunner($rootDir)));
         $c->set(GpxExportController::class, fn ($c) => new GpxExportController($c->get(RouteRepository::class), $c->get(TourRepository::class), $c->get(SettingsRepository::class), $appName));
         $c->set(RouteSplitController::class, fn ($c) => new RouteSplitController($c->get(RouteRepository::class), $c->get(TourRepository::class), $c->get('images.route'), $pdo));
         $c->set(GpxImportController::class, fn ($c) => new GpxImportController($c->get(RouteRepository::class), $c->get(TourRepository::class), $c->get(PoiRepository::class), new GpxImportService(), $pdo));
@@ -417,6 +418,7 @@ final class App
         $app->put('/api/v1/settings/route-label-font-size-range', [SettingsController::class, 'updateRouteLabelFontSizeRange']);
         $app->get('/api/v1/settings/radar', [RadarSettingsController::class, 'show']);
         $app->put('/api/v1/settings/radar', [RadarSettingsController::class, 'update']);
+        $app->post('/api/v1/settings/radar/run', [RadarSettingsController::class, 'run']);
 
         $app->get('/', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $c, $translator) {
             ob_start();

@@ -51,6 +51,9 @@ tools/radar/.venv/bin/python tools/radar/radar_job.py   # first run: ~2 min (13 
 Locally (Windows): `python -m venv tools/radar/.venv` and
 `tools/radar/.venv/Scripts/python -m pip install -r tools/radar/requirements.txt`.
 
+/admin/radar can also start a run by hand ("Jetzt aktualisieren": `--force`,
+ignores the fetch interval; refused while `storage/radar/.lock` is held).
+
 Cron, every 5 minutes (overlapping runs skip themselves via
 `storage/radar/.lock`). The number of rendering processes comes from the
 admin setting; `--workers N` overrides it for one run (`1` = sequential). On
