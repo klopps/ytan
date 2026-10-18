@@ -1,5 +1,11 @@
 # Erledigt
 
+## Regenradar-Datenabruf pausieren
+
+~~Füge in admin/radar eine Möglichkeit hinzu, um den Datenabruf temporär für 15, 30, 60 Minuten oder dauerhaft abzuschalten.~~
+
+Gelöst (2026-10-18): Zeile "Datenabruf" in der Statuskarte von /admin/radar: Zustand (aktiv / pausiert bis ... / dauerhaft abgeschaltet) und Knöpfe "15 / 30 / 60 Min. aus", "Dauerhaft aus", "Fortsetzen". Gespeichert in `app_settings.radar_paused_until` (UTC) und `radar_paused_forever` (Migration 046) über `POST`/`DELETE /api/v1/settings/radar/pause` (`RadarSettingsController::pause()/resume()`, nur Admin, andere Dauern: 422 `radar.pause_invalid`) und wie die übrigen Einstellungen in `storage/radar/config.json` an den Job weitergegeben; das Speichern der Einstellungen lässt eine Pause unverändert. Der Job (`settings.JobSettings.paused()`) beendet einen Lauf während der Pause sofort, ohne etwas zu laden, und meldet das Ergebnis "pausiert" im Status; eine zeitliche Pause endet von selbst, der nächste Cron-Lauf nach Ablauf lädt wieder. "Jetzt aktualisieren" ist während einer Pause gesperrt (Knopf deaktiviert, die API antwortet 409 `radar.job_paused`), damit ein Handstart die Pause nicht unbemerkt umgeht. Tests: PHPUnit `RadarSettingsControllerTest` (15 Min. mit Ablauf, dauerhaft + Fortsetzen, ungültige Dauer, 409 beim Handstart, Pause bleibt beim Speichern), `RadarConfigTest::testIsPaused`; Python `SettingsTest::test_pause_from_php`, `StatusTest::test_a_paused_job_fetches_nothing`.
+
 ## Maximale Pixelanzahl für Regenradar konfigurierbar
 
 ~~RadarConfig::MAX_MOSAIC_PIXELS ist derzeit hart auf 120 Millionen eingestellt. Der Wert soll unter admin/radar konfigurierbar, aber nicht kleiner 50 Millionen sein.~~

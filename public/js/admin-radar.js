@@ -287,6 +287,7 @@ function radarSetText(id, text) {
 function renderRadarStatus() {
     var data = radarSettingsData();
     var status = data.status || null;
+    renderRadarPause();
     renderRadarRunning();
 
     var configured = (data.presets || []).map(radarRegionLabel)
@@ -347,6 +348,10 @@ function refreshRadarStatus(quiet) {
         // only the status: unsaved edits in the settings card stay as they are
         radarSettingsData().status = answer.data.status;
         radarSettingsData().running = answer.data.running;
+        // a timed pause may have run out meanwhile
+        radarSettingsData().paused = answer.data.paused;
+        radarSettingsData().paused_until = answer.data.paused_until;
+        radarSettingsData().paused_forever = answer.data.paused_forever;
         renderRadarStatus();
         return answer.data.running;
     }).catch(function (err) {
@@ -374,13 +379,48 @@ function radarIdleCheck() {
     refreshRadarStatus(true);
 }
 
+/** "Datenabruf: aktiv / pausiert bis ... / dauerhaft abgeschaltet" and its buttons. */
+function renderRadarPause() {
+    var data = radarSettingsData();
+    var state = document.getElementById('radarPauseState');
+    var paused = !!data.paused;
+    if (!paused) {
+        state.textContent = t('admin.radar.fetching_active');
+        state.className = 'small text-success';
+    } else if (data.paused_forever) {
+        state.textContent = t('admin.radar.fetching_off');
+        state.className = 'small text-danger fw-semibold';
+    } else {
+        state.textContent = t('admin.radar.fetching_paused_until', { time: radarFormatTime(data.paused_until) });
+        state.className = 'small text-warning-emphasis fw-semibold';
+    }
+    document.getElementById('radarResume').hidden = !paused;
+}
+
+function setRadarPause(value) {
+    var request = value === null
+        ? Ytan.del('/settings/radar/pause')
+        : Ytan.post('/settings/radar/pause', value === 'forever' ? { forever: true } : { minutes: parseInt(value, 10) });
+    request.then(function (answer) {
+        var data = radarSettingsData();
+        data.paused = answer.data.paused;
+        data.paused_until = answer.data.paused_until;
+        data.paused_forever = answer.data.paused_forever;
+        renderRadarStatus();
+        showAdminToast(t(value === null ? 'admin.radar.resumed' : 'admin.radar.paused_toast'), 'success');
+    }).catch(function (err) {
+        showAdminToast(err.data ? translateApiError(err.data) : err.message, 'error');
+    });
+}
+
 /** "Läuft gerade" box and button state; while a run is in progress the status is polled. */
 function renderRadarRunning() {
     var data = radarSettingsData();
     var box = document.getElementById('radarRunning');
     var btn = document.getElementById('radarRunNow');
     var running = !!data.running;
-    btn.disabled = running;
+    btn.disabled = running || !!data.paused;
+    btn.title = data.paused ? t('admin.radar.run_now_paused') : '';
     box.hidden = !running;
     if (running) {
         var info = (data.status && data.status.running) || null;
@@ -467,6 +507,10 @@ function initRadarPage() {
     renderRadarStatus();
     document.getElementById('radarStatusRefresh').addEventListener('click', function () { refreshRadarStatus(); });
     document.getElementById('radarRunNow').addEventListener('click', startRadarRun);
+    document.querySelectorAll('[data-radar-pause]').forEach(function (btn) {
+        btn.addEventListener('click', function () { setRadarPause(btn.dataset.radarPause); });
+    });
+    document.getElementById('radarResume').addEventListener('click', function () { setRadarPause(null); });
     setInterval(radarIdleCheck, RADAR_IDLE_CHECK_MS);
     initRadarSettings();
 }

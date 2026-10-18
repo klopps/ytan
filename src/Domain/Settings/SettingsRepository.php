@@ -105,7 +105,7 @@ final class SettingsRepository
      */
     public function radarSettings(): array
     {
-        $stmt = $this->db->query('SELECT radar_history_minutes, radar_forecast_minutes, radar_fetch_interval_minutes, radar_workers, radar_max_mosaic_pixels, radar_regions FROM app_settings WHERE id = 1');
+        $stmt = $this->db->query('SELECT radar_history_minutes, radar_forecast_minutes, radar_fetch_interval_minutes, radar_workers, radar_max_mosaic_pixels, radar_regions, radar_paused_until, radar_paused_forever FROM app_settings WHERE id = 1');
         $row = $stmt->fetch();
         $config = \Ytan\Service\RadarConfig::defaults();
         if ($row === false) {
@@ -116,6 +116,9 @@ final class SettingsRepository
         $config['fetch_interval_minutes'] = (int) $row['radar_fetch_interval_minutes'];
         $config['workers'] = (int) $row['radar_workers'];
         $config['max_mosaic_pixels'] = (int) $row['radar_max_mosaic_pixels'];
+        $config['paused_until'] = $row['radar_paused_until'] !== null
+            ? str_replace(' ', 'T', (string) $row['radar_paused_until']) . 'Z' : null;
+        $config['paused_forever'] = (bool) $row['radar_paused_forever'];
         $regions = $row['radar_regions'] !== null ? json_decode((string) $row['radar_regions'], true) : null;
         if (is_array($regions)) {
             // a code no longer in PRESETS (renamed/removed) is dropped, not an error
@@ -125,6 +128,16 @@ final class SettingsRepository
         }
 
         return $config;
+    }
+
+    /**
+     * Pause the radar job until $untilUtc (Y-m-d H:i:s, UTC) or, with
+     * $forever, until it is resumed; both null/false = resume.
+     */
+    public function setRadarPause(?string $untilUtc, bool $forever): void
+    {
+        $stmt = $this->db->prepare('UPDATE app_settings SET radar_paused_until = ?, radar_paused_forever = ? WHERE id = 1');
+        $stmt->execute([$untilUtc, (int) $forever]);
     }
 
     /** @param array<string, mixed> $config normalized by RadarConfig::normalize() */

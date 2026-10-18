@@ -158,6 +158,81 @@ final class RadarSettingsControllerTest extends ControllerTestCase
         $this->controller->run($this->request('POST', '/api/v1/settings/radar/run', $this->authPayload($this->createUser())), $this->response());
     }
 
+    private function admin(): array
+    {
+        return $this->authPayload($this->createUser(), ['is_admin' => true]);
+    }
+
+    public function testPauseForMinutesEndsOnItsOwnAndReachesTheJob(): void
+    {
+        $data = $this->decode($this->controller->pause(
+            $this->request('POST', '/api/v1/settings/radar/pause', $this->admin(), ['minutes' => 15]), $this->response()))['data'];
+        $this->assertTrue($data['paused']);
+        $this->assertFalse($data['paused_forever']);
+        $until = strtotime($data['paused_until']);
+        $this->assertEqualsWithDelta(time() + 15 * 60, $until, 5);
+        $job = json_decode((string) file_get_contents($this->radarDir . '/config.json'), true);
+        $this->assertSame($data['paused_until'], $job['paused_until']);
+        $this->assertFalse($job['paused_forever']);
+        // ends on its own: no longer paused once the time has passed
+        $this->assertFalse(\Ytan\Service\RadarConfig::isPaused($data, $until + 1));
+    }
+
+    public function testPauseForeverAndResume(): void
+    {
+        $admin = $this->admin();
+        $data = $this->decode($this->controller->pause(
+            $this->request('POST', '/api/v1/settings/radar/pause', $admin, ['forever' => true]), $this->response()))['data'];
+        $this->assertTrue($data['paused']);
+        $this->assertTrue($data['paused_forever']);
+        $this->assertTrue(json_decode((string) file_get_contents($this->radarDir . '/config.json'), true)['paused_forever']);
+
+        $data = $this->decode($this->controller->resume(
+            $this->request('DELETE', '/api/v1/settings/radar/pause', $admin), $this->response()))['data'];
+        $this->assertFalse($data['paused']);
+        $job = json_decode((string) file_get_contents($this->radarDir . '/config.json'), true);
+        $this->assertFalse($job['paused_forever']);
+        $this->assertNull($job['paused_until']);
+    }
+
+    public function testPauseOnlyForTheOfferedDurations(): void
+    {
+        try {
+            $this->controller->pause($this->request('POST', '/api/v1/settings/radar/pause', $this->admin(), ['minutes' => 45]), $this->response());
+            $this->fail('expected a ValidationException');
+        } catch (ValidationException $e) {
+            $this->assertSame('radar.pause_invalid', $e->getErrorCode());
+        }
+    }
+
+    public function testRunNowWhilePausedIs409(): void
+    {
+        $admin = $this->admin();
+        $this->controller->pause($this->request('POST', '/api/v1/settings/radar/pause', $admin, ['forever' => true]), $this->response());
+        try {
+            $this->controller->run($this->request('POST', '/api/v1/settings/radar/run', $admin), $this->response());
+            $this->fail('expected an ApiException');
+        } catch (ApiException $e) {
+            $this->assertSame(409, $e->getStatusCode());
+            $this->assertSame('radar.job_paused', $e->getErrorCode());
+        }
+    }
+
+    public function testSavingTheSettingsKeepsThePause(): void
+    {
+        $admin = $this->admin();
+        $this->controller->pause($this->request('POST', '/api/v1/settings/radar/pause', $admin, ['forever' => true]), $this->response());
+        $this->controller->update($this->request('PUT', '/api/v1/settings/radar', $admin, RadarConfig::defaults()), $this->response());
+        $this->assertTrue((new SettingsRepository($this->pdo))->radarSettings()['paused_forever']);
+        $this->assertTrue(json_decode((string) file_get_contents($this->radarDir . '/config.json'), true)['paused_forever']);
+    }
+
+    public function testPauseIsAdminOnly(): void
+    {
+        $this->expectException(ForbiddenException::class);
+        $this->controller->pause($this->request('POST', '/api/v1/settings/radar/pause', $this->authPayload($this->createUser()), ['minutes' => 15]), $this->response());
+    }
+
     public function testNonAdminIsForbidden(): void
     {
         $this->expectException(ForbiddenException::class);

@@ -36,6 +36,8 @@ final class RadarConfig
     public const WORKERS_MIN = 1;
     public const WORKERS_MAX = 12;
     public const WORKERS_DEFAULT = 4;
+    /** Choices for pausing the job for a while (minutes); or for good. */
+    public const PAUSE_MINUTES = [15, 30, 60];
     public const MAX_CUSTOM_REGIONS = 10;
     public const NAME_MAX_LENGTH = 60;
 
@@ -212,6 +214,8 @@ final class RadarConfig
             'fetch_interval_minutes' => self::INTERVAL_DEFAULT_MINUTES,
             'workers' => self::WORKERS_DEFAULT,
             'max_mosaic_pixels' => self::MAX_MOSAIC_PIXELS_DEFAULT,
+            'paused_until' => null,
+            'paused_forever' => false,
             'presets' => self::DEFAULT_PRESETS,
             'custom' => [],
         ];
@@ -268,6 +272,8 @@ final class RadarConfig
             'forecast_minutes' => $config['forecast_minutes'],
             'fetch_interval_minutes' => $config['fetch_interval_minutes'],
             'workers' => $config['workers'],
+            'paused_until' => $config['paused_until'] ?? null,
+            'paused_forever' => (bool) ($config['paused_forever'] ?? false),
             'regions' => self::regions($config),
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         $tmp = $radarDir . '/config.json.' . bin2hex(random_bytes(4)) . '.tmp';
@@ -275,6 +281,17 @@ final class RadarConfig
             @unlink($tmp);
             throw new \RuntimeException('Cannot write the radar job configuration.');
         }
+    }
+
+    /** Whether the job is paused right now (until a time still ahead, or for good). */
+    public static function isPaused(array $config, ?int $now = null): bool
+    {
+        if (!empty($config['paused_forever'])) {
+            return true;
+        }
+        $until = $config['paused_until'] ?? null;
+
+        return $until !== null && strtotime($until) > ($now ?? time());
     }
 
     /**

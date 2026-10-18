@@ -279,9 +279,16 @@ ISO 3166 code (de, dk, se, ..., Kosovo xk; Russia only up to 45 E); at
 most 10 own rectangles inside the OPERA coverage (32-72 N, 30 W-45 E); the
 rectangle enclosing all regions may have at most `max_mosaic_pixels` pixels at
 zoom 8 (the job's memory, ~8 bytes per pixel; the setting itself 50-500 M,
-default 120 M, 422 `radar.settings_invalid_max_mosaic` outside). `POST /api/v1/settings/radar/run` (admin only) starts the job right away in
+default 120 M, 422 `radar.settings_invalid_max_mosaic` outside). `POST /api/v1/settings/radar/pause` (admin only) pauses the job: `{minutes: 15|30|60}`
+(from now, ends on its own) or `{forever: true}`; `DELETE /api/v1/settings/radar/pause`
+resumes it. Both answer like the GET (`paused`, `paused_until` UTC ISO or null,
+`paused_forever`) and update `config.json`; while paused the job fetches
+nothing (outcome `paused` in `status.json`). 422 `radar.pause_invalid` for
+other durations.
+
+`POST /api/v1/settings/radar/run` (admin only) starts the job right away in
 the background (`radar_job.py --force`, the fetch interval doesn't apply):
-202 `{started: true}`; 409 `radar.job_running` while a run holds the job's
+202 `{started: true}`; 409 `radar.job_paused` while paused, `radar.job_running` while a run holds the job's
 lock (`storage/radar/.lock`, the same check gives `running` in the GET
 above); 503 `radar.job_not_installed` (no `tools/radar/.venv`) or
 `radar.job_cannot_start` (`exec` disabled). The job's output goes to

@@ -51,7 +51,9 @@ tools/radar/.venv/bin/python tools/radar/radar_job.py   # first run: ~2 min (13 
 Locally (Windows): `python -m venv tools/radar/.venv` and
 `tools/radar/.venv/Scripts/python -m pip install -r tools/radar/requirements.txt`.
 
-/admin/radar can also start a run by hand ("Jetzt aktualisieren": `--force`,
+/admin/radar can pause the job (15/30/60 minutes or for good: `paused_until` /
+`paused_forever` in config.json, the run then ends at once with outcome
+`paused`) and start a run by hand ("Jetzt aktualisieren": `--force`,
 ignores the fetch interval; refused while `storage/radar/.lock` is held).
 
 Cron, every 5 minutes (overlapping runs skip themselves via

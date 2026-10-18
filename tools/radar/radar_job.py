@@ -8,6 +8,7 @@ Run from cron every 5 minutes (see README.md):
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import logging
 import os
 import sys
@@ -74,7 +75,8 @@ def main() -> int:
                          history_minutes=settings.history_minutes,
                          forecast_minutes=settings.forecast_minutes,
                          fetch_interval_minutes=settings.fetch_interval_minutes,
-                         force=args.force)
+                         force=args.force,
+                         paused=settings.paused(datetime.now(timezone.utc)))
             job = Job(cfg)
             job.mark_running("manual" if args.force else "cron")
             manifest = job.run()

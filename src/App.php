@@ -419,6 +419,8 @@ final class App
         $app->get('/api/v1/settings/radar', [RadarSettingsController::class, 'show']);
         $app->put('/api/v1/settings/radar', [RadarSettingsController::class, 'update']);
         $app->post('/api/v1/settings/radar/run', [RadarSettingsController::class, 'run']);
+        $app->post('/api/v1/settings/radar/pause', [RadarSettingsController::class, 'pause']);
+        $app->delete('/api/v1/settings/radar/pause', [RadarSettingsController::class, 'resume']);
 
         $app->get('/', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $c, $translator) {
             ob_start();

@@ -67,6 +67,7 @@ class Config:
     forecast_minutes: int = 60
     fetch_interval_minutes: int = 5  # cron runs every 5 minutes, runs in between are skipped
     force: bool = False  # started by hand (/admin/radar): ignore the fetch interval
+    paused: bool = False  # paused in /admin/radar (settings.JobSettings.paused): no fetching at all
     look_back_minutes: int = 30   # how far back to look for the newest composite
     keep_raw_minutes: int = 80    # verification needs base - 10 min for a 60 min lead
     stale_frame_minutes: int = 10  # unreferenced frames stay that long (open clients)
@@ -388,9 +389,13 @@ class Job:
         return manifest
 
     def _run(self, status: dict) -> tuple[str, dict | None]:
-        """(outcome, manifest): processed, no_new_data, skipped_interval or no_composite."""
+        """(outcome, manifest): processed, no_new_data, skipped_interval, paused or no_composite."""
         cfg = self.cfg
         previous = self.read_manifest()
+
+        if cfg.paused:
+            log.info("paused in /admin/radar, nothing fetched")
+            return "paused", previous
 
         # Fetch interval: cron runs every 5 minutes, data is processed only every N.
         last = (status.get("last_processing") or {}).get("start")

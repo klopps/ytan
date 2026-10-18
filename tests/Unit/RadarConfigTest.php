@@ -102,6 +102,15 @@ final class RadarConfigTest extends TestCase
         $this->assertSame(70_000_000, $ok['max_mosaic_pixels']);
     }
 
+    public function testIsPaused(): void
+    {
+        $now = strtotime('2026-10-18T15:00:00Z');
+        $this->assertTrue(RadarConfig::isPaused(['paused_until' => '2026-10-18T15:30:00Z', 'paused_forever' => false], $now));
+        $this->assertFalse(RadarConfig::isPaused(['paused_until' => '2026-10-18T14:59:00Z', 'paused_forever' => false], $now));
+        $this->assertTrue(RadarConfig::isPaused(['paused_until' => null, 'paused_forever' => true], $now));
+        $this->assertFalse(RadarConfig::isPaused(['paused_until' => null, 'paused_forever' => false], $now));
+    }
+
     public function testForecastZeroIsAllowed(): void
     {
         $this->assertSame(0, RadarConfig::normalize($this->valid(['forecast_minutes' => 0]))['forecast_minutes']);
@@ -112,7 +121,9 @@ final class RadarConfigTest extends TestCase
         $d = RadarConfig::defaults();
         $this->assertSame([60, 60, 5, 4], [$d['history_minutes'], $d['forecast_minutes'], $d['fetch_interval_minutes'], $d['workers']]);
         $this->assertSame(120_000_000, $d['max_mosaic_pixels']); // the former fixed constant
-        $this->assertSame($d, RadarConfig::normalize($d)); // the defaults are valid input
+        // the defaults are valid input (the pause is not part of the settings form)
+        $this->assertSame(array_diff_key($d, ['paused_until' => 1, 'paused_forever' => 1]), RadarConfig::normalize($d));
+        $this->assertFalse(RadarConfig::isPaused($d));
     }
 
     public function testDefaultsAreTheOriginalAreaAndFitTheLimit(): void

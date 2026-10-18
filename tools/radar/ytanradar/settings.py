@@ -12,6 +12,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 
 from .mercator import TileGrid
 
@@ -34,6 +35,11 @@ class JobSettings:
     forecast_minutes: int = 60     # 0-120, steps of 5
     fetch_interval_minutes: int = 5  # 5-15, steps of 5; cron still runs every 5 minutes
     workers: int = 4               # 1-12
+    paused_until: datetime | None = None  # /admin/radar: no fetching until then (UTC)
+    paused_forever: bool = False          # /admin/radar: no fetching until resumed
+
+    def paused(self, now: datetime) -> bool:
+        return self.paused_forever or (self.paused_until is not None and now < self.paused_until)
 
 
 def _valid_region(r) -> bool:
@@ -77,7 +83,15 @@ def load_settings(storage: str) -> JobSettings:
         log.warning("config.json has no valid region, using the defaults")
         regions = [dict(r) for r in DEFAULT_REGIONS]
     d = JobSettings()
+    paused_until = None
+    if data.get("paused_until"):
+        try:
+            paused_until = datetime.strptime(str(data["paused_until"]), "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        except ValueError:
+            log.warning("config.json: unreadable paused_until %r, ignored", data["paused_until"])
     return JobSettings(
+        paused_until=paused_until,
+        paused_forever=data.get("paused_forever") is True,
         regions=regions,
         history_minutes=_stepped(data, "history_minutes", d.history_minutes, 5, 60, 5),
         forecast_minutes=_stepped(data, "forecast_minutes", d.forecast_minutes, 0, 120, 5),

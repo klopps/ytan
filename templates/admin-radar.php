@@ -42,6 +42,17 @@ $minuteOptions = function (int $from, int $to, int $step, int $selected, ?string
             </div>
         </div>
         <div class="alert alert-info small py-2" id="radarRunning" hidden></div>
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-3" id="radarPauseRow">
+            <span class="small fw-semibold"><?= $t('admin.radar.fetching') ?>:</span>
+            <span class="small" id="radarPauseState"></span>
+            <div class="btn-group btn-group-sm ms-sm-auto" role="group" aria-label="<?= htmlspecialchars($t('admin.radar.pause'), ENT_QUOTES) ?>">
+                <?php foreach (RadarConfig::PAUSE_MINUTES as $m): ?>
+                <button type="button" class="btn btn-outline-warning" data-radar-pause="<?= $m ?>"><?= $t('admin.radar.pause_minutes', ['min' => $m]) ?></button>
+                <?php endforeach; ?>
+                <button type="button" class="btn btn-outline-danger" data-radar-pause="forever"><?= $t('admin.radar.pause_forever') ?></button>
+            </div>
+            <button type="button" class="btn btn-success btn-sm" id="radarResume" hidden><i class="bi bi-play-fill"></i> <?= $t('admin.radar.resume') ?></button>
+        </div>
         <dl class="row small mb-2">
             <dt class="col-sm-4"><?= $t('admin.radar.current_regions') ?></dt>
             <dd class="col-sm-8" id="radarCurrentRegions"></dd>
@@ -148,6 +159,7 @@ $minuteOptions = function (int $from, int $to, int $step, int $selected, ?string
 window.YTAN_RADAR_SETTINGS = <?= json_encode($radarSettings + [
     'status' => RadarConfig::readStatus($rootDir . '/storage/radar'),
     'running' => (new \Ytan\Service\RadarJobRunner($rootDir))->isRunning(),
+    'paused' => RadarConfig::isPaused($radarSettings),
     'preset_regions' => RadarConfig::PRESETS,
     'max_mosaic_pixels_min' => RadarConfig::MAX_MOSAIC_PIXELS_MIN,
     'max_mosaic_pixels_limit' => RadarConfig::MAX_MOSAIC_PIXELS_LIMIT,

@@ -130,6 +130,19 @@ class SettingsTest(unittest.TestCase):
             got = load_settings(d)
             self.assertEqual((got.regions, got.forecast_minutes), (DEFAULT_REGIONS, 30))
 
+    def test_pause_from_php(self):
+        now = datetime(2026, 10, 18, 15, 0, tzinfo=timezone.utc)
+        with tempfile.TemporaryDirectory() as d:
+            self.write(d, {"paused_until": "2026-10-18T15:30:00Z", "paused_forever": False})
+            got = load_settings(d)
+            self.assertTrue(got.paused(now))
+            self.assertFalse(got.paused(now + timedelta(minutes=31)))  # ends on its own
+            self.write(d, {"paused_until": None, "paused_forever": True})
+            self.assertTrue(load_settings(d).paused(now + timedelta(days=365)))
+            self.write(d, {"paused_until": "nonsense"})
+            self.assertFalse(load_settings(d).paused(now))
+        self.assertFalse(JobSettings().paused(now))
+
     def test_settings_from_php_are_clamped_to_their_steps(self):
         with tempfile.TemporaryDirectory() as d:
             self.write(d, {"history_minutes": 42, "forecast_minutes": 47, "fetch_interval_minutes": 99,
@@ -396,6 +409,19 @@ class StatusTest(unittest.TestCase):
         job2 = self.job()
         job2.run()
         self.assertTrue(jobmod.is_published(job2.frames_dir, oid, job2.signature))
+
+    def test_a_paused_job_fetches_nothing(self):
+        self.job().run()
+        downloads = self.downloads
+        self.now += timedelta(minutes=5)
+        grid = grid_for(self.regions)
+        grid = TileGrid(south=grid.south, west=grid.west, north=grid.north, east=grid.east, zmin=7, zmax=8)
+        cfg = Config(storage=self.dir, grid=grid, workers=1, regions=self.regions,
+                     regions_hash=regions_hash(self.regions), history_minutes=10, forecast_minutes=10,
+                     paused=True)
+        Job(cfg, now=self.now).run()
+        self.assertEqual(self.downloads, downloads)
+        self.assertEqual(self.status()["last_run"]["outcome"], "paused")
 
     def test_a_failed_run_is_recorded(self):
         def broken(url, dest, timeout=60):
