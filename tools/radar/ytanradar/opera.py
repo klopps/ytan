@@ -102,6 +102,14 @@ def read_geometry(path: str) -> Geometry:
         return Geometry.from_where(f["where"].attrs)
 
 
+def read_nodes(path: str) -> list[str]:
+    """The radars in this composite (ODIM how/nodes, e.g. "'deboo', 'dedrs', ..."),
+    sorted; empty if the file doesn't say."""
+    with h5py.File(path, "r") as f:
+        raw = f["how"].attrs.get("nodes", b"") if "how" in f else b""
+    return sorted({n.strip(" '\"") for n in _str(raw).split(",") if n.strip(" '\"")})
+
+
 def read_dbzh(path: str, window: tuple[int, int, int, int]) -> np.ndarray:
     """dBZ (float32) for rows r0:r1, cols c0:c1; nodata -> NaN, undetect -> UNDETECT_DBZ."""
     r0, r1, c0, c1 = window

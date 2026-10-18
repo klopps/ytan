@@ -38,6 +38,12 @@ log = logging.getLogger("ytanradar")
 
 STEP = timedelta(minutes=5)
 
+# Bump when the way frames are drawn changes: a manifest with another
+# version makes the job draw every frame again (like changed regions).
+# 2 = radars missing from a composite are filled in (fill_missing_radars).
+# 3 = the same for history frames whose raw files predate the radar list.
+RENDER_VERSION = 3
+
 # Written into a frame directory just before it is renamed into place. A
 # directory without it is a leftover (e.g. only the PHP overzoom cache
 # survived a failed delete) and must not count as published.
@@ -103,7 +109,7 @@ def fc_id(base: datetime, lead: int) -> str:
 
 
 def publish_frame(frames_dir: str, grid: TileGrid, rp: Reprojector, frame_id: str,
-                  field: np.ndarray) -> tuple[str, bool, int, int, str | None]:
+                  field: np.ndarray, signature: str = "") -> tuple[str, bool, int, int, str | None]:
     """Write a frame's tiles and move them into place.
 
     Returns (frame_id, published, tile count, bytes written, error); count
@@ -113,14 +119,15 @@ def publish_frame(frames_dir: str, grid: TileGrid, rp: Reprojector, frame_id: st
     logging setup).
     """
     final = os.path.join(frames_dir, frame_id)
-    if is_published(frames_dir, frame_id):
+    if is_published(frames_dir, frame_id, signature):
         return frame_id, True, -1, 0, None
-    if os.path.isdir(final):  # incomplete leftover
+    if os.path.isdir(final):  # incomplete leftover, or drawn with another signature
         shutil.rmtree(final, ignore_errors=True)
     tmp = tempfile.mkdtemp(prefix=f".tmp-{frame_id}-", dir=frames_dir)
     idx = palette.classify(rp.render(smooth_for_display(field, rp.geom)))
     count = write_pyramid(grid, idx, tmp)
-    open(os.path.join(tmp, COMPLETE_MARKER), "w").close()
+    with open(os.path.join(tmp, COMPLETE_MARKER), "w", encoding="ascii") as f:
+        f.write(signature)
     size = directory_size(tmp)
     # On Windows a virus scanner/indexer briefly holding a fresh file makes
     # the rename fail (seen in local runs) - retry before giving up.
@@ -129,7 +136,7 @@ def publish_frame(frames_dir: str, grid: TileGrid, rp: Reprojector, frame_id: st
             os.rename(tmp, final)
             return frame_id, True, count, size, None
         except OSError as e:
-            if is_published(frames_dir, frame_id):  # a concurrent run published it
+            if is_published(frames_dir, frame_id, signature):  # a concurrent run published it
                 shutil.rmtree(tmp, ignore_errors=True)
                 return frame_id, True, -1, 0, None
             if attempt == 9:
@@ -151,24 +158,40 @@ def directory_size(path: str) -> int:
     return total
 
 
-def is_published(frames_dir: str, frame_id: str) -> bool:
-    return os.path.exists(os.path.join(frames_dir, frame_id, COMPLETE_MARKER))
+def is_published(frames_dir: str, frame_id: str, signature: str | None = None) -> bool:
+    """The frame is in place - and, with a signature, was drawn with it.
+
+    The signature (Job.signature: render version + regions) sits in the
+    frame's marker file, so a frame drawn the old way is drawn again even
+    when the manifest already says the new version (seen 2026-10-18 locally:
+    a run that couldn't replace old frames had updated the manifest, the
+    next run then kept those old, unfilled frames)."""
+    marker = os.path.join(frames_dir, frame_id, COMPLETE_MARKER)
+    if signature is None:
+        return os.path.exists(marker)
+    try:
+        with open(marker, encoding="ascii") as f:
+            return f.read().strip() == signature
+    except (OSError, UnicodeDecodeError):
+        return False
 
 
 _WORKER: dict = {}
 
 
 def _init_worker(frames_dir: str, grid: TileGrid, geom: opera.Geometry, rp: Reprojector | None,
-                 regions: list[dict] | None = None) -> None:
+                 regions: list[dict] | None = None, signature: str = "") -> None:
     # fork: rp is the parent's object, shared copy-on-write (~250 MB lookup).
     # spawn (Windows): rp is None - rebuilding (~5 s) beats pickling it; it
     # needs the regions too, or everything outside them gets drawn (seen
     # 2026-10-18: rain over France with the regions DE/DK).
-    _WORKER.update(frames_dir=frames_dir, grid=grid, rp=rp or Reprojector(grid, geom, regions=regions))
+    _WORKER.update(frames_dir=frames_dir, grid=grid, signature=signature,
+                   rp=rp or Reprojector(grid, geom, regions=regions))
 
 
 def _publish_in_worker(frame_id: str, field: np.ndarray) -> tuple[str, bool, int, int, str | None]:
-    return publish_frame(_WORKER["frames_dir"], _WORKER["grid"], _WORKER["rp"], frame_id, field)
+    return publish_frame(_WORKER["frames_dir"], _WORKER["grid"], _WORKER["rp"], frame_id, field,
+                         _WORKER["signature"])
 
 
 class Job:
@@ -182,6 +205,9 @@ class Job:
             os.makedirs(d, exist_ok=True)
         self._reprojector: Reprojector | None = None
         self._geom: opera.Geometry | None = None
+        self._fields: dict[datetime, np.ndarray | None] = {}  # field() results of this run
+        # how this run draws: a published frame with another signature is drawn again
+        self.signature = f"{RENDER_VERSION}:{cfg.regions_hash}"
         # statistics of this run, for status.json
         self.download = {"start": None, "end": None, "bytes": 0, "files": 0}
         self.processing = {"start": None, "end": None, "workers": 0, "bytes": 0, "frames": 0}
@@ -220,20 +246,71 @@ class Job:
             geom = opera.read_geometry(h5)
             rp = self.reprojector(geom)
             field = opera.read_dbzh(h5, rp.crop)
+            try:
+                nodes = opera.read_nodes(h5)  # before the file goes
+            except (OSError, KeyError):
+                nodes = []
         finally:
             os.remove(h5)
         tmp = self.raw_path(t) + ".tmp.npz"
         np.savez_compressed(tmp, field=opera.encode(field), geometry=geom.to_json(),
-                            crop=np.array(rp.crop))
+                            crop=np.array(rp.crop), nodes=json.dumps(nodes))
         os.replace(tmp, self.raw_path(t))
         log.info("fetched %s", t.strftime("%Y-%m-%d %H:%M"))
         return True
 
     def _raw_fits(self, path: str) -> bool:
+        """Cut for the current area, and with the composite's radar list - raw
+        files from before the list was kept (2026-10-18) are fetched again,
+        otherwise their frames couldn't be checked for missing radars and
+        would flicker for the next hour (the OPERA cache keeps 24 hours)."""
         with np.load(path) as z:
+            if "nodes" not in z.files:
+                return False
             geom = opera.Geometry.from_json(str(z["geometry"]))
             crop = tuple(int(v) for v in z["crop"])
         return crop == self.reprojector(geom).crop
+
+    def load_nodes(self, t: datetime) -> set[str] | None:
+        """The radars in the composite of t; None if unknown (older raw files)."""
+        path = self.raw_path(t)
+        if not os.path.exists(path):
+            return None
+        with np.load(path) as z:
+            if "nodes" not in z.files:
+                return None
+            nodes = json.loads(str(z["nodes"]))
+        return set(nodes) or None
+
+    def field(self, t: datetime, depth: int = 0) -> np.ndarray | None:
+        """The field of t with radars filled in that are missing compared to
+        5 minutes earlier (nowcast.fill_missing_radars). Everything that
+        draws or forecasts uses this, not load()."""
+        if t in self._fields:
+            return self._fields[t]
+        field = self.load(t)
+        if field is not None and depth < 3:
+            field = self._fill_gaps(t, field, depth)
+        self._fields[t] = field
+        return field
+
+    def _fill_gaps(self, t: datetime, field: np.ndarray, depth: int) -> np.ndarray:
+        nodes, before = self.load_nodes(t), self.load_nodes(t - STEP)
+        if not nodes or not before:
+            return field
+        missing = before - nodes
+        if not missing:
+            return field
+        previous = self.field(t - STEP, depth + 1)  # itself filled if it lacked radars too
+        if previous is None:
+            return field
+        older = self.field(t - 3 * STEP, depth + 1)
+        motion = nowcast.motion_field([older, previous], spacing_minutes=10) if older is not None else None
+        filled, pixels = nowcast.fill_missing_radars(field, previous, motion)
+        if pixels:
+            log.info("%s: %d radar(s) missing (%s), %d km2 filled from 5 minutes earlier",
+                     t.strftime("%H:%M"), len(missing), ", ".join(sorted(missing)[:6]), pixels)
+        return filled
 
     def load(self, t: datetime) -> np.ndarray | None:
         """Cropped dBZ field, None if missing or from a different grid."""
@@ -261,14 +338,14 @@ class Job:
         workers = max(1, min(self.cfg.workers, len(items)))
         self.processing["workers"] = workers
         if workers == 1:
-            results = [publish_frame(self.frames_dir, self.cfg.grid, rp, fid, f) for fid, f in items]
+            results = [publish_frame(self.frames_dir, self.cfg.grid, rp, fid, f, self.signature) for fid, f in items]
         else:
             method = "fork" if "fork" in multiprocessing.get_all_start_methods() else "spawn"
             ctx = multiprocessing.get_context(method)
             with ProcessPoolExecutor(max_workers=workers, mp_context=ctx, initializer=_init_worker,
                                      initargs=(self.frames_dir, self.cfg.grid, self._geom,
                                                rp if method == "fork" else None,
-                                               self.cfg.regions or None)) as pool:
+                                               self.cfg.regions or None, self.signature)) as pool:
                 results = list(pool.map(_publish_in_worker, [i[0] for i in items], [i[1] for i in items]))
         done = set()
         for frame_id, ok, count, size, error in results:
@@ -335,9 +412,10 @@ class Job:
                 raise RuntimeError("no composite available and no previous manifest")
             return "no_composite", previous
 
-        if previous is not None and previous.get("regions_hash", "") != cfg.regions_hash:
-            # other regions: every frame has to be drawn again
-            log.info("regions changed, rebuilding all frames")
+        if previous is not None and (previous.get("regions_hash", "") != cfg.regions_hash
+                                     or previous.get("render_version") != RENDER_VERSION):
+            # other regions, or frames are drawn differently: every frame has to be drawn again
+            log.info("regions or render version changed, rebuilding all frames")
             self.drop_all_frames()
             previous = None
         if (previous is not None and previous.get("latest_observation") == iso(newest)
@@ -349,24 +427,26 @@ class Job:
 
         history = [newest - STEP * i for i in range(cfg.history_minutes // 5, -1, -1)]
         available = [t for t in history if t == newest or self.fetch(t)]
+        # one more before the window: only to fill the oldest frame if it lacks radars
+        self.fetch(history[0] - STEP)
 
         # -- processing phase: render observations, nowcast, publish
         self.processing["start"] = iso_now()
         frames = []
         items = []  # frames still to render: (id, field)
         for t in available:
-            if not is_published(self.frames_dir, obs_id(t)):
-                field = self.load(t)
+            if not is_published(self.frames_dir, obs_id(t), self.signature):
+                field = self.field(t)
                 if field is None:
                     continue
                 items.append((obs_id(t), field))
             frames.append({"id": obs_id(t), "time": iso(t), "type": "observation"})
 
-        latest = self.load(newest)
+        latest = self.field(newest)
         steps = cfg.forecast_minutes // 5
         motion = None
         if steps > 0:
-            past = [self.load(newest - STEP * i) for i in (2, 1)]
+            past = [self.field(newest - STEP * i) for i in (2, 1)]
             motion = nowcast.motion_field([f for f in past if f is not None] + [latest])
         for k, field in enumerate(nowcast.extrapolate(latest, motion, steps), start=1):
             lead = k * 5
@@ -390,6 +470,7 @@ class Job:
                        "north": cfg.grid.north, "east": cfg.grid.east},
             "regions": cfg.regions,
             "regions_hash": cfg.regions_hash,
+            "render_version": RENDER_VERSION,
             "history_minutes": cfg.history_minutes,
             "forecast_minutes": cfg.forecast_minutes,
             "legend": palette.legend(),
@@ -464,9 +545,20 @@ class Job:
             os.remove(self.manifest_path())
         except OSError:
             pass
+        stuck = []
         for name in os.listdir(self.frames_dir):
             if not name.startswith(".tmp-"):
-                shutil.rmtree(os.path.join(self.frames_dir, name), ignore_errors=True)
+                path = os.path.join(self.frames_dir, name)
+                shutil.rmtree(path, ignore_errors=True)
+                if os.path.exists(path):
+                    stuck.append(name)
+        if stuck:
+            # Seen locally on Windows: frames written by a job that the web
+            # server (another user) started can't be deleted by a job started
+            # from the console - they would stay as they were.
+            log.warning("%d frame(s) could not be deleted, probably written by another user "
+                        "(e.g. a job started from /admin/radar via the web server): %s",
+                        len(stuck), ", ".join(stuck[:5]))
 
     def cleanup(self, manifest: dict) -> None:
         keep = {f["id"] for f in manifest["frames"]}
@@ -511,7 +603,7 @@ class Job:
         rows = []
         for lead in self.cfg.verify_leads:
             base = newest - timedelta(minutes=lead)
-            fields = [self.load(base - STEP * i) for i in (2, 1, 0)]
+            fields = [self.field(base - STEP * i) for i in (2, 1, 0)]
             if any(f is None for f in fields):
                 continue
             motion = nowcast.motion_field(fields)

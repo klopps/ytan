@@ -234,13 +234,18 @@ class NowcastTest(unittest.TestCase):
         self.assertEqual(nowcast.csi(a, b, 23.0), (1 / 3, 2))
 
 
-def fake_composite(path: str, dbz: float = 35.0) -> None:
+def fake_composite(path: str, dbz: float = 35.0, nodes: list | None = None, gap_cols: int = 0) -> None:
     """A small ODIM file like OPERA's: 500 x 500 km of the real LAEA grid
-    (around 52-58 N / 7-15 E), rain (dbz) everywhere."""
+    (around 52-58 N / 7-15 E), rain (dbz) everywhere. nodes: the radar list
+    (how/nodes); gap_cols: that many columns on the left without data, as if
+    the radar there were missing."""
     tr = pyproj.Transformer.from_crs(pyproj.CRS(OPERA.projdef), "EPSG:4326", always_xy=True)
     x0, y0 = 1600000.0, -1800000.0
     ul_lon, ul_lat = tr.transform(x0, y0)
     data = np.full((500, 500), dbz)
+    if gap_cols:
+        data[:, :gap_cols] = -9999000.0  # nodata
+        data[:, gap_cols:gap_cols + 60] = -8888000.0  # the neighbours see nothing there
     with h5py.File(path, "w") as f:
         w = f.create_group("where")
         for k, v in {"projdef": OPERA.projdef.encode(), "xsize": 500, "ysize": 500, "xscale": 1000.0,
@@ -248,10 +253,33 @@ def fake_composite(path: str, dbz: float = 35.0) -> None:
             w.attrs[k] = v
         d = f.create_group("dataset1/data1")
         d.create_dataset("data", data=data)
+        if nodes is not None:
+            f.create_group("how").attrs["nodes"] = ", ".join(f"'{n}'" for n in nodes).encode()
         what = d.create_group("what")
         for k, v in {"quantity": b"DBZH", "gain": 1.0, "offset": 0.0, "nodata": -9999000.0,
                      "undetect": -8888000.0}.items():
             what.attrs[k] = v
+
+
+class FillMissingRadarsTest(unittest.TestCase):
+    def test_the_missing_area_and_its_margin_take_the_previous_values(self):
+        previous = np.full((200, 200), 40.0, np.float32)
+        field = previous.copy()
+        field[:, :50] = np.nan  # radar gone: no data
+        field[:, 50:80] = opera.UNDETECT_DBZ  # its neighbours see nothing there
+        field[:, 150:] = 10.0  # far away: really less rain, must stay
+        out, pixels = nowcast.fill_missing_radars(field, previous, None, margin_px=40)
+        self.assertGreater(pixels, 0)
+        self.assertTrue((out[:, :50] == 40.0).all())
+        self.assertTrue((out[:, 50:80] == 40.0).all())
+        self.assertTrue((out[:, 150:] == 10.0).all())
+
+    def test_nothing_missing_changes_nothing(self):
+        previous = np.full((100, 100), 40.0, np.float32)
+        field = np.full((100, 100), 20.0, np.float32)
+        out, pixels = nowcast.fill_missing_radars(field, previous, None)
+        self.assertEqual(pixels, 0)
+        self.assertIs(out, field)
 
 
 class StatusTest(unittest.TestCase):
@@ -266,7 +294,7 @@ class StatusTest(unittest.TestCase):
 
         def fake_download(url, dest, timeout=60):
             self.downloads += 1
-            fake_composite(dest)
+            fake_composite(dest, nodes=["a", "b", "c"])
             return True
 
         jobmod.opera.download = fake_download
@@ -293,7 +321,7 @@ class StatusTest(unittest.TestCase):
         self.assertEqual(st["last_run"]["outcome"], "processed")
         p = st["last_processing"]
         self.assertEqual(p["regions"], ["de"])
-        self.assertEqual(p["download"]["files"], 3)  # the newest + 10 minutes of history
+        self.assertEqual(p["download"]["files"], 4)  # the newest + 10 minutes of history + 1 to fill the oldest
         self.assertGreater(p["download"]["bytes"], 0)
         self.assertLessEqual(p["download"]["start"], p["download"]["end"])
         self.assertLessEqual(p["download"]["end"], p["processing"]["start"])
@@ -315,6 +343,56 @@ class StatusTest(unittest.TestCase):
         self.assertEqual(st["last_run"]["outcome"], "skipped_interval")
         self.assertEqual(st["last_processing"], first)
         self.assertEqual(self.downloads, downloads)
+
+    def test_frames_missing_radars_are_filled(self):
+        """Every second composite lacks a radar (as Spain's in OPERA): its frame
+        must still show the rain there."""
+        def alternating(url, dest, timeout=60):
+            self.downloads += 1
+            minute = int(url.split("@")[1][-2:])
+            if minute % 10 == 5:
+                fake_composite(dest, nodes=["a", "b"], gap_cols=400)  # reaches into the test region
+            else:
+                fake_composite(dest, nodes=["a", "b", "c"])
+            return True
+        jobmod.opera.download = alternating
+        job = self.job()
+        job.run()
+        # 10:00 complete, 09:55 and 10:05-style frames incomplete: compare raw and filled
+        t = floor_step(self.now) - timedelta(minutes=5)  # 09:55, lacks "c"
+        raw, filled = job.load(t), job.field(t)
+        self.assertGreater(np.isnan(raw).sum(), 0)
+        self.assertLess(np.isnan(filled).sum(), np.isnan(raw).sum())
+        rain = palette.rate_to_dbz(0.1)
+        self.assertGreater((filled >= rain).sum(), (raw >= rain).sum())
+
+    def test_raw_files_without_the_radar_list_are_fetched_again(self):
+        job = self.job()
+        job.run()
+        t = floor_step(self.now)
+        path = job.raw_path(t)
+        with np.load(path) as z:  # rewrite it the way it was stored before 2026-10-18
+            old = {k: z[k] for k in z.files if k != "nodes"}
+        np.savez_compressed(path, **old)
+        downloads = self.downloads
+        self.assertIsNone(job.load_nodes(t))
+        self.assertTrue(job.fetch(t))
+        self.assertEqual(self.downloads, downloads + 1)
+        self.assertIsNotNone(job.load(t))
+
+    def test_frames_drawn_the_old_way_are_drawn_again(self):
+        """Even when the manifest already carries the current render version."""
+        job = self.job()
+        job.run()
+        oid = jobmod.obs_id(floor_step(self.now) - timedelta(minutes=5))
+        marker = os.path.join(job.frames_dir, oid, jobmod.COMPLETE_MARKER)
+        self.assertTrue(jobmod.is_published(job.frames_dir, oid, job.signature))
+        open(marker, "w").close()  # as written before signatures existed
+        self.assertFalse(jobmod.is_published(job.frames_dir, oid, job.signature))
+        self.now += timedelta(minutes=5)  # a new composite, so the run processes
+        job2 = self.job()
+        job2.run()
+        self.assertTrue(jobmod.is_published(job2.frames_dir, oid, job2.signature))
 
     def test_a_failed_run_is_recorded(self):
         def broken(url, dest, timeout=60):

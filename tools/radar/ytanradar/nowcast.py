@@ -31,9 +31,9 @@ def _blur(a: np.ndarray) -> np.ndarray:
     return cv2.GaussianBlur(a, (0, 0), SMOOTH_SIGMA)
 
 
-def motion_field(fields: list[np.ndarray]) -> tuple[np.ndarray, np.ndarray] | None:
-    """Velocity (vx, vy) in pixels per 5 minutes, from frames 5 minutes apart
-    (oldest first). None if there is too little rain to tell."""
+def motion_field(fields: list[np.ndarray], spacing_minutes: int = 5) -> tuple[np.ndarray, np.ndarray] | None:
+    """Velocity (vx, vy) in pixels per 5 minutes, from frames spacing_minutes
+    apart (oldest first). None if there is too little rain to tell."""
     if len(fields) < 2:
         return None
     dis = cv2.DISOpticalFlow_create(cv2.DISOPTICAL_FLOW_PRESET_MEDIUM)
@@ -45,7 +45,7 @@ def motion_field(fields: list[np.ndarray]) -> tuple[np.ndarray, np.ndarray] | No
     for i in range(last):
         gap = last - i
         # flow at positions of the older frame, pointing to where it went
-        flow = dis.calc(imgs[i], imgs[last], None) / gap
+        flow = dis.calc(imgs[i], imgs[last], None) / (gap * spacing_minutes / STEP_MINUTES)
         w = (imgs[i] > 0).astype(np.float32) * gap  # longer gaps = less noise
         sum_w += w
         sum_vx += w * flow[..., 0]
@@ -95,6 +95,34 @@ def extrapolate(latest: np.ndarray, motion: tuple[np.ndarray, np.ndarray] | None
         f[~coverage] = np.nan
         result.append(f)
     return result
+
+
+def fill_missing_radars(field: np.ndarray, previous: np.ndarray,
+                        motion: tuple[np.ndarray, np.ndarray] | None,
+                        margin_px: int = 100) -> tuple[np.ndarray, int]:
+    """Fill the area of radars that are missing from `field` but were in
+    `previous` (5 minutes earlier) - (filled field, filled pixels).
+
+    Some countries deliver only every 10 or 15 minutes (measured 2026-10-18:
+    8 of 10 Spanish radars are missing from every second 5-minute OPERA
+    composite), so without this the rain there halves and comes back every
+    5 minutes. Their area: where `field` has no data but `previous` had,
+    plus margin_px around it - there the neighbouring radars still deliver,
+    but see less or nothing (the composite is a maximum over all radars, so
+    a missing radar can only make values smaller). In that area the larger
+    of the current value and the previous field, moved on by one step,
+    counts.
+    """
+    gone = np.isnan(field) & ~np.isnan(previous)
+    if int(gone.sum()) < 50:  # a few stray pixels are not a missing radar
+        return field, 0
+    size = 2 * margin_px + 1
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (size, size))
+    area = cv2.dilate(gone.astype(np.uint8), kernel).astype(bool) & ~np.isnan(previous)
+    moved = extrapolate(previous, motion, 1)[0]
+    out = field.copy()
+    out[area] = np.fmax(field[area], moved[area])  # fmax: NaN in one of them = the other
+    return out, int(area.sum())
 
 
 def csi(forecast: np.ndarray, observed: np.ndarray, threshold_dbz: float) -> tuple[float | None, int]:
