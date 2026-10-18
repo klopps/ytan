@@ -33,7 +33,7 @@ Entschieden (2026-10-18): Mittelwind als Standard (Böen nur per Admin-Einstellu
 Phase 1-5 (2026-10-18) gebaut und lokal getestet, Phase 6 (feinere Modelle) offen: `tools/wind/` (Python-Job mit eigenem GRIB2-Leser, 28 Unit-Tests; echter Lauf für 8 Länder: 24 s, 211 MB Download, 29 MB Ergebnis), `WindController`/`WindDataService`, Admin-Karte "Wind" auf /admin/radar (Migration 047), `public/js/wind.js` (Partikel + Farbfläche, Böen-Chip, Ausschluss mit dem Regenradar), e2e-Spec `wind.spec.js`, Anleitung (10-wetter.md), About-Seite, docs/API.md, CLAUDE.md. Messwerte und Abweichungen: windkarte.md.
 
 Offen:
-- Deploy, dann auf beiden Servern `imagecodecs` ins venv (`python -m pip install --only-binary=:all: imagecodecs`) und Cron (`*/15`, Log `storage/logs/wind.log`, Zeile in `tools/wind/README.md`) einrichten, Migration 047 läuft über `bin/migrate.php`.
+- Deploy, dann auf beiden Servern `imagecodecs` ins venv (`python -m pip install --only-binary=:all: imagecodecs`) und die Cron-Zeile von `radar_job.py` auf `tools/ytan_jobs.py` umstellen (ein Eintrag `*/5` für Radar und Wind nacheinander, Zeile in `tools/radar/README.md`); Migration 047 läuft über `bin/migrate.php`. Stand: prod hat `imagecodecs` (2026-10-19).
 - In der Android-App testen (Akku, Frame-Zeit bei 2.000 Partikeln, Geste Ziehen/Zoomen).
 - Messung am echten Handy: Zeit pro Frame und für den Raster-Neuaufbau (Ziel < 3 ms / < 30 ms; im Desktop-Chromium: 0,1-0,3 ms pro Frame ohne Rasterisierung).
 - Laufzeit, Speicher und Verkehr nach einer Woche aus `status.json` prüfen (Hochrechnung bei ganz Europa: ~1,7 GB Download/Tag, ~120 MB Speicher).

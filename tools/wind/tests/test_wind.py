@@ -18,6 +18,9 @@ import numpy as np
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from ytanwind import blocks, dwd, grib2  # noqa: E402
+import threading  # noqa: E402
+import time  # noqa: E402
+import wind_job  # noqa: E402
 from ytanwind.job import Job  # noqa: E402
 from ytanwind.settings import WindSettings, load_settings  # noqa: E402
 
@@ -249,6 +252,41 @@ class DwdTest(unittest.TestCase):
         with mock.patch.object(dwd, "listed_steps", listing):
             dwd.latest_complete_run(dwd.ICON_EU, now, now, now, ("u_10m",), every=6, candidates=3)
         self.assertTrue(all(h % 6 == 0 for h in seen))
+
+
+class LockTest(unittest.TestCase):
+    """The lock shared with the rain radar job (storage/.jobs.lock)."""
+
+    def test_second_holder_is_refused_without_waiting(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, ".jobs.lock")
+            with wind_job.Lock(path) as first:
+                self.assertTrue(first)
+                with wind_job.Lock(path) as second:
+                    self.assertFalse(second)
+            with wind_job.Lock(path) as again:  # free again once the first one let go
+                self.assertTrue(again)
+
+    def test_waiting_holder_gets_the_lock_when_it_is_released_in_time(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, ".jobs.lock")
+            holder = wind_job.Lock(path)
+            self.assertTrue(holder.__enter__())
+            threading.Timer(0.6, lambda: holder.__exit__(None, None, None)).start()
+            started = time.monotonic()
+            with wind_job.Lock(path, wait_seconds=5, poll_seconds=0.1) as waiter:
+                self.assertTrue(waiter)
+            self.assertGreaterEqual(time.monotonic() - started, 0.5)
+            self.assertLess(time.monotonic() - started, 3)
+
+    def test_waiting_gives_up_after_the_time_is_up(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, ".jobs.lock")
+            with wind_job.Lock(path):
+                started = time.monotonic()
+                with wind_job.Lock(path, wait_seconds=0.5, poll_seconds=0.1) as waiter:
+                    self.assertFalse(waiter)
+                self.assertGreaterEqual(time.monotonic() - started, 0.5)
 
 
 class SettingsTest(unittest.TestCase):

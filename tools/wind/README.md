@@ -48,13 +48,21 @@ tools/radar/.venv/bin/python -m pip install --only-binary=:all: -r tools/radar/r
 tools/radar/.venv/bin/python tools/wind/wind_job.py -v   # first run: ~25 s, ~200 MB download
 ```
 
-Cron, every 15 minutes (the job only computes when a model run it hasn't
-processed is complete, otherwise it ends within a second; overlapping runs
-skip themselves via `storage/wind/.lock`):
+Scheduling: no cron entry of its own. `tools/ytan_jobs.py` (the one cron entry, every
+5 minutes, see `tools/radar/README.md`) runs this job after the rain radar job, at the
+first tick of every quarter hour (the job only computes when a model run it hasn't
+processed is complete, otherwise it ends within a second). Started by hand it runs on
+its own:
 
 ```
-*/15 * * * * /path/to/ytan/tools/radar/.venv/bin/python /path/to/ytan/tools/wind/wind_job.py >> /path/to/ytan/storage/logs/wind.log 2>&1
+tools/radar/.venv/bin/python tools/wind/wind_job.py -v
 ```
+
+**It never runs together with the rain radar job**: both hold `storage/.jobs.lock`
+while they work - the dispatcher holds it for both, a job started by hand takes it
+itself (this job waits up to 6 minutes for the radar to finish, `radar_job.py` skips
+its run when this job is working). The radar needs up to ~1 GB and all its processes
+for ~2 minutes, the wind job ~200 MB and 4 threads for ~40 s.
 
 "Update now" on /admin/radar starts it with `--force` through
 `RadarJobRunner($root, 'wind')`.

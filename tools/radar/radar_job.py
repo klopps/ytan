@@ -8,6 +8,7 @@ Run from cron every 5 minutes (see README.md):
 from __future__ import annotations
 
 import argparse
+from contextlib import nullcontext
 from datetime import datetime, timezone
 import logging
 import os
@@ -66,26 +67,35 @@ def main() -> int:
         if not locked:
             log.warning("previous run still active, skipped")
             return 0
-        started = time.monotonic()
-        try:
-            settings = load_settings(args.storage)
-            workers = settings.workers if args.workers is None else max(1, args.workers)
-            cfg = Config(storage=args.storage, grid=grid_for(settings.regions), workers=workers,
-                         regions=settings.regions, regions_hash=regions_hash(settings.regions),
-                         history_minutes=settings.history_minutes,
-                         forecast_minutes=settings.forecast_minutes,
-                         fetch_interval_minutes=settings.fetch_interval_minutes,
-                         force=args.force,
-                         paused=settings.paused(datetime.now(timezone.utc)))
-            job = Job(cfg)
-            job.mark_running("manual" if args.force else "cron")
-            manifest = job.run()
-        except Exception:
-            log.exception("run failed")
-            return 1
-        if manifest:
-            log.info("done in %.1f s, latest observation %s, %d frames",
-                     time.monotonic() - started, manifest["latest_observation"], len(manifest["frames"]))
+        # The wind job (tools/wind/, every 15 minutes) and this one must not run at the same time (CPU and
+        # memory: this job takes up to ~1 GB). Both hold storage/.jobs.lock while they work; the wind job
+        # waits for us, we skip this run when it is working (the next cron run is 5 minutes away).
+        # (started by tools/ytan_jobs.py, which holds the lock itself: nothing to take)
+        with (nullcontext(True) if os.environ.get("YTAN_JOBS_LOCK_HELD") == "1" else
+              Lock(os.path.join(os.path.dirname(os.path.abspath(args.storage)), ".jobs.lock"))) as exclusive:
+            if not exclusive:
+                log.warning("the wind job is running, skipped")
+                return 0
+            started = time.monotonic()
+            try:
+                settings = load_settings(args.storage)
+                workers = settings.workers if args.workers is None else max(1, args.workers)
+                cfg = Config(storage=args.storage, grid=grid_for(settings.regions), workers=workers,
+                             regions=settings.regions, regions_hash=regions_hash(settings.regions),
+                             history_minutes=settings.history_minutes,
+                             forecast_minutes=settings.forecast_minutes,
+                             fetch_interval_minutes=settings.fetch_interval_minutes,
+                             force=args.force,
+                             paused=settings.paused(datetime.now(timezone.utc)))
+                job = Job(cfg)
+                job.mark_running("manual" if args.force else "cron")
+                manifest = job.run()
+            except Exception:
+                log.exception("run failed")
+                return 1
+            if manifest:
+                log.info("done in %.1f s, latest observation %s, %d frames",
+                         time.monotonic() - started, manifest["latest_observation"], len(manifest["frames"]))
     return 0
 
 

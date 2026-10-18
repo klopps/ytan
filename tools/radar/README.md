@@ -56,15 +56,19 @@ Locally (Windows): `python -m venv tools/radar/.venv` and
 `paused`) and start a run by hand ("Jetzt aktualisieren": `--force`,
 ignores the fetch interval; refused while `storage/radar/.lock` is held).
 
-Cron, every 5 minutes (overlapping runs skip themselves via
-`storage/radar/.lock`). The number of rendering processes comes from the
+Cron, every 5 minutes - ONE entry for all of YTAN's jobs, `tools/ytan_jobs.py`
+(it runs this job and, in its quarter-hour slot, the wind job, one after the
+other; see "Scheduling" below). The number of rendering processes comes from the
 admin setting; `--workers N` overrides it for one run (`1` = sequential). On
 Linux they share the reprojection lookup via fork, on Windows (spawn) each
 builds its own (~5 s, and needs the regions too):
 
 ```
-*/5 * * * * /path/to/ytan/tools/radar/.venv/bin/python /path/to/ytan/tools/radar/radar_job.py >> /path/to/ytan/storage/logs/radar.log 2>&1
+*/5 * * * * /path/to/ytan/tools/radar/.venv/bin/python /path/to/ytan/tools/ytan_jobs.py >> /path/to/ytan/storage/logs/radar.log 2>&1
 ```
+
+`radar_job.py` itself stays runnable by hand (and is what /admin/radar's "update
+now" starts); overlapping runs skip themselves via `storage/radar/.lock`.
 
 The deploy scripts upload `tools/radar/` but neither `.venv` nor
 `storage/radar`.
@@ -80,3 +84,15 @@ The deploy scripts upload `tools/radar/` but neither `.venv` nor
   110 s with 4 workers; locally 120 s -> 75 s (downloads stay sequential).
 - Verification (`verify.csv`, CSI at 1 mm/h): +15 min 0.68 vs. 0.51 for
   persistence, +30 min 0.58 vs. 0.42.
+
+## Scheduling
+
+`tools/ytan_jobs.py` is the only cron entry. Each tick takes `storage/.jobs.lock`
+(a tick that finds it taken - the previous one still working, or a job started by
+hand - just ends) and runs the due jobs one after the other, each in its own
+process: this job on every tick, the wind job once per quarter-hour slot (decided
+from `storage/wind/status.json`). A failing job does not stop the next one. The
+single jobs take the same lock themselves when started by hand or from
+/admin/radar, unless `YTAN_JOBS_LOCK_HELD=1` says the dispatcher holds it - so
+they never run together (the radar needs up to ~1 GB). Tests:
+`python -m unittest discover -s tools/tests`.
