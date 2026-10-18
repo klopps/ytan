@@ -44,7 +44,7 @@ final class RadarConfig
      * (the original fixed area) is ~30 M; the job's reprojection lookup
      * takes 8 bytes per pixel, so 60 M is about 0.5 GB on the server.
      */
-    public const MAX_MOSAIC_PIXELS = 60_000_000;
+    public const MAX_MOSAIC_PIXELS = 120_000_000;
 
     /** Composite coverage (EUMETNET OPERA, roughly): regions must lie inside. */
     public const COVERAGE = ['south' => 32.0, 'west' => -30.0, 'north' => 72.0, 'east' => 45.0];
