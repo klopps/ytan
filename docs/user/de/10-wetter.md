@@ -1,6 +1,6 @@
 ---
 title: Wetter
-keywords: Wetter, Wind, Böen, Regen, Welle, Gezeiten, Tide, Sonnenaufgang, Open-Meteo, DWD, DMI, SMHI, Windy, Regenradar, Niederschlagsprognose, OPERA, Beaufort
+keywords: Wetter, Wind, Böen, Regen, Welle, Gezeiten, Tide, Sonnenaufgang, Open-Meteo, DWD, DMI, SMHI, Windy, Regenradar, Windebene, Partikel, Windkarte, Niederschlagsprognose, OPERA, Beaufort
 ---
 
 Für jeden Kartenpunkt zeigt YTAN eine Wettervorhersage für die nächsten **sieben Tage**, stündlich, mit Wind, Böen, Regen, Wellenhöhe und Gezeiten.
@@ -32,6 +32,25 @@ YTAN kann den Niederschlag direkt über die Karte legen: lang auf einen leeren K
 Die Vorhersage reicht **zwei Stunden** weit. Sie schiebt den gemessenen Regen in seiner Zugrichtung weiter, Schauer wachsen oder verschwinden darin nicht. Sie wird deshalb mit jeder Minute unsicherer - für die nächste halbe Stunde ist sie meist brauchbar, bei Gewittern schon früher nicht mehr. Steht **Radardaten veraltet** unten im Feld, kamen länger als 30 Minuten keine neuen Daten. Ohne Internetverbindung verschwindet das Radar und kommt mit der Verbindung zurück.
 
 Die Radardaten stammen von **EUMETNET OPERA**, dem Verbund der europäischen Wetterdienste (Lizenz CC BY 4.0).
+
+## Wind auf der Karte
+
+Der Wind lässt sich auch direkt über die Karte legen: lang auf einen leeren Kartenpunkt drücken (Rechtsklick) und **Wind ein-/ausblenden** wählen. Kleine **Striche** ziehen mit dem Wind über die Karte - je stärker der Wind, desto schneller bewegen sie sich. Darunter färbt eine blasse **Farbfläche** die Windstärke ein. Die Ebene gibt es für die Gebiete, die auch das Regenradar abdeckt. Wind und Regenradar lassen sich nicht gleichzeitig einblenden: Das eine schaltet das andere aus.
+
+| Teil | Bedeutung |
+|---|---|
+| **Abspielen** | Spielt die Vorhersagestunden als Film ab. |
+| **Schieberegler** | Wählt die Stunde. Daneben stehen Wochentag und Uhrzeit und, wie weit sie in der Zukunft liegt (**+6 Std.**). |
+| **Farbskala** | Windstärke in der Einheit, die du unter **Einstellungen** gewählt hast (Beaufort, m/s, km/h oder Knoten). |
+| **Böen** | Nur wenn der Betreiber Böen mitliefert: färbt die Fläche nach Böen statt nach dem mittleren Wind. Die Striche zeigen immer den mittleren Wind. |
+| **Modell** | Startzeit des Modelllaufs, aus dem die Daten stammen. Er ist beim Eintreffen etwa 3 Stunden alt. |
+| **×** (oben rechts am Feld) | Blendet den Wind wieder aus, ebenso **Wind ein-/ausblenden** im Kartenkontextmenü. |
+
+Die Striche **bewegen sich nur, solange du die Karte ansiehst**: Beim Ziehen und Zoomen pausieren sie, und nach einer Minute ohne Bewegung der Karte bleiben sie stehen (die Farbfläche bleibt). Das spart Akku. Ein Fingertipp auf das Feld oder jede Kartenbewegung startet sie wieder. Ohne Internetverbindung verschwindet die Ebene und kommt mit der Verbindung zurück.
+
+Die Vorhersage ist ein **Modell mit etwa 2 km Raster** (in Deutschland und Umgebung, sonst etwa 6,5 km). Wind in engen Förden, hinter Landzungen und an Steilküsten kann deutlich davon abweichen, Böen und Düseneffekte kennt das Modell nur grob. Prüfe vor jeder Fahrt zusätzlich die amtlichen Seewetterberichte.
+
+Die Winddaten stammen vom **Deutschen Wetterdienst** (Modelle ICON-D2 und ICON-EU, Wind in 10 m Höhe).
 
 ## Woher kommen die Daten?
 

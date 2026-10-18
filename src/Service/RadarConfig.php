@@ -261,8 +261,13 @@ final class RadarConfig
         return $width * $height;
     }
 
-    /** storage/radar/config.json for the job, written atomically. */
-    public static function writeJobConfig(string $radarDir, array $config): void
+    /**
+     * storage/radar/config.json for the jobs, written atomically. The wind
+     * job (tools/wind/) reads the same regions plus its own "wind" object.
+     *
+     * @param array<string, mixed>|null $wind WindConfig settings; null = the defaults
+     */
+    public static function writeJobConfig(string $radarDir, array $config, ?array $wind = null): void
     {
         if (!is_dir($radarDir) && !mkdir($radarDir, 0775, true) && !is_dir($radarDir)) {
             throw new \RuntimeException('Cannot create ' . $radarDir);
@@ -275,6 +280,7 @@ final class RadarConfig
             'paused_until' => $config['paused_until'] ?? null,
             'paused_forever' => (bool) ($config['paused_forever'] ?? false),
             'regions' => self::regions($config),
+            'wind' => $wind ?? WindConfig::defaults(),
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         $tmp = $radarDir . '/config.json.' . bin2hex(random_bytes(4)) . '.tmp';
         if (file_put_contents($tmp, $json) === false || !rename($tmp, $radarDir . '/config.json')) {

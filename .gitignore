@@ -53,4 +53,8 @@ storage/static-maps-cache/*
 /storage/radar/*
 !/storage/radar/.gitkeep
 /tools/radar/.venv/
+
+# Wind layer (tools/wind/): the job's output (it uses the radar's Python venv)
+/storage/wind/*
+!/storage/wind/.gitkeep
 __pycache__/

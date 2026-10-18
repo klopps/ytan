@@ -65,6 +65,9 @@ function initRadar() {
 
 /** Switch the radar on/off and remember it (settings cookie). */
 function setRadarEnabled(enabled) {
+    if (enabled && settings.detailwind) {
+        setWindEnabled(false); // same panel spot; wind.js does the same the other way round
+    }
     settings.detailradar = enabled;
     if (enabled) {
         showRadarLayer();
@@ -142,7 +145,9 @@ function createRadarOverlay() {
         }
 
         draw() {
-            drawRadar();
+            // Maps calls this when the projection changes (after a zoom, a re-based pane): the view
+            // may have changed with it, so the tiles it needs are preloaded here too
+            onRadarViewChanged();
         }
 
         onRemove() {
@@ -223,29 +228,45 @@ function radarTileRange(zoom) {
 /**
  * The area the canvas covers (the map plus RADAR_CANVAS_MARGIN on every
  * side) and the tiles needed for it at the current zoom, clipped to the
- * radar area. Taken from map.getBounds(), not from the overlay's
- * projection: right after a zoom change, bounds_changed fires while the
- * projection still has the old zoom (measured: a zoom-12 view then asked
- * for 17 x 23 tiles). The projection is only used to place the canvas and
- * the tiles when drawing. Null until the map and the overlay are ready.
+ * radar area. Scale and zoom come from the overlay's projection, the area
+ * from the map centre (see the comment in the body: getZoom()/getBounds()
+ * are rounded after a pinch). Both always belong together, so even right
+ * after a zoom change, while the projection still has the old zoom, the
+ * view is consistent (the earlier mix of new bounds and old projection
+ * asked for 17 x 23 tiles at zoom 12). Null until the map and the overlay
+ * are ready.
  */
 function radarCurrentView() {
     const projection = radarOverlay && radarOverlay.getProjection();
-    const bounds = map.getBounds();
-    if (!projection || !bounds || !radarManifest) {
+    if (!projection || !map.getCenter() || !radarManifest) {
         return null;
     }
     const div = map.getDiv();
-    const ne = bounds.getNorthEast();
-    const sw = bounds.getSouthWest();
-    const zoom = Math.round(map.getZoom());
+    // Scale from the PROJECTION, view from the map CENTRE: after a pinch the map is drawn at a
+    // fractional zoom while map.getZoom() and map.getBounds() still answer for a ROUNDED zoom
+    // (measured: setZoom(7.5) -> getZoom() 8, bounds too narrow) - the canvas then missed strips
+    // at the screen edges and tiles were missing in them. The tile zoom stays an integer; the
+    // tiles are drawn scaled to the real scale by drawRadarFrame().
+    const a = projection.fromLatLngToDivPixel(new google.maps.LatLng(0, 0));
+    const b = projection.fromLatLngToDivPixel(new google.maps.LatLng(0, 90));
+    const scale = (b.x - a.x) * 4; // world size in px at the real zoom
+    if (!(scale > 0)) {
+        return null;
+    }
+    const zoom = Math.round(Math.log2(scale / 256));
     const n = Math.pow(2, zoom);
-    // margin in tile units at this zoom (256 px per tile)
-    const mx = RADAR_CANVAS_MARGIN / 256;
-    const fx0 = radarLngToTileX(sw.lng(), n) - mx;
-    const fx1 = radarLngToTileX(ne.lng(), n) + mx;
-    const fy0 = radarLatToTileY(ne.lat(), n) - mx;
-    const fy1 = radarLatToTileY(sw.lat(), n) + mx;
+    const center = map.getCenter();
+    // visible area plus the margin, in world pixels at the real scale -> tile coordinates at the tile zoom
+    const cx = (center.lng() + 180) / 360 * scale;
+    const sinLat = Math.sin(center.lat() * Math.PI / 180);
+    const cy = (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * scale;
+    const halfW = div.clientWidth / 2 + RADAR_CANVAS_MARGIN;
+    const halfH = div.clientHeight / 2 + RADAR_CANVAS_MARGIN;
+    const toTile = n / scale; // world px at the real scale -> tile units at the tile zoom (256 px per tile)
+    const fx0 = (cx - halfW) * toTile;
+    const fx1 = (cx + halfW) * toTile;
+    const fy0 = (cy - halfH) * toTile;
+    const fy1 = (cy + halfH) * toTile;
     const view = { zoom: zoom, n: n, nw: radarTileLatLng(fx0, fy0, n), se: radarTileLatLng(fx1, fy1, n),
         x0: 1, x1: 0, y0: 1, y1: 0 }; // empty tile range
     if (zoom >= radarManifest.zoom.min && div.clientWidth > 0) {

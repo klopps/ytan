@@ -56,7 +56,7 @@ final class RadarSettingsController extends BaseController
         // the pause is set separately (pause()/resume()) and stays as it is
         $config['paused_until'] = $stored['paused_until'];
         $config['paused_forever'] = $stored['paused_forever'];
-        RadarConfig::writeJobConfig($this->radarDir, $config);
+        RadarConfig::writeJobConfig($this->radarDir, $config, $this->settings->windSettings());
 
         return $this->json($response, ['data' => $this->payload($config)]);
     }
@@ -94,7 +94,7 @@ final class RadarSettingsController extends BaseController
     private function afterPauseChange(Response $response): Response
     {
         $config = $this->settings->radarSettings();
-        RadarConfig::writeJobConfig($this->radarDir, $config);
+        RadarConfig::writeJobConfig($this->radarDir, $config, $this->settings->windSettings());
 
         return $this->json($response, ['data' => $this->payload($config)]);
     }

@@ -39,6 +39,10 @@ a fork of PESR. It runs in the browser, as an installable PWA, and as an
   2-hour forecast, animated, usable down to close zoom levels (own tiles from
   [EUMETNET OPERA](https://www.eumetnet.eu/observations/weather-radar-network/)
   composites, CC BY 4.0). Also a link to [Windy](https://www.windy.com/)'s radar.
+- Wind layer on the map: particles that follow the wind (faster = stronger)
+  over a faint colour fill of the wind speed, with an hour slider (own data
+  blocks from the German Weather Service's ICON-D2/ICON-EU forecasts, 2 km in
+  and around Germany, 6.5 km elsewhere in Europe).
 
 **On the water (Android app)**
 - **GPS track recording** in the background with the screen locked;
@@ -84,6 +88,9 @@ A Garmin ConnectIQ app that provides navigation assistance on routes to the next
 - **Rain radar job**: Python 3 (`tools/radar/`, numpy/h5py/pyproj/OpenCV),
   run by cron every 5 minutes, writes the radar tiles to `storage/radar/` -
   see [tools/radar/README.md](tools/radar/README.md).
+- **Wind job**: Python 3 in the same venv (`tools/wind/`, own GRIB2 reader),
+  run by cron every 15 minutes, writes the wind data blocks to `storage/wind/` -
+  see [tools/wind/README.md](tools/wind/README.md).
 - **Android app**: a [Capacitor 8](https://capacitorjs.com/) shell
   (`android/`, plus the repo-root `package.json`/`capacitor.config.json`)
   that loads the live site in a WebView and adds native capabilities the

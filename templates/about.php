@@ -46,5 +46,9 @@
         'source_link' => '<a href="https://www.eumetnet.eu/observations/weather-radar-network/" target="_blank" rel="noopener">EUMETNET OPERA</a>',
         'license_link' => '<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>',
     ]) ?></p>
+    <h2><?= $t('about.wind_title') ?></h2>
+    <p><?= $t('about.wind_text', [
+        'source_link' => '<a href="https://www.dwd.de/DE/leistungen/opendata/opendata.html" target="_blank" rel="noopener">' . htmlspecialchars($t('about.wind_source_name')) . '</a>',
+    ]) ?></p>
 </body>
 </html>

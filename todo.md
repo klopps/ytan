@@ -22,6 +22,24 @@ Offen:
 Ein detaillierter Plan steht in wetterradar.md.
 
 
+## Windkarte mit animierten Partikeln
+
+Windebene in der Karte: animierte Partikel (je stärker der Wind, desto schneller) plus farbige Fläche der Windstärke mit geringer Deckkraft, Zeitleiste über die Vorhersagestunden. Gebiet = die Regionen des Regenradars (`storage/radar/config.json`), keine eigene Auswahl.
+
+Quellen (geprüft 2026-10-18): DWD ICON-D2 (0,02°, alle 3 h, +48 h, einfache GRIB2-Packung) und ICON-EU (0,0625°, alle 3 h, bis +120 h, CCSDS-komprimiert). eccodes hat kein Windows-Wheel, pygrib keine Wheels; ein eigener kleiner Decoder mit numpy + `imagecodecs` dekodiert beide (Prototyp: ~80 ms pro Feld). Python-Job `tools/wind/` schreibt Datenblöcke (u/v als uint8, gzip) in drei Stufen nach `storage/wind/`, `WindController` liefert sie unter `/api/v1/wind/`, `public/js/wind.js` zeichnet Farbfläche und Partikel per Canvas 2D (Bildschirmraster bei `idle`, DPR 1, 30 fps, ein `stroke()` pro Frame, Pause bei Bewegung/Hintergrund/nach 60 s).
+
+Entschieden (2026-10-18): Mittelwind als Standard (Böen nur per Admin-Einstellung), nördlich 70,5° N vorerst leer, feinere Modelle (MEPS, AROME) später als Phase 6, Wind und Radar schließen sich gegenseitig aus.
+
+Phase 1-5 (2026-10-18) gebaut und lokal getestet, Phase 6 (feinere Modelle) offen: `tools/wind/` (Python-Job mit eigenem GRIB2-Leser, 28 Unit-Tests; echter Lauf für 8 Länder: 24 s, 211 MB Download, 29 MB Ergebnis), `WindController`/`WindDataService`, Admin-Karte "Wind" auf /admin/radar (Migration 047), `public/js/wind.js` (Partikel + Farbfläche, Böen-Chip, Ausschluss mit dem Regenradar), e2e-Spec `wind.spec.js`, Anleitung (10-wetter.md), About-Seite, docs/API.md, CLAUDE.md. Messwerte und Abweichungen: windkarte.md.
+
+Offen:
+- Deploy, dann auf beiden Servern `imagecodecs` ins venv (`python -m pip install --only-binary=:all: imagecodecs`) und Cron (`*/15`, Log `storage/logs/wind.log`, Zeile in `tools/wind/README.md`) einrichten, Migration 047 läuft über `bin/migrate.php`.
+- In der Android-App testen (Akku, Frame-Zeit bei 2.000 Partikeln, Geste Ziehen/Zoomen).
+- Messung am echten Handy: Zeit pro Frame und für den Raster-Neuaufbau (Ziel < 3 ms / < 30 ms; im Desktop-Chromium: 0,1-0,3 ms pro Frame ohne Rasterisierung).
+- Laufzeit, Speicher und Verkehr nach einer Woche aus `status.json` prüfen (Hochrechnung bei ganz Europa: ~1,7 GB Download/Tag, ~120 MB Speicher).
+- Phase 6: MET Norway MEPS (2,5 km) und AROME als weitere L2-Quellen, siehe windkarte.md.
+- Möglich: Naht D2/EU weich überblenden (jetzt harter Wechsel), Stunden zwischen den 3-h-Schritten von ICON-EU nach +78 h interpolieren, Böen auch im Stundenverlauf.
+
 ## Performance: offene Punkte aus der Analyse vom 2026-10-16
 
 Kompression, Browser-Caching, WSI-Icons, Marker bei Bedarf, das doppelte Laden, die Prüfung in Produktion, gerundete Koordinaten, `data_sources` in der POI-Liste, Controller bei Bedarf und schnellere Routen-/Gebietslinien sind erledigt (done.md).

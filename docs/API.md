@@ -312,6 +312,72 @@ changes). Below `zoom.min` and where there is no rain: a transparent tile
 `radar.frame_not_found` (expired: the job deletes a frame ~10 minutes after it
 left the manifest).
 
+## Wind
+
+Produced by the Python job in `tools/wind/` (see its README.md) from the DWD's
+ICON-D2/ICON-EU 10 m wind, served read-only from `storage/wind/`, no auth
+required. The regions are the rain radar's.
+
+`GET /api/v1/wind/manifest` → `{data: {...}}`, `Cache-Control: max-age=60`;
+`data` is `null` before the job's first run and while the layer is switched
+off (the client then says "no wind data").
+
+```json
+{
+  "run": "202610182145",
+  "generated": "2026-10-18T21:45Z",
+  "sources": {"eu": "2026101818", "d2": "2026101818"},
+  "hours": ["2026-10-18T20:00Z", "2026-10-18T21:00Z", "..."],
+  "scale": {"uv": [-40, 40], "gust": [0, 60], "nodata": 255},
+  "channels": 2,
+  "levels": {
+    "L0": {"res": 0.25, "south": 35.25, "west": -9.5, "rows": 137, "cols": 136},
+    "L1": {"res": 0.0625, "size": 129, "blocks": ["23_18", "..."]},
+    "L2": {"res": 0.02, "size": 129, "blocks": ["73_56", "..."]}
+  }
+}
+```
+
+`sources` are the model runs (YYYYMMDDHH, UTC; `d2` null without the fine
+grid), `hours` the valid times (the index is the `{hour}` below; ICON-EU
+beyond +78 h is every 3 hours, the hours in between are left out), `channels`
+2 (u, v) or 3 (+ gust). All levels share one global grid with origin
+-90 / -180: block `bx_by` of a level covers longitude `-180 + bx*128*res`
+(+128*res) and latitude `-90 + by*128*res`. `blocks` lists the blocks that
+exist (the others carry no data).
+
+`GET /api/v1/wind/{run}/L0/{hour}` - the overview of an hour: `rows` x `cols`
+points from (`south`, `west`) at 0.25 degrees.
+`GET /api/v1/wind/{run}/{L1|L2}/{hour}/{bx}_{by}` - one block, 129 x 129
+points (the last row/column is the neighbour's first one, so bilinear
+interpolation never needs two blocks). Both return the job's gzipped bytes
+unchanged (`Content-Type: application/octet-stream`, `Content-Encoding: gzip`,
+`Cache-Control: max-age=86400, immutable`); after decompression, per point
+(rows south to north, columns west to east) `channels` bytes: u (east), v
+(north) and optionally the gust, each 0..254 on the `scale` range (u/v
+-40..40 m/s, gust 0..60), 255 = no data. Errors: 422 `wind.invalid_block`
+(malformed run/level/hour/block), 404 `wind.block_not_found` (the run was
+replaced and expired - the job keeps a replaced run ~30 minutes -, or the
+block has no data).
+
+**Settings** (admin only, card "Wind" on /admin/radar): `GET /api/v1/settings/wind`
+and `PUT /api/v1/settings/wind` with
+`{enabled, horizon_hours: 24|48|72|120, run_interval_hours: 3|6, gusts, fine}`
+(all required, booleans for the flags) → the same plus `status` (the job's
+`storage/wind/status.json`, null before its first run: `last_run {start, end,
+outcome: processed|unchanged|no_data|disabled|failed, trigger, error?}`,
+`last_processing {eu_run, d2_run, hours, seconds, bytes_downloaded,
+files_downloaded, bytes_written, regions, start, end}`, `storage_bytes`),
+`running`, `horizons`, `intervals`. Saving writes the `wind` object of
+`storage/radar/config.json`; `enabled: false` also deletes the manifest at
+once. Errors (422): `wind.settings_invalid_horizon`,
+`wind.settings_invalid_interval`, `wind.settings_invalid_flag`.
+`POST /api/v1/settings/wind/run` (admin only) starts the job in the background
+(`wind_job.py --force`): 202 `{started: true}`; 409 `wind.job_disabled` while
+switched off, `wind.job_running` while a run holds `storage/wind/.lock`; 503
+`wind.job_not_installed` / `wind.job_cannot_start`. Output goes to
+`storage/logs/wind.log`.
+
 ## CSP reports
 
 `POST /api/v1/csp-report` - target of the HTML pages' Content-Security-Policy

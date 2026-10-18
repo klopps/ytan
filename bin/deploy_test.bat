@@ -96,6 +96,7 @@ tar -C "%ROOT_DIR%" ^
     --exclude="public/images/wsi/*.svg" ^
     --exclude="public/app" ^
     --exclude="storage/radar" ^
+    --exclude="storage/wind" ^
     --exclude="tools/radar/.venv" ^
     --exclude="__pycache__" ^
     -cf - . | tar -C "%BUILD_DIR%" -xf -

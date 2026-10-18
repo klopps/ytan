@@ -1937,6 +1937,29 @@ img.wsi {
   pointer-events: none;
 }
 
+/* Wind layer (wind.js): colour fill (opacity set in JS) under the particle canvas, both in the map pane.
+   The panel reuses the .radar-controls chrome; its slider has no forecast part to tint. */
+.wind-canvas {
+  position: absolute;
+  pointer-events: none;
+}
+
+.wind-controls .radar-controls-slider {
+  background: var(--color-border-subtle);
+}
+
+/* "Gusts" chip (only with gust data): looks like the tag next to the time, filled while on */
+.wind-gust-btn {
+  border: none;
+  cursor: pointer;
+  margin: 5px 0 0 4px;
+}
+
+.wind-gust-btn-on {
+  background-color: var(--color-accent);
+  color: var(--color-bg-panel);
+}
+
 /**
 * Rain radar controls (radar.js) - shown only while the rain radar is on.
 * Bottom-left above the Google logo, same panel chrome as .tour-mode-badge;

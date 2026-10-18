@@ -35,6 +35,8 @@ use Ytan\Http\Controllers\TranslationController;
 use Ytan\Http\Controllers\UserController;
 use Ytan\Http\Controllers\RadarController;
 use Ytan\Http\Controllers\RadarSettingsController;
+use Ytan\Http\Controllers\WindController;
+use Ytan\Http\Controllers\WindSettingsController;
 use Ytan\Http\Controllers\WeatherController;
 use Ytan\Http\Controllers\WsiController;
 use Ytan\Http\Middleware\AppVersionMiddleware;
@@ -77,6 +79,7 @@ use Ytan\Service\Weather\WeatherRegionResolver;
 use Ytan\Service\WeatherService;
 use Ytan\Service\RadarJobRunner;
 use Ytan\Service\RadarTileService;
+use Ytan\Service\WindDataService;
 use Ytan\Service\WsiRenderer;
 use Ytan\Domain\Watch\WatchLinkRepository;
 use Ytan\Service\UserGuideService;
@@ -224,6 +227,8 @@ final class App
         $c->set(AuthController::class, fn ($c) => new AuthController($authService, $userRepository, $mailService, $appUrl, $c->get(RequestThrottle::class)));
         $c->set(UserController::class, fn () => new UserController($userRepository, $mailService, $authService, $appUrl));
         $c->set(RadarController::class, fn () => new RadarController(new RadarTileService($rootDir . '/storage/radar')));
+        $c->set(WindSettingsController::class, fn ($c) => new WindSettingsController($c->get(SettingsRepository::class), $rootDir . '/storage/radar', $rootDir . '/storage/wind', new RadarJobRunner($rootDir, 'wind')));
+        $c->set(WindController::class, fn () => new WindController(new WindDataService($rootDir . '/storage/wind')));
         $c->set(WsiController::class, fn () => new WsiController(new WsiRenderer($rootDir . '/public/images/wsi')));
         $c->set(SettingsController::class, fn ($c) => new SettingsController($c->get(SettingsRepository::class)));
         $c->set(RadarSettingsController::class, fn ($c) => new RadarSettingsController($c->get(SettingsRepository::class), $rootDir . '/storage/radar', new RadarJobRunner($rootDir)));
@@ -399,6 +404,10 @@ final class App
         $app->get('/api/v1/weather', [WeatherController::class, 'show']);
         $app->get('/api/v1/radar/manifest', [RadarController::class, 'manifest']);
         $app->get('/api/v1/radar/tiles/{frame:[of][0-9-]+}/{z:[0-9]+}/{x:[0-9]+}/{y:[0-9]+}.png', [RadarController::class, 'tile']);
+        // Wind overlay (tools/wind/): manifest, the L0 overview of an hour, and L1/L2 blocks
+        $app->get('/api/v1/wind/manifest', [WindController::class, 'manifest']);
+        $app->get('/api/v1/wind/{run:[0-9]{12}}/{level:L0}/{hour:[0-9]{3}}', [WindController::class, 'block']);
+        $app->get('/api/v1/wind/{run:[0-9]{12}}/{level:L[12]}/{hour:[0-9]{3}}/{block:[0-9]+_[0-9]+}', [WindController::class, 'block']);
         $app->get('/api/v1/geocode/reverse', [GeocodingController::class, 'reverse']);
 
         $app->get('/api/v1/watch', [WatchController::class, 'status']);
@@ -421,6 +430,9 @@ final class App
         $app->post('/api/v1/settings/radar/run', [RadarSettingsController::class, 'run']);
         $app->post('/api/v1/settings/radar/pause', [RadarSettingsController::class, 'pause']);
         $app->delete('/api/v1/settings/radar/pause', [RadarSettingsController::class, 'resume']);
+        $app->get('/api/v1/settings/wind', [WindSettingsController::class, 'show']);
+        $app->put('/api/v1/settings/wind', [WindSettingsController::class, 'update']);
+        $app->post('/api/v1/settings/wind/run', [WindSettingsController::class, 'run']);
 
         $app->get('/', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $c, $translator) {
             ob_start();
@@ -676,6 +688,7 @@ final class App
             $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
             $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
             $radarSettings = $c->get(SettingsRepository::class)->radarSettings();
+            $windSettings = $c->get(SettingsRepository::class)->windSettings();
             $mapsApiKey = $_ENV['MAPS_API_KEY'] ?? '';
             require $rootDir . '/templates/admin-radar.php';
             $res->getBody()->write(ob_get_clean());

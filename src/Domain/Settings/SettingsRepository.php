@@ -153,4 +153,30 @@ final class SettingsRepository
             json_encode(['presets' => $config['presets'], 'custom' => $config['custom']], JSON_UNESCAPED_UNICODE),
         ]);
     }
+
+    /**
+     * Wind job settings (WindConfig); a row that was never saved has the column defaults.
+     *
+     * @return array{enabled: bool, horizon_hours: int, run_interval_hours: int, gusts: bool, fine: bool}
+     */
+    public function windSettings(): array
+    {
+        $row = $this->db->query('SELECT wind_enabled, wind_horizon_hours, wind_run_interval_hours, wind_gusts, wind_fine FROM app_settings WHERE id = 1')->fetch();
+        if ($row === false) {
+            return \Ytan\Service\WindConfig::defaults();
+        }
+
+        return [
+            'enabled' => (bool) $row['wind_enabled'], 'horizon_hours' => (int) $row['wind_horizon_hours'],
+            'run_interval_hours' => (int) $row['wind_run_interval_hours'],
+            'gusts' => (bool) $row['wind_gusts'], 'fine' => (bool) $row['wind_fine'],
+        ];
+    }
+
+    /** @param array<string, mixed> $config normalized by WindConfig::normalize() */
+    public function setWindSettings(array $config): void
+    {
+        $stmt = $this->db->prepare('UPDATE app_settings SET wind_enabled = ?, wind_horizon_hours = ?, wind_run_interval_hours = ?, wind_gusts = ?, wind_fine = ? WHERE id = 1');
+        $stmt->execute([(int) $config['enabled'], $config['horizon_hours'], $config['run_interval_hours'], (int) $config['gusts'], (int) $config['fine']]);
+    }
 }

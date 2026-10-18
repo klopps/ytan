@@ -77,6 +77,7 @@
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/map-core.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/map-core.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/weather.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/weather.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/radar.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/radar.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/wind.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/wind.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/poi.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/poi.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/route.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/route.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/track-recorder.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/track-recorder.js') ?>"></script>
@@ -510,6 +511,26 @@
       <div class="radar-controls-footer">
         <span id="radarControlsStatus" class="radar-controls-status"></span>
         <a class="radar-controls-attribution" href="https://www.eumetnet.eu/observations/weather-radar-network/" target="_blank" rel="noopener"><?= $t('radar.attribution') ?></a>
+      </div>
+    </div>
+
+    <!-- WIND LAYER CONTROLS (wind.js) - shown while the wind layer is on
+         (map context menu, settings.detailwind). Same spot and chrome as the
+         rain radar's panel (the two are never on together). -->
+    <div id="windControls" class="radar-controls wind-controls" style="display:none;">
+      <button type="button" class="radar-controls-close" data-on-click="closeWindLayer();" aria-label="<?= htmlspecialchars($t('wind.close_aria_label'), ENT_QUOTES) ?>" title="<?= htmlspecialchars($t('wind.close_aria_label'), ENT_QUOTES) ?>"><i class="material-icons-round">close</i></button>
+      <div class="radar-controls-row">
+        <button type="button" id="windPlayPauseBtn" class="radar-controls-playpause" data-on-click="toggleWindPlayback();" aria-label="<?= htmlspecialchars($t('wind.play_aria_label'), ENT_QUOTES) ?>"><i class="material-icons-round" id="windPlayPauseIcon">play_arrow</i></button>
+        <input type="range" id="windHourSlider" class="radar-controls-slider" min="0" max="0" value="0" data-on-input="onWindHourSliderInput(this);" aria-label="<?= htmlspecialchars($t('wind.slider_aria_label'), ENT_QUOTES) ?>">
+        <span id="windControlsTime" class="radar-controls-time"></span>
+        <span id="windControlsTag" class="radar-controls-tag"></span>
+      </div>
+      <div id="windCoverageHint" class="radar-controls-hint" style="display:none;"></div>
+      <button type="button" id="windGustBtn" class="radar-controls-tag wind-gust-btn" style="display:none;" data-on-click="toggleWindGusts();" aria-pressed="false" title="<?= htmlspecialchars($t('wind.gust_hint'), ENT_QUOTES) ?>"><?= $t('wind.gust_toggle') ?></button>
+      <div id="windLegend" class="radar-legend"></div>
+      <div class="radar-controls-footer">
+        <span id="windControlsStatus" class="radar-controls-status"></span>
+        <a class="radar-controls-attribution" href="https://www.dwd.de/DE/leistungen/opendata/opendata.html" target="_blank" rel="noopener"><?= $t('wind.attribution') ?></a>
       </div>
     </div>
 

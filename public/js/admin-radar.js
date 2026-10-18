@@ -513,6 +513,7 @@ function initRadarPage() {
     document.getElementById('radarResume').addEventListener('click', function () { setRadarPause(null); });
     setInterval(radarIdleCheck, RADAR_IDLE_CHECK_MS);
     initRadarSettings();
+    initWindCard(); // admin-wind.js, the wind card on the same page
 }
 
 initAdminAuth({ contentId: 'adminAppWrapper', onReady: initRadarPage });
