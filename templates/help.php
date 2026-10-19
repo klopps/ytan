@@ -115,12 +115,14 @@ $title = $t('help.title');
                 <div class="help-body">
                     <dl class="help-index-list">
                         <?php foreach ($keywordIndex as $keyword => $entries): ?>
-                            <dt><button type="button" class="help-chip" data-keyword="<?= $e($keyword) ?>"><?= $e($keyword) ?></button></dt>
-                            <dd>
-                                <?php foreach ($entries as $i => $entry): ?>
-                                    <?= $i > 0 ? ', ' : '' ?><a href="#chapter-<?= $e($entry['slug']) ?>"><?= $e($entry['title']) ?></a>
-                                <?php endforeach; ?>
-                            </dd>
+                            <div class="help-index-row">
+                                <dt><button type="button" class="help-chip" data-keyword="<?= $e($keyword) ?>"><?= $e($keyword) ?></button></dt>
+                                <dd>
+                                    <?php foreach ($entries as $i => $entry): ?>
+                                        <?= $i > 0 ? ', ' : '' ?><a href="#chapter-<?= $e($entry['slug']) ?>"><?= $e($entry['title']) ?></a>
+                                    <?php endforeach; ?>
+                                </dd>
+                            </div>
                         <?php endforeach; ?>
                     </dl>
                 </div>

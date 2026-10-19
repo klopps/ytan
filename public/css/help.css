@@ -435,17 +435,33 @@ html.help-page body {
   background-color: var(--color-bg-subtle);
 }
 
+/* Keyword chip and its chapter links share one line: "Chip → Chapter, Chapter". */
 .help-index-list {
   margin: 0;
 }
 
-.help-index-list dt {
+.help-index-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 8px;
   margin-top: 10px;
 }
 
+.help-index-list dt {
+  flex: 0 0 auto;
+}
+
 .help-index-list dd {
-  margin: 4px 0 0 4px;
+  margin: 0;
   font-size: 14px;
+  flex: 1 1 120px;
+  min-width: 0;
+}
+
+.help-index-list dd::before {
+  content: "\2192\00a0";
+  color: var(--color-text-secondary);
 }
 
 .help-no-results,
