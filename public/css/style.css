@@ -1944,8 +1944,12 @@ img.wsi {
   pointer-events: none;
 }
 
+.wind-controls {
+  --radar-thumb-w: 112px; /* the bubble also shows the weekday */
+}
+
 .wind-controls .radar-controls-slider {
-  background: var(--color-border-subtle);
+  background-image: linear-gradient(var(--color-border-subtle), var(--color-border-subtle));
 }
 
 /* "Gusts" chip (only with gust data): looks like the tag next to the time, filled while on */
@@ -2004,43 +2008,79 @@ img.wsi {
   font-size: 20px;
 }
 
+/* Slider with the time INSIDE its handle (like Windy): the native thumb is an
+   invisible box of the bubble's width, the bubble (.radar-controls-time) is
+   drawn over it at the same spot (--radar-pos, 0..1, set by JS), so dragging,
+   keyboard and screen readers stay the browser's own. */
+.radar-controls-track {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 28px;
+}
+
 /* Observation part of the track neutral, forecast part (from --radar-split) tinted */
 .radar-controls-slider {
-  flex: 1 1 auto;
-  min-width: 60px;
-  height: 6px;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   margin: 0;
-  border-radius: 3px;
   appearance: none;
   -webkit-appearance: none;
-  background: linear-gradient(to right,
+  background-color: transparent;
+  background-image: linear-gradient(to right,
     var(--color-border-subtle) 0, var(--color-border-subtle) var(--radar-split, 100%),
     var(--color-warning) var(--radar-split, 100%), var(--color-warning) 100%);
+  background-size: 100% 6px;
+  background-position: center;
+  background-repeat: no-repeat;
   cursor: pointer;
 }
 
 .radar-controls-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--color-accent);
-  border: 2px solid var(--color-bg-panel);
+  width: var(--radar-thumb-w, 76px);
+  height: 28px;
+  background: transparent;
+  border: none;
 }
 
 .radar-controls-slider::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--color-accent);
-  border: 2px solid var(--color-bg-panel);
+  width: var(--radar-thumb-w, 76px);
+  height: 28px;
+  background: transparent;
+  border: none;
 }
 
 .radar-controls-time {
+  position: absolute;
+  top: 50%;
+  left: calc((100% - var(--radar-thumb-w, 76px)) * var(--radar-pos, 0));
+  width: var(--radar-thumb-w, 76px);
+  height: 24px;
+  transform: translateY(-50%);
+  box-sizing: border-box;
+  border-radius: 12px;
+  background-color: var(--color-accent);
+  color: var(--color-bg-panel);
+  box-shadow: var(--shadow-panel);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 13px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  pointer-events: none;
+}
+
+.radar-controls-time-forecast {
+  background-color: var(--color-warning);
+}
+
+.radar-controls-tagrow {
+  margin: 2px 0 0 40px;
 }
 
 /* Round button on the panel's top-right corner, outside the controls row

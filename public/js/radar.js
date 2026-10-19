@@ -563,6 +563,8 @@ function updateRadarControls() {
     const label = document.getElementById('radarControlsTime');
     const tag = document.getElementById('radarControlsTag');
     label.textContent = hhmm;
+    label.classList.toggle('radar-controls-time-forecast', frame.type === 'forecast');
+    label.parentNode.style.setProperty('--radar-pos', String(radarFrames.length > 1 ? radarFrameIndex / (radarFrames.length - 1) : 0));
     if (frame.type === 'forecast') {
         tag.textContent = t('radar.forecast_tag', { min: frame.lead_minutes });
         tag.className = 'radar-controls-tag radar-controls-tag-forecast';

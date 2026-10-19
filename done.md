@@ -1,5 +1,23 @@
 # Erledigt
 
+## Windlegende folgt der Einheit sofort
+
+~~Wenn man in den Einstellungen die Einheit für die Windstärke umstellt, soll die Beschriftung der Farbskala der Windstärken unmittelbar geändert werden, ohne die Windanzeige ab- und wieder anzuschalten.~~
+
+Gelöst (2026-10-19): `editWindUnit()` (`public/js/map-core.js`) ruft nach dem Speichern auch `renderWindLegend()` (wind.js) auf, das die Legende aus `settings.windUnit` neu aufbaut; vorher aktualisierte die Umstellung nur die Wetter-Zeitleiste, die Legende änderte sich erst beim nächsten `updateWindControls()`. Der Aufruf ist mit `typeof ... === 'function'` abgesichert (wind.js lädt nach map-core.js). e2e-Test in `wind.spec.js`: Einheit bei offener Ebene auf m/s stellen, Legende zeigt sofort "m/s".
+
+## Regenradar/Windfeld: Zeitleiste wie bei Windy
+
+~~Zeitleiste und Slider wie bei Windy.com umsetzen: Slider viel breiter, die Zeitangabe sitzt im "Anfasser".~~
+
+Gelöst (2026-10-19): Der Slider füllt jetzt die ganze Zeile neben dem Abspielknopf (vorher teilte er sie mit Uhrzeit und Etikett), die Uhrzeit steht in einer farbigen Pille, die am Anfasser sitzt (Beobachtung: Akzentfarbe, Prognose: Warnfarbe). Umsetzung in `public/css/style.css` / `templates/app.php`: Der native `input[type=range]` bleibt (Ziehen, Tastatur, Screenreader), sein Anfasser ist eine unsichtbare Box in Breite der Pille (`--radar-thumb-w`: 76 px Radar, 112 px Wind wegen des Wochentags), die Pille (`.radar-controls-time`, `pointer-events: none`) liegt per `left: calc((100% - w) * --radar-pos)` genau darüber; `--radar-pos` (0..1) setzen `radar.js` (`updateRadarControls()`) und `wind.js` (`updateWindControls()`). Das Etikett "Radar"/"Prognose +x Min."/"+x h" steht jetzt in einer eigenen Zeile unter dem Slider (`.radar-controls-tagrow`) und beeinflusst die Sliderbreite nicht mehr - das erledigt zugleich die früher fixierte Etikettbreite (`#radarControlsTag`, entfernt). Gilt für beide Felder, weil sie dasselbe Gerüst teilen. Mit Playwright auf 390 px Breite angesehen (Beobachtung, Prognose, Anschlag links und rechts); das Windfeld nur über die gemeinsame CSS, nicht als Bild geprüft.
+
+## Regenradar: Slidergröße fixieren
+
+~~Bewegt man den Slider so wechselt irgendwann die Anzeige von "Radar" auf "Prognose +x Min.". Dadurch ändert sich der Platz für den Slider, er wird kleiner und lässt sich insbesondere durch das Umspringen der Größe schlecht bedienen. Der Slider muss immer gleich groß bleiben.~~
+
+Gelöst (2026-10-19): Das Etikett neben dem Slider (`#radarControlsTag`) hat jetzt eine feste Breite von 118 px (`flex: 0 0 118px`, Text zentriert) in `public/css/style.css`, gerade genug für den längsten Text "Prognose +120 Min.". Vorher war es so breit wie sein Text: "Radar" schmal, "Prognose +x Min." breit, der Slider (`flex: 1`) schrumpfte beim Übergang und sprang. Der Selektor gilt nur für das Radar-Feld, das Etikett und der Böen-Knopf des Windfelds teilen sich die Klasse `.radar-controls-tag` und bleiben unverändert. Folge: auf einem schmalen Handy ist der Slider durchgehend etwas schmaler als vorher im Zustand "Radar" (Feld 310 px breit: Slider ~80 px); e2e `radar.spec.js` grün, im Browser nicht angesehen.
+
 ## Sprachdateien beim Deploy zusammenführen
 
 ~~Beim Deploy sollen die Sprachdateien zusammengeführt werden: nur neue Schlüssel samt Werten hinzufügen, weggefallene löschen, die Werte der übrigen Schlüssel behalten.~~

@@ -503,10 +503,12 @@
       <button type="button" class="radar-controls-close" data-on-click="closeRadarLayer();" aria-label="<?= htmlspecialchars($t('radar.close_aria_label'), ENT_QUOTES) ?>" title="<?= htmlspecialchars($t('radar.close_aria_label'), ENT_QUOTES) ?>"><i class="material-icons-round">close</i></button>
       <div class="radar-controls-row">
         <button type="button" id="radarPlayPauseBtn" class="radar-controls-playpause" data-on-click="toggleRadarPlayback();" aria-label="<?= htmlspecialchars($t('radar.play_aria_label'), ENT_QUOTES) ?>"><i class="material-icons-round" id="radarPlayPauseIcon">play_arrow</i></button>
-        <input type="range" id="radarFrameSlider" class="radar-controls-slider" min="0" max="0" value="0" data-on-input="onRadarFrameSliderInput(this);" aria-label="<?= htmlspecialchars($t('radar.slider_aria_label'), ENT_QUOTES) ?>">
-        <span id="radarControlsTime" class="radar-controls-time"></span>
-        <span id="radarControlsTag" class="radar-controls-tag"></span>
+        <div class="radar-controls-track">
+          <input type="range" id="radarFrameSlider" class="radar-controls-slider" min="0" max="0" value="0" data-on-input="onRadarFrameSliderInput(this);" aria-label="<?= htmlspecialchars($t('radar.slider_aria_label'), ENT_QUOTES) ?>">
+          <span id="radarControlsTime" class="radar-controls-time"></span>
+        </div>
       </div>
+      <div class="radar-controls-tagrow"><span id="radarControlsTag" class="radar-controls-tag"></span></div>
       <div id="radarCoverageHint" class="radar-controls-hint" style="display:none;"></div>
       <div id="radarLegend" class="radar-legend"></div>
       <div class="radar-controls-footer">
@@ -522,10 +524,12 @@
       <button type="button" class="radar-controls-close" data-on-click="closeWindLayer();" aria-label="<?= htmlspecialchars($t('wind.close_aria_label'), ENT_QUOTES) ?>" title="<?= htmlspecialchars($t('wind.close_aria_label'), ENT_QUOTES) ?>"><i class="material-icons-round">close</i></button>
       <div class="radar-controls-row">
         <button type="button" id="windPlayPauseBtn" class="radar-controls-playpause" data-on-click="toggleWindPlayback();" aria-label="<?= htmlspecialchars($t('wind.play_aria_label'), ENT_QUOTES) ?>"><i class="material-icons-round" id="windPlayPauseIcon">play_arrow</i></button>
-        <input type="range" id="windHourSlider" class="radar-controls-slider" min="0" max="0" value="0" data-on-input="onWindHourSliderInput(this);" aria-label="<?= htmlspecialchars($t('wind.slider_aria_label'), ENT_QUOTES) ?>">
-        <span id="windControlsTime" class="radar-controls-time"></span>
-        <span id="windControlsTag" class="radar-controls-tag"></span>
+        <div class="radar-controls-track">
+          <input type="range" id="windHourSlider" class="radar-controls-slider" min="0" max="0" value="0" data-on-input="onWindHourSliderInput(this);" aria-label="<?= htmlspecialchars($t('wind.slider_aria_label'), ENT_QUOTES) ?>">
+          <span id="windControlsTime" class="radar-controls-time"></span>
+        </div>
       </div>
+      <div class="radar-controls-tagrow"><span id="windControlsTag" class="radar-controls-tag"></span></div>
       <div id="windCoverageHint" class="radar-controls-hint" style="display:none;"></div>
       <button type="button" id="windGustBtn" class="radar-controls-tag wind-gust-btn" style="display:none;" data-on-click="toggleWindGusts();" aria-pressed="false" title="<?= htmlspecialchars($t('wind.gust_hint'), ENT_QUOTES) ?>"><?= $t('wind.gust_toggle') ?></button>
       <div id="windLegend" class="radar-legend"></div>

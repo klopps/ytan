@@ -955,6 +955,7 @@ function updateWindControls() {
     const time = windHours[windHourIndex];
     document.getElementById('windControlsTime').textContent =
         time.toLocaleString(windLocale(), { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+    document.getElementById('windControlsTime').parentNode.style.setProperty('--radar-pos', String(windHours.length > 1 ? windHourIndex / (windHours.length - 1) : 0));
     const lead = Math.round((time.getTime() - Date.now()) / 3600000);
     document.getElementById('windControlsTag').textContent = lead <= 0 ? t('wind.now_tag') : t('wind.lead_tag', { h: lead });
 

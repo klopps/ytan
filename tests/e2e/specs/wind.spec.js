@@ -146,6 +146,27 @@ test.describe('Wind layer', () => {
     expect(await page.evaluate(() => settings.detailwind)).toBe(false);
   });
 
+  test('changing the wind-speed unit relabels the legend of the open layer at once', async ({ loggedInPage: page }) => {
+    await settleMapAt(page, LAT, LNG, 8);
+    await page.evaluate(() => {
+      settings.detailradar = false;
+      setWindEnabled(true);
+    });
+    await expect(page.locator('#windControls')).toBeVisible();
+    await page.waitForFunction(() => windManifest !== null, null, { timeout: 15_000 });
+
+    const unit = page.locator('#windLegend .radar-legend-unit');
+    const before = await unit.textContent();
+    await page.evaluate(() => {
+      const radio = document.getElementById('windunit2'); // m/s
+      radio.checked = true;
+      editWindUnit(radio);
+    });
+    await expect(unit).toHaveText('m/s');
+    expect(before).not.toBe('m/s');
+    await page.evaluate(() => setWindEnabled(false));
+  });
+
   test('the wind sits where the map is, also at fractional zoom levels (after a pinch)', async ({ loggedInPage: page }) => {
     await settleMapAt(page, LAT, LNG, 8);
     await page.evaluate(() => setWindEnabled(true));

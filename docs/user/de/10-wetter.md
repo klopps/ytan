@@ -33,6 +33,8 @@ Die Vorhersage reicht **zwei Stunden** weit. Sie schiebt den gemessenen Regen in
 
 Die Radardaten stammen von **EUMETNET OPERA**, dem Verbund der europäischen Wetterdienste (Lizenz CC BY 4.0).
 
+**Nicht überall gleich zuverlässig:** In manchen Ländern, zum Beispiel **Spanien**, liefern die Wetterdienste ihre Radare nur alle 10 Minuten oder nur teilweise an OPERA. Außerdem reichen die Radare nur ein Stück aufs Meer hinaus. Dort kann Regen im Bild fehlen, zu schwach erscheinen oder an einer geraden Kante abrupt enden - hinter dieser Kante gibt es schlicht keine Messung, es heißt nicht, dass es trocken ist. Andere Wetterdienste und Apps (etwa Windy) zeigen deshalb dort mitunter deutlich mehr Niederschlag. Verlasse dich in solchen Gebieten und auf dem offenen Meer nicht allein auf das Regenradar, sondern vergleiche es mit **Regenradar auf Windy öffnen** und dem Wetterbericht.
+
 ## Wind auf der Karte
 
 Der Wind lässt sich auch direkt über die Karte legen: lang auf einen leeren Kartenpunkt drücken (Rechtsklick) und **Wind ein-/ausblenden** wählen. Kleine **Striche** ziehen mit dem Wind über die Karte - je stärker der Wind, desto schneller bewegen sie sich. Darunter färbt eine blasse **Farbfläche** die Windstärke ein. Die Ebene gibt es für die Gebiete, die auch das Regenradar abdeckt. Wind und Regenradar lassen sich nicht gleichzeitig einblenden: Das eine schaltet das andere aus.

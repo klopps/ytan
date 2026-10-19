@@ -1737,6 +1737,10 @@ function editWindUnit(element) {
     }
     saveSettings();
     refreshOpenWeatherTimeline();
+    // wind.js (loaded later): the legend of the wind layer shows the unit too
+    if (typeof renderWindLegend === 'function') {
+        renderWindLegend();
+    }
 }
 
 function editWindDirectionDisplay(element) {
