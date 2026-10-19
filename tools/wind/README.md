@@ -1,7 +1,9 @@
 # Wind job
 
 Fetches the newest complete runs of the DWD's ICON-D2 (0.02 degrees, +48 h)
-and ICON-EU (0.0625 degrees, up to +120 h) 10 m wind from opendata.dwd.de,
+and ICON-EU (0.0625 degrees, up to +120 h) 10 m wind from opendata.dwd.de -
+and, for regions outside ICON-EU's coverage (29.5-70.5 N, 23.5 W-62.5 E), ICON
+global (13 km, up to +72 h) -
 cuts the regions out and writes small fixed-grid blocks for the wind layer
 (`public/js/wind.js`, served by `WindController`). Background, measurements
 and decisions: `windkarte.md` in the repo root.
@@ -9,6 +11,7 @@ and decisions: `windkarte.md` in the repo root.
 ```
 wind_job.py               cron entry point (lock, logging)
 ytanwind/grib2.py         GRIB2 reader (simple packing 5.0, CCSDS 5.42, bitmap) - no eccodes
+ytanwind/icon_global.py   ICON global's icosahedral grid -> 0.25 degree field (KD tree, index cached)
 ytanwind/dwd.py           file names, run listings ("is this run complete?"), download
 ytanwind/blocks.py        levels L0/L1/L2, sampling, region mask, uint8 encoding
 ytanwind/job.py           one run: plan, hours in parallel, manifest, cleanup, status
@@ -16,6 +19,19 @@ ytanwind/settings.py      regions + wind settings from storage/radar/config.json
 tests/test_wind.py        python -m unittest discover -s tools/wind/tests
 ```
 
+**ICON global** (`icon_global.py`) is the world-wide fallback, on by default (`wind.world` in
+`config.json`, admin checkbox on /admin/wind, migration 049): used only when the area is not completely inside ICON-EU
+and only for the first 72 hours (`job.GLOBAL_MAX_HOURS`); where ICON-EU/D2 have a value they win.
+The DWD publishes it only on the icosahedral grid (grid template 3.101, 2,949,120 cells, ~3.5 MB per
+field - 3x ICON-EU), the cell centres are in the separate CLAT/CLON files. The job builds a nearest-cell
+index to a 0.25 degree grid once (5 s, `storage/wind/icon-global-index.npy`) and regrids every field
+with it. The model runs every 6 hours. Measured 2026-10-19 (72 h, Australia): 528 MB download,
+30 s, 2.5 MB written; Canaries/Morocco (EU + global): 470 MB, 30 s, 5 MB. Compared with ICON-EU over
+Germany: correlation 0.98, bias 0.0 m/s, rmse 0.6 m/s (so the u/v are east/north components).
+If the global files fail for an hour and ICON-EU has the hour, the hour is shown without the fallback.
+
+The area: the rain radar's regions by default, or - `wind.regions` in the same file, set on /admin/wind (up to 10
+rectangles anywhere on the globe, the whole world included - measured 570 MB download and 480 MB written for the world at 72 h, 4-5 minutes - migration 050) - the wind layer's own.
 The regions are the rain radar's (`/admin/radar`), but the data is cut to the one
 rectangle enclosing all of them, grown by 1 degree (`settings.PAD_DEGREES`) - no holes
 over the sea between countries; the job-specific settings

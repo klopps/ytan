@@ -209,10 +209,38 @@ function createWindOverlay() {
 
 /* ---- manifest --------------------------------------------------------- */
 
-/** Opacity of the colour fill, 0..1: the admin setting (/admin/wind, percent), 32 % by default. */
+const WIND_FILL_OPACITY_DEFAULT = 40; // percent
+
+/** A fill opacity in percent as an integer 0..100 (anything else = the default). */
+function windClampFillOpacity(percent) {
+    percent = Number(percent);
+    return Number.isFinite(percent) ? Math.round(Math.min(100, Math.max(0, percent))) : WIND_FILL_OPACITY_DEFAULT;
+}
+
+/** Opacity of the colour fill, 0..1: the user's own setting (Preferences, settings.windFillOpacity), 40 % by default. */
 function windFillOpacity() {
-    const percent = Number(window.YTAN_WIND_FILL_OPACITY);
-    return Number.isFinite(percent) ? Math.min(100, Math.max(0, percent)) / 100 : 0.32;
+    return windClampFillOpacity(settings.windFillOpacity) / 100;
+}
+
+/**
+ * The Preferences slider's 'input' handler: shows the value and applies it to
+ * an open layer at once. Saving (the cookie) is editWindFillOpacity() on 'change'.
+ */
+function previewWindFillOpacity(value) {
+    const percent = windClampFillOpacity(value);
+    const label = document.getElementById('windFillOpacityValue');
+    if (label) {
+        label.textContent = percent + ' %';
+    }
+    if (typeof windOverlay !== 'undefined' && windOverlay && windOverlay.fill) {
+        windOverlay.fill.style.opacity = String(percent / 100);
+    }
+}
+
+function editWindFillOpacity(element) {
+    settings.windFillOpacity = windClampFillOpacity(element.value);
+    previewWindFillOpacity(settings.windFillOpacity);
+    saveSettings();
 }
 
 function windApiBase() {
@@ -960,7 +988,7 @@ function updateWindControls() {
     document.getElementById('windControlsTag').textContent = lead <= 0 ? t('wind.now_tag') : t('wind.lead_tag', { h: lead });
 
     // the model run the data comes from (start time, "2026101818" = 18 UTC)
-    const run = windManifest.sources.eu;
+    const run = windManifest.sources.eu || windManifest.sources.gl;
     const modelTime = new Date(Date.UTC(+run.substr(0, 4), +run.substr(4, 2) - 1, +run.substr(6, 2), +run.substr(8, 2)));
     const stale = (Date.now() - modelTime.getTime()) / 3600000 > WIND_STALE_HOURS;
     const status = document.getElementById('windControlsStatus');

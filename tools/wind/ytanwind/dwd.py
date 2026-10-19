@@ -1,4 +1,4 @@
-"""DWD open data (opendata.dwd.de): ICON-D2 and ICON-EU 10 m wind.
+"""DWD open data (opendata.dwd.de): ICON-D2, ICON-EU and ICON global 10 m wind.
 
 Both models run every 3 hours and publish one bz2-compressed GRIB2 file per
 variable and forecast hour. The directory listing tells which steps of a run
@@ -23,7 +23,7 @@ USER_AGENT = "YTAN wind job (kayak trip planner; https://ytan.pesr.org)"
 
 @dataclass(frozen=True)
 class Model:
-    key: str            # "eu" / "d2"
+    key: str            # "eu" / "d2" / "gl"
     lower: str          # directory name of the model
     last_step_main: int  # last forecast hour of the 00/06/12/18 runs
     last_step_other: int
@@ -35,6 +35,8 @@ class Model:
         return f"{BASE}/{self.lower}/grib/{run:%H}/{var}/"
 
     def filename(self, run: datetime, step: int, var: str) -> str:
+        if self.key == "gl":
+            return f"icon_global_icosahedral_single-level_{run:%Y%m%d%H}_{step:03d}_{var.upper()}.grib2.bz2"
         if self.key == "d2":
             return f"icon-d2_germany_regular-lat-lon_single-level_{run:%Y%m%d%H}_{step:03d}_2d_{var}.grib2.bz2"
         return f"icon-eu_europe_regular-lat-lon_single-level_{run:%Y%m%d%H}_{step:03d}_{var.upper()}.grib2.bz2"
@@ -49,6 +51,9 @@ class Model:
 
 ICON_D2 = Model("d2", "icon-d2", 48, 48)
 ICON_EU = Model("eu", "icon-eu", 120, 51)
+# ICON global: 00/12 runs go to +180 h, 06/18 to +120 h, hourly to +78 h and 3-hourly after (like ICON-EU);
+# runs only every 6 hours. Only used up to GLOBAL_MAX_HOURS ahead, see job.py.
+ICON_GLOBAL = Model("gl", "icon", 120, 120)
 
 
 def http_get(url: str, timeout: int = 60, tries: int = 3) -> bytes:
@@ -92,7 +97,7 @@ def wanted_steps(model: Model, run: datetime, first: datetime, last: datetime) -
     interpolated, the hours in between are left out of the timeline."""
     out = []
     for step in range(0, model.last_step(run) + 1):
-        if model.key == "eu" and step > 78 and step % 3:
+        if model.key in ("eu", "gl") and step > 78 and step % 3:
             continue
         valid = run + timedelta(hours=step)
         if first <= valid <= last:

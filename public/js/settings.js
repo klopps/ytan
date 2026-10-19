@@ -153,6 +153,8 @@ function saveSettings() {
 
     settings['routeLabelFontSize'] = parseInt(document.getElementById('routeLabelFontSize').value, 10);
 
+    settings['windFillOpacity'] = windClampFillOpacity(parseInt(document.getElementById('windFillOpacity').value, 10));
+
     settings['theme'] = [THEME_LIGHT, THEME_DARK].includes(settings['theme']) ? settings['theme'] : THEME_LIGHT;
 
     settings['zoom'] = map.getZoom();
@@ -259,6 +261,10 @@ function loadSettings() {
         settings['routeLabelFontSize'] = Math.min(Math.max(settings['routeLabelFontSize'], routeLabelFontSizeRange.min), routeLabelFontSizeRange.max);
         document.getElementById('routeLabelFontSize').value = settings['routeLabelFontSize'];
         updateRouteLabelFontSizeExample();
+
+        settings['windFillOpacity'] = windClampFillOpacity(settings['windFillOpacity']);
+        document.getElementById('windFillOpacity').value = settings['windFillOpacity'];
+        previewWindFillOpacity(settings['windFillOpacity']);
 
         if (settings['theme'] === THEME_DARK) {
             document.documentElement.dataset.theme = THEME_DARK;

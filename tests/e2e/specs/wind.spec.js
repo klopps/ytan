@@ -134,10 +134,16 @@ test.describe('Wind layer', () => {
     expect(sample.vx).toBeLessThan(8.5);
     expect(Math.abs(sample.vy)).toBeLessThan(0.5);
 
-    // the fill's opacity is the admin setting (/admin/wind, window.YTAN_WIND_FILL_OPACITY in percent)
-    const opacity = await page.evaluate(() => ({ setting: window.YTAN_WIND_FILL_OPACITY, css: parseFloat(windOverlay.fill.style.opacity) }));
-    expect(opacity.setting).toBe(32);
-    expect(opacity.css).toBeCloseTo(0.32, 5);
+    // the fill's opacity is the user's own setting (Preferences, settings.windFillOpacity in percent), 40 by default
+    const opacity = await page.evaluate(() => ({ setting: settings.windFillOpacity, css: parseFloat(windOverlay.fill.style.opacity) }));
+    expect(opacity.setting).toBe(40);
+    expect(opacity.css).toBeCloseTo(0.4, 5);
+
+    // the Preferences slider changes it at once and is remembered
+    await page.evaluate(() => { const s = document.getElementById('windFillOpacity'); s.value = '65'; s.dispatchEvent(new Event('input')); s.dispatchEvent(new Event('change')); });
+    expect(await page.evaluate(() => parseFloat(windOverlay.fill.style.opacity))).toBeCloseTo(0.65, 5);
+    expect(await page.evaluate(() => settings.windFillOpacity)).toBe(65);
+    expect(await page.evaluate(() => JSON.parse(decodeURIComponent(getCookie('ytan_settings'))).windFillOpacity)).toBe(65);
 
     // x closes it
     await page.locator('#windControls .radar-controls-close').click();

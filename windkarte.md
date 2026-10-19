@@ -224,7 +224,7 @@ Phase 1 bis 5 sind gebaut und lokal getestet (28 Python-Tests, PHPUnit 711 Tests
 - **Böen:** nur die Farbfläche kann nach Böen gefärbt werden (Chip "Böen" im Panel, nur wenn die Daten sie haben); die Partikel zeigen immer den Mittelwind. ICON-D2 `vmax_10m` hat bei Stunde 0 keinen brauchbaren Wert, der Job nimmt dort den Mittelwind.
 - **Gebrochener Zoom (Handy, 2026-10-19):** Nach dem Zoomen mit zwei Fingern zeichnet Google die Karte mit gebrochenem Zoom (z. B. 6,63), `map.getZoom()` und `map.getBounds()` rechnen aber mit dem gerundeten Zoom. Die Winddaten saßen dadurch gegen die Karte verschoben (auf den Screenshots um etwa 65 px entgegen der Karte). `wind.js` nimmt jetzt den Maßstab aus der Projektion und verankert am Kartenmittelpunkt; ein e2e-Test prüft Zoom 7,63 und 8,4.
 - **Abschalten** in der Admin-Karte löscht das Manifest sofort (kein Manifest = "keine Winddaten"), damit die Ebene für alle verschwindet, auch bevor der Cron läuft.
-- **Deckkraft der Farbfläche** (2026-10-19): einstellbar auf `/admin/wind` (0-100 %, Standard 32 %, Migration 048), die Karte liest sie als `window.YTAN_WIND_FILL_OPACITY`.
+- **Deckkraft der Farbfläche** (2026-10-19): zuerst global auf `/admin/wind` (Migration 048), seit 2026-10-19 pro Benutzer: Regler in "Einstellungen" (0-100 %, Standard 40 %, Cookie `ytan_settings`, `settings.windFillOpacity`); die Spalte `wind_fill_opacity` fiel mit Migration 051 weg.
 - **Admin:** kein "workers"-Wert in der Oberfläche (feste 4 Threads, `wind.workers` in `config.json` ginge).
 - **Kontextmenü-Symbol** `waves` (das Symbol `air` gibt es in der mitgelieferten Icon-Schrift nicht).
 - **Nicht umgesetzt:** weiche Naht zwischen ICON-D2 und ICON-EU (harter Wechsel, der Rand von D2 wird 0,24° breit verworfen und aus EU gefüllt), Interpolation der 3-Stunden-Schritte nach +78 h (die Stunden fehlen in der Zeitleiste).
@@ -252,6 +252,6 @@ Stufe L2 bekommt weitere Quellen. Alle werden im Job auf dasselbe 0,02°-Gitter 
 ## Entscheidungen (2026-10-18)
 
 - **Mittelwind** ist die Standardanzeige. Böen bleiben eine Admin-Einstellung (Standard aus).
-- **Nördlich von 70,5° N** bleibt vorerst leer, kein globales Modell.
+- **Außerhalb von ICON-EU** (2026-10-19) liefert ICON global (13 km) den Wind, nur als Rückfall (EU/D2 gewinnen, wo sie Werte haben) und nur für die ersten 72 Stunden. Der DWD bietet es nur auf dem Ikosaeder-Gitter an (Gitter 3.101, 2.949.120 Zellen, ~3,5 MB je Feld, alle 6 h, Zellmitten in separaten CLAT/CLON-Dateien); der Job rechnet es per Nächster-Zelle-Index (KD-Baum, einmalig, in `storage/wind/icon-global-index.npy` zwischengespeichert) auf 0,25° um und schreibt es in dieselben Stufen L0/L1 (kein Client-Umbau). Gemessen: 72 h Australien 528 MB Download, 30 s, 2,5 MB Ausgabe; Vergleich mit ICON-EU über Deutschland: Korrelation 0,98, Bias 0,0 m/s, RMSE 0,6 m/s. Über dem Rest der Welt nur 13 km Auflösung, an Küsten gröber als die Karte vermuten lässt. Einstellung `wind.world` (Standard an) als Checkbox auf /admin/wind (Migration 049, `WindConfig`).
 - **Feinere Modelle** außerhalb von ICON-D2 kommen später dazu (Phase 6).
 - **Wind und Radar** schließen sich gegenseitig aus: ein Bedienfeld, ein Overlay; Einschalten des einen schaltet das andere aus.

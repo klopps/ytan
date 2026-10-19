@@ -157,11 +157,11 @@ final class SettingsRepository
     /**
      * Wind job settings (WindConfig); a row that was never saved has the column defaults.
      *
-     * @return array{enabled: bool, horizon_hours: int, run_interval_hours: int, gusts: bool, fine: bool, fill_opacity: int}
+     * @return array{enabled: bool, horizon_hours: int, run_interval_hours: int, gusts: bool, fine: bool, world: bool, regions: array|null}
      */
     public function windSettings(): array
     {
-        $row = $this->db->query('SELECT wind_enabled, wind_horizon_hours, wind_run_interval_hours, wind_gusts, wind_fine, wind_fill_opacity FROM app_settings WHERE id = 1')->fetch();
+        $row = $this->db->query('SELECT wind_enabled, wind_horizon_hours, wind_run_interval_hours, wind_gusts, wind_fine, wind_world, wind_regions FROM app_settings WHERE id = 1')->fetch();
         if ($row === false) {
             return \Ytan\Service\WindConfig::defaults();
         }
@@ -169,15 +169,16 @@ final class SettingsRepository
         return [
             'enabled' => (bool) $row['wind_enabled'], 'horizon_hours' => (int) $row['wind_horizon_hours'],
             'run_interval_hours' => (int) $row['wind_run_interval_hours'],
-            'gusts' => (bool) $row['wind_gusts'], 'fine' => (bool) $row['wind_fine'],
-            'fill_opacity' => (int) $row['wind_fill_opacity'],
+            'gusts' => (bool) $row['wind_gusts'], 'fine' => (bool) $row['wind_fine'], 'world' => (bool) $row['wind_world'],
+            'regions' => $row['wind_regions'] === null ? null : (json_decode((string) $row['wind_regions'], true) ?: null),
         ];
     }
 
     /** @param array<string, mixed> $config normalized by WindConfig::normalize() */
     public function setWindSettings(array $config): void
     {
-        $stmt = $this->db->prepare('UPDATE app_settings SET wind_enabled = ?, wind_horizon_hours = ?, wind_run_interval_hours = ?, wind_gusts = ?, wind_fine = ?, wind_fill_opacity = ? WHERE id = 1');
-        $stmt->execute([(int) $config['enabled'], $config['horizon_hours'], $config['run_interval_hours'], (int) $config['gusts'], (int) $config['fine'], $config['fill_opacity']]);
+        $stmt = $this->db->prepare('UPDATE app_settings SET wind_enabled = ?, wind_horizon_hours = ?, wind_run_interval_hours = ?, wind_gusts = ?, wind_fine = ?, wind_world = ?, wind_regions = ? WHERE id = 1');
+        $stmt->execute([(int) $config['enabled'], $config['horizon_hours'], $config['run_interval_hours'], (int) $config['gusts'], (int) $config['fine'], (int) $config['world'],
+            $config['regions'] === null ? null : json_encode($config['regions'], JSON_UNESCAPED_UNICODE)]);
     }
 }

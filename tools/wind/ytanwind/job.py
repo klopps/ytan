@@ -15,6 +15,7 @@ manifest can still load its blocks.
 
 from __future__ import annotations
 
+import bz2
 import json
 import logging
 import os
@@ -26,7 +27,7 @@ from datetime import datetime, timedelta, timezone
 
 import numpy as np
 
-from . import blocks, dwd, grib2
+from . import blocks, dwd, grib2, icon_global
 from .settings import WindSettings
 
 log = logging.getLogger("ytanwind")
@@ -37,6 +38,20 @@ VAR_GUST = "vmax_10m"
 # coverage of the models, (south, west, north, east); ICON-D2's is its valid area less the edge
 EU_AREA = (29.5, -23.5, 70.5, 62.5)
 D2_AREA = (43.18 + 0.24, -3.94 + 0.24, 58.08 - 0.24, 20.34 - 0.24)
+WORLD_AREA = (-90.0, -180.0, 90.0, 180.0)
+# ICON global (13 km) is only the fallback outside ICON-EU, and only this far ahead: its files are 3x the size of ICON-EU's
+GLOBAL_MAX_HOURS = 72
+
+
+def intersects(area: tuple[float, float, float, float], regions: list[dict]) -> bool:
+    s, w, n, e = area
+    return any(r["south"] < n and r["north"] > s and r["west"] < e and r["east"] > w for r in regions)
+
+
+def covers(area: tuple[float, float, float, float], regions: list[dict]) -> bool:
+    """Every region lies completely inside the area."""
+    s, w, n, e = area
+    return all(r["south"] >= s and r["north"] <= n and r["west"] >= w and r["east"] <= e for r in regions)
 
 
 def iso(t: datetime) -> str:
@@ -59,10 +74,19 @@ def directory_size(path: str) -> int:
 
 
 @dataclass
+class Hour:
+    valid: datetime
+    eu: int | None = None   # forecast hour of the model's run, None = this model has no data for the hour
+    d2: int | None = None
+    gl: int | None = None
+
+
+@dataclass
 class Plan:
-    eu_run: datetime
+    eu_run: datetime | None
     d2_run: datetime | None
-    hours: list[tuple[datetime, int, int | None]]  # valid time, EU step, D2 step (None = EU only)
+    gl_run: datetime | None
+    hours: list[Hour]
 
 
 class Job:
@@ -74,6 +98,7 @@ class Job:
         self.runs_dir = os.path.join(storage, "runs")
         os.makedirs(self.runs_dir, exist_ok=True)
         self.stats = {"bytes_downloaded": 0, "files": 0}
+        self.gl_index = None  # regridding index of ICON global, loaded when a run needs it
 
     # -- planning ---------------------------------------------------------
 
@@ -83,22 +108,35 @@ class Job:
 
     def plan(self) -> Plan | None:
         first, last = self.window()
+        regions = self.s.padded_regions()
         variables = VAR_UV + ((VAR_GUST,) if self.s.gusts else ())
-        eu = dwd.latest_complete_run(dwd.ICON_EU, self.now, first, last, variables, self.s.run_interval_hours)
-        if eu is None:
-            return None
-        eu_run, eu_steps = eu
+        interval = self.s.run_interval_hours
+        eu_run, eu_steps = None, []
+        if intersects(EU_AREA, regions):
+            eu = dwd.latest_complete_run(dwd.ICON_EU, self.now, first, last, variables, interval)
+            if eu is None:
+                return None
+            eu_run, eu_steps = eu
         d2_run, d2_steps = None, []
-        if self.s.fine:
-            d2 = dwd.latest_complete_run(dwd.ICON_D2, self.now, first, last, variables, self.s.run_interval_hours)
+        if self.s.fine and intersects(D2_AREA, regions):
+            d2 = dwd.latest_complete_run(dwd.ICON_D2, self.now, first, last, variables, interval)
             if d2 is not None:
                 d2_run, d2_steps = d2
+        gl_run, gl_steps = None, []
+        if self.s.world and not covers(EU_AREA, regions):
+            gl_last = min(last, first + timedelta(hours=1 + GLOBAL_MAX_HOURS))
+            gl = dwd.latest_complete_run(dwd.ICON_GLOBAL, self.now, first, gl_last, variables, 6, 4)
+            if gl is not None:
+                gl_run, gl_steps = gl
+        # the timeline is ICON-EU's; outside Europe's coverage ICON global's
+        timeline = [(eu_run + timedelta(hours=s)) for s in eu_steps] if eu_run else                    [(gl_run + timedelta(hours=s)) for s in gl_steps] if gl_run else []
+        if not timeline:
+            return None
         d2_by_valid = {d2_run + timedelta(hours=s): s for s in d2_steps} if d2_run else {}
-        hours = []
-        for step in eu_steps:
-            valid = eu_run + timedelta(hours=step)
-            hours.append((valid, step, d2_by_valid.get(valid)))
-        return Plan(eu_run, d2_run, hours)
+        gl_by_valid = {gl_run + timedelta(hours=s): s for s in gl_steps} if gl_run else {}
+        eu_by_valid = {eu_run + timedelta(hours=s): s for s in eu_steps} if eu_run else {}
+        hours = [Hour(v, eu_by_valid.get(v), d2_by_valid.get(v), gl_by_valid.get(v)) for v in timeline]
+        return Plan(eu_run, d2_run, gl_run, hours)
 
     # -- one hour ---------------------------------------------------------
 
@@ -106,6 +144,8 @@ class Job:
         data = dwd.http_get(model.url(run, step, var))
         self.stats["bytes_downloaded"] += len(data)
         self.stats["files"] += 1
+        if model.key == "gl":
+            return icon_global.to_field(grib2.decode_unstructured(bz2.decompress(data)), self.gl_index)
         return grib2.decode_bz2(data)
 
     def fetch_channels(self, model: dwd.Model, run: datetime, step: int) -> list[grib2.Field]:
@@ -120,25 +160,37 @@ class Job:
                 fields.append(self.fetch_field(model, run, step, VAR_GUST))
         return fields
 
-    def process_hour(self, tmp: str, index: int, eu_step: int, d2_step: int | None,
-                     plan: Plan, l1_blocks: list, l2_blocks: list) -> dict:
-        eu = self.fetch_channels(dwd.ICON_EU, plan.eu_run, eu_step)
+    def process_hour(self, tmp: str, index: int, hour: Hour, plan: Plan, l1_blocks: list, l2_blocks: list) -> dict:
+        eu = self.fetch_channels(dwd.ICON_EU, plan.eu_run, hour.eu) if hour.eu is not None else None
         d2 = None
-        if d2_step is not None and plan.d2_run is not None:
+        if hour.d2 is not None and plan.d2_run is not None:
             try:
-                d2 = [blocks.trim_d2(f) for f in self.fetch_channels(dwd.ICON_D2, plan.d2_run, d2_step)]
+                d2 = [blocks.trim_d2(f) for f in self.fetch_channels(dwd.ICON_D2, plan.d2_run, hour.d2)]
             except Exception as e:  # a missing fine field only costs resolution for this hour
-                log.warning("ICON-D2 step %d unusable (%s), using ICON-EU for this hour", d2_step, e)
+                log.warning("ICON-D2 step %d unusable (%s), using ICON-EU for this hour", hour.d2, e)
+        gl = None
+        if hour.gl is not None and plan.gl_run is not None:
+            try:
+                gl = self.fetch_channels(dwd.ICON_GLOBAL, plan.gl_run, hour.gl)
+            except Exception as e:
+                if eu is None:
+                    raise  # nothing else to show for this hour
+                log.warning("ICON global step %d unusable (%s), using ICON-EU only for this hour", hour.gl, e)
+        if eu is None and gl is None:
+            raise RuntimeError("hour %s has no data" % hour.valid)
+        channels = len((eu or gl))
+        # per channel the fields in order of preference: the finer model wins where it has a value
+        l1_sources = [[f for f in ((eu[k] if eu else None), (gl[k] if gl else None)) if f is not None] for k in range(channels)]
+        l2_sources = [[f for f in ((d2[k] if d2 else None),) if f is not None] + l1_sources[k] for k in range(channels)]
         regions = self.s.padded_regions()
         written = 0
         meta = None
-        overview = blocks.overview(regions, eu, EU_AREA)
+        area = WORLD_AREA if gl else EU_AREA
+        overview = blocks.overview(regions, l1_sources, area)
         if overview is not None:
             meta, data = overview
             written += self.write(os.path.join(tmp, "L0"), f"{index:03d}.bin.gz", blocks.pack(data))
-        levels = ((blocks.L1, l1_blocks, [[eu[k]] for k in range(len(eu))]),
-                  (blocks.L2, l2_blocks, [([d2[k]] if d2 else []) + [eu[k]] for k in range(len(eu))]))
-        for level, wanted, sources in levels:
+        for level, wanted, sources in ((blocks.L1, l1_blocks, l1_sources), (blocks.L2, l2_blocks, l2_sources)):
             folder = os.path.join(tmp, level.name, f"{index:03d}")
             for bx, by in wanted:
                 data = blocks.build_block(level, bx, by, regions, sources)
@@ -180,14 +232,16 @@ class Job:
             return "disabled", None
         plan = self.plan()
         if plan is None:
-            log.warning("no complete ICON-EU run found")
+            log.warning("no complete ICON run found for the regions")
             self.cleanup(self.read_manifest())
             return "no_data", None
         manifest = self.read_manifest()
-        key = {"eu": f"{plan.eu_run:%Y%m%d%H}", "d2": f"{plan.d2_run:%Y%m%d%H}" if plan.d2_run else None,
-               "signature": self.s.signature(), "hours": [iso(h[0]) for h in plan.hours]}
+        key = {"eu": f"{plan.eu_run:%Y%m%d%H}" if plan.eu_run else None,
+               "d2": f"{plan.d2_run:%Y%m%d%H}" if plan.d2_run else None,
+               "gl": f"{plan.gl_run:%Y%m%d%H}" if plan.gl_run else None,
+               "signature": self.s.signature(), "hours": [iso(h.valid) for h in plan.hours]}
         if not self.force and manifest and manifest.get("key") == key:
-            log.info("runs unchanged (EU %s, D2 %s)", key["eu"], key["d2"])
+            log.info("runs unchanged (EU %s, D2 %s, global %s)", key["eu"], key["d2"], key["gl"])
             self.cleanup(manifest)
             return "unchanged", None
 
@@ -199,14 +253,16 @@ class Job:
             shutil.rmtree(p, ignore_errors=True)
         os.makedirs(tmp)
 
-        l1 = blocks.block_points(blocks.L1, EU_AREA, self.s.padded_regions())
+        if plan.gl_run:
+            self.gl_index = icon_global.load_index(self.storage)
+        l1 = blocks.block_points(blocks.L1, WORLD_AREA if plan.gl_run else EU_AREA, self.s.padded_regions())
         l2 = blocks.block_points(blocks.L2, D2_AREA, self.s.padded_regions()) if plan.d2_run else []
-        log.info("EU %s, D2 %s, %d hours, %d L1 and %d L2 candidate blocks",
-                 key["eu"], key["d2"], len(plan.hours), len(l1), len(l2))
+        log.info("EU %s, D2 %s, global %s, %d hours, %d L1 and %d L2 candidate blocks",
+                 key["eu"], key["d2"], key["gl"], len(plan.hours), len(l1), len(l2))
 
         def task(item):
-            i, (_valid, eu_step, d2_step) = item
-            return self.process_hour(tmp, i, eu_step, d2_step, plan, l1, l2)
+            i, hour = item
+            return self.process_hour(tmp, i, hour, plan, l1, l2)
 
         try:
             with ThreadPoolExecutor(max_workers=self.s.workers) as ex:
@@ -220,7 +276,7 @@ class Job:
                   "L2": {"res": blocks.L2.deg, "size": blocks.SIZE, "blocks": self.present(tmp, "L2", l2)}}
         new_manifest = {
             "run": run_id, "generated": iso(self.now), "key": key,
-            "sources": {"eu": key["eu"], "d2": key["d2"]},
+            "sources": {"eu": key["eu"], "d2": key["d2"], "gl": key["gl"]},
             "hours": key["hours"],
             "scale": {"uv": list(blocks.UV_RANGE), "gust": list(blocks.GUST_RANGE), "nodata": blocks.NODATA},
             "channels": self.s.channels, "levels": levels,
@@ -233,7 +289,7 @@ class Job:
         self.write_manifest(new_manifest)
         self.cleanup(new_manifest)
         elapsed = time.monotonic() - t0
-        info = {"eu_run": key["eu"], "d2_run": key["d2"], "hours": len(plan.hours),
+        info = {"eu_run": key["eu"], "d2_run": key["d2"], "gl_run": key["gl"], "hours": len(plan.hours),
                 "seconds": round(elapsed, 1), "bytes_downloaded": self.stats["bytes_downloaded"],
                 "files_downloaded": self.stats["files"], "bytes_written": sum(r["bytes"] for r in results),
                 "regions": [r.get("name", "") for r in self.s.regions]}

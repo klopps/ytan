@@ -17,7 +17,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from ytanwind import blocks, dwd, grib2  # noqa: E402
+from ytanwind import blocks, dwd, grib2, icon_global  # noqa: E402
 import threading  # noqa: E402
 import time  # noqa: E402
 import wind_job  # noqa: E402
@@ -58,6 +58,23 @@ def make_grib(values: np.ndarray, lat0: float, lon0: float, d: float, packing: s
           + struct.pack(">iiBiiIIB", round(la1 * 1e6), round(lo1 * 1e6), 0x30, round(la2 * 1e6),
                         round(lo2 * 1e6), round(d * 1e6), round(d * 1e6), scan))
     assert len(s3) == 72, len(s3)
+    s1 = struct.pack(">IB", 21, 1) + b"\x00" * 16
+    body = s1 + s3 + s5 + s6 + s7 + b"7777"
+    return b"GRIB" + b"\x00\x00\x00\x02" + struct.pack(">Q", 16 + len(body)) + body
+
+
+def make_grib_unstructured(values: np.ndarray) -> bytes:
+    """A GRIB2 message on ICON's icosahedral grid (template 3.101), CCSDS packed, no bitmap."""
+    import imagecodecs
+    flat = values.reshape(-1).astype(np.float64)
+    ref, e = float(flat.min()), -6
+    x = np.rint((flat - ref) / 2.0 ** e).astype(np.uint16)
+    data = imagecodecs.aec_encode(x.astype(">u2"), bitspersample=16, flags=14, blocksize=32, rsi=128)
+    sign = lambda n: (0x8000 | -n) if n < 0 else n  # noqa: E731
+    s5 = struct.pack(">IBIHfHHBB", 25, 5, flat.size, 42, ref, sign(e), 0, 16, 0) + struct.pack(">BBH", 14, 32, 128)
+    s6 = struct.pack(">IBB", 6, 6, 255)
+    s7 = struct.pack(">IB", 5 + len(data), 7) + data
+    s3 = struct.pack(">IBBIBBH", 31, 3, 0, flat.size, 0, 0, 101) + b"\x01" + b"\x00" * 16
     s1 = struct.pack(">IB", 21, 1) + b"\x00" * 16
     body = s1 + s3 + s5 + s6 + s7 + b"7777"
     return b"GRIB" + b"\x00\x00\x00\x02" + struct.pack(">Q", 16 + len(body)) + body
@@ -104,6 +121,18 @@ class Grib2Test(unittest.TestCase):
         msg = make_grib(ramp(4, 5), 40.0, 5.0, 0.02)
         with self.assertRaises(grib2.Grib2Error):
             grib2.decode(msg[:-30])  # truncated
+
+    def test_unstructured_grid_gives_one_value_per_cell(self):
+        v = np.linspace(-12.0, 9.0, 5000).astype(np.float32)
+        out = grib2.decode_unstructured(make_grib_unstructured(v))
+        self.assertEqual(out.shape, v.shape)
+        self.assertLess(float(np.abs(out - v).max()), 0.02)
+        with self.assertRaises(grib2.Grib2Error):
+            grib2.decode_unstructured(make_grib(ramp(4, 4), 50.0, 5.0, 0.25))  # a lat/lon grid is refused
+
+    def test_regular_decoder_refuses_the_unstructured_grid(self):
+        with self.assertRaises(grib2.Grib2Error):
+            grib2.decode(make_grib_unstructured(np.zeros(100, np.float32)))
 
     def test_bz2_wrapper(self):
         f = grib2.decode_bz2(bz2.compress(make_grib(ramp(4, 5), 40.0, 5.0, 0.02)))
@@ -194,13 +223,24 @@ class BlocksTest(unittest.TestCase):
 
     def test_overview_covers_the_regions(self):
         u = self.eu_like(lambda la, lo: lo * 0.0 + 4.0)
-        meta, data = blocks.overview(self.REGION, [u, u], (29.5, -23.5, 70.5, 62.5))
+        meta, data = blocks.overview(self.REGION, [[u], [u]], (29.5, -23.5, 70.5, 62.5))
         self.assertEqual(meta["res"], 0.25)
         self.assertEqual(len(data), meta["rows"] * meta["cols"] * 2)
         self.assertLessEqual(meta["south"], 54.0)
         self.assertGreaterEqual(meta["south"] + (meta["rows"] - 1) * 0.25, 56.0)
         a = np.frombuffer(data, np.uint8).reshape(meta["rows"], meta["cols"], 2)
         self.assertTrue((a[..., 0] != blocks.NODATA).any())
+
+    def test_overview_takes_the_second_source_where_the_first_has_none(self):
+        eu = grib2.Field(np.full((40, 40), 4.0, np.float32), 55.0, 10.0, 0.0625, 0.0625)
+        world = grib2.Field(np.full((721, 1441), -8.0, np.float32), -90.0, -180.0, 0.25, 0.25)
+        region = [{"name": "t", "south": 54.0, "west": 9.0, "north": 58.0, "east": 14.0}]
+        meta, data = blocks.overview(region, [[eu, world], [eu, world]], (-90.0, -180.0, 90.0, 180.0))
+        a = np.frombuffer(data, np.uint8).reshape(meta["rows"], meta["cols"], 2)
+        north = a[-1, -1, 0]   # outside the small EU field: the world value
+        inside = a[int((56.0 - meta["south"]) / 0.25), int((11.0 - meta["west"]) / 0.25), 0]
+        self.assertNotEqual(north, blocks.NODATA)
+        self.assertGreater(inside, north)  # 4 m/s > -8 m/s
 
     def test_pack_is_gzip(self):
         self.assertEqual(gzip.decompress(blocks.pack(b"abc")), b"abc")
@@ -213,6 +253,16 @@ class DwdTest(unittest.TestCase):
             "icon-d2/grib/06/u_10m/icon-d2_germany_regular-lat-lon_single-level_2026101806_010_2d_u_10m.grib2.bz2"))
         self.assertTrue(dwd.ICON_EU.url(run, 10, "u_10m").endswith(
             "icon-eu/grib/06/u_10m/icon-eu_europe_regular-lat-lon_single-level_2026101806_010_U_10M.grib2.bz2"))
+
+    def test_global_file_names_and_steps(self):
+        run = datetime(2026, 10, 18, 18, tzinfo=timezone.utc)
+        self.assertEqual(dwd.ICON_GLOBAL.url(run, 24, "u_10m"),
+                         "https://opendata.dwd.de/weather/nwp/icon/grib/18/u_10m/"
+                         "icon_global_icosahedral_single-level_2026101818_024_U_10M.grib2.bz2")
+        steps = dwd.wanted_steps(dwd.ICON_GLOBAL, run, run, run.replace(day=22))
+        self.assertIn(78, steps)
+        self.assertNotIn(79, steps)
+        self.assertIn(81, steps)
 
     def test_wanted_steps_eu_skips_odd_hours_after_78(self):
         run = datetime(2026, 10, 18, 6, tzinfo=timezone.utc)
@@ -309,6 +359,21 @@ class SettingsTest(unittest.TestCase):
                          (72, 6, True, False, 8))
         self.assertEqual(s.channels, 3)
 
+    def test_own_wind_regions_replace_the_radars_and_may_lie_anywhere(self):
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, "config.json"), "w") as f:
+                json.dump({"regions": [{"name": "de", "south": 47, "west": 6, "north": 55, "east": 15}],
+                           "wind": {"regions": [{"name": "au", "south": -35, "west": 150, "north": -33, "east": 152},
+                                                {"name": "bad", "south": 5, "west": 0, "north": 1, "east": 2}]}}, f)
+            s = load_settings(d)
+            self.assertEqual([r["name"] for r in s.regions], ["au"])  # the invalid one is dropped
+            (box,) = s.padded_regions()
+            self.assertEqual((box["south"], box["north"]), (-36.0, -32.0))
+            with open(os.path.join(d, "config.json"), "w") as f:
+                json.dump({"regions": [{"name": "de", "south": 47, "west": 6, "north": 55, "east": 15}],
+                           "wind": {"regions": None}}, f)
+            self.assertEqual([r["name"] for r in load_settings(d).regions], ["de"])  # null = the radar's
+
     def test_invalid_values_fall_back(self):
         with tempfile.TemporaryDirectory() as d:
             with open(os.path.join(d, "config.json"), "w") as f:
@@ -360,7 +425,8 @@ class JobTest(unittest.TestCase):
             info = job.run()
             self.assertEqual(job.read_status()["last_run"]["outcome"], "processed")
             m = job.read_manifest()
-            self.assertEqual(m["sources"], {"eu": "2026101821", "d2": "2026101821"})
+            self.assertEqual(m["sources"], {"eu": "2026101821", "d2": "2026101821", "gl": None})
+            self.assertTrue(all("icon_global" not in u for u in self.requested))  # inside Europe: no global files
             self.assertEqual(len(m["hours"]), 4)  # window 20:00-24:00, the run starts at 21: 21, 22, 23, 00
             self.assertEqual(m["channels"], 2)
             self.assertGreaterEqual(len(m["levels"]["L1"]["blocks"]), 1)
@@ -379,6 +445,75 @@ class JobTest(unittest.TestCase):
 
             # --force does it again
             self.assertIsNotNone(Job(d, settings, force=True, now=self.NOW).run())
+
+    def world_http(self, url: str, timeout: int = 60, tries: int = 3) -> bytes:
+        self.requested.append(url)
+        if "icon_global" in url:
+            val = 5.0 if "U_10M" in url else -2.0
+            return bz2.compress(make_grib_unstructured(np.full(1000, val, np.float32)
+                                                       + np.arange(1000, dtype=np.float32) * 0.001))
+        return self.fake_http(url, timeout, tries)
+
+    def run_world(self, region: dict, directory: str) -> Job:
+        steps = set(range(0, 121))
+        settings = WindSettings(regions=[region], horizon_hours=3, workers=2)
+        index = (np.arange(icon_global.ROWS * icon_global.COLS) % 1000).reshape(
+            icon_global.ROWS, icon_global.COLS).astype(np.int32)
+        with mock.patch.object(dwd, "http_get", self.world_http), \
+                mock.patch.object(dwd, "listed_steps", lambda m, r, v: steps), \
+                mock.patch.object(icon_global, "CELLS", 1000), \
+                mock.patch.object(icon_global, "load_index", lambda storage: index):
+            job = Job(directory, settings, now=self.NOW)
+            job.run()
+        return job
+
+    def test_outside_europe_ICON_global_is_the_only_source(self):
+        self.requested = []
+        sydney = {"name": "au", "south": -35.0, "west": 150.0, "north": -33.0, "east": 152.0}
+        with tempfile.TemporaryDirectory() as d:
+            job = self.run_world(sydney, d)
+            self.assertEqual(job.read_status()["last_run"]["outcome"], "processed")
+            m = job.read_manifest()
+            self.assertEqual(m["sources"], {"eu": None, "d2": None, "gl": "2026101818"})
+            self.assertEqual(len(m["hours"]), 5)  # the 18 UTC run: 20, 21, 22, 23, 00
+            self.assertTrue(all("icon-eu" not in u and "icon-d2" not in u for u in self.requested))
+            self.assertGreaterEqual(len(m["levels"]["L1"]["blocks"]), 1)
+            self.assertEqual(m["levels"]["L2"]["blocks"], [])
+            run_dir = os.path.join(d, "runs", m["run"])
+            block = m["levels"]["L1"]["blocks"][0]
+            raw = np.frombuffer(gzip.decompress(
+                open(os.path.join(run_dir, "L1", "000", block + ".bin.gz"), "rb").read()), np.uint8)
+            u = raw.reshape(blocks.SIZE, blocks.SIZE, 2)[..., 0]
+            self.assertTrue((u != blocks.NODATA).any())
+            self.assertTrue(os.path.isfile(os.path.join(run_dir, "L0", "000.bin.gz")))
+
+    def test_ICON_global_fills_what_ICON_EU_does_not_cover(self):
+        self.requested = []
+        canaries = {"name": "x", "south": 25.0, "west": -10.0, "north": 31.0, "east": -5.0}  # EU starts at 29.5 N
+        with tempfile.TemporaryDirectory() as d:
+            job = self.run_world(canaries, d)
+            m = job.read_manifest()
+            self.assertEqual((m["sources"]["eu"], m["sources"]["gl"]), ("2026101821", "2026101818"))
+            run_dir = os.path.join(d, "runs", m["run"])
+            raw = np.frombuffer(gzip.decompress(
+                open(os.path.join(run_dir, "L0", "000.bin.gz"), "rb").read()), np.uint8)
+            meta = m["levels"]["L0"]
+            a = raw.reshape(meta["rows"], meta["cols"], 2)
+            south_row = int((26.0 - meta["south"]) / meta["res"])  # south of EU: only the global model has it
+            north_row = int((30.0 - meta["south"]) / meta["res"])
+            mid = int((-7.0 - meta["west"]) / meta["res"])
+            self.assertNotEqual(a[south_row, mid, 0], blocks.NODATA)
+            self.assertNotEqual(a[north_row, mid, 0], blocks.NODATA)
+
+    def test_world_switch_off_keeps_the_old_behaviour(self):
+        steps = set(range(0, 121))
+        self.requested = []
+        settings = WindSettings(regions=[{"name": "au", "south": -35.0, "west": 150.0, "north": -33.0, "east": 152.0}],
+                                horizon_hours=3, world=False)
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(dwd, "http_get", self.world_http), \
+                mock.patch.object(dwd, "listed_steps", lambda m, r, v: steps):
+            self.assertIsNone(Job(d, settings, now=self.NOW).run())
+            self.assertEqual(Job(d, settings).read_status()["last_run"]["outcome"], "no_data")
 
     def test_failed_download_keeps_the_old_manifest(self):
         steps = set(range(0, 49))

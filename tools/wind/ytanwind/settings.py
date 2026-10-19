@@ -30,12 +30,13 @@ PAD_DEGREES = 1.0
 
 @dataclass
 class WindSettings:
-    regions: list[dict] = field(default_factory=lambda: [dict(r) for r in DEFAULT_REGIONS])
+    regions: list[dict] = field(default_factory=lambda: [dict(r) for r in DEFAULT_REGIONS])  # the area wanted: own ones or the radar's
     enabled: bool = True         # admin switch: off = the job does nothing
     horizon_hours: int = 48      # 24, 48, 72, 120
     run_interval_hours: int = 3  # 3 or 6: which model runs are processed
     gusts: bool = False          # third channel from vmax_10m
     fine: bool = True            # ICON-D2 (0.02 degrees) as the L2 level
+    world: bool = True           # ICON global (0.25 degrees, <= 72 h) outside ICON-EU's coverage
     workers: int = 4             # parallel hours (download + decode + write)
 
     def padded_regions(self) -> list[dict]:
@@ -52,7 +53,16 @@ class WindSettings:
 
     def signature(self) -> str:
         """Everything but the model runs that changes the output."""
-        return f"{regions_hash(self.regions)}:box{PAD_DEGREES:g}:{self.horizon_hours}:{self.channels}:{int(self.fine)}"
+        return f"{regions_hash(self.regions)}:box{PAD_DEGREES:g}:{self.horizon_hours}:{self.channels}:{int(self.fine)}:{int(self.world)}"
+
+
+def _valid_wind_region(r) -> bool:
+    """A rectangle anywhere on the globe (the radar's own check limits it to Europe)."""
+    try:
+        s, w, n, e = (float(r[k]) for k in ("south", "west", "north", "east"))
+    except (TypeError, ValueError, KeyError):
+        return False
+    return -90 <= s < n <= 90 and -180 <= w < e <= 180
 
 
 def _choice(v, allowed: tuple, default):
@@ -81,6 +91,13 @@ def load_settings(radar_storage: str) -> WindSettings:
         for r in data.get("regions", []) if _valid_region(r)
     ] or [dict(r) for r in DEFAULT_REGIONS]
     w = data.get("wind") if isinstance(data.get("wind"), dict) else {}
+    own = [
+        {"name": str(r.get("name", "")), "south": float(r["south"]), "west": float(r["west"]),
+         "north": float(r["north"]), "east": float(r["east"])}
+        for r in (w.get("regions") if isinstance(w.get("regions"), list) else []) if _valid_wind_region(r)
+    ]
+    if own:  # the wind layer's own areas (anywhere on the globe) replace the rain radar's
+        regions = own
     d = WindSettings()
     try:
         workers = max(1, min(8, int(w.get("workers", d.workers))))
@@ -93,5 +110,6 @@ def load_settings(radar_storage: str) -> WindSettings:
         run_interval_hours=_choice(w.get("run_interval_hours"), (3, 6), d.run_interval_hours),
         gusts=w.get("gusts") is True,
         fine=w.get("fine") is not False,
+        world=w.get("world") is not False,
         workers=workers,
     )

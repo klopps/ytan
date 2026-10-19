@@ -362,9 +362,8 @@ block has no data).
 
 **Settings** (admin only, page /admin/wind): `GET /api/v1/settings/wind`
 and `PUT /api/v1/settings/wind` with
-`{enabled, horizon_hours: 24|48|72|120, run_interval_hours: 3|6, gusts, fine, fill_opacity: 0..100}`
-(all required, booleans for the flags, `fill_opacity` = opacity of the map's colour fill in percent, also
-injected into the map page as `window.YTAN_WIND_FILL_OPACITY`) → the same plus `status` (the job's
+`{enabled, horizon_hours: 24|48|72|120, run_interval_hours: 3|6, gusts, fine, world, regions: null | [{name, south, west, north, east}] (1-10 rectangles anywhere on the globe; null = the rain radar's regions)}`
+(all required except `regions`, booleans for the flags) → the same plus `status` (the job's
 `storage/wind/status.json`, null before its first run: `last_run {start, end,
 outcome: processed|unchanged|no_data|disabled|failed, trigger, error?}`,
 `last_processing {eu_run, d2_run, hours, seconds, bytes_downloaded,

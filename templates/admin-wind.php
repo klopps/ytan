@@ -2,8 +2,8 @@
 /**
  * /admin/wind - the wind layer (tools/wind/): what its job did on its last
  * runs (storage/wind/status.json, rendered by admin-wind.js) and its settings
- * (WindConfig, saved via PUT /api/v1/settings/wind). The regions are the rain
- * radar's (/admin/radar).
+ * (WindConfig, saved via PUT /api/v1/settings/wind). The area is the rain radar's
+ * regions (/admin/radar) or the wind layer's own rectangles (anywhere on the globe).
  */
 $pageTitle = $t('admin.wind.title');
 $adminActiveNav = 'wind';
@@ -65,22 +65,39 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
             <input class="form-check-input" type="checkbox" id="windFine" <?= $windSettings['fine'] ? 'checked' : '' ?>>
             <label class="form-check-label" for="windFine"><?= $t('admin.wind.fine') ?></label>
         </div>
+        <div class="form-check mb-1">
+            <input class="form-check-input" type="checkbox" id="windWorld" <?= $windSettings['world'] ? 'checked' : '' ?>>
+            <label class="form-check-label" for="windWorld"><?= $t('admin.wind.world') ?></label>
+        </div>
         <div class="form-check mb-2">
             <input class="form-check-input" type="checkbox" id="windGusts" <?= $windSettings['gusts'] ? 'checked' : '' ?>>
             <label class="form-check-label" for="windGusts"><?= $t('admin.wind.gusts') ?></label>
         </div>
-        <div class="row g-3 mb-3 mt-1">
-            <div class="col-12 col-md-6">
-                <label for="windFillOpacity" class="form-label"><?= $t('admin.wind.fill_opacity') ?>: <strong id="windFillOpacityValue"><?= (int) $windSettings['fill_opacity'] ?> %</strong></label>
-                <input type="range" class="form-range" id="windFillOpacity" min="0" max="100" step="1" value="<?= (int) $windSettings['fill_opacity'] ?>">
-                <div class="small text-secondary"><?= $t('admin.wind.fill_opacity_hint') ?></div>
-            </div>
+        <h3 class="h6 small text-uppercase text-secondary mt-3"><?= $t('admin.wind.area_title') ?></h3>
+        <div class="form-check">
+            <input class="form-check-input" type="radio" name="windArea" id="windAreaRadar" value="radar" <?= $windSettings['regions'] === null ? 'checked' : '' ?>>
+            <label class="form-check-label" for="windAreaRadar"><?= $t('admin.wind.area_radar') ?></label>
+        </div>
+        <div class="form-check mb-2">
+            <input class="form-check-input" type="radio" name="windArea" id="windAreaOwn" value="own" <?= $windSettings['regions'] === null ? '' : 'checked' ?>>
+            <label class="form-check-label" for="windAreaOwn"><?= $t('admin.wind.area_own') ?></label>
+        </div>
+        <div id="windOwnArea" <?= $windSettings['regions'] === null ? 'hidden' : '' ?>>
+            <p class="small text-secondary mb-2"><?= $t('admin.wind.area_hint', ['max' => \Ytan\Service\WindConfig::MAX_REGIONS]) ?></p>
+            <p class="small text-danger mb-2" id="windNoKey" hidden><?= $t('admin.lighthouse_import.area_no_key') ?></p>
+            <button type="button" class="btn btn-outline-primary btn-sm mb-2" id="windAddRegion"><i class="bi bi-plus-square"></i> <?= $t('admin.settings.radar_add_region') ?></button>
+            <button type="button" class="btn btn-outline-primary btn-sm mb-2" id="windAddWorld"><i class="bi bi-globe"></i> <?= $t('admin.wind.area_world') ?></button>
+            <div id="windMap" class="border rounded mb-2" style="height:50vh;min-height:280px;"></div>
+            <ul class="list-group mb-2" id="windRegionList"></ul>
+            <p class="small mb-2" id="windAreaSize"></p>
         </div>
         <p class="small text-secondary"><?= $t('admin.wind.settings_hint') ?></p>
         <button type="button" class="btn btn-primary" id="windSaveBtn"><?= $t('common.save') ?></button>
     </div>
 </div>
-<script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_WIND_SETTINGS = <?= json_encode($windSettings + [
+<script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_MAPS_API_KEY = <?= json_encode($mapsApiKey) ?>;
+window.YTAN_WIND_SETTINGS = <?= json_encode($windSettings + [
+    'max_regions' => \Ytan\Service\WindConfig::MAX_REGIONS,
     'status' => \Ytan\Service\WindConfig::readStatus($rootDir . '/storage/wind'),
     'running' => (new \Ytan\Service\RadarJobRunner($rootDir, 'wind'))->isRunning(),
 ], JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) ?>;</script>

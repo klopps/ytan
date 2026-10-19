@@ -150,8 +150,10 @@ def build_block(level: Level, bx: int, by: int, regions: list[dict], channels: l
     return stacked.tobytes()
 
 
-def overview(regions: list[dict], eu: list[Field], area: tuple[float, float, float, float]) -> tuple[dict, bytes] | None:
-    """The L0 file: the area of the regions (inside the EU model) at 0.25 degrees."""
+def overview(regions: list[dict], channels: list[list[Field]], area: tuple[float, float, float, float]) -> tuple[dict, bytes] | None:
+    """The L0 file: the area of the regions (inside `area`, the models' coverage) at 0.25 degrees.
+
+    `channels`: as in build_block, per channel the fields in order of preference."""
     s = max(area[0], min(r["south"] for r in regions))
     w = max(area[1], min(r["west"] for r in regions))
     n = min(area[2], max(r["north"] for r in regions))
@@ -165,8 +167,13 @@ def overview(regions: list[dict], eu: list[Field], area: tuple[float, float, flo
     lon = -180.0 + np.arange(i0, i1 + 1) * step
     mask = inside_regions(lat, lon, regions)
     planes = []
-    for k, f in enumerate(eu):
-        arr = sample(coarse(f, round(step / f.dlat)), lat, lon)
+    for k, sources in enumerate(channels):
+        arr = np.full((len(lat), len(lon)), np.nan, np.float32)
+        for f in sources:
+            factor = round(step / f.dlat)
+            got = sample(coarse(f, factor) if factor > 1 else f, lat, lon)
+            fill = np.isnan(arr) & ~np.isnan(got)
+            arr[fill] = got[fill]
         arr[~mask] = np.nan
         lo, hi = GUST_RANGE if k == 2 else UV_RANGE
         planes.append(encode(arr, lo, hi))

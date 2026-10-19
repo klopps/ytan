@@ -63,21 +63,21 @@ final class WindSettingsControllerTest extends ControllerTestCase
 
     private function body(array $override = []): array
     {
-        return $override + ['enabled' => true, 'horizon_hours' => 48, 'run_interval_hours' => 3, 'gusts' => false, 'fine' => true, 'fill_opacity' => 32];
+        return $override + ['enabled' => true, 'horizon_hours' => 48, 'run_interval_hours' => 3, 'gusts' => false, 'fine' => true, 'world' => true, 'regions' => null];
     }
 
     public function testShowGivesTheDefaultsBeforeAnythingWasSaved(): void
     {
         $data = $this->decode($this->controller->show($this->request('GET', '/api/v1/settings/wind', $this->admin()), $this->response()))['data'];
 
-        $this->assertSame([true, 48, 3, false, true, 32], [$data['enabled'], $data['horizon_hours'], $data['run_interval_hours'], $data['gusts'], $data['fine'], $data['fill_opacity']]);
+        $this->assertSame([true, 48, 3, false, true, true, null], [$data['enabled'], $data['horizon_hours'], $data['run_interval_hours'], $data['gusts'], $data['fine'], $data['world'], $data['regions']]);
         $this->assertNull($data['status']);
         $this->assertFalse($data['running']);
     }
 
     public function testUpdatePersistsAndWritesTheWindPartOfTheJobConfig(): void
     {
-        $body = $this->body(['horizon_hours' => 120, 'run_interval_hours' => 6, 'gusts' => true, 'fine' => false, 'fill_opacity' => 55]);
+        $body = $this->body(['horizon_hours' => 120, 'run_interval_hours' => 6, 'gusts' => true, 'fine' => false, 'world' => false]);
         $this->controller->update($this->request('PUT', '/api/v1/settings/wind', $this->admin(), $body), $this->response());
 
         $this->assertEquals($body, (new SettingsRepository($this->pdo))->windSettings());
@@ -85,6 +85,23 @@ final class WindSettingsControllerTest extends ControllerTestCase
         $this->assertEquals($body, $job["wind"]);
         // the regions of the rain radar travel in the same file
         $this->assertSame(['de', 'dk', 'se'], array_column($job['regions'], 'name'));
+    }
+
+    public function testOwnRegionsOutsideEuropeAreStoredAndHandedToTheJob(): void
+    {
+        $regions = [['name' => 'Sydney', 'south' => -35.0, 'west' => 150.0, 'north' => -33.0, 'east' => 152.0]];
+        $body = $this->body(['regions' => $regions]);
+        $this->controller->update($this->request('PUT', '/api/v1/settings/wind', $this->admin(), $body), $this->response());
+
+        $this->assertEquals($regions, (new SettingsRepository($this->pdo))->windSettings()['regions']);
+        $job = json_decode((string) file_get_contents($this->radarDir . '/config.json'), true);
+        $this->assertEquals($regions, $job['wind']['regions']);
+        // the rain radar's regions stay Europe's
+        $this->assertSame(['de', 'dk', 'se'], array_column($job['regions'], 'name'));
+
+        // back to the radar's regions
+        $this->controller->update($this->request('PUT', '/api/v1/settings/wind', $this->admin(), $this->body()), $this->response());
+        $this->assertNull((new SettingsRepository($this->pdo))->windSettings()['regions']);
     }
 
     public function testSavingTheRadarSettingsKeepsTheWindSettings(): void
