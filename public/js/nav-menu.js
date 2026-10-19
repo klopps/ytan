@@ -59,6 +59,7 @@ function navMenuReset() {
         }
     });
     navMenuStack = ['root'];
+    setWeatherMenuOpen(false);
 }
 
 /**
@@ -85,4 +86,52 @@ function handleSidemenuLogoClick() {
     sidemenuLogoClickTimer = setTimeout(function () {
         sidemenuLogoClickCount = 0;
     }, 600);
+}
+
+/*
+ * "Weather" row of the root screen: expands/collapses the submenu below it
+ * (current-location forecast, rain radar on/off, wind layer on/off). Any of
+ * the three entries closes the whole drawer (and with it the submenu,
+ * navMenuReset()); the row itself only collapses the submenu again. The two
+ * layer entries show a check mark while their layer is on.
+ */
+function weatherMenuIsOpen() {
+    var submenu = document.getElementById('weatherSubmenu');
+    return !!submenu && !submenu.hidden;
+}
+
+function setWeatherMenuOpen(open) {
+    var submenu = document.getElementById('weatherSubmenu');
+    if (!submenu) {
+        return;
+    }
+    submenu.hidden = !open;
+    document.getElementById('weatherMenuRow').setAttribute('aria-expanded', open ? 'true' : 'false');
+    document.getElementById('weatherMenuChevron').textContent = open ? 'expand_less' : 'expand_more';
+    if (open) {
+        updateWeatherMenuState();
+    }
+}
+
+function toggleWeatherMenu() {
+    setWeatherMenuOpen(!weatherMenuIsOpen());
+}
+
+function updateWeatherMenuState() {
+    document.getElementById('weatherMenuRadarState').hidden = !settings.detailradar;
+    document.getElementById('weatherMenuWindState').hidden = !settings.detailwind;
+}
+
+function weatherMenuCurrentLocation() {
+    openWeatherForCurrentLocation(); // closes the drawer itself
+}
+
+function weatherMenuRadar() {
+    closeMenu();
+    radarContextMenuToggle();
+}
+
+function weatherMenuWind() {
+    closeMenu();
+    windContextMenuToggle();
 }

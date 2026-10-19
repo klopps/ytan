@@ -25,7 +25,7 @@ Das Menü schiebt sich von links ins Bild. Oben wählst du die **Kartendarstellu
 - **Touren** - alle Touren ansehen und verwalten, siehe [Touren](#chapter-touren).
 - **GPX importieren** - Strecken aus einer GPX-Datei übernehmen.
 - **Teilen** - einen Link auf den aktuellen Kartenausschnitt weitergeben.
-- **Wetter für aktuellen Standort** - die Wetter-Zeitleiste für deine Position.
+- **Wetter** - klappt darunter ein Untermenü auf (nochmal antippen klappt es wieder zu): **Wetter für aktuellen Standort** (die Wetter-Zeitleiste für deine Position), **Regenradar ein-/ausblenden** und **Wind ein-/ausblenden**. Ein Eintrag schließt das Menü.
 - **Profil** - Anmeldung, Passwort, Standardgeschwindigkeit, Garmin-Uhr.
 - **Einstellungen** - Erscheinungsbild, Einheiten, Sprache und mehr.
 - **Administration** - nur für Administratoren.

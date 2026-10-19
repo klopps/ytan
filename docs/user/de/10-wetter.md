@@ -12,13 +12,13 @@ Für jeden Kartenpunkt zeigt YTAN eine Wettervorhersage für die nächsten **sie
 | **Leerer Kartenpunkt** | Lang drücken (Rechtsklick) und **Wetterdaten für diesen Ort** wählen. |
 | **POI** | Im Kontextmenü des POIs **Wetterdaten für diesen Ort**. |
 | **Gebiet** | Im Kontextmenü des Gebiets **Wetterdaten für diesen Ort**. |
-| **Dein Standort** | Menü > **Wetter für aktuellen Standort**, oder den Standort-Punkt antippen und **Wetter für Standort** wählen. |
+| **Dein Standort** | Menü > **Wetter** > **Wetter für aktuellen Standort**, oder den Standort-Punkt antippen und **Wetter für Standort** wählen. |
 
 Zusätzlich bietet das Kartenkontextmenü **Auf Windy öffnen** und **Regenradar auf Windy öffnen**: Das öffnet die Seite windy.com mit genau diesem Ort und dem aktuellen Zoom - der aktuelle Niederschlag lässt sich dort als Radar ansehen. Das Menü bietet außerdem **POI erstellen**.
 
 ## Regenradar auf der Karte
 
-YTAN kann den Niederschlag direkt über die Karte legen: lang auf einen leeren Kartenpunkt drücken (Rechtsklick) und **Regenradar ein-/ausblenden** wählen. YTAN merkt sich die Einstellung. Das Radar gibt es für **Deutschland, Dänemark und Schweden** samt Ostsee, bis in die Zoomstufen, mit denen du paddelst.
+YTAN kann den Niederschlag direkt über die Karte legen: im Menü **Wetter** > **Regenradar ein-/ausblenden** wählen, oder lang auf einen leeren Kartenpunkt drücken (Rechtsklick) und **Regenradar ein-/ausblenden** wählen. YTAN merkt sich die Einstellung. Das Radar gibt es für **Deutschland, Dänemark und Schweden** samt Ostsee, bis in die Zoomstufen, mit denen du paddelst.
 
 | Teil | Bedeutung |
 |---|---|
@@ -37,7 +37,7 @@ Die Radardaten stammen von **EUMETNET OPERA**, dem Verbund der europäischen Wet
 
 ## Wind auf der Karte
 
-Der Wind lässt sich auch direkt über die Karte legen: lang auf einen leeren Kartenpunkt drücken (Rechtsklick) und **Wind ein-/ausblenden** wählen. Kleine **Striche** ziehen mit dem Wind über die Karte - je stärker der Wind, desto schneller bewegen sie sich. Darunter färbt eine blasse **Farbfläche** die Windstärke ein. Die Ebene gibt es für die Gebiete, die auch das Regenradar abdeckt. Wind und Regenradar lassen sich nicht gleichzeitig einblenden: Das eine schaltet das andere aus.
+Der Wind lässt sich auch direkt über die Karte legen: im Menü **Wetter** > **Wind ein-/ausblenden** wählen, oder lang auf einen leeren Kartenpunkt drücken (Rechtsklick) und **Wind ein-/ausblenden** wählen. Kleine **Striche** ziehen mit dem Wind über die Karte - je stärker der Wind, desto schneller bewegen sie sich. Darunter färbt eine blasse **Farbfläche** die Windstärke ein. Die Ebene gibt es für die Gebiete, die auch das Regenradar abdeckt. Wind und Regenradar lassen sich nicht gleichzeitig einblenden: Das eine schaltet das andere aus.
 
 | Teil | Bedeutung |
 |---|---|

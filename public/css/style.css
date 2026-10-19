@@ -4795,6 +4795,33 @@ input[type="color"] {
   flex-shrink: 0;
 }
 
+/* Submenu under a root row (the "Weather" row): indented, lighter entries. */
+.nav-submenu-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 4px;
+}
+
+.nav-submenu-row {
+  padding-left: 52px;
+  font-weight: 500;
+}
+
+.nav-submenu-row .nav-menu-row-icon {
+  font-size: 19px;
+}
+
+.nav-menu-row-state {
+  font-size: 19px;
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+/* .material-icons-round sets display:inline-block, which would beat the hidden attribute */
+.nav-menu-row-state[hidden] {
+  display: none;
+}
+
 /* #pendingChangesMenuRow only appears at all once there's something
    pending (see updatePendingChangesMenuVisibility()), so it's always
    shown in its "attention" state - icon and label text in --color-danger,

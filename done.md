@@ -1,5 +1,11 @@
 # Erledigt
 
+## Menüpunkt Wetter
+
+~~Im Menü soll unter "Teilen" der Menüpunkt "Wetter" angezeigt werden. Klickt man ihn an, öffnet sich darunter ein Submenü mit - Wetter für aktuellen Standort - Regenradar ein-/ausblenden - Wind ein-/ausblenden und schiebt den Rest des Menüs nach unten. Klickt auf einen der drei Menüpunkte schließt sich das Menü. Klickt man erneut auf "Wetter" schließt sich das Submenü.~~
+
+Gelöst (2026-10-19): Im Drawer (`templates/app.php`) ersetzt die Zeile **Wetter** (Wolken-Symbol, Chevron `expand_more`/`expand_less`, direkt unter "Teilen") den bisherigen Einzeleintrag "Wetter für aktuellen Standort". Sie klappt ein Untermenü auf (`#weatherSubmenu`, `toggleWeatherMenu()` in `nav-menu.js`), das den Rest des Menüs nach unten schiebt: **Wetter für aktuellen Standort** (`openWeatherForCurrentLocation()`), **Regenradar ein-/ausblenden** (`radarContextMenuToggle()`), **Wind ein-/ausblenden** (`windContextMenuToggle()` - dieselben Funktionen wie im Kartenkontextmenü, also auch dieselbe Offline-Sperre und der gegenseitige Ausschluss von Radar und Wind). Ein Eintrag schließt das ganze Menü (`closeMenu()`; `navMenuReset()` klappt das Untermenü beim Schließen wieder zu), die Zeile "Wetter" selbst klappt nur das Untermenü wieder zu. Die beiden Ebenen-Einträge zeigen beim nächsten Aufklappen ein Häkchen, wenn die Ebene an ist. Falle: `.material-icons-round` setzt `display:inline-block` und schlägt das `hidden`-Attribut - deshalb `.nav-menu-row-state[hidden]{display:none}` (vom e2e-Test gefunden). Neue Texte `app.nav.weather`, `app.nav.weather_radar`, `app.nav.weather_wind` (de/en), Anleitung (`03-benutzeroberflaeche.md`, `10-wetter.md`) angepasst. Neuer e2e-Test `tests/e2e/specs/weather-menu.spec.js` (Auf-/Zuklappen schiebt das Menü, Einträge schließen den Drawer und rufen die Funktionen auf, Häkchen); mobil (390x660) per Screenshot geprüft.
+
 ## Wind-Layer: Deckkraft der Farbfläche pro Benutzer
 
 ~~Die Deckkraft der Farbfläche für den Wind-Layer wird derzeit global in admin/wind festgelegt. Sie soll von jedem Benutzer über "Einstellungen" selbst festgelegt werden können, Standardwert 40%.~~
