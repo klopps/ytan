@@ -1,5 +1,11 @@
 # Erledigt
 
+## "Zeige Sektorlicht" ohne Wirkung auf dem Handy
+
+~~Nach dem Marker-Umbau passiert beim Tippen auf "Zeige Sektorlicht" (Kiel C2115) auf dem Handy (Browser und App) nichts; mit "Desktop-Website" geht es.~~
+
+Gelöst (2026-10-20): `config.js`' `injectScripts` (`rotated-label.js`, `sectorlight-overlay.js`) werden nach dem Laden von Google Maps ohne `?v=` nachgeladen und bekamen deshalb nur den 1-Tag-Cache der `.htaccess` (`max-age=86400`). Handys behielten die alte `sectorlight-overlay.js`, die das entfernte `markerWithLabel` aufruft - das Zeichnen schlug still fehl. "Desktop-Website" lädt neu und holt die aktuelle Datei, daher ging es dort. Lokal/E2E nicht reproduzierbar (frischer Cache). Fix: `templates/app.php` setzt `window.YTAN_INJECT_VERSIONS` (`App::assetVersion()` je Datei), `map-core.js` hängt `?v=` an (unveränderlicher Cache, passt zur Precache-URL des Service Workers). Zusätzlich bricht die untere Zeile des POI-InfoWindows jetzt um (`flex-wrap`), da das Verschieben-Symbol sie verbreitert hat. Neue per `injectScripts` geladene Dateien brauchen einen Eintrag in `YTAN_INJECT_VERSIONS`.
+
 ## POI verschieben ohne InfoWindow
 
 ~~Beim Verschieben eines Leuchtfeuers springt die Karte auf und ab (vermutlich durch das mitwandernde, hohe InfoWindow). Lösung: POI verschieben ohne störendes InfoWindow, Button im InfoWindow, secondToolbar mit Speichern/Abbrechen.~~

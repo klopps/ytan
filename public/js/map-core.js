@@ -777,7 +777,13 @@ function injectAdditionalScripts() {
 
     for (const scriptPath of injectScripts) {
         var script = document.createElement("script");
-        script.setAttribute('src', scriptPath);
+        // Versioned like every other script (immutable browser cache, matches
+        // the service worker's precache URL): an unversioned URL only got the
+        // 1-day cache, so phones kept an outdated sectorlight-overlay.js
+        // (still using the removed MarkerWithLabel) and "Show sector light"
+        // silently did nothing.
+        const injectVersion = (window.YTAN_INJECT_VERSIONS || {})[scriptPath.replace(/^\./, '')];
+        script.setAttribute('src', injectVersion ? scriptPath + '?v=' + injectVersion : scriptPath);
         document.head.appendChild(script);
         log(scriptPath + ' injected', LOG_DEBUG);
     }

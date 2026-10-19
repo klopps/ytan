@@ -31,6 +31,10 @@
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_API_BASE = "<?= htmlspecialchars($baseUrl, ENT_QUOTES) ?>/api/v1";</script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_GOOGLE_SEARCH_REQUIRES_LOGIN = <?= $googleSearchRequiresLogin ? 'true' : 'false' ?>;</script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_MAPS_ID = <?= json_encode($mapsId) ?>;</script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_INJECT_VERSIONS = <?= json_encode([
+        '/lib/map-label-rotated/rotated-label.js' => \Ytan\App::assetVersion($rootDir, '/lib/map-label-rotated/rotated-label.js'),
+        '/lib/sectorlight-overlay/sectorlight-overlay.js' => \Ytan\App::assetVersion($rootDir, '/lib/sectorlight-overlay/sectorlight-overlay.js'),
+    ]) ?>;</script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_GPX_EXPORT_PUBLIC = <?= $gpxExportPublic ? 'true' : 'false' ?>;</script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_TRACK_DISTANCE_FILTER_PRESETS = <?= json_encode($trackDistanceFilterPresets) ?>;</script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_ROUTE_LABEL_FONT_SIZE_RANGE = <?= json_encode($routeLabelFontSizeRange) ?>;</script>
