@@ -224,6 +224,44 @@
         window.location.href = target.href;
     };
 
+    /**
+     * Admin area: new tab in a desktop browser, same tab on phones/tablets
+     * (touch) and in the native Android app. Own origin only.
+     */
+    window.openAdmin = function openAdmin(url) {
+        const target = new URL(String(url), window.location.href);
+        if (target.origin !== window.location.origin) {
+            throw new Error('csp-events: openAdmin() only within this site');
+        }
+        const native = typeof CapacitorBridge !== 'undefined' && CapacitorBridge.isAvailable();
+        const desktop = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+        if (!native && desktop) {
+            // 'noopener' would make window.open() return null even on success
+            // (the fallback below would then navigate this tab too).
+            // Fixed window name: an already open admin tab is reused and
+            // brought to the front by the browser (focus() alone doesn't
+            // switch tabs), otherwise a new tab opens.
+            // An empty URL finds an existing tab without reloading it; a fresh
+            // (blank) one is then pointed at the admin area.
+            const tab = window.open('', 'ytan_admin');
+            if (tab) {
+                let fresh = true;
+                try {
+                    fresh = tab.location.href === 'about:blank';
+                } catch (e) {
+                    // other origin in that tab: take it over
+                }
+                if (fresh) {
+                    tab.opener = null;
+                    tab.location.href = target.href;
+                }
+                tab.focus();
+                return;
+            }
+        }
+        window.location.href = target.href;
+    };
+
     /** Was window.print(). */
     window.printPage = function printPage() {
         window.print();

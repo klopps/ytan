@@ -1,5 +1,11 @@
 # Erledigt
 
+## Administration öffnet auf dem Desktop in neuem Tab
+
+~~Wenn ich im Desktop-Browser, nicht auf dem Handy oder in der Android-App, im Menü den Punkt Administration anklicke, soll sich der Admin-Bereich in einem neuen Tab öffnen.~~
+
+Gelöst (2026-10-19): Die Menüzeile in `templates/app.php` ruft jetzt `openAdmin(url)` (neu in `public/js/csp-events.js`, neben `navigateTo`, gleiche Same-Origin-Prüfung). Neuer Tab (`window.open(..., '_blank')`, danach `tab.opener = null`; `'noopener'` als Feature lässt `window.open()` immer `null` liefern, dann wechselte auch der alte Tab) nur, wenn es keine Native-App ist (`CapacitorBridge.isAvailable()`) und das Gerät Maus/Hover hat (`(hover: hover) and (pointer: fine)`); Handy, Tablet-Touch und App bleiben im selben Tab. Ist der Admin-Tab noch offen, wird er wiederverwendet, ohne neu zu laden: `window.open('', 'ytan_admin')` (fester Fenstername, leere URL) findet ihn und holt ihn nach vorn; nur ein neues, leeres Fenster (`about:blank`) wird auf `/admin` gesetzt. (`focus()` allein wechselt den Tab im Browser nicht; `window.open(url, name)` lädt den Tab dagegen neu.) Blockt ein Popup-Blocker das Fenster, wird im selben Tab navigiert.
+
 ## Warning zu google.maps.Marker kam zurück (2026-10-19)
 ~~Die Konsole zeigt weiter die Warnung "google.maps.Marker is deprecated".~~
 
