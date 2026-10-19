@@ -38,6 +38,7 @@ Offen:
 - Messung am echten Handy: Zeit pro Frame und für den Raster-Neuaufbau (Ziel < 3 ms / < 30 ms; im Desktop-Chromium: 0,1-0,3 ms pro Frame ohne Rasterisierung).
 - Laufzeit, Speicher und Verkehr nach einer Woche aus `status.json` prüfen (Hochrechnung bei ganz Europa: ~1,7 GB Download/Tag, ~120 MB Speicher).
 - Phase 6: MET Norway MEPS (2,5 km) und AROME als weitere L2-Quellen, siehe windkarte.md.
+  - Prüfung am 2026-10-19, noch nichts gebaut: `thredds.met.no`/`api.met.no` lassen sich von dieser Entwicklungsmaschine aus nicht erreichen (DNS ok, TCP 443 läuft in den Timeout; `opendata.dwd.de` geht), MEPS ist deshalb nicht prüfbar - erst vom Prod-Server aus testen. AROME: der offene S3-Bucket `object.files.data.gouv.fr/meteofrance-pnt` braucht keinen Schlüssel (Range-Abrufe möglich), enthält aber nur Läufe bis 2026-05-11 (danach nichts mehr) und liefert pro Paket (SP1-SP3) nur 6-Stunden-Dateien von ~60 MB mit allen Feldern; der aktuelle Zugang läuft vermutlich über `portail-api.meteofrance.fr` (Schlüssel). Vor dem Bau klären: aktueller AROME-Zugang, GRIB2-Packung (Decoder kann nur 5.0/5.42), Download pro Lauf (grob 0,5-1 GB).
 - Möglich: Naht D2/EU weich überblenden (jetzt harter Wechsel), Stunden zwischen den 3-h-Schritten von ICON-EU nach +78 h interpolieren, Böen auch im Stundenverlauf.
 
 ## Performance: offene Punkte aus der Analyse vom 2026-10-16

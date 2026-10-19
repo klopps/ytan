@@ -204,7 +204,7 @@ Zuerst als Karte "Wind" auf `/admin/radar` geplant, seit 2026-10-19 eine eigene 
 ## Phase 5: Betrieb und Dokumentation
 
 - [x] `tools/wind/README.md` (Einrichtung, Cron-Zeile, z. B. `*/15 * * * * .../tools/radar/.venv/bin/python .../tools/wind/wind_job.py >> .../storage/logs/wind.log 2>&1`).
-- [ ] `imagecodecs` auf dem Server ins venv installieren (`python -m pip install --only-binary=:all: imagecodecs`).
+- [x] `imagecodecs` auf dem Server ins venv installieren (`python -m pip install --only-binary=:all: imagecodecs`).
 - [x] `storage/wind` aus allen Deploy-Skripten ausschließen.
 - [x] `data_source`-Eintrag bzw. About-Seite: "Deutscher Wetterdienst (DWD), ICON-D2/ICON-EU", Lizenz CC BY 4.0 / GeoNutzV, Hinweis auf Bearbeitung.
 - [x] Anwenderdoku `docs/user/de/10-wetter.md` um einen Abschnitt Wind ergänzen (Screenshot über `help.spec.js` nur, wenn das e2e-Fixture steht).

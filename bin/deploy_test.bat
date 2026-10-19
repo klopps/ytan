@@ -102,6 +102,12 @@ tar -C "%ROOT_DIR%" ^
     -cf - . | tar -C "%BUILD_DIR%" -xf -
 if errorlevel 1 goto :error
 
+REM Locale files travel as resources\i18n-incoming so the upload never overwrites the
+REM server's resources\i18n; bin/merge-i18n.php merges them there (new keys in,
+REM removed keys out, existing values kept).
+if exist "%BUILD_DIR%\resources\i18n" move "%BUILD_DIR%\resources\i18n" "%BUILD_DIR%\resources\i18n-incoming" >nul
+if errorlevel 1 goto :error
+
 echo ==^> Installing production dependencies (composer install --no-dev)
 "%LOCAL_PHP%" "%LOCAL_COMPOSER_PHAR%" install --no-dev --optimize-autoloader --working-dir="%BUILD_DIR%"
 if errorlevel 1 goto :error
@@ -112,7 +118,7 @@ REM from ssh.exe's known_hosts, so the very first run against a host may
 REM still show a one-time "store this host key?" prompt even though the
 REM password itself is no longer asked for - accept it once and it's cached
 REM for every run after that.
-tar -C "%BUILD_DIR%" -cf - . | "%DEPLOY_SSH_CLIENT%" -ssh -P %DEPLOY_PORT% -l %DEPLOY_USER% -pw %DEPLOY_SSH_PASSWORD% %DEPLOY_HOST% "mkdir -p '%DEPLOY_PATH%' && tar -C '%DEPLOY_PATH%' -xf - && cd '%DEPLOY_PATH%' && %REMOTE_PHP% bin/migrate.php"
+tar -C "%BUILD_DIR%" -cf - . | "%DEPLOY_SSH_CLIENT%" -ssh -P %DEPLOY_PORT% -l %DEPLOY_USER% -pw %DEPLOY_SSH_PASSWORD% %DEPLOY_HOST% "mkdir -p '%DEPLOY_PATH%' && tar -C '%DEPLOY_PATH%' -xf - && cd '%DEPLOY_PATH%' && %REMOTE_PHP% bin/merge-i18n.php && %REMOTE_PHP% bin/migrate.php"
 if errorlevel 1 goto :error
 
 echo ==^> Deploy finished.

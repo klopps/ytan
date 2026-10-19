@@ -55,6 +55,9 @@ tar -C "$ROOT_DIR" \
     --exclude='__pycache__' \
     -cf - . | tar -C "$BUILD_DIR" -xf -
 
+# Locale files go as resources/i18n-incoming and are merged on the server by bin/merge-i18n.php
+[ -d "$BUILD_DIR/resources/i18n" ] && mv "$BUILD_DIR/resources/i18n" "$BUILD_DIR/resources/i18n-incoming"
+
 echo "==> Installing production dependencies (composer install --no-dev)"
 "$LOCAL_PHP" "$LOCAL_COMPOSER_PHAR" install --no-dev --optimize-autoloader --working-dir="$BUILD_DIR"
 
@@ -64,6 +67,7 @@ tar -C "$BUILD_DIR" -cf - . | ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" 
     mkdir -p '$DEPLOY_PATH'
     tar -C '$DEPLOY_PATH' -xf -
     cd '$DEPLOY_PATH'
+    $REMOTE_PHP bin/merge-i18n.php
     $REMOTE_PHP bin/migrate.php
 "
 

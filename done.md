@@ -1,5 +1,10 @@
 # Erledigt
 
+## Sprachdateien beim Deploy zusammenführen
+
+~~Beim Deploy sollen die Sprachdateien zusammengeführt werden: nur neue Schlüssel samt Werten hinzufügen, weggefallene löschen, die Werte der übrigen Schlüssel behalten.~~
+
+Gelöst (2026-10-19): Die Deploy-Skripte (`deploy.bat`, `deploy_test.bat`, `deploy.sh`) verschieben `resources/i18n` im Paket nach `resources/i18n-incoming`, der Upload überschreibt `resources/i18n` auf dem Server also nicht mehr. Danach läuft dort `bin/merge-i18n.php` (vor `migrate.php`), das `TranslationMerger::mergeDirectory()` aufruft: Schlüsselmenge und Reihenfolge kommen aus der hochgeladenen Datei, der Wert eines Schlüssels, den beide haben, aus der Datei auf dem Server; neue Schlüssel bekommen den hochgeladenen Wert, weggefallene verschwinden. Fehlt die Datei auf dem Server, wird sie übernommen; ist eine der Dateien kein gültiges JSON, bricht das Skript ab (Exit 1), ohne etwas zu schreiben. Folge: eine geänderte Übersetzung eines bestehenden Schlüssels kommt per Deploy nicht mehr auf den Server (dafür einen neuen Schlüssel verwenden oder auf dem Server per /translate ändern). Test: `TranslationMergerTest`.
 ## Regenradar-Datenabruf pausieren
 
 ~~Füge in admin/radar eine Möglichkeit hinzu, um den Datenabruf temporär für 15, 30, 60 Minuten oder dauerhaft abzuschalten.~~
