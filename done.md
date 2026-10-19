@@ -1,5 +1,11 @@
 # Erledigt
 
+## POI verschieben ohne InfoWindow
+
+~~Beim Verschieben eines Leuchtfeuers springt die Karte auf und ab (vermutlich durch das mitwandernde, hohe InfoWindow). Lösung: POI verschieben ohne störendes InfoWindow, Button im InfoWindow, secondToolbar mit Speichern/Abbrechen.~~
+
+Gelöst (2026-10-19): Ursache war Googles Auto-Pan des hohen Bearbeiten-InfoWindows, das beim Ziehen des Markers mit wandert. (1) Beim Ziehen im Bearbeiten-Fenster (`attachPoiMarkerDragHandling()` in `poi.js`) wird die Blase bei `dragstart` nur ausgeblendet (`visibility:hidden` auf `.gm-style-iw-t`, nicht geschlossen - sonst ginge die Eingabe verloren) und `disableAutoPan` gesetzt, bei `dragend` zurückgenommen und `keepPoiEditWindowInView()` aufgerufen. (2) Neuer Button `open_with` links in der unteren Zeile des einfachen POI-InfoWindows (nur Besitzer/Admin): `movePoi(i)` ersetzt den Marker durch eine ziehbare Kopie, ohne jedes InfoWindow; die zweite Toolbar (`showSecondToolbar('poiMove')`, `ui.js`) hat nur Icon-Buttons Haken (`saveMovedPoi()`, lokal-zuerst über `enqueueChange('poi','update',...)` wie `savePoi()`) und Kreuz (`cancelMovePoi()`). Der Abstand in `#secondToolbar` ist von 8 auf 2 px verkleinert (gilt für alle Varianten). Neue Texte `poi.info.move`, `toolbar.moving_poi`, `toolbar.save`.
+
 ## Menüpunkt Wetter
 
 ~~Im Menü soll unter "Teilen" der Menüpunkt "Wetter" angezeigt werden. Klickt man ihn an, öffnet sich darunter ein Submenü mit - Wetter für aktuellen Standort - Regenradar ein-/ausblenden - Wind ein-/ausblenden und schiebt den Rest des Menüs nach unten. Klickt auf einen der drei Menüpunkte schließt sich das Menü. Klickt man erneut auf "Wetter" schließt sich das Submenü.~~

@@ -747,6 +747,9 @@ function showPoiInfoWindow(event, i, marker) {
         }
 
         content += '<div class="infoWindowBottom poiInfoBottom">';
+        if ((pois[i].user_id == user.id) || user.is_admin) {
+            content += '<div class="poiMove"><i class="material-icons-round" title="' + escapeHTML(t('poi.info.move')) + '" data-on-click="movePoi(' + i + ');">open_with</i></div>';
+        }
         if (safeUrl(pois[i].url)) {
             content += '<div class="lefthalf"><a href="' + safeUrl(pois[i].url) + '" target="_blank" rel="noopener"><i class="material-icons-round">info</i>&nbsp;' + t('common.info') + '</a></div>';
         }
@@ -1406,6 +1409,7 @@ function addPoi(pos) {
         id: null
     });
 
+    attachPoiMarkerDragHandling(poiMarker);
     hideSecondToolbar();
     poiEditWindow.open({ map: map, anchor: poiMarker.advanced });
 }
@@ -1421,6 +1425,7 @@ function editPoi(i) {
 
     log('editPoi() called for: ' + i, LOG_INFO, pois[i]);
 
+    cancelMovePoi();
     disablePoiButton();
     closePoiEditWindow();
     closePoiInfoWindow(i);
@@ -1444,8 +1449,116 @@ function editPoi(i) {
         validatePoiEditForm();
     });
 
+    attachPoiMarkerDragHandling(poiMarker);
     hideSecondToolbar();
     poiEditWindow.open({ map: map, anchor: poiMarker.advanced });
+}
+
+/**
+ * While the edit marker is dragged the edit InfoWindow follows it, and its
+ * height (lighthouses: sector/characteristic fields) makes Google auto-pan
+ * the map whenever its top edge reaches the screen edge - the map then
+ * jumps up and down under the finger. So the bubble is only hidden (not
+ * closed: reopening would rebuild the content and lose typed input) and
+ * auto-pan is off until the drop.
+ */
+function attachPoiMarkerDragHandling(marker) {
+    const setBubbleHidden = (hidden) => {
+        const wrapper = document.querySelector('.gm-style-iw-t');
+        if (wrapper) {
+            wrapper.style.visibility = hidden ? 'hidden' : '';
+        }
+    };
+    marker.advanced.addListener('dragstart', () => {
+        poiEditWindow.setOptions({ disableAutoPan: true });
+        setBubbleHidden(true);
+    });
+    marker.advanced.addListener('dragend', () => {
+        setBubbleHidden(false);
+        poiEditWindow.setOptions({ disableAutoPan: false });
+        keepPoiEditWindowInView();
+    });
+}
+
+// Index in pois[] of the POI currently being moved by movePoi(), else null.
+let poiMoveIndex = null;
+
+/**
+ * Moves an existing POI without the edit window: its marker is replaced by a
+ * draggable copy and the second toolbar offers save / cancel (no InfoWindow
+ * at all, so nothing is in the way while dragging).
+ *
+ * @param i {int} index in pois[]
+ */
+function movePoi(i) {
+    cancelMovePoi();
+    closePoiEditWindow();
+    closePoiInfoWindow(i);
+    disablePoiButton();
+
+    var id = pois[i].id;
+    markers[id].setMap(null);
+    poiHiddenForEditId = id;
+    poiMoveIndex = i;
+
+    poiMarker = new YtanMarker({
+        position: markers[id].position,
+        map: map,
+        draggable: true,
+        iconUrl: markers[id].icon.url,
+        iconAnchor: markers[id].icon.anchor,
+        id: id
+    });
+
+    showSecondToolbar('poiMove');
+}
+
+function endMovePoi() {
+    if (poiMoveIndex === null) {
+        return;
+    }
+    poiMarker.setMap(null);
+    poiHiddenForEditId = null;
+    poiMoveIndex = null;
+    hideSecondToolbar();
+    enableAreaButton();
+    enablePoiButton();
+    enableRouteButton();
+}
+
+function cancelMovePoi() {
+    if (poiMoveIndex === null) {
+        return;
+    }
+    markers[pois[poiMoveIndex].id].setMap(map);
+    endMovePoi();
+}
+
+/** Stores the new position, local-first like savePoi(). */
+function saveMovedPoi() {
+    if (poiMoveIndex === null) {
+        return;
+    }
+    var i = poiMoveIndex;
+    var poiData = Object.assign({}, pois[i], {
+        latitude: poiMarker.getPosition().lat(),
+        longitude: poiMarker.getPosition().lng()
+    });
+    var clientId = poiData.id;
+    var previousUpdatedAt = pois[i].updated_at;
+
+    endMovePoi();
+
+    pois[i] = poiData;
+    setPoi(i);
+
+    var networkPayload = Object.assign({}, poiData, {
+        id: clientId,
+        expected_updated_at: previousUpdatedAt
+    });
+    enqueueChange('poi', 'update', clientId, networkPayload).then(function () {
+        syncPendingChanges({ manual: false });
+    });
 }
 
 function cancelEditPoi(i) {

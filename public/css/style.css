@@ -3663,6 +3663,14 @@ div.infoWindowElement .button {
   margin-left: auto;
 }
 
+.poiMove {
+  color: var(--color-text-secondary);
+}
+
+.poiMove i {
+  cursor: pointer;
+}
+
 .poiSectorLightButton {
   white-space: nowrap;
 }
@@ -4295,7 +4303,7 @@ input[type="color"] {
   margin: 0;
   padding: 2px 6px; /* mirrors #editToolbar's 40px-tall box */
   align-items: center;
-  gap: 8px;
+  gap: 2px;
   background-color: var(--color-bg-panel);
   border: none;
   border-radius: 15px;
@@ -4357,6 +4365,14 @@ input[type="color"] {
 
 .second-toolbar-end-btn:hover {
   background: var(--color-accent-soft);
+}
+
+.second-toolbar-end-btn.second-toolbar-icon-only {
+  width: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 

@@ -361,8 +361,20 @@ function showSecondToolbar(elementId) {
 
     log('showSecondToolbar(' + elementId + ')', LOG_INFO);
 
-    if (!['areaButton', 'poiButton', 'routeButton'].includes(elementId)) {
+    if (!['areaButton', 'poiButton', 'routeButton', 'poiMove'].includes(elementId)) {
        return;
+    }
+
+    // Moving an existing POI: no form, so save and cancel both live here.
+    if (elementId === 'poiMove') {
+        secondToolbar.innerHTML =
+            '<div class="second-toolbar-icon" title="' + t('toolbar.moving_poi') + '">' + TOOLBAR_ICON_SVG.poiButton + '</div>' +
+            '<button type="button" class="second-toolbar-end-btn second-toolbar-icon-only" title="' + t('toolbar.save') + '" data-on-click="saveMovedPoi()"><i class="material-icons-round">check</i></button>' +
+            '<button type="button" class="second-toolbar-end-btn second-toolbar-icon-only" title="' + t('toolbar.cancel') + '" data-on-click="cancelMovePoi()"><i class="material-icons-round">close</i></button>';
+        var moveEditToolbarRect = document.getElementById('editToolbar').getBoundingClientRect();
+        secondToolbar.style.right = (moveEditToolbarRect.width + 10 + 8) + 'px';
+        secondToolbar.style.display = "flex";
+        return;
     }
 
     var labels = {
