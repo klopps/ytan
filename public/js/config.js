@@ -125,7 +125,6 @@ const TOUR_DOCUMENT_POI_PROXIMITY_METERS = 200;
  // additionl scripts to be injected after Google Maps is loaded
  const injectScripts = [
     //'./lib/map-label/maplabel.js',
-    './lib/markerWithLabel/markerwithlabel.min.js',
     './lib/map-label-rotated/rotated-label.js',
     './lib/sectorlight-overlay/sectorlight-overlay.js'
 ];

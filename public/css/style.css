@@ -4393,7 +4393,7 @@ input[type="color"] {
 
 .routeLabel {
   /* Overridden inline per marker (route.js's showRouteLabels(), via
-     MarkerWithLabel's labelStyle) with the user's own Preferences-screen
+     LabelMarker.labelElement) with the user's own Preferences-screen
      choice (todo.md "Font size for distance information") - this 12px is
      only the fallback for the split second before that inline style is
      set, and matches the app-wide default in map-core.js's settings

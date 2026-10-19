@@ -1,5 +1,10 @@
 # Erledigt
 
+## Warning zu google.maps.Marker kam zurück (2026-10-19)
+~~Die Konsole zeigt weiter die Warnung "google.maps.Marker is deprecated".~~
+
+Gelöst (2026-10-19): Quelle war die vendorte Bibliothek MarkerWithLabel (`public/lib/markerWithLabel/`), die von `google.maps.Marker` erbte - genutzt für die POI-Cluster-Blasen (`poi.js`), die Entfernungslabels der Routen (`route.js`) und das Kennungs-Label der Sektorfeuer (`sectorlight-overlay.js`). Neue Klasse `LabelMarker` (`public/js/marker.js`, erbt von `YtanMarker`/AdvancedMarkerElement): Inhalt ist eine 0x0-Box genau auf der Position, darin optional ein runder Punkt in Routenfarbe (`dotColor`, CSS statt SVG-Icon) und das HTML-Label (`labelContent`/`labelClass`, `labelAnchor` = {x,y} von der Position zur linken oberen Ecke, `labelElement`). Nicht klickbare Labels haben `pointer-events:none`. Die Bibliothek wurde samt Einträgen in `app.php`, `sw.php`, `config.js` gelöscht. PHPUnit (717) und e2e (22) grün; im Browser noch nicht visuell geprüft.
+
 ## Windlegende folgt der Einheit sofort
 
 ~~Wenn man in den Einstellungen die Einheit für die Windstärke umstellt, soll die Beschriftung der Farbskala der Windstärken unmittelbar geändert werden, ohne die Windanzeige ab- und wieder anzuschalten.~~

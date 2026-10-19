@@ -544,17 +544,15 @@ function mergeCloseNeighborBuckets(buckets, key, mergeDistancePx) {
 function addPoiClusterMarker(position, count, bounds) {
     var size = count >= 50 ? 44 : (count >= 10 ? 38 : 32);
 
-    var marker = new markerWithLabel.MarkerWithLabel({
+    var marker = new LabelMarker({
         position: position,
         map: map,
         zIndex: ZINDEX_POI,
         clickable: true,
-        icon: ' ', // no default pin - the label below is the whole visual
         labelContent: '<div class="poiClusterBubble" style="width:' + size + 'px;height:' + size + 'px;">' + count + '</div>',
         labelClass: 'poiClusterLabel',
-        // This markerWithLabel version ADDS labelAnchor to the label's
-        // top-left (v1 subtracted it) - negative half-size centers the bubble.
-        labelAnchor: new google.maps.Point(-size / 2, -size / 2),
+        // Label top-left relative to the position: negative half-size centers the bubble.
+        labelAnchor: { x: -size / 2, y: -size / 2 },
     });
 
     google.maps.event.addListener(marker, 'click', function () {

@@ -881,16 +881,8 @@ function showRouteLabels(i) {
                 labelOffsetX = Math.sin(labelAngle * (Math.PI / 180)) * LABEL_OFFSET;
                 labelOffsetY = (Math.cos(labelAngle * (Math.PI / 180)) * LABEL_OFFSET * -1) - ((LABEL_FONTSIZE * 1.1) / 2);
 
-                var label = new markerWithLabel.MarkerWithLabel({
-                    icon: {
-                        path: 'M-5,0a5,5 0 1,0 10,0a5,5 0 1,0 -10,0',
-                        fillColor: routes[i].color,
-                        fillOpacity: 1.0,
-                        anchor: new google.maps.Point(0,0),
-                        strokeWeight: 2,
-                        strokeColor: '#FFFFFF',
-                        scale: 1
-                    },
+                var label = new LabelMarker({
+                    dotColor: routes[i].color,
                     position: routes[i].points[x],
                     clickable: false,
                     draggable: false,
@@ -898,14 +890,8 @@ function showRouteLabels(i) {
                     labelContent: '<span style="color: green">' + formatDistance(distanceFromStart, settings.unit) + ' </span> | <span style="color: red">' + formatDistance(distanceToEnd, settings.unit) + '</span>',
                     labelClass: "routeLabel",
                 });
-                // This vendored MarkerWithLabel build has no "labelStyle"
-                // option (checked its source - unrecognized constructor
-                // properties are silently dropped, not applied) - the only
-                // way to reach the actual label <div> is its own
-                // "labelElement" getter, then set the inline style directly.
-                // Overrides .routeLabel's own CSS font-size (an inline style
-                // always wins) with the actual, user-configurable size (see
-                // LABEL_FONTSIZE's own comment above).
+                // Overrides .routeLabel's CSS font-size with the user-configurable size
+                // (see LABEL_FONTSIZE's own comment above).
                 label.labelElement.style.fontSize = LABEL_FONTSIZE + "px";
 
                 routes[i].labels.push(label);
@@ -929,16 +915,8 @@ function showRouteLabels(i) {
     }
 
     if (routes[i].points.length > 0) {
-        var lastLabel = new markerWithLabel.MarkerWithLabel({
-            icon: {
-                path: 'M-5,0a5,5 0 1,0 10,0a5,5 0 1,0 -10,0',
-                fillColor: routes[i].color,
-                fillOpacity: 1.0,
-                anchor: new google.maps.Point(0,0),
-                strokeWeight: 2,
-                strokeColor: '#FFFFFF',
-                scale: 1
-            },
+        var lastLabel = new LabelMarker({
+            dotColor: routes[i].color,
             position: routes[i].points[x-1],
             clickable: false,
             draggable: false,

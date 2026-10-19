@@ -244,11 +244,8 @@ class SectorLightOverlay extends google.maps.OverlayView {
         
     
         // Show Marker with characteristic
-        var label = new markerWithLabel.MarkerWithLabel({
-            icon: " ",
-            position: this.center, 
-            clickable: false,
-            draggable: false,
+        var label = new LabelMarker({
+            position: this.center,
             map: map,
             labelContent: this.characteristic, // can also be HTMLElement
             labelClass: "lighthouseLabel", // the CSS class for the label

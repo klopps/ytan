@@ -129,6 +129,50 @@ class YtanMarker {
 }
 
 /**
+ * LabelMarker - HTML label (optionally with a round dot) at a position, a
+ * YtanMarker underneath (replaces the vendored MarkerWithLabel, which
+ * subclassed the deprecated google.maps.Marker). The content is a
+ * zero-size box sitting exactly on the position, so offsets are plain
+ * pixel values from the position: the dot is centered on it, the label's
+ * top-left is `labelAnchor` away from it (default 0/0, like
+ * MarkerWithLabel).
+ *
+ * Options (besides YtanMarker's): labelContent (HTML), labelClass,
+ *   labelAnchor ({x, y}), dotColor (round dot, omit for none),
+ *   clickable (default false: no pointer events at all).
+ * .labelElement is the label <div>.
+ */
+class LabelMarker extends YtanMarker {
+    constructor(options) {
+        super(options);
+
+        const anchor = options.labelAnchor || { x: 0, y: 0 };
+        const box = document.createElement('div');
+        box.style.cssText = 'position:relative;width:0;height:0;';
+        box.style.pointerEvents = options.clickable ? 'auto' : 'none';
+
+        if (options.dotColor) {
+            const dot = document.createElement('div');
+            dot.style.cssText = 'position:absolute;left:-6px;top:-6px;width:12px;height:12px;border-radius:50%;box-sizing:border-box;border:2px solid #fff;pointer-events:none;';
+            dot.style.backgroundColor = options.dotColor;
+            box.appendChild(dot);
+        }
+
+        const label = document.createElement('div');
+        label.className = options.labelClass || '';
+        label.style.cssText = 'position:absolute;white-space:nowrap;';
+        label.style.left = anchor.x + 'px';
+        label.style.top = anchor.y + 'px';
+        label.innerHTML = options.labelContent || '';
+        box.appendChild(label);
+
+        this.labelElement = label;
+        this.advanced.content = box;
+        this.advanced.gmpClickable = !!options.clickable;
+    }
+}
+
+/**
  * A YtanMarker that is only built when it is first needed on the map
  * (performance review 2026-10-16): creating an AdvancedMarkerElement costs
  * ~130 µs (4x that on a mid-range phone), and setAllPois() used to build all
