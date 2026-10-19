@@ -27,7 +27,10 @@
  */
 
 const WIND_CELL = 8; // px per grid cell of the screen grid
-const WIND_MARGIN = 64; // px beyond each map edge, so panning doesn't show a bare edge at once
+const WIND_MARGIN = 128; // px beyond each map edge, so panning doesn't show a bare edge at once
+const WIND_BLOCK_TIMEOUT_MS = 10000;
+const WIND_BLOCK_RETRIES = 3; // rebuilds after a failed block load, 3 s apart
+const WIND_REBUILD_DELAY_MS = 150; // after the last bounds_changed: don't wait for 'idle' (it comes late while tiles load)
 const WIND_FRAME_MS = 30; // ~30 fps: every second requestAnimationFrame at 60 Hz
 const WIND_IDLE_STOP_MS = 60000;
 const WIND_PX_PER_MS_FRAME = 0.25; // particle step in px per frame and m/s, independent of the zoom
@@ -39,7 +42,6 @@ const WIND_STALE_HOURS = 9;
 const WIND_BLOCK_CELLS = 128;
 const WIND_BLOCK_POINTS = 129;
 const WIND_NODATA = 255;
-const WIND_FILL_OPACITY = 0.32;
 const WIND_LEGEND_MS = [2, 4, 6, 8, 11, 14, 17, 21, 25];
 
 let windManifest = null;
@@ -51,6 +53,13 @@ let windBlocks = new Map(); // block url -> {data: Uint8Array|null, done, promis
 let windBlockSets = { L1: new Set(), L2: new Set() };
 let windGrid = null; // {gw, gh, vx, vy, speed, width, height, left, top}
 let windBuildSeq = 0;
+let windBoundsTimer = 0;
+let windBlockRetries = 0;
+let windBuilding = false; // a build is waiting for its blocks
+let windGuardRetries = 0;
+let windWatchdogMismatch = null;
+let windWatchdogTimer = 0;
+let windDragging = false;
 let windFirstBuildStarted = false; // the overlay's draw() starts the first build once; later ones come from 'idle'
 let windMapListeners = [];
 let windRefreshTimer = null;
@@ -125,12 +134,18 @@ function showWindLayer() {
     windOverlay = createWindOverlay();
     windOverlay.setMap(map);
     windMapListeners.push(map.addListener('idle', onWindMapIdle));
-    windMapListeners.push(map.addListener('dragstart', windPauseForMapMove));
+    // 'idle' only comes once the map's tiles have loaded - seconds after a pan on a phone, during
+    // which the canvases (the area they were built for) leave a bare strip at the screen edge.
+    // So the view is rebuilt shortly after the map stops moving, not only on 'idle'.
+    windMapListeners.push(map.addListener('bounds_changed', windScheduleRebuild));
+    windMapListeners.push(map.addListener('dragstart', windOnDragStart));
+    windMapListeners.push(map.addListener('dragend', windOnDragEnd));
     windMapListeners.push(map.addListener('zoom_changed', windPauseForZoom));
     windMapListeners.push(map.addListener('maptypeid_changed', updateWindParticleStyle));
     windMapListeners.push(map.addListener('click', windTouchActivity)); // a tap wakes a stopped animation
     loadWindManifest();
     windRefreshTimer = setInterval(loadWindManifest, WIND_REFRESH_MS);
+    windWatchdogTimer = setInterval(windWatchdog, 2000);
 }
 
 function hideWindLayer() {
@@ -142,6 +157,10 @@ function hideWindLayer() {
     windMapListeners.forEach((l) => google.maps.event.removeListener(l));
     windMapListeners = [];
     windBuildSeq++;
+    clearTimeout(windBoundsTimer);
+    clearInterval(windWatchdogTimer);
+    windDragging = false;
+    windBuilding = false;
     if (windOverlay) {
         windOverlay.setMap(null);
         windOverlay = null;
@@ -159,7 +178,7 @@ function createWindOverlay() {
             // colour fill below, particles above
             this.fill = document.createElement('canvas');
             this.fill.className = 'wind-canvas wind-canvas-fill';
-            this.fill.style.opacity = String(WIND_FILL_OPACITY);
+            this.fill.style.opacity = String(windFillOpacity());
             this.particles = document.createElement('canvas');
             this.particles.className = 'wind-canvas';
             const pane = this.getPanes().mapPane;
@@ -189,6 +208,12 @@ function createWindOverlay() {
 }
 
 /* ---- manifest --------------------------------------------------------- */
+
+/** Opacity of the colour fill, 0..1: the admin setting (/admin/wind, percent), 32 % by default. */
+function windFillOpacity() {
+    const percent = Number(window.YTAN_WIND_FILL_OPACITY);
+    return Number.isFinite(percent) ? Math.min(100, Math.max(0, percent)) / 100 : 0.32;
+}
 
 function windApiBase() {
     return window.YTAN_API_BASE || '/api/v1';
@@ -225,7 +250,7 @@ function loadWindManifest() {
             windHourIndex = index;
             updateWindControls();
             if (newRun || !windGrid) {
-                windRebuild();
+                windRebuild(true);
             }
         })
         .catch((err) => {
@@ -269,13 +294,16 @@ function windBlock(level, hour, block) {
         return entry;
     }
     entry = { data: null, done: false, promise: null };
-    entry.promise = Ytan.fetchBlob(url)
-        .then((blob) => blob.arrayBuffer())
+    // a request that never answers (phone on a bad connection) must not keep a build waiting forever
+    const timeout = new Promise((resolve, reject) => setTimeout(() => reject(new Error('timeout')), WIND_BLOCK_TIMEOUT_MS));
+    entry.promise = Promise.race([Ytan.fetchBlob(url).then((blob) => blob.arrayBuffer()), timeout])
         .then((buffer) => {
             entry.data = new Uint8Array(buffer);
         })
         .catch(() => {
-            entry.data = null; // a missing block must not block the view
+            entry.data = null; // a missing block must not block the view ...
+            entry.failed = true;
+            windBlocks.delete(url); // ... and is not remembered as "no data": the next build asks again
         })
         .then(() => {
             entry.done = true;
@@ -430,23 +458,84 @@ function windLatAt(y, scale) {
 /* ---- building the screen grid ----------------------------------------- */
 
 function onWindMapIdle() {
+    // nothing moves any more: a drag that was turned into a pinch never reports its dragend
+    windDragging = false;
     updateWindCoverageHint();
     windRebuild();
+}
+
+function windOnDragStart() {
+    windDragging = true;
+    clearTimeout(windBoundsTimer);
+    windPauseForMapMove();
+}
+
+function windOnDragEnd() {
+    windDragging = false;
+    windScheduleRebuild();
+}
+
+/** Rebuild WIND_REBUILD_DELAY_MS after the last bounds_changed (not while a finger is dragging the map). */
+function windScheduleRebuild() {
+    clearTimeout(windBoundsTimer);
+    if (windDragging) {
+        return;
+    }
+    windBoundsTimer = setTimeout(() => windRebuild(), WIND_REBUILD_DELAY_MS);
 }
 
 /**
  * Place the canvases over the current view, load the blocks it needs, sample
  * the wind onto the screen grid, paint the colour fill and (re)start the
- * particles. A newer call makes an older one that is still loading give up.
+ * particles. A newer call makes an older one that is still loading give up. Without `force`
+ * nothing happens when the view, the hour and the run are those of the grid that is already there.
  */
-function windRebuild() {
+/** Identifies the view (run, hour, centre, scale, size) a grid was built for; null while the map is not ready. */
+function windViewKey() {
     const projection = windOverlay && windOverlay.getProjection();
     const div = map.getDiv();
-    if (!windActive || !windManifest || !projection || !map.getCenter() || div.clientWidth === 0) {
+    const center = map.getCenter();
+    if (!windManifest || !projection || !center || div.clientWidth === 0) {
+        return null;
+    }
+    const scale = windProjectionScale(projection);
+    if (!(scale > 0)) {
+        return null;
+    }
+    return [windManifest.run, windHourIndex, center.lat().toFixed(5), center.lng().toFixed(5), scale.toFixed(1),
+        div.clientWidth, div.clientHeight].join('|');
+}
+
+function windRebuild(force) {
+    const projection = windOverlay && windOverlay.getProjection();
+    const div = map.getDiv();
+    if (!windActive) {
         return;
     }
+    const key = windViewKey();
+    if (key === null) {
+        // map or projection not ready (right after a zoom, a resize): look again shortly, a few times
+        if (windManifest && windGuardRetries++ < 20) {
+            windScheduleRebuild();
+        }
+        return;
+    }
+    windGuardRetries = 0;
     windFirstBuildStarted = true;
+    if (!force && windGrid && windGrid.key === key) {
+        // 'idle' after a rebuild for this very view (or a pinch that ended where it began): the
+        // fill may have been hidden for the zoom, show it again and wake the animation. A build
+        // still in flight for ANOTHER view (zoomed out and back before it finished) must not land.
+        windBuildSeq++;
+        windBuilding = false;
+        if (windOverlay.fill) {
+            windOverlay.fill.style.opacity = String(windFillOpacity());
+        }
+        windTouchActivity();
+        return;
+    }
     const seq = ++windBuildSeq;
+    windBuilding = true;
     // The scale comes from the projection, NOT from map.getZoom(): after a pinch the map is
     // drawn at a fractional zoom while getZoom() still answers a rounded one (measured: setZoom(6.63)
     // -> getZoom() 7, but 70.4 px per degree = 2^6.63). Computing positions from the rounded value
@@ -483,6 +572,14 @@ function windRebuild() {
         if (seq !== windBuildSeq || !windActive || !windOverlay || !windOverlay.fill) {
             return;
         }
+        // The map may have moved or zoomed while the blocks loaded without this build having been
+        // replaced (the next rebuild is still waiting for its timer): a grid for the old view must
+        // not be put on the screen.
+        if (windViewKey() !== key) {
+            windBuilding = false;
+            windScheduleRebuild();
+            return;
+        }
         const vx = new Float32Array(gw * gh);
         const vy = new Float32Array(gw * gh);
         const speed = new Float32Array(gw * gh);
@@ -506,18 +603,83 @@ function windRebuild() {
                 }
             }
         }
+        // a block that failed to load (flaky connection) left a hole: try again shortly, a few times
+        if (entries.some((e) => e.failed) && windBlockRetries < WIND_BLOCK_RETRIES) {
+            windBlockRetries++;
+            setTimeout(() => windActive && windRebuild(true), 3000);
+        } else if (!entries.some((e) => e.failed)) {
+            windBlockRetries = 0;
+        }
         windGrid = { gw: gw, gh: gh, vx: vx, vy: vy, speed: speed, gust: gust, width: width, height: height,
             // geographic position of the canvases' top-left corner (what windRealign() keeps in place)
-            cornerLat: windLatAt(top + offY, scale), cornerLng: windLngAt(left + offX, scale), scale: scale, zoom: zoom };
+            cornerLat: windLatAt(top + offY, scale), cornerLng: windLngAt(left + offX, scale), scale: scale, zoom: zoom, key: key };
         windPlaceCanvases(left, top, width, height);
         windPaintFill();
         windResetParticles();
+        windBuilding = false;
         windTouchActivity();
         // the next hour is likely wanted next (slider / playback): fetch it quietly
         if (hour + 1 < windHours.length) {
             windNeededBlocks(box, zoom, hour + 1);
         }
+    }).catch((err) => {
+        // Whatever went wrong: never leave the layer hidden and stopped (it only came back with a page reload)
+        log('windRebuild() failed', LOG_ERROR, err);
+        if (seq === windBuildSeq) {
+            windBuilding = false;
+            windRecover();
+        }
     });
+}
+
+/** After a failed build: show what there is again and look again in a moment. */
+function windRecover() {
+    if (!windActive || !windOverlay || !windOverlay.fill) {
+        return;
+    }
+    windOverlay.fill.style.opacity = String(windFillOpacity());
+    windTouchActivity();
+    if (windGuardRetries++ < 20) {
+        setTimeout(() => windActive && windRebuild(true), 1000);
+    }
+}
+
+/**
+ * Every 2 seconds while the layer is on: has it got stuck (a zoom that never got its rebuild, a build
+ * that never finished)? The grid then no longer belongs to the view on the screen and nothing is
+ * under way: build again; and the animation must be running whenever it is allowed to.
+ */
+function windWatchdog() {
+    if (!windActive || !windManifest || windDragging || document.hidden) {
+        return;
+    }
+    const key = windViewKey();
+    if (key === null) {
+        return;
+    }
+    if (!windGrid) {
+        if (!windBuilding) {
+            windRebuild(true);
+        }
+        return;
+    }
+    if (windGrid.key !== key) {
+        // the same mismatch twice in a row = not just a gesture in progress
+        if (windWatchdogMismatch === key && !windBuilding) {
+            windWatchdogMismatch = null;
+            windRebuild();
+        } else {
+            windWatchdogMismatch = key;
+        }
+        return;
+    }
+    windWatchdogMismatch = null;
+    if (windOverlay && windOverlay.fill && windOverlay.fill.style.opacity === '0') {
+        windOverlay.fill.style.opacity = String(windFillOpacity());
+    }
+    if (!windRaf && performance.now() - windLastActivity <= WIND_IDLE_STOP_MS) {
+        windStartAnimation();
+    }
 }
 
 /** Move the canvases so their top-left corner is again over the position it was built for. */
@@ -549,7 +711,7 @@ function windPlaceCanvases(left, top, width, height) {
         canvas.height = Math.round(height * s);
         canvas.getContext('2d').setTransform(s, 0, 0, s, 0, 0);
     });
-    windOverlay.fill.style.opacity = String(WIND_FILL_OPACITY);
+    windOverlay.fill.style.opacity = String(windFillOpacity());
     updateWindParticleStyle();
 }
 
@@ -691,6 +853,7 @@ function windPauseForMapMove() {
 
 /** A zoom also makes the colour fill wrong (wrong scale); the next build brings it back. */
 function windPauseForZoom() {
+    windDragging = false;
     windPauseForMapMove();
     if (windOverlay && windOverlay.fill) {
         windOverlay.fill.style.opacity = '0';
@@ -842,7 +1005,7 @@ function setWindHour(index) {
     }
     windHourIndex = index;
     updateWindControls();
-    windRebuild();
+    windRebuild(true);
 }
 
 function onWindHourSliderInput(element) {

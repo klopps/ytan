@@ -30,7 +30,7 @@ Quellen (geprüft 2026-10-18): DWD ICON-D2 (0,02°, alle 3 h, +48 h, einfache GR
 
 Entschieden (2026-10-18): Mittelwind als Standard (Böen nur per Admin-Einstellung), nördlich 70,5° N vorerst leer, feinere Modelle (MEPS, AROME) später als Phase 6, Wind und Radar schließen sich gegenseitig aus.
 
-Phase 1-5 (2026-10-18) gebaut und lokal getestet, Phase 6 (feinere Modelle) offen: `tools/wind/` (Python-Job mit eigenem GRIB2-Leser, 28 Unit-Tests; echter Lauf für 8 Länder: 24 s, 211 MB Download, 29 MB Ergebnis), `WindController`/`WindDataService`, Admin-Karte "Wind" auf /admin/radar (Migration 047), `public/js/wind.js` (Partikel + Farbfläche, Böen-Chip, Ausschluss mit dem Regenradar), e2e-Spec `wind.spec.js`, Anleitung (10-wetter.md), About-Seite, docs/API.md, CLAUDE.md. Messwerte und Abweichungen: windkarte.md.
+Phase 1-5 (2026-10-18) gebaut und lokal getestet, Phase 6 (feinere Modelle) offen: `tools/wind/` (Python-Job mit eigenem GRIB2-Leser, 28 Unit-Tests; echter Lauf für 8 Länder: 24 s, 211 MB Download, 29 MB Ergebnis), `WindController`/`WindDataService`, Admin-Seite /admin/wind (Migration 047/048, u. a. Deckkraft der Farbfläche), `public/js/wind.js` (Partikel + Farbfläche, Böen-Chip, Ausschluss mit dem Regenradar), e2e-Spec `wind.spec.js`, Anleitung (10-wetter.md), About-Seite, docs/API.md, CLAUDE.md. Messwerte und Abweichungen: windkarte.md.
 
 Offen:
 - Deploy, dann auf beiden Servern `imagecodecs` ins venv (`python -m pip install --only-binary=:all: imagecodecs`) und die Cron-Zeile von `radar_job.py` auf `tools/ytan_jobs.py` umstellen (ein Eintrag `*/5` für Radar und Wind nacheinander, Zeile in `tools/radar/README.md`); Migration 047 läuft über `bin/migrate.php`. Stand: prod hat `imagecodecs` (2026-10-19).

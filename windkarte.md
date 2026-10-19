@@ -145,7 +145,7 @@ Ergebnis: ein Lauf für ganz Europa dauert unter 2 Minuten (überwiegend Downloa
 
 ## Phase 3: Admin
 
-Kein eigener Admin-Bereich: eine Karte "Wind" auf `/admin/radar` (die Regionen stehen dort ohnehin).
+Zuerst als Karte "Wind" auf `/admin/radar` geplant, seit 2026-10-19 eine eigene Seite `/admin/wind` (Menüpunkt "Wind"); die Regionen bleiben beim Regenradar.
 
 - [x] Einstellungen: Horizont (24/48/72/120 h, Standard 48), Modelllauf alle 3/6 h, Böen ja/nein (Standard nein), feine Stufe ICON-D2 ja/nein (Standard ja). Migration mit neuen Spalten in `app_settings`, `RadarConfig::writeJobConfig()` schreibt sie zusätzlich als `"wind": {...}` in `storage/radar/config.json` (eine Konfigurationsdatei für beide Jobs).
 - [x] Status aus `storage/wind/status.json` anzeigen (wie die Radar-Statuskarte).
@@ -224,6 +224,7 @@ Phase 1 bis 5 sind gebaut und lokal getestet (28 Python-Tests, PHPUnit 711 Tests
 - **Böen:** nur die Farbfläche kann nach Böen gefärbt werden (Chip "Böen" im Panel, nur wenn die Daten sie haben); die Partikel zeigen immer den Mittelwind. ICON-D2 `vmax_10m` hat bei Stunde 0 keinen brauchbaren Wert, der Job nimmt dort den Mittelwind.
 - **Gebrochener Zoom (Handy, 2026-10-19):** Nach dem Zoomen mit zwei Fingern zeichnet Google die Karte mit gebrochenem Zoom (z. B. 6,63), `map.getZoom()` und `map.getBounds()` rechnen aber mit dem gerundeten Zoom. Die Winddaten saßen dadurch gegen die Karte verschoben (auf den Screenshots um etwa 65 px entgegen der Karte). `wind.js` nimmt jetzt den Maßstab aus der Projektion und verankert am Kartenmittelpunkt; ein e2e-Test prüft Zoom 7,63 und 8,4.
 - **Abschalten** in der Admin-Karte löscht das Manifest sofort (kein Manifest = "keine Winddaten"), damit die Ebene für alle verschwindet, auch bevor der Cron läuft.
+- **Deckkraft der Farbfläche** (2026-10-19): einstellbar auf `/admin/wind` (0-100 %, Standard 32 %, Migration 048), die Karte liest sie als `window.YTAN_WIND_FILL_OPACITY`.
 - **Admin:** kein "workers"-Wert in der Oberfläche (feste 4 Threads, `wind.workers` in `config.json` ginge).
 - **Kontextmenü-Symbol** `waves` (das Symbol `air` gibt es in der mitgelieferten Icon-Schrift nicht).
 - **Nicht umgesetzt:** weiche Naht zwischen ICON-D2 und ICON-EU (harter Wechsel, der Rand von D2 wird 0,24° breit verworfen und aus EU gefüllt), Interpolation der 3-Stunden-Schritte nach +78 h (die Stunden fehlen in der Zeitleiste).

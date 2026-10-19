@@ -360,10 +360,11 @@ unchanged (`Content-Type: application/octet-stream`, `Content-Encoding: gzip`,
 replaced and expired - the job keeps a replaced run ~30 minutes -, or the
 block has no data).
 
-**Settings** (admin only, card "Wind" on /admin/radar): `GET /api/v1/settings/wind`
+**Settings** (admin only, page /admin/wind): `GET /api/v1/settings/wind`
 and `PUT /api/v1/settings/wind` with
-`{enabled, horizon_hours: 24|48|72|120, run_interval_hours: 3|6, gusts, fine}`
-(all required, booleans for the flags) → the same plus `status` (the job's
+`{enabled, horizon_hours: 24|48|72|120, run_interval_hours: 3|6, gusts, fine, fill_opacity: 0..100}`
+(all required, booleans for the flags, `fill_opacity` = opacity of the map's colour fill in percent, also
+injected into the map page as `window.YTAN_WIND_FILL_OPACITY`) → the same plus `status` (the job's
 `storage/wind/status.json`, null before its first run: `last_run {start, end,
 outcome: processed|unchanged|no_data|disabled|failed, trigger, error?}`,
 `last_processing {eu_run, d2_run, hours, seconds, bytes_downloaded,
@@ -371,7 +372,7 @@ files_downloaded, bytes_written, regions, start, end}`, `storage_bytes`),
 `running`, `horizons`, `intervals`. Saving writes the `wind` object of
 `storage/radar/config.json`; `enabled: false` also deletes the manifest at
 once. Errors (422): `wind.settings_invalid_horizon`,
-`wind.settings_invalid_interval`, `wind.settings_invalid_flag`.
+`wind.settings_invalid_interval`, `wind.settings_invalid_flag`, `wind.settings_invalid_opacity`.
 `POST /api/v1/settings/wind/run` (admin only) starts the job in the background
 (`wind_job.py --force`): 202 `{started: true}`; 409 `wind.job_disabled` while
 switched off, `wind.job_running` while a run holds `storage/wind/.lock`; 503

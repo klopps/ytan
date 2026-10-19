@@ -134,6 +134,11 @@ test.describe('Wind layer', () => {
     expect(sample.vx).toBeLessThan(8.5);
     expect(Math.abs(sample.vy)).toBeLessThan(0.5);
 
+    // the fill's opacity is the admin setting (/admin/wind, window.YTAN_WIND_FILL_OPACITY in percent)
+    const opacity = await page.evaluate(() => ({ setting: window.YTAN_WIND_FILL_OPACITY, css: parseFloat(windOverlay.fill.style.opacity) }));
+    expect(opacity.setting).toBe(32);
+    expect(opacity.css).toBeCloseTo(0.32, 5);
+
     // x closes it
     await page.locator('#windControls .radar-controls-close').click();
     await expect(page.locator('#windControls')).toBeHidden();
@@ -205,6 +210,121 @@ test.describe('Wind layer', () => {
     await expect.poll(() => page.evaluate(() => windRaf !== 0), { timeout: 3_000 }).toBe(true);
     await expect.poll(() => paintedPixels(page, '.wind-canvas:not(.wind-canvas-fill)'), { timeout: 5_000 }).toBeGreaterThan(50);
 
+    await page.evaluate(() => setWindEnabled(false));
+  });
+
+  test('the view is rebuilt shortly after the map stops moving, without waiting for idle (slow on phones)', async ({ loggedInPage: page }) => {
+    await settleMapAt(page, LAT, LNG, 8);
+    // 'idle' only comes once the tiles have loaded; take it out of the picture
+    await page.evaluate(() => {
+      window.onWindMapIdle = function () {};
+      setWindEnabled(true);
+    });
+    await page.waitForFunction(() => windGrid !== null, null, { timeout: 15_000 });
+    const before = await page.evaluate(() => windGrid.key);
+
+    await page.evaluate(() => map.setCenter({ lat: 58.9, lng: 3.6 }));
+    await page.waitForFunction((old) => windGrid && windGrid.key !== old, before, { timeout: 5_000 });
+    const off = await page.evaluate(() => {
+      const g = windGrid;
+      const div = map.getDiv();
+      const lng = windLngAt(windWorldX(g.cornerLng, g.scale) + WIND_MARGIN + div.clientWidth / 2, g.scale);
+      const lat = windLatAt(windWorldY(g.cornerLat, g.scale) + WIND_MARGIN + div.clientHeight / 2, g.scale);
+      return { dLng: Math.abs(lng - 3.6), dLat: Math.abs(lat - 58.9) };
+    });
+    expect(off.dLng).toBeLessThan(0.02);
+    expect(off.dLat).toBeLessThan(0.02);
+    await page.evaluate(() => setWindEnabled(false));
+  });
+
+  test('a block that fails to load is asked for again instead of leaving a hole', async ({ loggedInPage: page }) => {
+    let failed = 0;
+    await page.route('**/api/v1/wind/**/L1/**', (route) => {
+      if (failed < 2) {
+        failed++;
+        return route.abort();
+      }
+      return route.continue();
+    });
+    await settleMapAt(page, LAT, LNG, 8);
+    await page.evaluate(() => setWindEnabled(true));
+    await page.waitForFunction(() => windGrid !== null, null, { timeout: 15_000 });
+    const holes = () => page.evaluate(() => Array.from(windGrid.speed).filter((v) => v !== v).length);
+    expect(await holes()).toBeGreaterThan(1000); // the failed blocks left nothing there at first
+    await expect.poll(holes, { timeout: 15_000 }).toBe(0); // the automatic retry filled it
+    await page.evaluate(() => setWindEnabled(false));
+  });
+
+  test('zooming out and straight back in does not let the build for the other view land', async ({ loggedInPage: page }) => {
+    await settleMapAt(page, LAT, LNG, 8);
+    await page.evaluate(() => setWindEnabled(true));
+    await page.waitForFunction(() => windGrid !== null && !windBuilding, null, { timeout: 15_000 });
+    // from now on the blocks come slowly: the build for the zoomed-out view is still waiting when we are back
+    await page.route('**/api/v1/wind/**/L1/**', async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      return route.continue();
+    });
+    await page.evaluate(() => windBlocks.clear());
+    await page.evaluate(() => map.setZoom(6));
+    await page.waitForTimeout(700); // the 150 ms timer has started the build for zoom 6
+    await page.evaluate(() => map.setZoom(8));
+    await page.waitForFunction(() => {
+      const key = windViewKey();
+      return windGrid && key !== null && windGrid.key === key && !windBuilding && windOverlay.fill.style.opacity !== '0';
+    }, null, { timeout: 20_000 });
+    // and it stays that way once the late answers have arrived
+    await page.waitForTimeout(2500);
+    expect(await page.evaluate(() => windGrid.key === windViewKey() && Math.abs(windGrid.zoom - 8) < 0.05)).toBe(true);
+    await page.evaluate(() => setWindEnabled(false));
+  });
+
+  test('after a storm of zooming and panning the layer is complete and running again', async ({ loggedInPage: page }) => {
+    test.setTimeout(120_000);
+    // slow and now and then failing blocks, like a phone on a bad connection
+    let n = 0;
+    await page.route('**/api/v1/wind/**/L1/**', async (route) => {
+      n++;
+      if (n % 7 === 0) {
+        return route.abort();
+      }
+      await new Promise((resolve) => setTimeout(resolve, (n * 137) % 900));
+      return route.continue();
+    });
+    await settleMapAt(page, LAT, LNG, 8);
+    await page.evaluate(() => setWindEnabled(true));
+    await page.waitForFunction(() => windGrid !== null, null, { timeout: 15_000 });
+
+    let seed = 12345;
+    const rnd = () => {
+      seed = (seed * 16807) % 2147483647;
+      return seed / 2147483647;
+    };
+    const box = await page.locator('#map').boundingBox();
+    for (let step = 0; step < 40; step++) {
+      const action = Math.floor(rnd() * 4);
+      if (action === 0) {
+        await page.evaluate((z) => map.setZoom(z), 6 + Math.round(rnd() * 5 * 4) / 4); // 6 .. 11 in quarter steps
+      } else if (action === 1) {
+        await page.evaluate((d) => map.panBy(d[0], d[1]), [Math.round((rnd() - 0.5) * 600), Math.round((rnd() - 0.5) * 500)]);
+      } else if (action === 2) {
+        await page.mouse.move(box.x + 200, box.y + 300);
+        await page.mouse.down();
+        await page.mouse.move(box.x + 200 + (rnd() - 0.5) * 260, box.y + 300 + (rnd() - 0.5) * 300, { steps: 6 });
+        await page.mouse.up();
+      } else {
+        await page.evaluate(() => map.setZoom(map.getZoom() + (Math.random() < 0.5 ? -0.37 : 0.41)));
+      }
+      await page.waitForTimeout(Math.round(rnd() * 500));
+    }
+
+    // let it settle: the layer must show the view it is looking at, visible, with moving particles
+    await page.waitForFunction(() => {
+      const key = windViewKey();
+      return windGrid && key !== null && windGrid.key === key && !windBuilding
+        && windOverlay.fill.style.opacity !== '0' && windRaf !== 0;
+    }, null, { timeout: 20_000 });
+    expect(await page.evaluate(() => windGrid !== null && windParticles !== null)).toBe(true);
+    await expect.poll(() => paintedPixels(page, '.wind-canvas:not(.wind-canvas-fill)'), { timeout: 10_000 }).toBeGreaterThan(20);
     await page.evaluate(() => setWindEnabled(false));
   });
 

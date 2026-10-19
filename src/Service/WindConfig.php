@@ -18,16 +18,16 @@ final class WindConfig
     public const INTERVALS = [3, 6];
 
     /**
-     * @return array{enabled: bool, horizon_hours: int, run_interval_hours: int, gusts: bool, fine: bool}
+     * @return array{enabled: bool, horizon_hours: int, run_interval_hours: int, gusts: bool, fine: bool, fill_opacity: int}
      */
     public static function defaults(): array
     {
-        return ['enabled' => true, 'horizon_hours' => 48, 'run_interval_hours' => 3, 'gusts' => false, 'fine' => true];
+        return ['enabled' => true, 'horizon_hours' => 48, 'run_interval_hours' => 3, 'gusts' => false, 'fine' => true, 'fill_opacity' => 32];
     }
 
     /**
      * @param array<string, mixed> $input
-     * @return array{enabled: bool, horizon_hours: int, run_interval_hours: int, gusts: bool, fine: bool}
+     * @return array{enabled: bool, horizon_hours: int, run_interval_hours: int, gusts: bool, fine: bool, fill_opacity: int}
      */
     public static function normalize(array $input): array
     {
@@ -45,9 +45,14 @@ final class WindConfig
             }
         }
 
+        $opacity = filter_var($input['fill_opacity'] ?? null, FILTER_VALIDATE_INT);
+        if ($opacity === false || $opacity < 0 || $opacity > 100) {
+            throw new ValidationException('fill_opacity must be 0 to 100 (percent).', 'wind.settings_invalid_opacity');
+        }
+
         return [
             'enabled' => $input['enabled'], 'horizon_hours' => $horizon, 'run_interval_hours' => $interval,
-            'gusts' => $input['gusts'], 'fine' => $input['fine'],
+            'gusts' => $input['gusts'], 'fine' => $input['fine'], 'fill_opacity' => $opacity,
         ];
     }
 

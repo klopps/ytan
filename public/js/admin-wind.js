@@ -1,16 +1,45 @@
 /**
- * Logic for the wind card on /admin/radar (templates/admin-radar.php,
- * #windCard): the wind job (tools/wind/). Loaded after admin-radar.js, whose
- * helpers (radarFormatTime(), radarFormatDuration(), radarFormatMb()) it
- * reuses; initWindCard() is called from there once the admin is signed in.
+ * Logic for /admin/wind (templates/admin-wind.php): the wind job (tools/wind/).
  *
- * Status: what the job wrote to storage/wind/status.json, reloaded with
- * GET /settings/wind. Settings: PUT /settings/wind, which also hands them to
- * the job (storage/radar/config.json, "wind" object). The regions are the
- * rain radar's.
+ * Status: what the job wrote to storage/wind/status.json on its last runs,
+ * reloaded with GET /settings/wind. Settings: PUT /settings/wind, which also
+ * hands them to the job (storage/radar/config.json, "wind" object); the fill
+ * opacity is read by the map page (window.YTAN_WIND_FILL_OPACITY, effective
+ * after its next load). The regions are the rain radar's (/admin/radar).
  */
 var WIND_POLL_MS = 4000;
 var windPollTimer = null;
+
+function windFormatTime(iso) {
+    if (!iso) {
+        return '-';
+    }
+    return new Date(iso).toLocaleString(window.YTAN_LOCALE || undefined, {
+        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'
+    });
+}
+
+/** End minus start ("1 min 12 s", "47 s"); "-" when one of them is missing. */
+function windFormatDuration(start, end) {
+    if (!start || !end) {
+        return '-';
+    }
+    var seconds = Math.max(0, Math.round((new Date(end) - new Date(start)) / 1000));
+    var minutes = Math.floor(seconds / 60);
+    return minutes > 0
+        ? t('admin.radar.duration_min_s', { min: minutes, s: seconds % 60 })
+        : t('admin.radar.duration_s', { s: seconds });
+}
+
+/** Bytes as MB (1024 x 1024) with 2 decimals. */
+function windFormatMb(bytes) {
+    if (bytes === null || bytes === undefined) {
+        return '-';
+    }
+    return t('admin.radar.mb', {
+        mb: (bytes / 1048576).toLocaleString(window.YTAN_LOCALE || undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    });
+}
 
 function windData() {
     return window.YTAN_WIND_SETTINGS || { status: null, running: false };
@@ -46,19 +75,19 @@ function renderWindStatus() {
     var proc = status && status.last_processing;
 
     windSetText('windLastRun', last
-        ? radarFormatTime(last.end) + ' - ' + windOutcomeLabel(last.outcome) + (last.error ? ' (' + last.error + ')' : '')
+        ? windFormatTime(last.end) + ' - ' + windOutcomeLabel(last.outcome) + (last.error ? ' (' + last.error + ')' : '')
         : t('admin.radar.never_ran'));
     windSetText('windModelRuns', proc
         ? 'ICON-EU ' + windRunLabel(proc.eu_run) + (proc.d2_run ? ', ICON-D2 ' + windRunLabel(proc.d2_run) : '')
         : t('admin.wind.no_run'));
-    windSetText('windLastProcessed', proc ? radarFormatTime(proc.end) + ' - ' + t('admin.wind.hours_count', { n: proc.hours }) : '-');
-    windSetText('windDuration', proc ? radarFormatDuration(proc.start, proc.end) : '-');
+    windSetText('windLastProcessed', proc ? windFormatTime(proc.end) + ' - ' + t('admin.wind.hours_count', { n: proc.hours }) : '-');
+    windSetText('windDuration', proc ? windFormatDuration(proc.start, proc.end) : '-');
     windSetText('windDownload', proc
-        ? radarFormatMb(proc.bytes_downloaded) + ', ' + t('admin.radar.files', { n: proc.files_downloaded })
+        ? windFormatMb(proc.bytes_downloaded) + ', ' + t('admin.radar.files', { n: proc.files_downloaded })
         : '-');
-    windSetText('windWritten', proc ? radarFormatMb(proc.bytes_written) : '-');
+    windSetText('windWritten', proc ? windFormatMb(proc.bytes_written) : '-');
     windSetText('windStorage', status && status.storage_bytes !== undefined
-        ? radarFormatMb(status.storage_bytes) + ' (' + t('admin.radar.measured_at', { time: radarFormatTime(status.storage_measured_at) }) + ')'
+        ? windFormatMb(status.storage_bytes) + ' (' + t('admin.radar.measured_at', { time: windFormatTime(status.storage_measured_at) }) + ')'
         : '-');
 
     var running = !!data.running;
@@ -129,7 +158,8 @@ function saveWindSettings() {
         horizon_hours: parseInt(document.getElementById('windHorizon').value, 10),
         run_interval_hours: parseInt(document.getElementById('windInterval').value, 10),
         gusts: document.getElementById('windGusts').checked,
-        fine: document.getElementById('windFine').checked
+        fine: document.getElementById('windFine').checked,
+        fill_opacity: parseInt(document.getElementById('windFillOpacity').value, 10)
     };
     btn.disabled = true;
     Ytan.put('/settings/wind', body).then(function (answer) {
@@ -143,11 +173,14 @@ function saveWindSettings() {
     });
 }
 
-function initWindCard() {
+function initWindPage() {
     document.getElementById('windSaveBtn').addEventListener('click', saveWindSettings);
     document.getElementById('windRunNow').addEventListener('click', startWindRun);
     document.getElementById('windStatusRefresh').addEventListener('click', function () { refreshWindStatus(); });
     document.getElementById('windEnabled').addEventListener('change', renderWindStatus);
+    document.getElementById('windFillOpacity').addEventListener('input', function () {
+        document.getElementById('windFillOpacityValue').textContent = this.value + ' %';
+    });
     renderWindStatus();
     // a run started by cron meanwhile shows up too (not in a background tab)
     setInterval(function () {
@@ -156,3 +189,5 @@ function initWindCard() {
         }
     }, 15000);
 }
+
+initAdminAuth({ contentId: 'adminAppWrapper', onReady: initWindPage });

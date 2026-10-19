@@ -21,14 +21,14 @@ rectangle enclosing all of them, grown by 1 degree (`settings.PAD_DEGREES`) - no
 over the sea between countries; the job-specific settings
 (forecast length 24/48/72/120 h, process every 3rd or 6th model run, gusts,
 fine ICON-D2 grid, on/off) sit in the `wind` object of the same
-`storage/radar/config.json`, written by PHP when an admin saves them (card
-"Wind" on /admin/radar). Missing file = DE/DK/SE, 48 h, every 3 hours, no
+`storage/radar/config.json`, written by PHP when an admin saves them (page
+/admin/wind). Missing file = DE/DK/SE, 48 h, every 3 hours, no
 gusts, fine grid on. Switching the layer off deletes `manifest.json`: no
 manifest = the app says "no wind data".
 
 Output in `storage/wind/` (see `job.py`'s docstring): `manifest.json`,
 `runs/{runId}/L0/{hhh}.bin.gz`, `runs/{runId}/L1|L2/{hhh}/{bx}_{by}.bin.gz`,
-`status.json` (shown on /admin/radar), `.lock`. A run is published by
+`status.json` (shown on /admin/wind), `.lock`. A run is published by
 renaming a finished temp directory; a replaced run stays 30 minutes.
 
 Block format: 129 x 129 points per block (the last row/column is the
@@ -64,7 +64,7 @@ itself (this job waits up to 6 minutes for the radar to finish, `radar_job.py` s
 its run when this job is working). The radar needs up to ~1 GB and all its processes
 for ~2 minutes, the wind job ~200 MB and 4 threads for ~40 s.
 
-"Update now" on /admin/radar starts it with `--force` through
+"Update now" on /admin/wind starts it with `--force` through
 `RadarJobRunner($root, 'wind')`.
 
 Measured 2026-10-18 on a development PC (8 countries: be, de, dk, es, fr, it, nl, se): 194

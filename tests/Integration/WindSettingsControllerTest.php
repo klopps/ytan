@@ -63,21 +63,21 @@ final class WindSettingsControllerTest extends ControllerTestCase
 
     private function body(array $override = []): array
     {
-        return $override + ['enabled' => true, 'horizon_hours' => 48, 'run_interval_hours' => 3, 'gusts' => false, 'fine' => true];
+        return $override + ['enabled' => true, 'horizon_hours' => 48, 'run_interval_hours' => 3, 'gusts' => false, 'fine' => true, 'fill_opacity' => 32];
     }
 
     public function testShowGivesTheDefaultsBeforeAnythingWasSaved(): void
     {
         $data = $this->decode($this->controller->show($this->request('GET', '/api/v1/settings/wind', $this->admin()), $this->response()))['data'];
 
-        $this->assertSame([true, 48, 3, false, true], [$data['enabled'], $data['horizon_hours'], $data['run_interval_hours'], $data['gusts'], $data['fine']]);
+        $this->assertSame([true, 48, 3, false, true, 32], [$data['enabled'], $data['horizon_hours'], $data['run_interval_hours'], $data['gusts'], $data['fine'], $data['fill_opacity']]);
         $this->assertNull($data['status']);
         $this->assertFalse($data['running']);
     }
 
     public function testUpdatePersistsAndWritesTheWindPartOfTheJobConfig(): void
     {
-        $body = $this->body(['horizon_hours' => 120, 'run_interval_hours' => 6, 'gusts' => true, 'fine' => false]);
+        $body = $this->body(['horizon_hours' => 120, 'run_interval_hours' => 6, 'gusts' => true, 'fine' => false, 'fill_opacity' => 55]);
         $this->controller->update($this->request('PUT', '/api/v1/settings/wind', $this->admin(), $body), $this->response());
 
         $this->assertEquals($body, (new SettingsRepository($this->pdo))->windSettings());

@@ -441,6 +441,7 @@ final class App
             $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
             $googleSearchRequiresLogin = $c->get(SettingsRepository::class)->googleSearchRequiresLogin();
             $gpxExportPublic = $c->get(SettingsRepository::class)->gpxExportPublic();
+            $windFillOpacity = $c->get(SettingsRepository::class)->windSettings()['fill_opacity'];
             $trackDistanceFilterPresets = $c->get(SettingsRepository::class)->trackDistanceFilterPresets();
             $routeLabelFontSizeRange = $c->get(SettingsRepository::class)->routeLabelFontSizeRange();
             $appVersion = 'dev';
@@ -688,9 +689,21 @@ final class App
             $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
             $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
             $radarSettings = $c->get(SettingsRepository::class)->radarSettings();
-            $windSettings = $c->get(SettingsRepository::class)->windSettings();
             $mapsApiKey = $_ENV['MAPS_API_KEY'] ?? '';
             require $rootDir . '/templates/admin-radar.php';
+            $res->getBody()->write(ob_get_clean());
+
+            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
+        });
+
+        // Wind layer: the wind job's settings and its last runs (WindSettingsController).
+        $app->get('/admin/wind', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator, $c) {
+            ob_start();
+            $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
+            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
+            $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
+            $windSettings = $c->get(SettingsRepository::class)->windSettings();
+            require $rootDir . '/templates/admin-wind.php';
             $res->getBody()->write(ob_get_clean());
 
             return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
