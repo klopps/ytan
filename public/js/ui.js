@@ -367,13 +367,25 @@ function showSecondToolbar(elementId) {
 
     // Moving an existing POI: no form, so save and cancel both live here.
     if (elementId === 'poiMove') {
-        secondToolbar.innerHTML =
-            '<div class="second-toolbar-icon" title="' + t('toolbar.moving_poi') + '">' + TOOLBAR_ICON_SVG.poiButton + '</div>' +
-            '<button type="button" class="second-toolbar-end-btn second-toolbar-icon-only" title="' + t('toolbar.save') + '" data-on-click="saveMovedPoi()"><i class="material-icons-round">check</i></button>' +
-            '<button type="button" class="second-toolbar-end-btn second-toolbar-icon-only" title="' + t('toolbar.cancel') + '" data-on-click="cancelMovePoi()"><i class="material-icons-round">close</i></button>';
+        // Text buttons when they fit between the search button and #editToolbar,
+        // otherwise (narrow phones) icon-only buttons.
+        var buildMoveToolbar = function (iconsOnly) {
+            secondToolbar.innerHTML =
+                '<div class="second-toolbar-icon" title="' + t('toolbar.moving_poi') + '">' + TOOLBAR_ICON_SVG.poiButton + '</div>' +
+                '<button type="button" class="second-toolbar-end-btn' + (iconsOnly ? ' second-toolbar-icon-only' : '') + '" title="' + t('toolbar.save') + '" data-on-click="saveMovedPoi()">' +
+                    (iconsOnly ? '<i class="material-icons-round">check</i>' : t('toolbar.save')) + '</button>' +
+                '<button type="button" class="second-toolbar-end-btn' + (iconsOnly ? ' second-toolbar-icon-only' : '') + '" title="' + t('toolbar.cancel') + '" data-on-click="cancelMovePoi()">' +
+                    (iconsOnly ? '<i class="material-icons-round">close</i>' : t('toolbar.cancel')) + '</button>';
+        };
         var moveEditToolbarRect = document.getElementById('editToolbar').getBoundingClientRect();
         secondToolbar.style.right = (moveEditToolbarRect.width + 10 + 8) + 'px';
         secondToolbar.style.display = "flex";
+
+        buildMoveToolbar(false);
+        var searchRight = document.getElementById('mapSearchWrapper').getBoundingClientRect().right;
+        if (secondToolbar.getBoundingClientRect().left < searchRight + 8) {
+            buildMoveToolbar(true);
+        }
         return;
     }
 

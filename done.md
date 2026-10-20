@@ -1,5 +1,11 @@
 # Erledigt
 
+## secondToolbar beim POI-Verschieben
+
+~~Die secondToolbar beim Verschieben eines POIs zeigt derzeit Icons für Speichern und Abbrechen, weil der Platz zwischen Suchbutton und Toolbar auf Mobilgeräten klein ist. Abhängig vom Abstand zwischen Suchbutton und Toolbar sollen die Buttons als Text dargestellt werden.~~
+
+Gelöst (2026-10-20): `showSecondToolbar('poiMove')` (`ui.js`) baut die Toolbar zuerst mit Textbuttons (`toolbar.save`/`toolbar.cancel`), misst dann ihre linke Kante gegen den rechten Rand von `#mapSearchWrapper` (+ 8 px) und baut sie bei Platzmangel als Icon-Buttons (Haken/Kreuz, `.second-toolbar-icon-only`) neu. Gemessen: 360-412 px Breite = Icons, ab ~600 px Text. Nur beim Aufbau geprüft, nicht bei Größenänderung der Seite.
+
 ## "Zeige Sektorlicht" ohne Wirkung auf dem Handy
 
 ~~Nach dem Marker-Umbau passiert beim Tippen auf "Zeige Sektorlicht" (Kiel C2115) auf dem Handy (Browser und App) nichts; mit "Desktop-Website" geht es.~~
