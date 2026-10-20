@@ -1,5 +1,11 @@
 # Erledigt
 
+## OSM-Import: Leuchttürme als Fläche/Landmark; Nordsee-Regionen; weitere Lichtkennungen
+
+~~Heiligenhafen-Leuchtturm fehlt beim OSM-Import; an der SH-Nordseeküste fehlen Gebiete; "Al.Fl RY 5s" und weitere Kennungen werden nicht interpretiert.~~
+
+Gelöst (2026-10-20): Der Turm ist in OSM ein `way` mit `seamark:type=landmark`, `man_made=lighthouse` und nur nummerierten `seamark:light:N:*`-Schlüsseln. `OsmImportService` fragt jetzt `nwr` statt `node` und zusätzlich landmark/lighthouse mit beliebigem `seamark:light:(N:)character` ab, `OsmLightMapper` nimmt sie an (Test mit den echten Tags). Regionen: Unterelbe bis Hamburg neu, Weser/Jade, Nordfriesland (bis 9.4 E) und Ems erweitert. `lightcharacteristic.js`: `Al.<Kennung>` (Farben im Wechsel, Periode = voller Durchlauf), Gruppen `(x+y)` für Fl/Oc/LFl, `Q/VQ/UQ(x)+LFl`, `Fl(x)+LFl`, `UQ`/`IUQ`, Farben Y/Bu/Or/Am/Vi, unbekannte Klasse wirft einen Fehler; `compositeGroup`-Aufrufe spreaden die Gruppen jetzt, `this.`-Fehler in `Oc(x)`/`FFl` behoben.
+
 ## OSM-Regionen für die Küsten der Ostsee- und Nordseeanrainer
 
 ~~Unter admin/lighthouse-import fehlen Regionen für den OpenStreetMap-Import. Regionen für die Küsten von Deutschland, Dänemark, Schweden, Finnland, Norwegen und Polen, Namen "Land - Region".~~

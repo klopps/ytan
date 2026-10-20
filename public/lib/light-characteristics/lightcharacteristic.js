@@ -14,6 +14,10 @@ class LightCharacteristic {
     COLOR_RED = 'red';
     COLOR_GREEN = '#00FF00';
     COLOR_BLUE = 'blue';
+    COLOR_YELLOW = 'yellow';
+    COLOR_AMBER = '#FFBF00';
+    COLOR_ORANGE = 'orange';
+    COLOR_VIOLET = '#CC66FF';
 
     O_ON = (color = this.COLOR_WHITE) => {return {
         color: color,
@@ -34,7 +38,21 @@ class LightCharacteristic {
     FLASH_DURATION = 400;  // orginal 200ms were to short
     QUICK_FLASH_DURATION = 60*1000.0 / 70.0;
     VERY_QUICK_FLASH_DURATION = 60*1000.0 / 90.0;
+    ULTRA_QUICK_FLASH_DURATION = 60*1000.0 / 160.0;
     DIT_DURATION = 200;
+
+    MORSE_ALPHABET = {
+        'a': '.-',    'b': '-...',  'c': '-.-.', 'd': '-..',
+        'e': '.',     'f': '..-.',  'g': '--.',  'h': '....',
+        'i': '..',    'j': '.---',  'k': '-.-',  'l': '.-..',
+        'm': '- -',    'n': '-.',    'o': '---',  'p': '.--.',
+        'q': '--.-',  'r': '.-.',   's': '...',  't': '-',
+        'u': '..-',   'v': '...-',  'w': '.--',  'x': '-..-',
+        'y': '-.--',  'z': '--..',  ' ': '/',
+        '1': '.----', '2': '..---', '3': '...--', '4': '....-', 
+        '5': '.....', '6': '-....', '7': '--...', '8': '---..', 
+        '9': '----.', '0': '-----', 
+    }
 
     /**
     * Animate background color of a HTML elemets according to light characteristics code
@@ -49,26 +67,15 @@ class LightCharacteristic {
         // expected format: [class]{(x{+y})} [color] {period} {height} {range}
 
         var arrCode;
-        var lcClass;    // F, Fl, LFl, Q, VQ, UQ, Oc, Iso, Mo(x), Al
-        var lcGroup;    // (x)
+        var lcClass;    // F, Fl, LFl, Q, VQ, UQ, IQ, IVQ, IUQ, Oc, Iso, FFl, Mo(x), Al, Al.Fl, Al.Oc, ...
+        var lcGroup;    // (x) or (x+y): array of numbers, null without group
+        var lcLongFlash = false; // trailing +LFl, e.g. Q(3)+LFl
         var lcInterrupted = false;
-        var lcColor;    // W, G, R, Y, Bu
+        var lcColor;    // W, G, R, Y, B
         var lcColors = [];
         var lcPeriod;   // e.g. 10s
         var lcHeight;   // e.g. 10m
         var lcRange;    // e.g. 15M
-        const morseAlphabet = {
-            'a': '.-',    'b': '-...',  'c': '-.-.', 'd': '-..',
-            'e': '.',     'f': '..-.',  'g': '--.',  'h': '....',
-            'i': '..',    'j': '.---',  'k': '-.-',  'l': '.-..',
-            'm': '- -',    'n': '-.',    'o': '---',  'p': '.--.',
-            'q': '--.-',  'r': '.-.',   's': '...',  't': '-',
-            'u': '..-',   'v': '...-',  'w': '.--',  'x': '-..-',
-            'y': '-.--',  'z': '--..',  ' ': '/',
-            '1': '.----', '2': '..---', '3': '...--', '4': '....-', 
-            '5': '.....', '6': '-....', '7': '--...', '8': '---..', 
-            '9': '----.', '0': '-----', 
-        }
     
 
         //reduce multiple whitespaces to one blank
@@ -98,20 +105,27 @@ class LightCharacteristic {
             lcClass = arrCode[0];
         }
 
-        // get group
+        // get group: (x), (x+y), optionally followed by +LFl
         if (lcClass.substring(0,2).toLowerCase() == 'mo') { // special case Morse Code
-            var arrClass = lcClass.match(/^(.*)\((.)\)/);    
+            var arrClass = lcClass.match(/^(.*)\((.)\)/);
             if (arrClass) {
                 lcClass = arrClass[1];
-                lcGroup = arrClass[2]; 
+                lcGroup = arrClass[2];
             } else {
                 throw "wrong light characteristic code (Morse Code)";
             }
         } else {
-            var arrClass = lcClass.match(/^(.*)\((\d+)\)/);
+            if (/\+LFl$/i.test(lcClass) && lcClass.length > 4) {
+                lcLongFlash = true;
+                lcClass = lcClass.slice(0, -4);
+            }
+            var arrClass = lcClass.match(/^(.*)\(([\d+]+)\)$/);
             if (arrClass) {
                 lcClass = arrClass[1];
-                lcGroup = arrClass[2];
+                lcGroup = arrClass[2].split('+').filter(x => x !== '').map(Number);
+                if (lcGroup.length == 0 || lcGroup.includes(0)) {
+                    throw "wrong group in light characteristic code";
+                }
             } else {
                 lcGroup = null;
             }
@@ -119,21 +133,15 @@ class LightCharacteristic {
 
         // get color (2nd part of code)
         lcColor = arrCode[1];
-        for(var x=0; x < lcColor.length; x++) {
-            switch(lcColor.charAt(x).toUpperCase()) {
-                case 'W':
-                    lcColors.push(this.COLOR_WHITE);
-                    break;
-                case 'R':
-                    lcColors.push(this.COLOR_RED);
-                    break;
-                case 'G':
-                    lcColors.push(this.COLOR_GREEN);
-                    break;                  
-                case 'B':
-                    lcColors.push(this.COLOR_BLUE);
-                    break;
-            }
+        const colorTokens = {
+            'w': this.COLOR_WHITE, 'r': this.COLOR_RED, 'g': this.COLOR_GREEN, 'bu': this.COLOR_BLUE, 'b': this.COLOR_BLUE,
+            'y': this.COLOR_YELLOW, 'am': this.COLOR_AMBER, 'or': this.COLOR_ORANGE, 'vi': this.COLOR_VIOLET, 'v': this.COLOR_VIOLET
+        };
+        for (const token of lcColor.match(/Bu|Vi|Or|Am|W|R|G|B|Y|V/gi) || []) {
+            lcColors.push(colorTokens[token.toLowerCase()]);
+        }
+        if (lcColors.length == 0) {
+            lcColors.push(this.COLOR_WHITE);
         }
 
         // Get optional period, height and range
@@ -175,99 +183,103 @@ class LightCharacteristic {
    
        
        // parameters determined - let's start
-        switch (lcClass) {
+        // "Al.Fl", "Al.Oc", "Al.Fl(2)" ...: the base characteristic with the colours taking turns;
+        // the period covers one cycle through all colours.
+        var animation;
+        if (lcClass.substring(0, 3).toLowerCase() == 'al.') {
+            var baseClass = lcClass.substring(3);
+            var colorPeriod = lcPeriod / lcColors.length;
+            if (baseClass == "F") { // Al.F: fixed, only the colour changes
+                animation = this.alternating(lcPeriod, lcColors);
+            } else {
+                animation = this.combine(
+                    ...lcColors.map(color => this.buildAnimation(baseClass, lcGroup, lcInterrupted, lcLongFlash, colorPeriod, color))
+                );
+            }
+        } else if (lcClass == "Al") {
+            animation = this.alternating(lcPeriod, lcColors); // Al
+        } else {
+            animation = this.buildAnimation(lcClass, lcGroup, lcInterrupted, lcLongFlash, lcPeriod, lcColors[0]);
+        }
+        this.animate(animation, elementId);
+
+   }
+
+    /**
+     * Animation ([keyframes, duration]) of one single-colour characteristic
+     */
+    buildAnimation(cls, group, interrupted, longFlash, period, color) {
+        const single = group != null && group.length == 1 ? group[0] : null;
+
+        switch (cls) {
             case "F":       // F - Fixed
-                this.animate(this.fixed(Infinity, lcColors[0]), elementId);
-                break;
+                return this.fixed(Infinity, color);
 
             case "Iso":     // Iso
-                this.animate(this.iso(lcPeriod, lcColors[0]), elementId);
-                break;
-   
-            case "Oc":      // Oc - Occulting
-                if (lcGroup == null) {
-                    this.animate(this.occulting(lcPeriod, lcColors[0]), elementId);
-                } else {
-                    this.animate(this.groupOcculting(lcPeriod, lcColors[0], lcGroup), elementId);
+                return this.iso(period, color);
+
+            case "Oc":      // Oc, Oc(x), Oc(x+y)
+                if (group == null) {
+                    return this.occulting(period, color);
                 }
-                break;
-   
-            case "Fl":      // Fl - Flashing
-                if (lcGroup == null) {
-                    this.animate(this.flashing(lcPeriod, lcColors[0]), elementId); // Fl
-                } else {
-                    this.animate(this.groupFlashing(lcPeriod, lcColors[0], lcGroup), elementId); // Fl(x)
+                return this.compositeGroupOcculting(period, color, ...group);
+
+            case "Fl":      // Fl, Fl(x), Fl(x+y), Fl(x)+LFl
+                if (longFlash && single != null) {
+                    return this.groupFlashingByLongFlash(period, single, color);
                 }
-                break;
-
-            case "LFl": 
-                if (lcGroup == null) {
-                    this.animate(this.longFlashing(lcPeriod, lcColors[0]), elementId); // LFl
-                } else {
-                    this.animate(this.groupLongFlashing(lcPeriod, lcColors[0], lcGroup), elementId); // LFl(x)
+                if (group == null) {
+                    return this.flashing(period, color);
                 }
-                break;
+                return this.compositeGroupFlashing(period, color, ...group);
 
-
-            case "Q":      // Q - Quick
-                if (lcGroup == null) {
-                    if (lcInterrupted) {
-                        this.animate(this.interruptedQuick(lcPeriod, lcColors[0]), elementId); // IQ
-                    } else {
-                        this.animate(this.quick(924, lcColors[0]), elementId); // Q
-                    }
-                } else {
-                    if (lcInterrupted) {
-                        this.animate(this.interruptedGroupQuick(lcPeriod, lcColors[0], lcGroup), elementId); // IQ(x)
-                    } else {
-                        this.animate(this.groupQuick(lcPeriod, lcColors[0], lcGroup), elementId); // Q(x)
-                    }
+            case "LFl":     // LFl, LFl(x), LFl(x+y)
+                if (group == null) {
+                    return this.longFlashing(period, color);
                 }
-                break;
+                return this.compositeLongGroupFlashing(period, color, ...group);
 
-            case "VQ":      // VQ - Very Quick
-                if (lcGroup == null) {
-                    if (lcInterrupted) {
-                        this.animate(this.interruptedVeryQuick(lcPeriod, lcColors[0]), elementId); // IVQ
-                    } else {
-                        this.animate(this.veryQuick(660, lcColors[0]), elementId); // VQ
-                    }
-                } else {
-                    if (lcInterrupted) {
-                        this.animate(this.interruptedGroupVeryQuick(lcPeriod, lcColors[0], lcGroup), elementId); // IVQ(x)
-                    } else {
-                        this.animate(this.groupVeryQuick(lcPeriod, lcColors[0], lcGroup), elementId); // VQ(x)
-                    }
-                }
-                break;
+            case "Q":       // Q, Q(x), IQ, IQ(x), Q(x)+LFl
+                return this.quickClass(this.QUICK_FLASH_DURATION, 924, 50, group, single, interrupted, longFlash, period, color);
 
+            case "VQ":      // VQ, VQ(x), IVQ, IVQ(x), VQ(x)+LFl
+                return this.quickClass(this.VERY_QUICK_FLASH_DURATION, 660, 80, group, single, interrupted, longFlash, period, color);
 
-            case "FFl":      // FFl - Fixed and Flashing
-                if (lcGroup == null) {
-                    this.animate(this.fixedAndFlashing(lcPeriod, lcColors[0]), elementId); // FFl
-                } else {
-                    this.animate(this.fixedAndFlashing(lcPeriod, lcColors[0], lcGroup), elementId); // FFl(x)
-                }
-                break;
+            case "UQ":      // UQ, UQ(x), IUQ, IUQ(x), UQ(x)+LFl
+                return this.quickClass(this.ULTRA_QUICK_FLASH_DURATION, 360, 160, group, single, interrupted, longFlash, period, color);
 
+            case "FFl":     // FFl, FFl(x)
+                return this.fixedAndFlashing(period, color, single == null ? 1 : single);
 
-            case "Al":      // Al - Alternating
-                this.animate(this.alternating(lcPeriod, lcColors), elementId); // Al
-                break;
-
-            
             case "Mo":      // Mo(x) - Morse Code
-                if (lcGroup == null) {
+                if (group == null) {
                     throw "wrong light characteristic code (Morse Code)";
-                } else {
-                    var morseCode = morseAlphabet[lcGroup.charAt(0).toLowerCase()];
-                    console.log(morseCode);
-                    this.animate(this.morse(lcPeriod, morseCode, lcColors[0]), elementId); 
                 }
+                return this.morse(period, this.MORSE_ALPHABET[group.charAt(0).toLowerCase()], color);
 
-       }
-       
-   }
+            default:
+                throw "unknown light characteristic class: " + cls;
+        }
+    }
+
+    /**
+     * Q, VQ and UQ share their logic and differ in flash duration only.
+     * A bare Q/VQ/UQ ignores the period and flashes at the class's own default rate.
+     */
+    quickClass(flashDuration, defaultPeriod, minimumFrequency, group, single, interrupted, longFlash, period, color) {
+        if (group == null) {
+            return interrupted
+                ? this.interruptedBlinking(period, flashDuration, color)
+                : this.blinking(defaultPeriod, minimumFrequency, color);
+        }
+        if (longFlash && single != null) {
+            return this.groupBlinkingByLongFlash(period, flashDuration, single, color);
+        }
+        if (interrupted) {
+            return this.interruptedBlinking(period, flashDuration, color, group.reduce((a, b) => a + b));
+        }
+        return this.compositeGroup(period, this.O_ON(color), this.O_OFF, flashDuration / 2, flashDuration / 2, ...group);
+    }
 
     convertToRelativeKeyFrames(keyframes, duration) {
         const relativeKeyFrames = []
@@ -515,7 +527,7 @@ class LightCharacteristic {
         const flashes = []
 
         for (let i = 0; i < inGroup; i++) {
-            flashes.push(...[this.getFixed(FLASH_DURATION, this.O_ON(color)), this.getFixed(FLASH_DURATION, this.O_DIM(color))])
+            flashes.push(...[this.getFixed(this.FLASH_DURATION, this.O_ON(color)), this.getFixed(this.FLASH_DURATION, this.O_DIM(color))])
         }
 
         const durationOfFlashes = this.FLASH_DURATION * 2 * inGroup;
@@ -548,18 +560,18 @@ class LightCharacteristic {
 
     //Fl(x+y)
     compositeGroupFlashing(period, color = this.COLOR_WHITE, ...groups) {
-        return this.compositeGroup(period, this.O_ON(color), this.O_OFF, this.FLASH_DURATION, this.FLASH_DURATION, groups)
+        return this.compositeGroup(period, this.O_ON(color), this.O_OFF, this.FLASH_DURATION, this.FLASH_DURATION, ...groups)
     }
 
     //LFl(x+y)
     compositeLongGroupFlashing(period, color = this.COLOR_WHITE, ...groups) {
-        return this.compositeGroup(period, this.O_ON(color), this.O_OFF, this.LONG_FLASH_DURATION, this.LONG_FLASH_DURATION, groups)
+        return this.compositeGroup(period, this.O_ON(color), this.O_OFF, this.LONG_FLASH_DURATION, this.LONG_FLASH_DURATION, ...groups)
     }
 
 
     //Oc(x+y)
     compositeGroupOcculting(period, color = this.COLOR_WHITE, ...dimGroups) {
-        return compositeGroup(period, O_OFF, O_ON(color), FLASH_DURATION, FLASH_DURATION, dimGroups)
+        return this.compositeGroup(period, this.O_OFF, this.O_ON(color), this.FLASH_DURATION, this.FLASH_DURATION, ...dimGroups)
     }
 
     //LFl(x+y)
@@ -567,19 +579,24 @@ class LightCharacteristic {
         if(period < 3000) {
             throw "LFl period cannot be shorter than 3s"
         }
-        return this.compositeGroup(period, this.O_ON(this.COLOR_WHITE), this.O_OFF, 2500, 500, groups)
+        return this.compositeGroup(period, this.O_ON(this.COLOR_WHITE), this.O_OFF, 2500, 500, ...groups)
     }
 
 
+    //Fl(x)+LFl
+    groupFlashingByLongFlash(period, flashes, color = this.COLOR_WHITE) {
+        return this.groupBlinkingByLongFlash(period, this.FLASH_DURATION * 2, flashes, color)
+    }
+
     //Q(x)+LFI
     groupQuickByLongFlash(period, flashes, color = this.COLOR_WHITE) {
-        return this.groupBlinkingByLongFlash(period, this.QUICK_FLASH_DURATION, flashes, color = this.COLOR_WHITE)
+        return this.groupBlinkingByLongFlash(period, this.QUICK_FLASH_DURATION, flashes, color)
     }
 
 
     //VQ(x)+LFI
-    groupVeryQuickByLongFlash(period, flashes) {
-        return this.groupBlinkingByLongFlash(period, this.VERY_QUICK_FLASH_DURATION, flashes)
+    groupVeryQuickByLongFlash(period, flashes, color = this.COLOR_WHITE) {
+        return this.groupBlinkingByLongFlash(period, this.VERY_QUICK_FLASH_DURATION, flashes, color)
     }
 
 
@@ -613,7 +630,7 @@ class LightCharacteristic {
         const longFlashDuration = (period - groupBlinkingDuration) / 2;
 
         return this.combine(
-            this.groupQuick(groupBlinkingDuration, flashes),
+            this.groupBlinking(groupBlinkingDuration, flashDuration, flashes, color),
             this.getFixed(longFlashDuration, this.O_ON(color)),
             this.getFixed(longFlashDuration, this.O_OFF)
         )
