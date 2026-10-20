@@ -56,6 +56,28 @@ final class OsmLightMapperTest extends TestCase
         $this->assertSame('', $e['dk_no']);
     }
 
+    public function testLighthouseMappedAsLandmarkWay(): void
+    {
+        // Real OSM way 316995864 (Heiligenhafen): seamark:type=landmark, numbered lights only.
+        $tags = [
+            'man_made' => 'lighthouse', 'seamark:type' => 'landmark', 'seamark:name' => 'Leuchtturm Heiligenhafen',
+            'seamark:light:reference' => 'C 1328',
+            'seamark:light:1:character' => 'Oc', 'seamark:light:1:colour' => 'white', 'seamark:light:1:group' => '2',
+            'seamark:light:1:height' => '16', 'seamark:light:1:period' => '9', 'seamark:light:1:range' => '13',
+            'seamark:light:1:sector_start' => '206', 'seamark:light:1:sector_end' => '212.2',
+            'seamark:light:2:character' => 'Oc', 'seamark:light:2:colour' => 'red', 'seamark:light:2:group' => '2',
+            'seamark:light:2:height' => '16', 'seamark:light:2:period' => '9', 'seamark:light:2:range' => '10',
+            'seamark:light:2:sector_start' => '212.2', 'seamark:light:2:sector_end' => '250',
+        ];
+        $e = (new OsmLightMapper())->map(['type' => 'way', 'id' => 316995864, 'center' => ['lat' => 54.3673404, 'lon' => 11.0214305], 'tags' => $tags], 'Kieler Bucht');
+
+        $this->assertNotNull($e);
+        $this->assertSame('way/316995864', $e['source_key']);
+        $this->assertSame('C1328', $e['international_id']);
+        $this->assertEqualsWithDelta(54.3673404, $e['latitude'], 0.0000001);
+        $this->assertNotNull($e['sector_characteristic']);
+    }
+
     public function testNumberedLightsBecomeSectorsWithTheirOwnRanges(): void
     {
         $e = $this->map(1533568487); // Tejn Havn: three numbered lights, Oc, white/red/green

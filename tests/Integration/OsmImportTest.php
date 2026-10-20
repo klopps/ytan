@@ -68,7 +68,7 @@ final class OsmImportTest extends ControllerTestCase
         $query = $this->client->queries[0];
         $this->assertStringContainsString('[out:json]', $query);
         foreach (['light_major', 'light_minor', 'light_vessel', 'light_float'] as $type) {
-            $this->assertStringContainsString('node["seamark:type"="' . $type . '"](54.95000,14.60000,55.35000,15.20000);', $query, 'south,west,north,east, locale independent');
+            $this->assertStringContainsString('nwr["seamark:type"="' . $type . '"](54.95000,14.60000,55.35000,15.20000);', $query, 'south,west,north,east, locale independent');
         }
         $this->assertStringContainsString('out tags center;', $query);
     }

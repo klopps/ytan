@@ -69,8 +69,11 @@ final class OsmImportService
         $bbox = sprintf('(%.5F,%.5F,%.5F,%.5F)', $south, $west, $north, $east);
         $clauses = '';
         foreach (OsmLightMapper::lightTypes() as $type) {
-            $clauses .= 'node["seamark:type"="' . $type . '"]' . $bbox . ';';
+            $clauses .= 'nwr["seamark:type"="' . $type . '"]' . $bbox . ';';
         }
+        // Lighthouses mapped as landmarks (or plain man_made=lighthouse) that carry light data.
+        $clauses .= 'nwr["seamark:type"="landmark"][~"^seamark:light:(.+:)?character$"~"."]' . $bbox . ';';
+        $clauses .= 'nwr["man_made"="lighthouse"][~"^seamark:light:(.+:)?character$"~"."]' . $bbox . ';';
         $answer = $this->client->query('[out:json][timeout:60];(' . $clauses . ');out tags center;');
 
         $entries = [];

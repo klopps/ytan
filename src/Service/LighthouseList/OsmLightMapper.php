@@ -50,7 +50,8 @@ final class OsmLightMapper
     public function map(array $element, string $region): ?array
     {
         $tags = is_array($element['tags'] ?? null) ? $element['tags'] : [];
-        if (!in_array($tags['seamark:type'] ?? '', self::LIGHT_TYPES, true)) {
+        $isLighthouse = ($tags['man_made'] ?? '') === 'lighthouse';
+        if (!in_array($tags['seamark:type'] ?? '', [...self::LIGHT_TYPES, 'landmark'], true) && !$isLighthouse) {
             return null;
         }
 
