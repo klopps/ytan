@@ -1,5 +1,11 @@
 # Erledigt
 
+## OSM-Regionen für die Küsten der Ostsee- und Nordseeanrainer
+
+~~Unter admin/lighthouse-import fehlen Regionen für den OpenStreetMap-Import. Regionen für die Küsten von Deutschland, Dänemark, Schweden, Finnland, Norwegen und Polen, Namen "Land - Region".~~
+
+Gelöst (2026-10-20): Die Auswahlliste `#liOsmPreset` (`templates/admin-lighthouse-import.php`, Werte `Name|Süd|West|Nord|Ost`, kein JS-/Backend-Umbau) hat jetzt 45 Küstenregionen, nach Land gruppiert und als "Land - Region" benannt (DE 7, DK 6, SE 10, FI 5, NO 14, PL 3). Jede Box ist deutlich kleiner als die 10x10-Grad-Grenze von `OsmImportService` (die öffentlichen Overpass-Instanzen sind flaky). Die alten Einträge wurden umbenannt (u. a. "Schweden - Öresund", die Box deckt beide Ufer); "Kattegat" entfiel zugunsten von "Dänemark - Ostjütland" und "Schweden - Göteborg und Halland". Die Boxen sind Schätzungen aus Küstenkoordinaten und noch nicht gegen echte Abfragen geprüft - fehlt ein Stück Küste, die Box im Template anpassen.
+
 ## Verschieben in POI-Kontextmenü
 
 ~~Im Kontextmenü eines POI (Rechtsklick) soll unter "Bearbeiten" die Verschieben-Funktion aufgeführt werden.~~
