@@ -1,5 +1,11 @@
 # Erledigt
 
+## Kanu-/Kajak- und Rudervereine europaweit auf der Karte (Vereins-Import)
+
+~~Möglichst alle Kanu/Kajakclubs und Rudervereine in Europa eintragen, auf Dev und Prod; die Websites der Vereine sollen mit gespeichert werden.~~
+
+Gelöst (2026-10-20): Gleiches Muster wie der Leuchtfeuer-Import, aber schlanker. Migration 052 legt die Staging-Tabelle `club_import` an (`osm_ref` unique, Name, Art canoe/rowing/both, Land, Ort, Adresse, `website`, Position, `poi_id`). `ClubOsmImportService` fragt Overpass **je Land** ab (Gebiet `ISO3166-1`, damit kein Bbox-Limit und jeder Eintrag sein Land kennt; `sport` canoe/kayak/rowing/canoe_slalom/canoe_polo in Kombination mit `club=*`, `leisure=sports_club` oder `amenity=club`; Namen sind Pflicht), `ClubOsmMapper` mappt (Website aus `website`/`contact:website`/`url`/`operator:website`, nur http(s), nackte Domain bekommt `https://`, `mailto:`/`javascript:` fallen weg). Bulk: `php bin/import-clubs-osm.php [DE DK ...]` lädt ganz Europa (`ClubOsmImportService::EUROPE`, ~30 Min wegen 30-s-Abstand zu Overpass, wartet selbst). Admin-Tool `/admin/club-import` (`ClubImportController`, `admin-club-import.js`): Land laden, Filter (Name/Land/Ort/Art/Status), Auswahl über Seiten, Import als POIs vom bestehenden Typ 13 "Vereine / Einrichtungen" (Website → `poi.url`, Beschreibung mit Art, Adresse und ODbL-Quellenangabe); ein schon vorhandenes POI gleichen Namens im Umkreis ~100 m wird verknüpft statt doppelt angelegt. **Dev → Prod**: im Tool "Exportieren" und auf Prod "Datei einlesen" (`ClubImportFile`, Format `ytan-club-list`, Websites werden beim Einlesen auf http(s) geprüft); alternativ das CLI-Skript direkt auf Prod. Tests: `ClubImportTest`.
+
 ## OSM-Import: Leuchttürme als Fläche/Landmark; Nordsee-Regionen; weitere Lichtkennungen
 
 ~~Heiligenhafen-Leuchtturm fehlt beim OSM-Import; an der SH-Nordseeküste fehlen Gebiete; "Al.Fl RY 5s" und weitere Kennungen werden nicht interpretiert.~~

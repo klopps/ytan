@@ -203,6 +203,17 @@ final class App
                 $rootDir . '/storage/nga-msi-last-request'
             )
         ));
+        $c->set(\Ytan\Domain\ClubImport\ClubImportRepository::class, fn () => new \Ytan\Domain\ClubImport\ClubImportRepository($pdo));
+        $c->set(\Ytan\Http\Controllers\ClubImportController::class, fn ($c) => new \Ytan\Http\Controllers\ClubImportController(
+            $c->get(\Ytan\Domain\ClubImport\ClubImportRepository::class),
+            new \Ytan\Service\ClubImportService($c->get(\Ytan\Domain\ClubImport\ClubImportRepository::class), $c->get(PoiRepository::class), $pdo),
+            new \Ytan\Service\ClubOsmImportService(
+                CurlOverpassClient::fromSetting((string) ($_ENV['OVERPASS_ENDPOINTS'] ?? '')),
+                $c->get(\Ytan\Domain\ClubImport\ClubImportRepository::class),
+                new \Ytan\Service\ClubList\ClubOsmMapper(),
+                $rootDir . '/storage/overpass-last-request'
+            )
+        ));
         $c->set(LighthouseDuplicateController::class, fn ($c) => new LighthouseDuplicateController(
             new LighthouseDuplicateService(
                 $c->get(PoiRepository::class),
@@ -647,6 +658,26 @@ final class App
         $app->post('/api/v1/admin/lighthouse-import', [LighthouseImportController::class, 'import']);
         $app->get('/api/v1/admin/lighthouse-import/export', [LighthouseImportController::class, 'exportFile']);
         $app->post('/api/v1/admin/lighthouse-import/file', [LighthouseImportController::class, 'importFile']);
+
+        // Admin tool: canoe/kayak and rowing clubs from OpenStreetMap, staged
+        // and imported as POIs of type 13 (ClubImportController).
+        $app->get('/admin/club-import', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
+            ob_start();
+            $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
+            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
+            $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
+            $mapsApiKey = $_ENV['MAPS_API_KEY'] ?? '';
+            require $rootDir . '/templates/admin-club-import.php';
+            $res->getBody()->write(ob_get_clean());
+
+            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
+        });
+        $app->get('/api/v1/admin/club-import', [\Ytan\Http\Controllers\ClubImportController::class, 'index']);
+        $app->get('/api/v1/admin/club-import/ids', [\Ytan\Http\Controllers\ClubImportController::class, 'ids']);
+        $app->post('/api/v1/admin/club-import/osm', [\Ytan\Http\Controllers\ClubImportController::class, 'loadOsm']);
+        $app->post('/api/v1/admin/club-import', [\Ytan\Http\Controllers\ClubImportController::class, 'import']);
+        $app->get('/api/v1/admin/club-import/export', [\Ytan\Http\Controllers\ClubImportController::class, 'exportFile']);
+        $app->post('/api/v1/admin/club-import/file', [\Ytan\Http\Controllers\ClubImportController::class, 'importFile']);
 
         // Admin tool: finds lighthouses that lie close together and merges the
         // ones the admin says are the same (LighthouseDuplicateController).
