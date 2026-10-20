@@ -49,9 +49,10 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
                 <label for="liOsmPreset" class="form-label small mb-1"><?= $t('admin.lighthouse_import.osm_preset') ?></label>
                 <select class="form-select form-select-sm" id="liOsmPreset">
                     <option value=""><?= $t('admin.lighthouse_import.osm_preset_choose') ?></option>
-                    <option value="Deutschland - Ostfriesland und Ems|53.2|6.6|53.9|8.2">Deutschland - Ostfriesland und Ems</option>
-                    <option value="Deutschland - Weser, Elbe und Helgoland|53.4|7.7|54.4|9.2">Deutschland - Weser, Elbe und Helgoland</option>
-                    <option value="Deutschland - Nordfriesland und Sylt|54.2|8.2|55.1|9.0">Deutschland - Nordfriesland und Sylt</option>
+                    <option value="Deutschland - Ostfriesland und Ems|53.0|6.6|53.9|8.2">Deutschland - Ostfriesland und Ems</option>
+                    <option value="Deutschland - Jade, Weser und Helgoland|53.2|7.7|54.4|9.0">Deutschland - Jade, Weser und Helgoland</option>
+                    <option value="Deutschland - Elbe bis Hamburg|53.4|8.6|54.2|10.3">Deutschland - Elbe bis Hamburg</option>
+                    <option value="Deutschland - Nordfriesland und Sylt|54.0|8.2|55.1|9.4">Deutschland - Nordfriesland und Sylt</option>
                     <option value="Deutschland - Flensburger Förde und Schlei|54.4|9.4|54.95|10.0">Deutschland - Flensburger Förde und Schlei</option>
                     <option value="Deutschland - Kieler Bucht|53.9|9.8|54.9|11.5">Deutschland - Kieler Bucht</option>
                     <option value="Deutschland - Lübecker Bucht und Mecklenburg|53.85|11.0|54.4|12.5">Deutschland - Lübecker Bucht und Mecklenburg</option>
