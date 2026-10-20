@@ -69,6 +69,14 @@ test.describe('Context menus', () => {
     const icons = await page.locator('.contextMenuItem .material-icons-round').allTextContents();
     expect(icons).toContain('edit');
     expect(icons).toContain('delete');
+    expect(icons).toContain('open_with');
+
+    // "Move" starts the move mode: draggable marker + second toolbar.
+    await page.locator('.contextMenuItem', { hasText: 'open_with' }).click();
+    await expect(page.locator('#secondToolbar')).toBeVisible();
+    await expect(page.locator('#secondToolbar [data-on-click="saveMovedPoi()"]')).toBeVisible();
+    await page.locator('#secondToolbar [data-on-click="cancelMovePoi()"]').click();
+    await expect(page.locator('#secondToolbar')).toBeHidden();
   });
 
   test('right-clicking a route polyline opens its context menu', async ({ loggedInPage: page, request }) => {

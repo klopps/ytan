@@ -1,5 +1,11 @@
 # Erledigt
 
+## Verschieben in POI-Kontextmenü
+
+~~Im Kontextmenü eines POI (Rechtsklick) soll unter "Bearbeiten" die Verschieben-Funktion aufgeführt werden.~~
+
+Gelöst (2026-10-20): `showPoiContextMenu()` (`poi.js`) zeigt für Besitzer/Admin unter "Bearbeiten" den Eintrag "POI verschieben" (Symbol `open_with`, Text `poi.info.move`), der über `poiContextMenuMovePoi(i)` dasselbe `movePoi(i)` startet wie das Symbol im InfoWindow. e2e-Test `context-menu.spec.js` erweitert (Eintrag vorhanden, Klick zeigt die zweite Toolbar, Abbrechen blendet sie aus).
+
 ## secondToolbar beim POI-Verschieben
 
 ~~Die secondToolbar beim Verschieben eines POIs zeigt derzeit Icons für Speichern und Abbrechen, weil der Platz zwischen Suchbutton und Toolbar auf Mobilgeräten klein ist. Abhängig vom Abstand zwischen Suchbutton und Toolbar sollen die Buttons als Text dargestellt werden.~~

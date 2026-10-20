@@ -849,6 +849,7 @@ function showPoiContextMenu(event, i) {
 
             content +=
                 '<div class="contextMenuItem" data-on-click="poiContextMenuEditPoi(' + i + ', null, null);"><i class="material-icons-round">edit</i>' + t('common.edit') + '</div>' +
+                '<div class="contextMenuItem" data-on-click="poiContextMenuMovePoi(' + i + ');"><i class="material-icons-round">open_with</i>' + t('poi.info.move') + '</div>' +
                 '<div class="contextMenuItem" data-on-click="poiContextMenuRemovePoi(' + i + ');"><i class="material-icons-round">delete</i>' + t('common.delete') + '</div>';
         }
     }
@@ -875,6 +876,11 @@ function poiContextMenuSwitchSectorLight(i, sectorLightVisible) {
     } else {
         hideSectorLight(i);
     }
+}
+
+function poiContextMenuMovePoi(i) {
+    closeContextMenu();
+    movePoi(i);
 }
 
 function poiContextMenuEditPoi(i) {
