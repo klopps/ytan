@@ -154,7 +154,16 @@ final class App
         $c->set(CurlJsonHttpClient::class, fn () => new CurlJsonHttpClient());
         $c->set(GeocodingService::class, fn ($c) => new GeocodingService($rootDir . '/storage/geocoding-cache', $c->get(CurlJsonHttpClient::class), $locale));
 
-        $c->set(PoiController::class, fn ($c) => new PoiController($c->get(PoiRepository::class), $c->get('images.poi')));
+        $c->set(\Ytan\Service\Water\WaterDistanceService::class, fn () => new \Ytan\Service\Water\WaterDistanceService(
+            $rootDir . '/storage/water/water-index.bin',
+            $rootDir . '/storage/water/water-index.json'
+        ));
+        $c->set(\Ytan\Service\Water\PoiWaterDistanceService::class, fn ($c) => new \Ytan\Service\Water\PoiWaterDistanceService(
+            $c->get(\Ytan\Service\Water\WaterDistanceService::class),
+            new \Ytan\Domain\Poi\PoiWaterDistanceRepository($pdo),
+            $c->get(SettingsRepository::class)
+        ));
+        $c->set(PoiController::class, fn ($c) => new PoiController($c->get(PoiRepository::class), $c->get('images.poi'), $c->get(\Ytan\Service\Water\PoiWaterDistanceService::class)));
         $c->set(RouteController::class, fn ($c) => new RouteController(
             $c->get(RouteRepository::class),
             $c->get(TourRepository::class),
@@ -214,6 +223,25 @@ final class App
                 $rootDir . '/storage/overpass-last-request'
             )
         ));
+        $c->set(\Ytan\Domain\ShelterImport\ShelterImportRepository::class, fn ($c) => new \Ytan\Domain\ShelterImport\ShelterImportRepository($pdo, $c->get(\Ytan\Service\Water\WaterDistanceService::class)));
+        $c->set(\Ytan\Http\Controllers\ShelterImportController::class, function ($c) use ($rootDir) {
+            $staging = $c->get(\Ytan\Domain\ShelterImport\ShelterImportRepository::class);
+            $overpass = CurlOverpassClient::fromSetting((string) ($_ENV['OVERPASS_ENDPOINTS'] ?? ''));
+            $throttle = new \Ytan\Service\OverpassThrottle($rootDir . '/storage/overpass-last-request');
+
+            return new \Ytan\Http\Controllers\ShelterImportController(
+                $staging,
+                new \Ytan\Service\ShelterImportService($staging, $c->get(PoiRepository::class), $c->get(\Ytan\Service\Water\PoiWaterDistanceService::class)),
+                new \Ytan\Service\ShelterOsmImportService($overpass, $staging, new \Ytan\Service\ShelterList\ShelterOsmMapper(), $throttle),
+                new \Ytan\Service\ShelterSourceImportService($staging, [
+                    new \Ytan\Service\ShelterList\GeoFaShelterSource(),
+                    new \Ytan\Service\ShelterList\NvvShelterSource(),
+                    new \Ytan\Service\ShelterList\KartverketShelterSource(),
+                    new \Ytan\Service\ShelterList\LipasShelterSource(),
+                ]),
+                $c->get(\Ytan\Service\Water\WaterDistanceService::class)
+            );
+        });
         $c->set(LighthouseDuplicateController::class, fn ($c) => new LighthouseDuplicateController(
             new LighthouseDuplicateService(
                 $c->get(PoiRepository::class),
@@ -434,6 +462,7 @@ final class App
 
         $app->put('/api/v1/settings/google-search-requires-login', [SettingsController::class, 'updateGoogleSearchRequiresLogin']);
         $app->put('/api/v1/settings/gpx-export-public', [SettingsController::class, 'updateGpxExportPublic']);
+        $app->put('/api/v1/settings/water-distance-poitypes', [SettingsController::class, 'updateWaterDistancePoiTypes']);
         $app->put('/api/v1/settings/track-distance-filter', [SettingsController::class, 'updateTrackDistanceFilterPresets']);
         $app->put('/api/v1/settings/route-label-font-size-range', [SettingsController::class, 'updateRouteLabelFontSizeRange']);
         $app->get('/api/v1/settings/radar', [RadarSettingsController::class, 'show']);
@@ -679,6 +708,28 @@ final class App
         $app->get('/api/v1/admin/club-import/export', [\Ytan\Http\Controllers\ClubImportController::class, 'exportFile']);
         $app->post('/api/v1/admin/club-import/file', [\Ytan\Http\Controllers\ClubImportController::class, 'importFile']);
 
+        // Admin tool: shelters and huts near water from OpenStreetMap and the
+        // official lists of DK/SE/NO/FI, staged and imported as POIs of type 10
+        // (ShelterImportController).
+        $app->get('/admin/shelter-import', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
+            ob_start();
+            $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
+            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
+            $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
+            $mapsApiKey = $_ENV['MAPS_API_KEY'] ?? '';
+            require $rootDir . '/templates/admin-shelter-import.php';
+            $res->getBody()->write(ob_get_clean());
+
+            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
+        });
+        $app->get('/api/v1/admin/shelter-import', [\Ytan\Http\Controllers\ShelterImportController::class, 'index']);
+        $app->get('/api/v1/admin/shelter-import/ids', [\Ytan\Http\Controllers\ShelterImportController::class, 'ids']);
+        $app->post('/api/v1/admin/shelter-import/osm', [\Ytan\Http\Controllers\ShelterImportController::class, 'loadOsm']);
+        $app->post('/api/v1/admin/shelter-import/source', [\Ytan\Http\Controllers\ShelterImportController::class, 'loadSource']);
+        $app->post('/api/v1/admin/shelter-import', [\Ytan\Http\Controllers\ShelterImportController::class, 'import']);
+        $app->get('/api/v1/admin/shelter-import/export', [\Ytan\Http\Controllers\ShelterImportController::class, 'exportFile']);
+        $app->post('/api/v1/admin/shelter-import/file', [\Ytan\Http\Controllers\ShelterImportController::class, 'importFile']);
+
         // Admin tool: finds lighthouses that lie close together and merges the
         // ones the admin says are the same (LighthouseDuplicateController).
         $app->get('/admin/lighthouse-duplicates', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
@@ -706,6 +757,7 @@ final class App
             $gpxExportPublic = $c->get(SettingsRepository::class)->gpxExportPublic();
             $trackDistanceFilterPresets = $c->get(SettingsRepository::class)->trackDistanceFilterPresets();
             $routeLabelFontSizeRange = $c->get(SettingsRepository::class)->routeLabelFontSizeRange();
+            $waterDistancePoiTypes = $c->get(SettingsRepository::class)->waterDistancePoiTypes();
             require $rootDir . '/templates/admin-settings.php';
             $res->getBody()->write(ob_get_clean());
 

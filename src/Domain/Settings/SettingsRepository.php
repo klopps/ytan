@@ -98,6 +98,28 @@ final class SettingsRepository
     }
 
     /**
+     * The POI types whose distance to water is computed and stored
+     * (poi_water_distance, PoiWaterDistanceService) - /admin/settings.
+     *
+     * @return list<int>
+     */
+    public function waterDistancePoiTypes(): array
+    {
+        $stmt = $this->db->query('SELECT water_distance_poitypes FROM app_settings WHERE id = 1');
+        $types = json_decode((string) $stmt->fetchColumn(), true);
+
+        return is_array($types) ? array_values(array_map('intval', array_filter($types, 'is_numeric'))) : [];
+    }
+
+    /** @param list<int> $types */
+    public function setWaterDistancePoiTypes(array $types): void
+    {
+        $types = array_values(array_unique(array_map('intval', $types)));
+        sort($types);
+        $this->db->prepare('UPDATE app_settings SET water_distance_poitypes = ? WHERE id = 1')->execute([json_encode($types)]);
+    }
+
+    /**
      * Rain radar settings (RadarConfig): forecast length and regions. A row
      * that was never saved (radar_regions NULL) gets RadarConfig::defaults().
      *

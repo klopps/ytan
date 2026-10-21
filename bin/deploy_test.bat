@@ -97,7 +97,9 @@ tar -C "%ROOT_DIR%" ^
     --exclude="public/app" ^
     --exclude="storage/radar" ^
     --exclude="storage/wind" ^
+    --exclude="storage/water" ^
     --exclude="tools/radar/.venv" ^
+    --exclude="tools/water" ^
     --exclude="__pycache__" ^
     -cf - . | tar -C "%BUILD_DIR%" -xf -
 if errorlevel 1 goto :error

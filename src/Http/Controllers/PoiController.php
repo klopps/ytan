@@ -11,6 +11,7 @@ use Ytan\Exception\ForbiddenException;
 use Ytan\Exception\NotFoundException;
 use Ytan\Exception\ValidationException;
 use Ytan\Service\ImageStorageService;
+use Ytan\Service\Water\PoiWaterDistanceService;
 
 final class PoiController extends BaseController
 {
@@ -58,6 +59,7 @@ final class PoiController extends BaseController
     public function __construct(
         private readonly PoiRepository $pois,
         private readonly ImageStorageService $images,
+        private readonly ?PoiWaterDistanceService $waterDistances = null,
     ) {
     }
 
@@ -117,6 +119,7 @@ final class PoiController extends BaseController
     {
         $auth = $this->requireAuthUser($request);
         $poi = $this->pois->create((int) $auth['sub'], $this->jsonBody($request));
+        $this->waterDistances?->afterSave($poi);
 
         return $this->json($response, ['data' => $poi], 201);
     }
@@ -128,7 +131,10 @@ final class PoiController extends BaseController
         $existing = $this->pois->findById($id);
         $this->assertOwnerOrAdmin($auth, (int) $existing['user_id']);
 
-        return $this->json($response, ['data' => $this->pois->update($id, $this->jsonBody($request))]);
+        $poi = $this->pois->update($id, $this->jsonBody($request));
+        $this->waterDistances?->afterSave($poi, $existing);
+
+        return $this->json($response, ['data' => $poi]);
     }
 
     public function delete(Request $request, Response $response, array $args): Response

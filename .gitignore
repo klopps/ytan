@@ -58,3 +58,6 @@ storage/static-maps-cache/*
 /storage/wind/*
 !/storage/wind/.gitkeep
 __pycache__/
+/storage/water/*
+!/storage/water/.gitkeep
+/tools/water/.venv/

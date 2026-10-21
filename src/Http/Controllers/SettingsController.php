@@ -11,6 +11,9 @@ use Ytan\Exception\ValidationException;
 
 final class SettingsController extends BaseController
 {
+    /** The highest POI type id (app.poitype.N in the translations, detail0-detail16 in the drawer). */
+    public const MAX_POI_TYPE = 16;
+
     public function __construct(private readonly SettingsRepository $settings)
     {
     }
@@ -31,6 +34,24 @@ final class SettingsController extends BaseController
         $this->settings->setGpxExportPublic($enabled);
 
         return $this->json($response, ['data' => ['gpx_export_public' => $enabled]]);
+    }
+
+    /** Body {poitypes: [int, ...]} - the POI types whose distance to water is stored. */
+    public function updateWaterDistancePoiTypes(Request $request, Response $response): Response
+    {
+        $this->requireAdmin($request);
+        $types = $this->jsonBody($request)['poitypes'] ?? null;
+        if (!is_array($types)) {
+            throw new ValidationException('poitypes must be a list of POI type ids.');
+        }
+        foreach ($types as $type) {
+            if (!is_int($type) || $type < 0 || $type > self::MAX_POI_TYPE) {
+                throw new ValidationException('poitypes must be a list of POI type ids.');
+            }
+        }
+        $this->settings->setWaterDistancePoiTypes($types);
+
+        return $this->json($response, ['data' => ['water_distance_poitypes' => $this->settings->waterDistancePoiTypes()]]);
     }
 
     public function updateTrackDistanceFilterPresets(Request $request, Response $response): Response

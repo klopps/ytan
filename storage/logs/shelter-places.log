@@ -1,0 +1,13 @@
+osm:NO: 4492 read, 0 new, 4492 updated
+14:07:24 reading denmark-latest.osm.pbf
+14:07:59 denmark-latest.osm.pbf: 250 protected areas, 12518 places
+14:07:59 reading finland-latest.osm.pbf
+14:09:07 finland-latest.osm.pbf: 2817 protected areas, 23064 places
+14:09:07 reading norway-latest.osm.pbf
+14:10:49 norway-latest.osm.pbf: 3407 protected areas, 216720 places
+14:10:49 reading sweden-latest.osm.pbf
+14:11:57 sweden-latest.osm.pbf: 6102 protected areas, 172012 places
+14:11:58 12576 protected areas, 424314 places; looking up 14691 positions
+14:11:59 14689 of 14691 positions got a place
+places: 14689 shelters without a name got one
+0 entries without distances to water

@@ -505,6 +505,7 @@ async function liLoadFile(file) {
 }
 
 function liInit() {
+    adminRememberTab('liTabs', 'ytan_lighthouse_import_tab');
     liAreaInit();
     document.querySelectorAll('#liFilterForm [data-filter]').forEach(function (input) {
         var eventName = input.tagName === 'SELECT' ? 'change' : 'input';

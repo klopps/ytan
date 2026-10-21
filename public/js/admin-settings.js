@@ -60,6 +60,22 @@ function saveRouteLabelFontSizeRange() {
     });
 }
 
+/** The POI types whose distance to water is computed (poi_water_distance). */
+function saveWaterDistancePoiTypes() {
+    var btn = document.getElementById('settingWaterDistanceSaveBtn');
+    var types = Array.from(document.querySelectorAll('.settingWaterDistanceType:checked')).map(function (box) {
+        return parseInt(box.value, 10);
+    });
+    btn.disabled = true;
+    Ytan.put('/settings/water-distance-poitypes', { poitypes: types }).then(function () {
+        showAdminToast(t('common.saved'), 'success');
+    }).catch(function (err) {
+        showAdminToast(t('common.save_failed', { error: err.message }), 'error');
+    }).finally(function () {
+        btn.disabled = false;
+    });
+}
+
 function initSettingsPage() {
     document.getElementById('settingGoogleSearchRequiresLogin').addEventListener('change', function () {
         toggleGoogleSearchRequiresLogin(this);

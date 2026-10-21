@@ -120,3 +120,23 @@ function loadAdminGoogleMaps() {
     });
     return adminMapsPromise;
 }
+
+/**
+ * Reopens the tab of a tabbed admin page the admin used last (#tabsId,
+ * Bootstrap nav-tabs), remembered per page in browser storage - a
+ * convenience only, the first tab is shown when storage is unavailable.
+ */
+function adminRememberTab(tabsId, storageKey) {
+    var tabs = document.querySelectorAll('#' + tabsId + ' [data-bs-toggle="tab"]');
+    tabs.forEach(function (tab) {
+        tab.addEventListener('shown.bs.tab', function () {
+            try { localStorage.setItem(storageKey, tab.id); } catch (e) { /* storage unavailable */ }
+        });
+    });
+    var saved = null;
+    try { saved = localStorage.getItem(storageKey); } catch (e) { /* storage unavailable */ }
+    var tab = saved ? document.getElementById(saved) : null;
+    if (tab && window.bootstrap) {
+        bootstrap.Tab.getOrCreateInstance(tab).show();
+    }
+}

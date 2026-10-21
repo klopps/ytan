@@ -1,0 +1,15 @@
+10:55:28 DK: reading denmark-latest.osm.pbf (496 MB)
+10:56:19 DK: sea 2230 lines, river 4314 lines, lake 71 lines
+10:56:19 NO: downloading https://download.geofabrik.de/europe/norway-latest.osm.pbf
+10:58:30 NO: reading norway-latest.osm.pbf (1378 MB)
+11:04:07 NO: sea 229935 lines, river 68861 lines, lake 6837 lines
+11:04:07 SE: downloading https://download.geofabrik.de/europe/sweden-latest.osm.pbf
+11:05:12 SE: reading sweden-latest.osm.pbf (927 MB)
+11:07:21 SE: sea 79858 lines, river 18622 lines, lake 16132 lines
+11:07:21 FI: downloading https://download.geofabrik.de/europe/finland-latest.osm.pbf
+11:08:31 FI: reading finland-latest.osm.pbf (773 MB)
+11:10:38 FI: sea 92947 lines, river 14706 lines, lake 47031 lines
+11:11:46 sea: 5018953 segments after simplifying
+11:12:09 river: 2326687 segments after simplifying
+11:12:28 lake: 2545951 segments after simplifying
+11:12:34 written C:\dev\www\ytan\storage\water\water-index.bin (171.9 MB) in 1026 s, version 202610210912

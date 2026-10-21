@@ -69,4 +69,21 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
         <button type="button" class="btn btn-primary mt-3" id="settingRouteLabelFontSizeSaveBtn" data-on-click="saveRouteLabelFontSizeRange();"><?= $t('common.save') ?></button>
     </div>
 </div>
+<div class="card mt-3">
+    <div class="card-body">
+        <h2 class="h6"><?= $t('admin.settings.water_distance_title') ?></h2>
+        <p class="text-muted small"><?= $t('admin.settings.water_distance_hint') ?></p>
+        <div class="row g-1" id="settingWaterDistanceTypes">
+            <?php for ($poiType = 0; $poiType <= \Ytan\Http\Controllers\SettingsController::MAX_POI_TYPE; $poiType++): ?>
+                <div class="col-12 col-sm-6 col-lg-4">
+                    <div class="form-check">
+                        <input class="form-check-input settingWaterDistanceType" type="checkbox" id="settingWaterDistanceType<?= $poiType ?>" value="<?= $poiType ?>" <?= in_array($poiType, $waterDistancePoiTypes, true) ? 'checked' : '' ?>>
+                        <label class="form-check-label" for="settingWaterDistanceType<?= $poiType ?>"><?= $t('app.poitype.' . $poiType) ?></label>
+                    </div>
+                </div>
+            <?php endfor; ?>
+        </div>
+        <button type="button" class="btn btn-primary mt-3" id="settingWaterDistanceSaveBtn" data-on-click="saveWaterDistancePoiTypes();"><?= $t('common.save') ?></button>
+    </div>
+</div>
 <?php require $rootDir . '/templates/partials/admin-shell-footer.php'; ?>

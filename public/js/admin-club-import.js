@@ -236,6 +236,7 @@ async function ciLoadFile(file) {
 }
 
 function ciInit() {
+    adminRememberTab('ciTabs', 'ytan_club_import_tab');
     document.querySelectorAll('#ciFilterForm [data-filter]').forEach(function (input) {
         input.addEventListener(input.tagName === 'SELECT' ? 'change' : 'input', function () {
             clearTimeout(ciState.filterTimer);

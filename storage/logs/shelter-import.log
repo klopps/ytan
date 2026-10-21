@@ -1,0 +1,261 @@
+geofa: 2226 read, 0 new, 2226 updated
+nvv: 1142 read, 1142 new, 0 updated
+kv: 1430 read, 1430 new, 0 updated
+lipas: 3149 read, 3149 new, 0 updated
+osm:DK: 4490 read, 4490 new, 0 updated
+osm:NO: 4492 read, 4492 new, 0 updated
+osm:SE: 7010 read, 7010 new, 0 updated
+osm:FI: 7267 read, 7267 new, 0 updated
+water check: 10 checked, 7 near water, 31191 remaining
+water check: 10 checked, 2 near water, 31181 remaining
+water check: 10 checked, 4 near water, 31171 remaining
+water check: 10 checked, 6 near water, 31161 remaining
+water check: 10 checked, 5 near water, 31151 remaining
+water check: 10 checked, 5 near water, 31141 remaining
+water check: 10 checked, 8 near water, 31131 remaining
+water check: 10 checked, 5 near water, 31121 remaining
+water check: 10 checked, 2 near water, 31111 remaining
+water check: 10 checked, 4 near water, 31101 remaining
+water check: 10 checked, 6 near water, 31091 remaining
+water check: 10 checked, 6 near water, 31081 remaining
+water check: 10 checked, 8 near water, 31071 remaining
+water check: 10 checked, 7 near water, 31061 remaining
+water check: 10 checked, 6 near water, 31051 remaining
+water check: 10 checked, 3 near water, 31041 remaining
+water check: 10 checked, 4 near water, 31031 remaining
+water check: 10 checked, 8 near water, 31021 remaining
+water check: 10 checked, 4 near water, 31011 remaining
+water check: 10 checked, 9 near water, 31001 remaining
+water check: 10 checked, 6 near water, 30991 remaining
+water check: 10 checked, 5 near water, 30981 remaining
+water check: 10 checked, 5 near water, 30971 remaining
+water check: 10 checked, 3 near water, 30961 remaining
+water check: 10 checked, 5 near water, 30951 remaining
+water check: 10 checked, 3 near water, 30941 remaining
+water check: 10 checked, 3 near water, 30931 remaining
+water check: 10 checked, 7 near water, 30921 remaining
+water check: 10 checked, 5 near water, 30911 remaining
+water check: FAILED - Overpass API not available (overpass-api.de: HTTP 502).
+water check: 10 checked, 6 near water, 30901 remaining
+water check: 10 checked, 4 near water, 30891 remaining
+water check: 10 checked, 4 near water, 30881 remaining
+water check: 10 checked, 3 near water, 30871 remaining
+water check: 10 checked, 6 near water, 30861 remaining
+water check: 10 checked, 4 near water, 30851 remaining
+water check: 10 checked, 5 near water, 30841 remaining
+water check: 10 checked, 5 near water, 30831 remaining
+water check: 10 checked, 5 near water, 30821 remaining
+water check: 10 checked, 5 near water, 30811 remaining
+water check: 10 checked, 4 near water, 30801 remaining
+water check: 10 checked, 3 near water, 30791 remaining
+water check: 10 checked, 3 near water, 30781 remaining
+water check: 10 checked, 7 near water, 30771 remaining
+water check: 10 checked, 7 near water, 30761 remaining
+water check: 10 checked, 6 near water, 30751 remaining
+water check: 10 checked, 2 near water, 30741 remaining
+water check: 10 checked, 7 near water, 30731 remaining
+water check: 10 checked, 3 near water, 30721 remaining
+water check: 10 checked, 7 near water, 30711 remaining
+water check: 10 checked, 6 near water, 30701 remaining
+water check: 10 checked, 5 near water, 30691 remaining
+water check: FAILED - Overpass API not available (overpass-api.de: HTTP 502).
+water check: 10 checked, 5 near water, 30681 remaining
+water check: 10 checked, 7 near water, 30671 remaining
+water check: 10 checked, 3 near water, 30661 remaining
+water check: 10 checked, 5 near water, 30651 remaining
+water check: 10 checked, 5 near water, 30641 remaining
+water check: 10 checked, 5 near water, 30631 remaining
+water check: 10 checked, 3 near water, 30621 remaining
+water check: 10 checked, 4 near water, 30611 remaining
+water check: 10 checked, 1 near water, 30601 remaining
+water check: 10 checked, 6 near water, 30591 remaining
+water check: 10 checked, 7 near water, 30581 remaining
+water check: 10 checked, 3 near water, 30571 remaining
+water check: 10 checked, 5 near water, 30561 remaining
+water check: 10 checked, 2 near water, 30551 remaining
+water check: 10 checked, 3 near water, 30541 remaining
+water check: 10 checked, 4 near water, 30531 remaining
+water check: 10 checked, 6 near water, 30521 remaining
+water check: 10 checked, 6 near water, 30511 remaining
+water check: 10 checked, 7 near water, 30501 remaining
+water check: FAILED - Overpass API not available (overpass-api.de: HTTP 504).
+water check: 10 checked, 8 near water, 30491 remaining
+water check: 10 checked, 7 near water, 30481 remaining
+water check: 10 checked, 7 near water, 30471 remaining
+water check: 10 checked, 4 near water, 30461 remaining
+water check: 10 checked, 6 near water, 30451 remaining
+water check: 10 checked, 4 near water, 30441 remaining
+water check: 10 checked, 3 near water, 30431 remaining
+water check: 10 checked, 4 near water, 30421 remaining
+water check: 10 checked, 3 near water, 30411 remaining
+water check: 10 checked, 4 near water, 30401 remaining
+water check: 10 checked, 3 near water, 30391 remaining
+water check: 10 checked, 9 near water, 30381 remaining
+water check: 10 checked, 3 near water, 30371 remaining
+water check: 10 checked, 7 near water, 30361 remaining
+water check: FAILED - Overpass API not available (overpass-api.de: HTTP 502).
+water check: 10 checked, 3 near water, 30351 remaining
+water check: 10 checked, 1 near water, 30341 remaining
+water check: 10 checked, 7 near water, 30331 remaining
+water check: 10 checked, 6 near water, 30321 remaining
+water check: 10 checked, 3 near water, 30311 remaining
+water check: 10 checked, 5 near water, 30301 remaining
+water check: 10 checked, 8 near water, 30291 remaining
+water check: 10 checked, 6 near water, 30281 remaining
+water check: 10 checked, 6 near water, 30271 remaining
+water check: 10 checked, 5 near water, 30261 remaining
+water check: 10 checked, 6 near water, 30251 remaining
+water check: 10 checked, 4 near water, 30241 remaining
+water check: 10 checked, 8 near water, 30231 remaining
+water check: 10 checked, 5 near water, 30221 remaining
+water check: 10 checked, 8 near water, 30211 remaining
+water check: 10 checked, 2 near water, 30201 remaining
+water check: 10 checked, 8 near water, 30191 remaining
+water check: 10 checked, 7 near water, 30181 remaining
+water check: 10 checked, 5 near water, 30171 remaining
+water check: 10 checked, 3 near water, 30161 remaining
+water check: 10 checked, 6 near water, 30151 remaining
+water check: 10 checked, 5 near water, 30141 remaining
+water check: 10 checked, 8 near water, 30131 remaining
+water check: 10 checked, 4 near water, 30121 remaining
+water check: 10 checked, 4 near water, 30111 remaining
+water check: 10 checked, 4 near water, 30101 remaining
+water check: 10 checked, 5 near water, 30091 remaining
+water check: 10 checked, 5 near water, 30081 remaining
+water check: 10 checked, 7 near water, 30071 remaining
+water check: 10 checked, 4 near water, 30061 remaining
+water check: 10 checked, 4 near water, 30051 remaining
+water check: 10 checked, 1 near water, 30041 remaining
+water check: 10 checked, 6 near water, 30031 remaining
+water check: 10 checked, 6 near water, 30021 remaining
+water check: 10 checked, 3 near water, 30011 remaining
+water check: 10 checked, 4 near water, 30001 remaining
+water check: 10 checked, 2 near water, 29991 remaining
+water check: 10 checked, 7 near water, 29981 remaining
+water check: 10 checked, 5 near water, 29971 remaining
+water check: 10 checked, 8 near water, 29961 remaining
+water check: FAILED - Overpass API not available (overpass-api.de: HTTP 200).
+water check: 10 checked, 6 near water, 29951 remaining
+water check: 10 checked, 2 near water, 29941 remaining
+water check: 10 checked, 6 near water, 29931 remaining
+water check: 10 checked, 4 near water, 29921 remaining
+water check: 10 checked, 3 near water, 29911 remaining
+water check: 10 checked, 6 near water, 29901 remaining
+water check: 10 checked, 2 near water, 29891 remaining
+water check: 10 checked, 4 near water, 29881 remaining
+water check: 10 checked, 4 near water, 29871 remaining
+water check: FAILED - Overpass API not available (overpass-api.de: Operation timed out after 90004 milliseconds with 0 bytes received).
+water check: 10 checked, 4 near water, 29861 remaining
+water check: 10 checked, 2 near water, 29851 remaining
+water check: FAILED - Overpass API not available (overpass-api.de: HTTP 502).
+water check: 10 checked, 5 near water, 29841 remaining
+water check: 10 checked, 6 near water, 29831 remaining
+water check: 10 checked, 2 near water, 29821 remaining
+water check: 10 checked, 4 near water, 29811 remaining
+water check: 10 checked, 6 near water, 29801 remaining
+water check: 10 checked, 3 near water, 29791 remaining
+water check: FAILED - Overpass API not available (overpass-api.de: Operation timed out after 90013 milliseconds with 0 bytes received).
+water check: 10 checked, 5 near water, 29781 remaining
+water check: 10 checked, 0 near water, 29771 remaining
+water check: 10 checked, 6 near water, 29761 remaining
+water check: FAILED - Overpass API not available (overpass-api.de: Operation timed out after 90012 milliseconds with 0 bytes received).
+water check: 10 checked, 6 near water, 29751 remaining
+water check: 10 checked, 5 near water, 29741 remaining
+water check: 10 checked, 2 near water, 29731 remaining
+water check: 10 checked, 3 near water, 29721 remaining
+water check: 10 checked, 2 near water, 29711 remaining
+water check: 10 checked, 8 near water, 29701 remaining
+water check: 10 checked, 7 near water, 29691 remaining
+water check: 10 checked, 5 near water, 29681 remaining
+water check: FAILED - Overpass API not available (overpass-api.de: Operation timed out after 90009 milliseconds with 0 bytes received).
+water check: 10 checked, 5 near water, 29671 remaining
+water check: 10 checked, 7 near water, 29661 remaining
+water check: 10 checked, 3 near water, 29651 remaining
+water check: 10 checked, 6 near water, 29641 remaining
+water check: FAILED - Overpass API not available (overpass-api.de: Operation timed out after 90014 milliseconds with 0 bytes received).
+water check: 10 checked, 3 near water, 29631 remaining
+water check: 10 checked, 7 near water, 29621 remaining
+water check: 10 checked, 9 near water, 29611 remaining
+water check: 10 checked, 7 near water, 29601 remaining
+water check: 10 checked, 5 near water, 29591 remaining
+water check: 10 checked, 10 near water, 29581 remaining
+water check: 10 checked, 4 near water, 29571 remaining
+water check: 10 checked, 5 near water, 29561 remaining
+water check: FAILED - Overpass API not available (overpass-api.de: Operation timed out after 90008 milliseconds with 0 bytes received).
+water check: 10 checked, 5 near water, 29551 remaining
+water check: 10 checked, 3 near water, 29541 remaining
+water check: 10 checked, 6 near water, 29531 remaining
+water check: 10 checked, 2 near water, 29521 remaining
+water check: 10 checked, 2 near water, 29511 remaining
+water check: 10 checked, 4 near water, 29501 remaining
+water check: 10 checked, 2 near water, 29491 remaining
+water check: 10 checked, 4 near water, 29481 remaining
+water check: 10 checked, 2 near water, 29471 remaining
+water check: 10 checked, 6 near water, 29461 remaining
+water check: 10 checked, 4 near water, 29451 remaining
+water check: 10 checked, 6 near water, 29441 remaining
+water check: 10 checked, 5 near water, 29431 remaining
+water check: 10 checked, 6 near water, 29421 remaining
+water check: 10 checked, 4 near water, 29411 remaining
+water check: 10 checked, 6 near water, 29401 remaining
+water check: 10 checked, 7 near water, 29391 remaining
+water check: 10 checked, 4 near water, 29381 remaining
+water check: 10 checked, 6 near water, 29371 remaining
+water check: 10 checked, 9 near water, 29361 remaining
+water check: 10 checked, 10 near water, 29351 remaining
+water check: 10 checked, 5 near water, 29341 remaining
+water check: 10 checked, 6 near water, 29331 remaining
+water check: FAILED - Overpass API not available (overpass-api.de: Operation timed out after 90005 milliseconds with 0 bytes received).
+water check: 10 checked, 2 near water, 29321 remaining
+water check: 10 checked, 7 near water, 29311 remaining
+water check: FAILED - Overpass API not available (overpass-api.de: Operation timed out after 90009 milliseconds with 0 bytes received).
+water check: 10 checked, 8 near water, 29301 remaining
+water check: 10 checked, 6 near water, 29291 remaining
+water check: 10 checked, 1 near water, 29281 remaining
+water check: 10 checked, 2 near water, 29271 remaining
+water check: 10 checked, 4 near water, 29261 remaining
+water check: 10 checked, 3 near water, 29251 remaining
+water check: 10 checked, 4 near water, 29241 remaining
+water check: 10 checked, 4 near water, 29231 remaining
+water check: 10 checked, 5 near water, 29221 remaining
+water check: 10 checked, 5 near water, 29211 remaining
+water check: FAILED - Overpass API not available (overpass-api.de: HTTP 502).
+water check: 10 checked, 3 near water, 29201 remaining
+water check: 10 checked, 7 near water, 29191 remaining
+water check: 10 checked, 6 near water, 29181 remaining
+water check: 10 checked, 7 near water, 29171 remaining
+water check: 10 checked, 2 near water, 29161 remaining
+water check: 10 checked, 8 near water, 29151 remaining
+water check: 10 checked, 6 near water, 29141 remaining
+water check: 10 checked, 4 near water, 29131 remaining
+water check: 10 checked, 5 near water, 29121 remaining
+water check: 10 checked, 5 near water, 29111 remaining
+water check: 10 checked, 8 near water, 29101 remaining
+water check: 10 checked, 2 near water, 29091 remaining
+water check: FAILED - Overpass API not available (overpass-api.de: Operation timed out after 90014 milliseconds with 0 bytes received).
+water check: 10 checked, 6 near water, 29081 remaining
+water check: 10 checked, 6 near water, 29071 remaining
+water check: 10 checked, 2 near water, 29061 remaining
+water check: 10 checked, 5 near water, 29051 remaining
+water check: 10 checked, 1 near water, 29041 remaining
+water check: 10 checked, 1 near water, 29031 remaining
+water check: 10 checked, 4 near water, 29021 remaining
+water check: FAILED - Overpass API not available (overpass-api.de: HTTP 200).
+water check: 10 checked, 4 near water, 29011 remaining
+water check: 10 checked, 2 near water, 29001 remaining
+water check: 10 checked, 9 near water, 28991 remaining
+water check: 10 checked, 4 near water, 28981 remaining
+water check: 10 checked, 6 near water, 28971 remaining
+water check: 10 checked, 8 near water, 28961 remaining
+water check: 10 checked, 6 near water, 28951 remaining
+water check: 10 checked, 9 near water, 28941 remaining
+water check: 10 checked, 6 near water, 28931 remaining
+water check: FAILED - Overpass API not available (overpass-api.de: HTTP 502).
+water check: 10 checked, 7 near water, 28921 remaining
+water check: 10 checked, 7 near water, 28911 remaining
+water check: 10 checked, 7 near water, 28901 remaining
+water check: 10 checked, 8 near water, 28891 remaining
+water check: 10 checked, 7 near water, 28881 remaining
+water check: 10 checked, 7 near water, 28871 remaining
+water check: 10 checked, 8 near water, 28861 remaining
+water check: 10 checked, 6 near water, 28851 remaining
