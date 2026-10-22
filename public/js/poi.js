@@ -556,6 +556,10 @@ function addPoiClusterMarker(position, count, bounds) {
     });
 
     google.maps.event.addListener(marker, 'click', function () {
+        // A pinch starting on the bubble is not a tap on it (map-core.js).
+        if (isTouchGestureClick()) {
+            return;
+        }
         // A chained cluster's POIs can spread wider than the screen already
         // shows (neighbor cells merge transitively), so fitBounds() alone may
         // keep the current zoom and the click seems to do nothing - then zoom

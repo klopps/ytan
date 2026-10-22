@@ -1,5 +1,11 @@
 # Erledigt
 
+## Pinch-Zoom springt auf die ganze Erde
+
+~~Wenn ich in der App durch Pinch hinein zoome, kommt es sehr häufig vor, dass statt einer Vergrößerung auf einmal komplett herausgezoomt wird und auf der Karte die gesamte Erde sichtbar ist.~~ (Nur in Gebieten mit vielen POIs/Clustern, App und mobiler Browser.)
+
+Gelöst (2026-10-22): `zoom_changed` rief `updatePoiClustering()` auch mitten im Pinch auf und ersetzte dabei alle Cluster-Bubbles. Ein Finger, der auf einer Bubble angesetzt hatte, behielt deren nun aus dem DOM entfernten Knoten als Touch-Ziel - sein `touchend` erreichte weder die Karte noch das Dokument (gemessen: nach dem Neuaufbau kam kein einziges `touchend` mehr an). Maps hielt den Finger daher für weiter aufgesetzt, der nächste Pinch rechnete gegen die alte Position und zoomte bis Zoom ~1 heraus. Fix in `map-core.js`: `mapTouchCount` (Capture-Listener am Dokument für touchstart/touchend/touchcancel) zählt die Finger auf der Karte; liegt einer auf, setzt `zoom_changed` nur `poiClusteringPending`, neu geclustert wird beim nächsten `idle` (nach der Geste). Maus-/Mausrad-Zoom unverändert. Zusätzlich ignoriert der Cluster-Klick (`poi.js`) einen Klick, der das Ende einer Touch-Geste ist (`isTouchGestureClick()`: zweiter Finger oder Bewegung über die Long-Press-Toleranz) - die Android-WebView meldete einen auf einer Bubble begonnenen Pinch als `gmp-click`, dessen `fitBounds()` dann mitten in der Geste lief. In der Chromium-Touch-Emulation nicht direkt reproduzierbar (dort verwendet Maps Pointer-Events), auf dem Handy bestätigt.
+
 ## Abstandsermittlung zu Gewässern für Shelter
 
 ~~Die derzeitige Lösung zur Abstandsermittlung per OSM ist viel zu langsam, um sie mehrfach zu nutzen. Es muss eine andere Lösung gefunden werden. Im Folgenden ein paar Vorschläge. Entwickele einen Plan, wie die Abstandsberechnung zu den Gewässern deutlich schneller funktionieren kann. Es kann auch eine gänzlich andere Lösung zum Einsatz kommen.~~ (Der ausführliche Vorschlag mit OSM/HydroSHEDS, PostGIS, GeoPandas und Distanz-Raster stand im ursprünglichen Punkt.)

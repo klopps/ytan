@@ -237,6 +237,8 @@ let longPressCancelled = false; // module-level (not just a closure in initLongP
 let longPressPendingOverlay = null; // {handler, event} - set by findLongPressTarget() at 'touchstart'
 let longPressCandidates = []; // every {overlay, handler} registered via attachLongPressContextMenu(), for findLongPressTarget()
 let longPressFireTimer = null; // setTimeout id armed at 'touchstart', see initLongPressTouchTracking()
+let mapTouchCount = 0; // fingers currently on the map, see initLongPressTouchTracking()
+let poiClusteringPending = false; // zoom changed mid-touch, re-cluster on the next 'idle' (initMap())
 let overlayProjection; // OverlayView set in initMap(), exposes getProjection() for pixel<->LatLng conversion
 
 /**
@@ -363,6 +365,21 @@ function shouldSuppressClick() {
         return false;
     }
     return (Date.now() - longPressTouchStartTime) >= LONG_PRESS_DURATION_MS;
+}
+
+/**
+ * True when a 'click' is really the end of a touch gesture (pinch with a
+ * second finger, or a finger that moved past LONG_PRESS_MOVE_TOLERANCE_PX)
+ * rather than a tap. The Android app's WebView reports a pinch whose finger
+ * started on a POI cluster bubble as a gmp-click on that bubble, and its
+ * fitBounds() mid-gesture threw the map out to the whole world (only in
+ * the app, only where clusters cover the screen). longPressCancelled is
+ * reset by the next touchstart, so a later real tap is unaffected; the
+ * time bound keeps a stale flag from swallowing a mouse click much later.
+ */
+function isTouchGestureClick() {
+    return longPressCancelled && longPressTouchStartTime > 0
+        && (Date.now() - longPressTouchStartTime) < 30000;
 }
 
 /**
@@ -595,6 +612,17 @@ function initLongPressTouchTracking() {
             longPressFireTimer = null;
         }
     }
+
+    // Capture phase on the document: these still arrive when the touched
+    // element has been removed meanwhile (they would not bubble from it).
+    document.addEventListener('touchstart', function (domEvent) {
+        mapTouchCount = mapDiv.contains(domEvent.target) ? domEvent.touches.length : 0;
+    }, { capture: true, passive: true });
+    ['touchend', 'touchcancel'].forEach(function (type) {
+        document.addEventListener(type, function (domEvent) {
+            mapTouchCount = domEvent.touches.length;
+        }, { capture: true, passive: true });
+    });
 
     mapDiv.addEventListener('touchstart', function (domEvent) {
         clearLongPressTimer();
@@ -1006,6 +1034,10 @@ function initMap() {
     // (applyPoiTypeVisibility(), poi.js) - refresh after every pan/zoom once
     // zoomed in past the clustering threshold.
     map.addListener('idle', () => {
+        if (poiClusteringPending) {
+            poiClusteringPending = false;
+            updatePoiClustering();
+        }
         if (map.getZoom() >= POI_CLUSTER_ZOOM_THRESHOLD && typeof pois !== 'undefined' && pois.length) {
             applyPoiTypeVisibility();
         }
@@ -1015,7 +1047,18 @@ function initMap() {
         log('zoom changed: ' + map.getZoom(), LOG_DEBUG);
         saveSettings();
         renewVisibleRouteLabels();
-        updatePoiClustering();
+        // Not while fingers are on the map: rebuilding replaces every cluster
+        // bubble (and hides/shows POI markers), and a touch that started on
+        // one of them keeps that now detached element as its target - its
+        // touchend never bubbles to the map, so Maps keeps the finger "down"
+        // and the next pinch measured against the stale position zoomed out
+        // to the whole world (phone, areas full of clusters). Done on the
+        // next 'idle' instead, which Maps fires after the gesture.
+        if (mapTouchCount > 0) {
+            poiClusteringPending = true;
+        } else {
+            updatePoiClustering();
+        }
         updateMeasureToolLabelVisibility();
     });
 
