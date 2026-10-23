@@ -722,6 +722,7 @@ function showPoiInfoWindow(event, i, marker) {
         content += '<h3>' + escapeText(pois[i].name) + '</h3>';
         content +=  renderMarkdown(pois[i].description);
         content += '<div class="infoWindowCoordinates"><i class="material-icons-round">navigation</i>' + formatCoordinates(Number.parseFloat(pois[i].latitude), Number.parseFloat(pois[i].longitude)) + '</div>';
+        content += poiWaterDistanceHtml(pois[i]);
 
         // Lighthouse
         if (pois[i].poitype_id == '14') {
@@ -780,6 +781,31 @@ function showPoiInfoWindow(event, i, marker) {
     } else {
         closePoiInfoWindow(i);
     }
+}
+
+/**
+ * Distances to the nearest sea, river and large lake (poi.water = [sea,
+ * river, lake] in metres from poi_water_distance, each null = farther than
+ * 100 km; null/missing = not computed for this POI) - empty when none known.
+ */
+function poiWaterDistanceHtml(poi) {
+    if (!Array.isArray(poi.water)) {
+        return '';
+    }
+    var parts = [];
+    if (poi.water[0] !== null) {
+        parts.push(t('poi.info.water_sea', { distance: formatDistance(poi.water[0], settings.unit) }));
+    }
+    if (poi.water[1] !== null) {
+        parts.push(t('poi.info.water_river', { distance: formatDistance(poi.water[1], settings.unit) }));
+    }
+    if (poi.water[2] !== null) {
+        parts.push(t('poi.info.water_lake', { distance: formatDistance(poi.water[2], settings.unit) }));
+    }
+    if (parts.length === 0) {
+        return '';
+    }
+    return '<div class="infoWindowWater" title="' + escapeHTML(t('poi.info.water')) + '"><i class="material-icons-round">waves</i>' + parts.join(' · ') + '</div>';
 }
 
 /** True when the POI has a sector light definition (lighthouse.sector_characteristic is not empty). */
@@ -1770,6 +1796,9 @@ function savePoiOnlineWithPhotos(i, id, poiData) {
         if (id !== null) {
             applyPendingPhotoUploadChanges('pois', id);
         }
+
+        // Computed by the server on save (PoiController), not part of the form.
+        poiData.water = answer.data.water !== undefined ? answer.data.water : null;
 
         var index;
         if (i === null) {

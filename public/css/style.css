@@ -3587,6 +3587,13 @@ div.infoWindowCoordinates {
   font-size: 10px;
 }
 
+div.infoWindowWater {
+  margin: -6px 0px 12px 0px;
+  width:100%;
+  color: var(--color-text-secondary);
+  font-size: 10px;
+}
+
 div.poiEditWindowCoordinates {
   width:100%;
   color: var(--color-text-secondary);

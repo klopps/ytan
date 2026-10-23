@@ -71,6 +71,38 @@ final class PoiWaterDistanceTest extends ControllerTestCase
         $this->assertNull($this->distances->find($other), 'type 2 (landing site) is not enabled');
     }
 
+    public function testPoiAnswersCarryTheDistancesAsOneCompactField(): void
+    {
+        $userId = $this->createUser();
+        $auth = $this->authPayload($userId);
+
+        $created = $this->decode($this->pois->create(
+            $this->request('POST', '/x', $auth, ['poitype_id' => 10, 'name' => 'P', 'latitude' => 56.0, 'longitude' => 9.0, 'public' => 1]),
+            $this->response()
+        ))['data'];
+        $this->assertCount(3, $created['water'], 'the answer of create already has what afterSave() computed');
+        $this->assertEqualsWithDelta(100, $created['water'][0], 2);
+        $this->assertEqualsWithDelta(300, $created['water'][1], 2);
+        $this->assertArrayNotHasKey('water_sea_m', $created);
+
+        $other = $this->createPoi($auth, 2, 56.0, 9.0);
+        $list = $this->decode($this->pois->index($this->request('GET', '/x', $auth), $this->response()))['data'];
+        $byId = array_column($list, null, 'id');
+        $this->assertSame($created['water'], $byId[$created['id']]['water']);
+        $this->assertNull($byId[$other]['water'], 'type 2 has nothing stored');
+        $this->assertArrayNotHasKey('water_lake_m', $byId[$other]);
+
+        $shown = $this->decode($this->pois->show($this->request('GET', '/x', $auth), $this->response(), ['id' => $created['id']]))['data'];
+        $this->assertSame($created['water'], $shown['water']);
+
+        $updated = $this->decode($this->pois->update(
+            $this->request('PUT', '/x', $auth, ['poitype_id' => 2, 'name' => 'P', 'latitude' => 56.0, 'longitude' => 9.0, 'public' => 1]),
+            $this->response(),
+            ['id' => $created['id']]
+        ))['data'];
+        $this->assertNull($updated['water'], 'a type without distances answers without them');
+    }
+
     public function testMovingRecomputesAndAChangedTypeDropsTheDistances(): void
     {
         $userId = $this->createUser();

@@ -13,9 +13,9 @@ use Ytan\Service\Water\PoiWaterDistanceService;
  * "Unterstand / Shelter", one POI per shelter - several shelters at one place
  * stay separate POIs, each may have its own booking page. Name (or a generic
  * one), the booking link or website as the POI's link, and a description with
- * the source's facts, the distances to water and the source's attribution.
- * Which entries are imported is decided by the admin's filters (e.g. "sea at
- * most 300 m"); the distances also go to poi_water_distance. Nothing is merged
+ * the source's facts and the source's attribution. Which entries are
+ * imported is decided by the admin's filters (e.g. "sea at most 300 m");
+ * the distances go to poi_water_distance (shown in the POI InfoWindow). Nothing is merged
  * automatically: possible duplicates (ShelterImportRepository::neighbours())
  * are only pointed out in the admin tool, the admin decides.
  */
@@ -30,8 +30,6 @@ final class ShelterImportService
         'kv' => 'Quelle: Kartverket, Turrutebasen (åpne data)',
         'lipas' => 'Quelle: Lipas, Jyväskylän yliopisto (CC BY 4.0)',
     ];
-
-    private const WATER_NAMES = ['sea' => 'Meer', 'river' => 'Fluss', 'lake' => 'See'];
 
     public function __construct(
         private readonly ShelterImportRepository $staging,
@@ -94,15 +92,8 @@ final class ShelterImportService
         if (trim((string) $entry['description']) !== '') {
             $lines[] = trim((string) $entry['description']);
         }
-        $water = [];
-        foreach (ShelterImportRepository::distancesOf($entry) as $kind => $meters) {
-            if ($meters !== null) {
-                $water[] = self::WATER_NAMES[$kind] . ' ' . $meters . ' m';
-            }
-        }
-        if ($water !== []) {
-            $lines[] = 'Abstand zu Gewässern: ' . implode(', ', $water);
-        }
+        // The distances to water are not repeated here: they go to
+        // poi_water_distance and the POI InfoWindow shows them from there.
         $lines[] = self::ATTRIBUTION[$entry['source']] ?? 'Quelle: ' . $entry['source'];
 
         return implode("\n\n", $lines);

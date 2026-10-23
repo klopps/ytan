@@ -379,7 +379,7 @@ final class ShelterImportTest extends ControllerTestCase
         $this->assertSame(['Egernbo', 'Mosebo'], array_column($pois, 'name'), 'two shelters at one place stay two POIs');
         $this->assertSame('https://bookenshelter.dk/egernbo', $pois[0]['url']);
         $this->assertSame('https://bookenshelter.dk/mosebo', $pois[1]['url']);
-        $this->assertMatchesRegularExpression('/Abstand zu Gewässern: Meer \d+ m, Fluss \d+ m, See \d+ m/', $pois[0]['description']);
+        $this->assertStringNotContainsString('Abstand zu Gewässern', $pois[0]['description'], 'the distances are in poi_water_distance, the InfoWindow shows them');
         $this->assertStringContainsString('GeoFA', $pois[0]['description']);
         $this->assertSame('1', (string) $pois[0]['public']);
 

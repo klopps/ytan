@@ -1,5 +1,17 @@
 # Erledigt
 
+## Abstandsermittlung für bereits existierende POIs
+
+~~Für alle exitierenden POIs außer den Typen 2, 6, 9, 14, 16 soll der Gewässerabstand ermittelt und gespeichert werden. Ich benötige nur ein Skript für die einmalige Ausführung auf dev und prod.~~
+
+Gelöst (2026-10-23): Migration `061_water_distance_for_existing_pois.php` rechnet beim nächsten `bin/migrate.php` (also auf Prod automatisch mit dem Deploy) für alle POIs der auf /admin/settings aktivierten Typen (seit Migration 058 alle außer 2, 6, 9, 14, 16) ohne Abstand bzw. mit Abstand aus einem älteren Index die Werte aus - dieselbe Logik wie `php bin/poi-water-distance.php` (`PoiWaterDistanceRepository::poisToCompute()`, `PoiWaterDistanceService::compute()`). Fehlt auf dem Host der Gewässer-Index (`storage/water/water-index.bin`, hochgeladen mit `bin\publish-water.bat`), meldet die Migration das und ändert nichts; dann einmal `php bin/poi-water-distance.php` ausführen, sobald der Index da ist. Auf Dev waren alle schon berechnet (0 offen, Typen 0/1/3/4/5/7/8/10/11/12/13/15 vollständig).
+
+## Gewässerabstand im POI-Fenster anzeigen
+
+~~Für POIs mit gespeichertem Abstand (`poi_water_distance`, alle Typen außer 2, 6, 9, 14, 16 - auf /admin/settings änderbar; bestehende POIs erst nach `php bin/poi-water-distance.php`) im InfoWindow die Abstände zu Meer, Fluss und großem See anzeigen. Dazu die Werte in die POI-Antwort aufnehmen (`PoiRepository::BASE_SELECT` per LEFT JOIN oder eigener Endpunkt) und in `poi.js` darstellen; Texte DE/EN.~~
+
+Gelöst (2026-10-23): `PoiRepository::BASE_SELECT` joint `poi_water_distance` (LEFT JOIN), `PoiController` packt die drei Spalten in ein kompaktes Feld `water` = `[Meer, Fluss, See]` in Metern (einzeln `null` = über 100 km) oder `null`, wenn nichts gespeichert ist (`packWaterDistances()`, für Liste, Einzel-POI, create/update - die Liste ist bewusst schlank gehalten, siehe `data_sources`). create/update lesen den POI nach `PoiWaterDistanceService::afterSave()` neu (`withFreshWaterDistances()`), damit die Antwort die gerade berechneten Werte trägt; `savePoiOnlineWithPhotos()` übernimmt `answer.data.water` ins lokale POI-Objekt (das Formular kennt das Feld nicht). Anzeige im InfoWindow unter den Koordinaten (`poiWaterDistanceHtml()`, poi.js, `div.infoWindowWater`): Icon `waves` + "Meer 39m · Fluss 10.9km · See 85.5km" in der eingestellten Einheit (`formatDistance()`), unbekannte Werte fehlen, ohne Werte keine Zeile. Texte `poi.info.water*` DE/EN, docs/API.md ergänzt, Test `PoiWaterDistanceTest::testPoiAnswersCarryTheDistancesAsOneCompactField`.
+
 ## Pinch-Zoom springt auf die ganze Erde
 
 ~~Wenn ich in der App durch Pinch hinein zoome, kommt es sehr häufig vor, dass statt einer Vergrößerung auf einmal komplett herausgezoomt wird und auf der Karte die gesamte Erde sichtbar ist.~~ (Nur in Gebieten mit vielen POIs/Clustern, App und mobiler Browser.)

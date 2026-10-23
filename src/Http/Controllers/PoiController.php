@@ -56,6 +56,28 @@ final class PoiController extends BaseController
         return ['pois' => $pois, 'sources' => $sources];
     }
 
+    /**
+     * Replaces the joined poi_water_distance columns (water_sea_m/_river_m/
+     * _lake_m) by one compact `water` field: [sea, river, lake] in metres
+     * (each null = farther than 100 km) or null when nothing is stored.
+     * Shown in the POI InfoWindow (poi.js).
+     *
+     * @param array<string, mixed> $poi
+     * @return array<string, mixed>
+     */
+    private static function packWaterDistances(array $poi): array
+    {
+        $water = [];
+        foreach (['water_sea_m', 'water_river_m', 'water_lake_m'] as $column) {
+            $water[] = isset($poi[$column]) ? (int) $poi[$column] : null;
+            unset($poi[$column]);
+        }
+        // A row exists only when computed - but all three can still be null.
+        $poi['water'] = $water === [null, null, null] ? null : $water;
+
+        return $poi;
+    }
+
     public function __construct(
         private readonly PoiRepository $pois,
         private readonly ImageStorageService $images,
@@ -81,6 +103,7 @@ final class PoiController extends BaseController
             default => $this->pois->findPublic($limit, $offset),
         };
 
+        $data = array_map(self::packWaterDistances(...), $data);
         ['pois' => $data, 'sources' => $sources] = self::extractDataSources($data);
         $body = ['data' => $data, 'data_sources' => (object) $sources];
         if ($limit !== null) {
@@ -112,16 +135,16 @@ final class PoiController extends BaseController
             throw new NotFoundException("POI {$args['id']} not found.");
         }
 
-        return $this->json($response, ['data' => $poi]);
+        return $this->json($response, ['data' => self::packWaterDistances($poi)]);
     }
 
     public function create(Request $request, Response $response): Response
     {
         $auth = $this->requireAuthUser($request);
         $poi = $this->pois->create((int) $auth['sub'], $this->jsonBody($request));
-        $this->waterDistances?->afterSave($poi);
+        $poi = $this->withFreshWaterDistances($poi);
 
-        return $this->json($response, ['data' => $poi], 201);
+        return $this->json($response, ['data' => self::packWaterDistances($poi)], 201);
     }
 
     public function update(Request $request, Response $response, array $args): Response
@@ -132,9 +155,27 @@ final class PoiController extends BaseController
         $this->assertOwnerOrAdmin($auth, (int) $existing['user_id']);
 
         $poi = $this->pois->update($id, $this->jsonBody($request));
-        $this->waterDistances?->afterSave($poi, $existing);
+        $poi = $this->withFreshWaterDistances($poi, $existing);
 
-        return $this->json($response, ['data' => $poi]);
+        return $this->json($response, ['data' => self::packWaterDistances($poi)]);
+    }
+
+    /**
+     * Updates poi_water_distance for a saved POI and re-reads the row, so the
+     * answer carries the distances just computed (or dropped).
+     *
+     * @param array<string, mixed> $poi
+     * @param array<string, mixed>|null $before
+     * @return array<string, mixed>
+     */
+    private function withFreshWaterDistances(array $poi, ?array $before = null): array
+    {
+        if ($this->waterDistances === null) {
+            return $poi;
+        }
+        $this->waterDistances->afterSave($poi, $before);
+
+        return $this->pois->findById((int) $poi['id']);
     }
 
     public function delete(Request $request, Response $response, array $args): Response

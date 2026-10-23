@@ -24,12 +24,14 @@ final class PoiRepository
             lh.characteristic, lh.sector_characteristic, lh.international_id, lh.imported_at,
             lh.data_source, lh.source_ref,
             ds.name AS source_name, ds.url AS source_url, ds.license AS source_license,
-            ds.license_url AS source_license_url, ds.attribution AS source_attribution
+            ds.license_url AS source_license_url, ds.attribution AS source_attribution,
+            pwd.sea_m AS water_sea_m, pwd.river_m AS water_river_m, pwd.lake_m AS water_lake_m
         FROM poi p
         LEFT JOIN windshelter wsi ON wsi.poi_id = p.id
         LEFT JOIN portage por ON por.poi_id = p.id
         LEFT JOIN lighthouse lh ON lh.poi_id = p.id
         LEFT JOIN data_source ds ON ds.code = lh.data_source
+        LEFT JOIN poi_water_distance pwd ON pwd.poi_id = p.id
     SQL;
 
     public function __construct(private readonly PDO $db)
