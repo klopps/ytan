@@ -65,5 +65,16 @@ class BuildIndexTest(unittest.TestCase):
         np.testing.assert_allclose(segments[-1][2:], [56.001, 9.001], atol=1e-6)
 
 
+class CoverageTest(unittest.TestCase):
+    def test_poly_file_outer_rings_as_lat_lng(self):
+        text = ("denmark\n1\n   8.0E+00   5.5E+01\n   9.0E+00   5.5E+01\n   9.0E+00   5.6E+01\nEND\n"
+                "!2\n   8.5 55.5\n   8.6 55.5\n   8.6 55.6\nEND\n"
+                "3\n   15.0 55.0\n   15.2 55.0\n   15.2 55.2\nEND\nEND\n")
+        rings = build_index.parse_poly(text)
+        self.assertEqual(2, len(rings), "the hole (!2) is left out")
+        self.assertEqual([[55.0, 8.0], [55.0, 9.0], [56.0, 9.0]], rings[0])
+        self.assertEqual([55.2, 15.2], rings[1][2])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,7 +1,7 @@
 # Water distance index
 
 `storage/water/water-index.bin` holds the water features of Denmark, Norway,
-Sweden and Finland as line segments sorted into a grid, so the distance from a
+Sweden, Finland and Germany as line segments sorted into a grid, so the distance from a
 position to the nearest sea, river and large lake can be looked up in
 milliseconds, on the servers too, without any external request.
 
@@ -21,6 +21,15 @@ milliseconds, on the servers too, without any external request.
 
 Lines are simplified by 5 m (EPSG:3035) before they are written. Distances
 farther than 100 km (`WaterDistanceService::MAX_METERS`) are `null`.
+
+**Covered area**: `water-index.json` carries the countries' borders (Geofabrik
+`.poly`, outer rings as `[[lat, lng], ...]`) as `coverage`. Outside them
+`WaterDistanceService::covers()` is false and there are no distances at all,
+and `PoiWaterDistanceService` stores none (an existing row is deleted) - the
+ring search would otherwise measure to the nearest water that happens to be in
+the index (found 2026-10-23: a harbour in Germany had 21.5 km to the nearest
+Danish coast, before DE was added). A meta file without `coverage` counts as
+covering everything.
 
 ## File format (version 1)
 

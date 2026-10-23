@@ -116,6 +116,30 @@ final class PoiWaterDistanceTest extends ControllerTestCase
         $this->assertNull($this->distances->find($id));
     }
 
+    public function testOutsideTheCoveredCountriesNothingIsStored(): void
+    {
+        $meta = tempnam(sys_get_temp_dir(), 'water-meta');
+        file_put_contents($meta, json_encode(['version' => '2', 'coverage' => [[[55.5, 8.5], [55.5, 9.5], [56.5, 9.5], [56.5, 8.5]]]]));
+        try {
+            $water = new WaterDistanceService(dirname(__DIR__) . '/testdata/water-index-sample.bin', $meta);
+            $service = new PoiWaterDistanceService($water, $this->distances, $this->settings);
+            $auth = $this->authPayload($this->createUser());
+            $inside = $this->createPoi($auth, 10, 56.0, 9.0);
+            $outside = $this->createPoi($auth, 10, 56.0, 8.35);
+            $this->assertNotNull($this->distances->find($outside), 'stored by the uncovered setUp() service');
+
+            $service->compute(['id' => $outside, 'latitude' => 56.0, 'longitude' => 8.35]);
+            $service->compute(['id' => $inside, 'latitude' => 56.0, 'longitude' => 9.0]);
+            $this->assertNull($this->distances->find($outside), 'an old (wrong) value is removed');
+            $this->assertEqualsWithDelta(100, $this->distances->find($inside)['sea_m'], 2);
+
+            $service->store(['id' => $outside, 'latitude' => 56.0, 'longitude' => 8.35], ['sea' => 5, 'river' => 5, 'lake' => 5]);
+            $this->assertNull($this->distances->find($outside), 'staged values are not stored outside either');
+        } finally {
+            unlink($meta);
+        }
+    }
+
     public function testPoisToComputeForTheCli(): void
     {
         $auth = $this->authPayload($this->createUser());

@@ -62,6 +62,29 @@ final class WaterDistanceServiceTest extends TestCase
         }
     }
 
+    public function testOutsideTheCoveredCountriesThereAreNoDistances(): void
+    {
+        $meta = tempnam(sys_get_temp_dir(), 'water-meta');
+        // A square 55.5..56.5 N / 8.5..9.5 E as the only covered area.
+        file_put_contents($meta, json_encode(['version' => '1', 'coverage' => [[[55.5, 8.5], [55.5, 9.5], [56.5, 9.5], [56.5, 8.5]]]]));
+        try {
+            $service = new WaterDistanceService(dirname(__DIR__) . '/testdata/water-index-sample.bin', $meta);
+            $this->assertTrue($service->covers(56.0, 9.0));
+            $this->assertEqualsWithDelta(100, $service->distances(56.0, 9.0)['sea'], 1);
+            // 10 km west of the square: the coast is near, but outside the index's countries.
+            $this->assertFalse($service->covers(56.0, 8.35));
+            $this->assertSame(['sea' => null, 'river' => null, 'lake' => null], $service->distances(56.0, 8.35));
+            $this->assertSame('1', $service->version());
+        } finally {
+            unlink($meta);
+        }
+    }
+
+    public function testWithoutCoverageEverythingCounts(): void
+    {
+        $this->assertTrue($this->service()->covers(10.0, 10.0));
+    }
+
     public function testVersionComesFromTheMetaFile(): void
     {
         $meta = tempnam(sys_get_temp_dir(), 'water-meta');

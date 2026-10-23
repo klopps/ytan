@@ -1,0 +1,21 @@
+12:39:25 DK: downloading https://download.geofabrik.de/europe/denmark.poly
+12:39:25 DK: reading denmark-latest.osm.pbf (496 MB)
+12:40:06 DK: sea 2230 lines, river 4314 lines, lake 71 lines
+12:40:06 NO: downloading https://download.geofabrik.de/europe/norway.poly
+12:40:06 NO: reading norway-latest.osm.pbf (1378 MB)
+12:44:38 NO: sea 229935 lines, river 68861 lines, lake 6837 lines
+12:44:38 SE: downloading https://download.geofabrik.de/europe/sweden.poly
+12:44:38 SE: reading sweden-latest.osm.pbf (927 MB)
+12:46:23 SE: sea 79858 lines, river 18622 lines, lake 16132 lines
+12:46:23 FI: downloading https://download.geofabrik.de/europe/finland.poly
+12:46:23 FI: reading finland-latest.osm.pbf (773 MB)
+12:48:15 FI: sea 92947 lines, river 14706 lines, lake 47031 lines
+12:48:15 DE: downloading https://download.geofabrik.de/europe/germany.poly
+12:48:16 DE: downloading https://download.geofabrik.de/europe/germany-latest.osm.pbf
+12:49:25 DE: reading germany-latest.osm.pbf (4866 MB)
+13:01:05 could not delete C:\dev\www\ytan\storage\water\pbf\germany-latest.osm.pbf.nodes: [WinError 32] Der Prozess kann nicht auf die Datei zugreifen, da sie von einem anderen Prozess verwendet wird: 'C:\\dev\\www\\ytan\\storage\\water\\pbf\\germany-latest.osm.pbf.nodes'
+13:01:05 DE: sea 1338 lines, river 46120 lines, lake 388 lines
+13:02:03 sea: 5075901 segments after simplifying
+13:02:25 river: 2861689 segments after simplifying
+13:02:41 lake: 2584723 segments after simplifying
+13:02:46 written C:\dev\www\ytan\storage\water\water-index.bin (185.2 MB) in 1401 s, version 202610231102

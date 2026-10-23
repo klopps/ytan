@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Ytan\Service\Water;
 
+use Ytan\Service\LighthousePolygon;
+
 /**
  * Distance in metres from a position to the nearest sea (coastline), river or
  * canal (centre line) and large lake (shore, at least 10 km²) - looked up in
@@ -14,6 +16,13 @@ namespace Ytan\Service\Water;
  * farther ring can hold anything nearer than the best segment found; the
  * nearest point of that segment is then measured on the sphere (haversine).
  * Farther than MAX_METERS = no value (null).
+ *
+ * The index only holds the water of its countries (water-index.json's
+ * "countries"), so a position outside their borders ("coverage", Geofabrik's
+ * extract polygons) gets no distances at all: the ring search would otherwise
+ * measure to the nearest water that happens to be in the index (a harbour in
+ * Germany got 21.5 km to the nearest Danish coast). A meta file without
+ * "coverage" (older index, test fixture) counts as covering everything.
  */
 final class WaterDistanceService
 {
@@ -24,7 +33,10 @@ final class WaterDistanceService
 
     private ?WaterIndex $index = null;
     private bool $opened = false;
-    private ?string $version = null;
+    /** @var array<string,mixed>|null water-index.json without "coverage", [] without one */
+    private ?array $meta = null;
+    /** @var list<array{ring: list<array{0:float, 1:float}>, box: array{south:float, west:float, north:float, east:float}}>|null null = everything covered */
+    private ?array $coverage = null;
 
     public function __construct(private readonly string $indexPath, private readonly ?string $metaPath = null)
     {
@@ -39,12 +51,49 @@ final class WaterDistanceService
     /** The index version (water-index.json's "version"), null without one. */
     public function version(): ?string
     {
-        if ($this->version === null && $this->metaPath !== null && is_file($this->metaPath)) {
-            $meta = json_decode((string) file_get_contents($this->metaPath), true);
-            $this->version = is_array($meta) && isset($meta['version']) ? (string) $meta['version'] : null;
+        $meta = $this->meta();
+
+        return isset($meta['version']) ? (string) $meta['version'] : null;
+    }
+
+    /** Whether the index has the water around this position (inside one of its countries). */
+    public function covers(float $lat, float $lng): bool
+    {
+        $this->meta();
+        if ($this->coverage === null) {
+            return true;
+        }
+        foreach ($this->coverage as $area) {
+            $box = $area['box'];
+            if ($lat >= $box['south'] && $lat <= $box['north'] && $lng >= $box['west'] && $lng <= $box['east']
+                && LighthousePolygon::contains($area['ring'], $lat, $lng)
+            ) {
+                return true;
+            }
         }
 
-        return $this->version;
+        return false;
+    }
+
+    /** @return array<string,mixed> */
+    private function meta(): array
+    {
+        if ($this->meta === null) {
+            $meta = $this->metaPath !== null && is_file($this->metaPath)
+                ? json_decode((string) file_get_contents($this->metaPath), true)
+                : null;
+            $this->meta = is_array($meta) ? $meta : [];
+            if (isset($this->meta['coverage']) && is_array($this->meta['coverage'])) {
+                $this->coverage = [];
+                foreach ($this->meta['coverage'] as $ring) {
+                    $ring = array_map(static fn (array $point): array => [(float) $point[0], (float) $point[1]], $ring);
+                    $this->coverage[] = ['ring' => $ring, 'box' => LighthousePolygon::boundingBox($ring)];
+                }
+            }
+            unset($this->meta['coverage']);
+        }
+
+        return $this->meta;
     }
 
     /** @return array{sea:?int, river:?int, lake:?int} */
@@ -52,7 +101,7 @@ final class WaterDistanceService
     {
         $result = ['sea' => null, 'river' => null, 'lake' => null];
         $index = $this->index();
-        if ($index === null) {
+        if ($index === null || !$this->covers($lat, $lng)) {
             return $result;
         }
         foreach (WaterIndex::KINDS as $kind => $name) {

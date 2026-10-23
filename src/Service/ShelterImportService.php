@@ -58,7 +58,7 @@ final class ShelterImportService
             $this->staging->markImported((int) $entry['id'], (int) $poi['id']);
             if ($this->waterDistances !== null) {
                 if ($entry['water_checked_at'] !== null) {
-                    $this->waterDistances->store((int) $poi['id'], ShelterImportRepository::distancesOf($entry));
+                    $this->waterDistances->store($poi, ShelterImportRepository::distancesOf($entry));
                 } else {
                     $this->waterDistances->afterSave($poi);
                 }

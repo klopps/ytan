@@ -58,6 +58,12 @@ final class PoiWaterDistanceService
         if (!$this->water->available()) {
             return false;
         }
+        // Outside the index's countries every value would be wrong - none at all.
+        if (!$this->water->covers((float) $poi['latitude'], (float) $poi['longitude'])) {
+            $this->distances->delete((int) $poi['id']);
+
+            return true;
+        }
         $this->distances->save(
             (int) $poi['id'],
             $this->water->distances((float) $poi['latitude'], (float) $poi['longitude']),
@@ -68,12 +74,17 @@ final class PoiWaterDistanceService
     }
 
     /**
-     * Stores distances computed elsewhere (e.g. while staging an import).
+     * Stores distances computed elsewhere (e.g. while staging an import) -
+     * not for a POI outside the index's countries (see compute()).
      *
+     * @param array<string,mixed> $poi id, latitude, longitude
      * @param array{sea:?int, river:?int, lake:?int} $distances
      */
-    public function store(int $poiId, array $distances): void
+    public function store(array $poi, array $distances): void
     {
-        $this->distances->save($poiId, $distances, $this->water->version());
+        if (!$this->water->covers((float) $poi['latitude'], (float) $poi['longitude'])) {
+            return;
+        }
+        $this->distances->save((int) $poi['id'], $distances, $this->water->version());
     }
 }
