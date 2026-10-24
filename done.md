@@ -1,5 +1,11 @@
 # Erledigt
 
+## Datenfelder zum Herunterladen (Garmin-Uhr), Venu 3S
+
+~~Füge im Menü Garmin-Uhr oberhalb von Abbrechen ein Untermenüpunkt "Datenfelder" hinzu. Klickt man darauf öffnet sich ein Untermenü, über das man das Datenfeld für die unterschiedlichen Uhrenmodelle herunterladen kann.~~
+
+Gelöst (2026-10-24): Profil > Garmin-Uhr hat über "Abbrechen" die Zeile "Datenfelder"; sie öffnet einen eigenen Drawer-Screen (`watch-datafields` in `templates/app.php`, `showWatchDatafields()` in `watch.js`) mit Installationshinweis und einer Zeile je Uhrenmodell, die die `.prg` herunterlädt (als Blob über `downloadBlob()`, in der Android-App also über das Teilen-Menü; `?v=` aus dem Index umgeht den Browser-Cache). Angeboten wird die Variante ohne Schlüssel (`build-watch.bat app`): sie funktioniert für alle - die App schickt die Route, mit Uhr-Schlüssel + `.SET`-Datei holt die Uhr sie selbst. Die Dateien liegen wie die APK in `public/app/watch/` (gitignored, von allen Deploy-Skripten ausgenommen) und werden von `bin\publish-watch.bat [test]` gebaut und hochgeladen: alle Modelle aus `watch/manifest.xml`, dazu `index.json` (`bin/watch-datafields-json.php`, `WatchDatafieldIndex`: Anzeigenamen aus `compiler.json` des SDK ohne ®/™, nach Namen sortiert, "fēnix" wie "fenix"), Upload per tar in `watch.tmp` und Umbenennen. Pro Host ein eigener Satz Builds, weil die Server-URL einkompiliert ist. Dazu die Venu 3S (256 KB für Datenfelder, im Simulator 20 von 252 KB belegt) in `watch/manifest.xml`. Tests: `WatchDatafieldIndexTest`.
+
 ## Gewässerabstand außerhalb des Index falsch, Deutschland ergänzt
 
 ~~Der POI "Edeka Hafenkante" auf prod zeigt 21,5 km Abstand zum Meer. Das kann nicht sein. Ergänze Deutschland. Außerdem sollen für Orte, für die keine Gewässerdaten vorliegen (z. B. Niederlande) keine Abstände berechnet werden, weil dies immer falsche Werte liefert.~~

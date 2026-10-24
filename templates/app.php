@@ -429,6 +429,19 @@
         </div>
       </div>
 
+      <!-- WATCH DATA FIELDS - one level below "Garmin watch" (profile-sub):
+           watch.js's showWatchDatafields() lists the data field downloads
+           per watch model (public/app/watch/index.json, bin\publish-watch.bat). -->
+      <div class="nav-screen nav-screen-off-right" data-nav-screen="watch-datafields">
+        <div class="nav-screen-header">
+          <button type="button" class="nav-back" data-on-click="navMenuBack();"><i class="material-icons-round">arrow_back</i></button>
+          <h3><?= $t('watch.datafields') ?></h3>
+        </div>
+        <div class="nav-screen-body">
+          <div id="watchDatafields"></div>
+        </div>
+      </div>
+
     </div>
 
     <!-- COOKIE MENU ----------------------------------->

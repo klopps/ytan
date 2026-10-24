@@ -173,8 +173,77 @@ function showWatchSection(newToken) {
         if (status.has_token) {
             html += '<button type="button" class="nav-btn-secondary nav-btn-danger" data-on-click="unpairWatch();"><i class="material-icons-round">link_off</i>&nbsp;' + escapeHTML(t('watch.unpair')) + '</button>';
         }
+        html += '<ul class="nav-menu-list">' +
+            profileSubRowHtml('watchDatafieldsBtn', 'showWatchDatafields();', 'file_download', escapeHTML(t('watch.datafields'))) +
+            '</ul>';
         openProfileSub(title, html + navCancelButtonHtml());
     });
+}
+
+/**
+ * "Data fields" screen below "Garmin watch": the data field (.prg, the
+ * key-less build) per watch model to download and copy to the watch.
+ * The files and their index.json are published to public/app/watch/ by
+ * bin\publish-watch.bat, outside the deploy package like the APK.
+ */
+function showWatchDatafields() {
+    const container = document.getElementById('watchDatafields');
+    container.innerHTML = '<div class="nav-form-message">' + escapeHTML(t('watch.loading')) + '</div>' + navCancelButtonHtml();
+    if (navMenuStack[navMenuStack.length - 1] !== 'watch-datafields') {
+        navMenuGoTo('watch-datafields');
+    }
+
+    fetch(watchDatafieldsBaseUrl() + 'index.json', { cache: 'no-store' })
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error('HTTP ' + response.status);
+            }
+            return response.json();
+        })
+        .then((index) => {
+            const fields = (index && index.fields) || [];
+            if (fields.length === 0) {
+                throw new Error('no data fields published');
+            }
+            let html = '<div class="nav-form-message">' + escapeHTML(t('watch.datafields_hint')) + '</div><ul class="nav-menu-list">';
+            fields.forEach((field) => {
+                html += '<li><button type="button" class="nav-menu-row" data-on-click="downloadWatchDatafield(\'' + escapeHTML(field.file) + '\', \'' + escapeHTML(index.version || '') + '\');">' +
+                    '<i class="material-icons-round nav-menu-row-icon">watch</i>' +
+                    '<span class="nav-menu-row-labels">' + escapeHTML(field.name) + '</span>' +
+                    '<i class="material-icons-round nav-menu-row-chevron">file_download</i></button></li>';
+            });
+            container.innerHTML = html + '</ul>' + navCancelButtonHtml();
+        })
+        .catch((err) => {
+            log('showWatchDatafields() failed', LOG_WARN, err);
+            container.innerHTML = '<div class="nav-form-message">' + escapeHTML(t('watch.datafields_missing')) + '</div>' + navCancelButtonHtml();
+        });
+}
+
+/** public/app/watch/ of this site (subdirectory deployments included). */
+function watchDatafieldsBaseUrl() {
+    return (window.YTAN_API_BASE || '/api/v1').replace(/\/api\/v1$/, '') + '/app/watch/';
+}
+
+/**
+ * Downloads one data field - fetched as a Blob so the Android app can hand
+ * it to the share sheet (helper.js's downloadBlob()). The version makes a
+ * newly published build bypass the browser cache.
+ */
+async function downloadWatchDatafield(file, version) {
+    if (!/^ytan-[a-z0-9]+\.prg$/.test(file)) {
+        return;
+    }
+    try {
+        const response = await fetch(watchDatafieldsBaseUrl() + file + '?v=' + encodeURIComponent(version));
+        if (!response.ok) {
+            throw new Error('HTTP ' + response.status);
+        }
+        await downloadBlob(await response.blob(), file);
+    } catch (err) {
+        log('downloadWatchDatafield() failed', LOG_ERROR, err);
+        showToast(t('watch.datafield_failed'), 'error');
+    }
 }
 
 /**
