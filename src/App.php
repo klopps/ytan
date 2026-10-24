@@ -288,7 +288,7 @@ final class App
             $c->get(RequestThrottle::class)
         ));
         $c->set(GeocodingController::class, fn ($c) => new GeocodingController($c->get(GeocodingService::class), $c->get(RequestThrottle::class)));
-        $c->set(WatchController::class, fn ($c) => new WatchController(new WatchLinkRepository($pdo), $c->get(RouteRepository::class), new WatchKeyVault((string) $_ENV['JWT_SECRET'])));
+        $c->set(WatchController::class, fn ($c) => new WatchController(new WatchLinkRepository($pdo), $c->get(RouteRepository::class), $c->get(TourRepository::class), new WatchKeyVault((string) $_ENV['JWT_SECRET'])));
 
         // Route callables [SomeController::class, 'method'] are resolved
         // through $c, i.e. only for the route that matched.

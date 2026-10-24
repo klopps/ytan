@@ -1151,12 +1151,14 @@ function createRoute(i) {
 function showRouteContextMenu(event, i) {
     log('showRouteContextMenu(event, ' + i +')', LOG_DEBUG);
 
-    // Edit/delete/share/tour/watch stay owner-or-admin only; the GPX export
-    // has its own rights (canExportRoute()), so a visitor or a user who
-    // doesn't own the route may get a menu with just that item.
+    // Edit/delete/share/tour stay owner-or-admin only; the GPX export has
+    // its own rights (canExportRoute()) and the watch takes every route the
+    // user sees (WatchController::canView()), so a visitor or a user who
+    // doesn't own the route may get a menu with just those items.
     var canEdit = user.id !== null && ((routes[i].user_id == user.id) || (user.is_admin === true));
     var canExport = canExportRoute(i);
-    if (!canEdit && !canExport) {
+    var canWatch = user.id !== null && isWatchUsable();
+    if (!canEdit && !canExport && !canWatch) {
         return;
     }
 
@@ -1183,10 +1185,10 @@ function showRouteContextMenu(event, i) {
         if (routes[i].public == 1) {
             content += '<div class="contextMenuItem" data-on-click="shareRoute(' + i + ');"><i class="material-icons-round">share</i>' + t('route.context.share') + '</div>';
         }
+    }
 
-        if (isWatchUsable()) {
-            content += '<div class="contextMenuItem" data-on-click="routeContextMenuSendToWatch(' + i + ');"><i class="material-icons-round">watch</i>' + t('route.context.send_to_watch') + '</div>';
-        }
+    if (canWatch) {
+        content += '<div class="contextMenuItem" data-on-click="routeContextMenuSendToWatch(' + i + ');"><i class="material-icons-round">watch</i>' + t('route.context.send_to_watch') + '</div>';
     }
 
     if (canExport) {
@@ -1384,7 +1386,7 @@ function showRouteInfoWindow(event, i) {
             '</div>' +
             '<div id="addToTourMenu" class="addToTourMenu" style="display:none;"></div>';
         } else if (isWatchUsable()) {
-            // Someone else's (public) route - the watch is the only action.
+            // Someone else's route (public, or in a tour) - the watch is the only action.
             content += '<div class="infoWindowBottom"><div class="lefthalf">' + watchRouteIconHtml(i) + '</div></div>';
         }
     }

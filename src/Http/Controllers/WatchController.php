@@ -7,6 +7,7 @@ namespace Ytan\Http\Controllers;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Ytan\Domain\Route\RouteRepository;
+use Ytan\Domain\Tour\TourRepository;
 use Ytan\Domain\Watch\WatchLinkRepository;
 use Ytan\Exception\ForbiddenException;
 use Ytan\Exception\UnauthorizedException;
@@ -31,6 +32,7 @@ final class WatchController extends BaseController
     public function __construct(
         private readonly WatchLinkRepository $links,
         private readonly RouteRepository $routes,
+        private readonly TourRepository $tours,
         private readonly WatchKeyVault $vault,
     ) {
     }
@@ -98,7 +100,7 @@ final class WatchController extends BaseController
         }
 
         $route = $this->routes->findById($routeId);
-        if (!$this->canView($route, (int) $auth['sub'], (bool) ($auth['is_admin'] ?? false))) {
+        if (!$this->canView($route, (int) $auth['sub'], (bool) ($auth['is_admin'] ?? false), (bool) ($auth['tour_manage'] ?? false))) {
             throw new ForbiddenException();
         }
         $this->links->setRoute((int) $auth['sub'], $routeId, $unit);
@@ -184,7 +186,7 @@ final class WatchController extends BaseController
             $candidate = $this->routes->findById((int) $link['route_id']);
             // The route may have been made private by its owner since it was
             // sent to the watch - then the watch must not see it any more.
-            if ($this->canView($candidate, (int) $link['user_id'], (bool) $link['is_admin'])) {
+            if ($this->canView($candidate, (int) $link['user_id'], (bool) $link['is_admin'], (bool) $link['tour_manage'])) {
                 $route = $candidate;
             }
         }
@@ -199,9 +201,23 @@ final class WatchController extends BaseController
         return $payload;
     }
 
-    private function canView(array $route, int $userId, bool $isAdmin): bool
+    /**
+     * Every route the user can see on the map: public, own, admin - or part
+     * of a tour the user may see (public, own, admin, tour_manage), whose
+     * private routes the tour mode shows too (RouteController::index()).
+     */
+    private function canView(array $route, int $userId, bool $isAdmin, bool $tourManage): bool
     {
-        return (int) $route['public'] === 1 || (int) $route['user_id'] === $userId || $isAdmin;
+        if ((int) $route['public'] === 1 || (int) $route['user_id'] === $userId || $isAdmin) {
+            return true;
+        }
+        foreach ($this->tours->findByRoute((int) $route['id']) as $tour) {
+            if ((int) $tour['public'] === 1 || (int) $tour['user_id'] === $userId || $tourManage) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function statusData(int $userId): array

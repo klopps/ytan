@@ -209,7 +209,7 @@ endpoint require a logged-in user (JWT).
   derived from `JWT_SECRET`) next to its hash.
 - `DELETE /watch/token` - unpair; the device endpoint then answers 401.
 - `PUT /watch/route` `{"route_id", "unit": "metric"|"nautical"}` - the route
-  the watch shows. Must be the caller's own, public, or the caller is admin.
+  the watch shows. Must be visible to the caller: own, public, the caller is admin, or part of a tour the caller may see (public, own, `tour_manage`).
 - `DELETE /watch/route`
 - `PUT /watch/colors` `{"colors": {"bearing"|"distance"|"text"|"north": {"dark": "#rrggbb", "light": "#rrggbb"}}}` -
   the data field's text colors on a dark and on a light watch background

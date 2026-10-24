@@ -7,6 +7,7 @@ namespace Ytan\Tests\Integration;
 use Ytan\Domain\User\UserRepository;
 use Ytan\Domain\Watch\WatchLinkRepository;
 use Ytan\Domain\Route\RouteRepository;
+use Ytan\Domain\Tour\TourRepository;
 use Ytan\Exception\UnauthorizedException;
 use Ytan\Exception\ValidationException;
 use Ytan\Http\Controllers\AuthController;
@@ -93,7 +94,7 @@ final class DefaultSpeedTest extends ControllerTestCase
     public function testWatchGetsTheSpeedInMetersPerSecondOnlyWhenSet(): void
     {
         $userId = $this->createUser();
-        $watch = new WatchController(new WatchLinkRepository($this->pdo), new RouteRepository($this->pdo), new WatchKeyVault('test-secret'));
+        $watch = new WatchController(new WatchLinkRepository($this->pdo), new RouteRepository($this->pdo), new TourRepository($this->pdo), new WatchKeyVault('test-secret'));
         $token = $this->decode($watch->createToken($this->request('POST', '/api/v1/watch/token', $this->authPayload($userId)), $this->response()))['data']['token'];
         $device = fn () => json_decode((string) $watch->deviceRoute($this->request('GET', '/api/v1/watch/device/route')->withHeader('X-Watch-Token', $token), $this->response())->getBody(), true);
 

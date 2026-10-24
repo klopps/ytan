@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Ytan\Tests\Integration;
 
 use Ytan\Domain\Route\RouteRepository;
+use Ytan\Domain\Tour\TourRepository;
 use Ytan\Domain\Watch\WatchLinkRepository;
 use Ytan\Exception\ForbiddenException;
 use Ytan\Exception\UnauthorizedException;
@@ -21,7 +22,7 @@ final class WatchControllerTest extends ControllerTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->controller = new WatchController(new WatchLinkRepository($this->pdo), new RouteRepository($this->pdo), new WatchKeyVault('test-secret'));
+        $this->controller = new WatchController(new WatchLinkRepository($this->pdo), new RouteRepository($this->pdo), new TourRepository($this->pdo), new WatchKeyVault('test-secret'));
     }
 
     private function points(): string
@@ -147,6 +148,45 @@ final class WatchControllerTest extends ControllerTestCase
 
         $this->expectException(ForbiddenException::class);
         $this->sendToWatch($userId, $routeId);
+    }
+
+    /** A private route of someone else inside a tour, as the tour mode shows it. */
+    private function privateRouteInTour(int $owner, bool $tourPublic): int
+    {
+        $tours = new TourRepository($this->pdo);
+        $routeId = $this->createRoute($owner, ['public' => 0, 'points' => $this->points()]);
+        $tour = $tours->create($owner, ['name' => 'Schlei-Woche']);
+        $tours->addRoute((int) $tour['id'], $routeId);
+        if ($tourPublic) {
+            $this->pdo->exec('UPDATE tour SET public = 1 WHERE id = ' . (int) $tour['id']);
+        }
+
+        return $routeId;
+    }
+
+    public function testPrivateRouteOfAPublicTourCanBeSentAndIsServed(): void
+    {
+        $owner = $this->createUser();
+        $userId = $this->createUser();
+        $routeId = $this->privateRouteInTour($owner, true);
+        $token = $this->createToken($userId);
+
+        $this->assertSame($routeId, $this->sendToWatch($userId, $routeId)['data']['route']['id']);
+        $this->assertSame([5450000, 1030000, 5460000, 1040000], $this->deviceRoute($token)['p']);
+    }
+
+    public function testPrivateRouteOfAPrivateTourNeedsTourManage(): void
+    {
+        $owner = $this->createUser();
+        $manager = $this->createUser(['tour_manage' => 1]);
+        $routeId = $this->privateRouteInTour($owner, false);
+        $token = $this->createToken($manager);
+
+        $this->assertSame($routeId, $this->sendToWatch($manager, $routeId, 'metric', ['tour_manage' => true])['data']['route']['id']);
+        $this->assertSame([5450000, 1030000, 5460000, 1040000], $this->deviceRoute($token)['p']);
+
+        $this->expectException(ForbiddenException::class);
+        $this->sendToWatch($this->createUser(), $routeId);
     }
 
     public function testRouteMadePrivateLaterIsNoLongerServed(): void

@@ -34,7 +34,7 @@ final class WatchLinkRepository
     public function findByToken(string $token): ?array
     {
         $stmt = $this->db->prepare(
-            'SELECT watch_link.*, user.is_admin, user.default_speed_kmh FROM watch_link JOIN user ON user.id = watch_link.user_id WHERE watch_link.token_hash = ?'
+            'SELECT watch_link.*, user.is_admin, user.tour_manage, user.default_speed_kmh FROM watch_link JOIN user ON user.id = watch_link.user_id WHERE watch_link.token_hash = ?'
         );
         $stmt->execute([self::hashToken($token)]);
         $row = $stmt->fetch();
@@ -50,7 +50,7 @@ final class WatchLinkRepository
     public function findWithUserDataByUser(int $userId): ?array
     {
         $stmt = $this->db->prepare(
-            'SELECT watch_link.route_id, watch_link.unit, watch_link.colors, watch_link.updated_at, user.id AS user_id, user.is_admin, user.default_speed_kmh FROM user LEFT JOIN watch_link ON watch_link.user_id = user.id WHERE user.id = ?'
+            'SELECT watch_link.route_id, watch_link.unit, watch_link.colors, watch_link.updated_at, user.id AS user_id, user.is_admin, user.tour_manage, user.default_speed_kmh FROM user LEFT JOIN watch_link ON watch_link.user_id = user.id WHERE user.id = ?'
         );
         $stmt->execute([$userId]);
         $row = $stmt->fetch();

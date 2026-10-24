@@ -1,5 +1,11 @@
 # Erledigt
 
+## Alle sichtbaren Routen an die Garmin-Uhr senden
+
+~~Das Senden an die Garmin Uhr funktioniert bei Nutzern die nicht Admin sind nur für eigene Routen. Sie sollen aber alle für sie sichtbaren Routen an die Uhr senden können.~~
+
+Gelöst (2026-10-24): Zwei Ursachen. (1) Das Routen-Kontextmenü (`route.js`, `showRouteContextMenu()`) bot "An Uhr senden" nur bei `canEdit` (Eigentümer/Admin) an; jetzt eigener Schalter `canWatch` (angemeldet + `isWatchUsable()`), unabhängig vom Bearbeitungsrecht - das Info-Fenster hatte das Uhr-Symbol für fremde Routen schon. (2) `WatchController::canView()` ließ nur eigene, öffentliche oder (Admin) alle Routen zu; der Tour-Modus zeigt aber auch die privaten Routen des Tour-Erstellers einer für den Nutzer sichtbaren Tour (`RouteController::index()` mit `?tour_id=`), deren Senden mit 403 scheiterte. Jetzt zusätzlich: Route gehört zu einer Tour, die öffentlich ist, dem Nutzer gehört oder die er mit `tour_manage` sehen darf (`TourRepository::findByRoute()`, `WatchController` bekommt das Repository; `WatchLinkRepository::findByToken()`/`findWithUserDataByUser()` liefern dafür `tour_manage` des Nutzers mit). Dieselbe Prüfung gilt beim Ausliefern an die Uhr (`payloadFor()`), eine später privat gemachte Tour nimmt die Route also wieder von der Uhr. Tests: `WatchControllerTest` (private Route einer öffentlichen Tour; private Tour nur mit `tour_manage`).
+
 ## Datenfelder zum Herunterladen (Garmin-Uhr), Venu 3S
 
 ~~Füge im Menü Garmin-Uhr oberhalb von Abbrechen ein Untermenüpunkt "Datenfelder" hinzu. Klickt man darauf öffnet sich ein Untermenü, über das man das Datenfeld für die unterschiedlichen Uhrenmodelle herunterladen kann.~~
