@@ -71,6 +71,44 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
 </div>
 <div class="card mt-3">
     <div class="card-body">
+        <h2 class="h6"><?= $t('admin.settings.route_animation_title') ?></h2>
+        <p class="text-muted small"><?= $t('admin.settings.route_animation_hint') ?></p>
+        <div class="row g-3">
+            <div class="col-sm-6 col-lg">
+                <label for="settingRouteAnimationColor" class="form-label"><?= $t('admin.settings.route_animation_color') ?></label>
+                <input type="color" class="form-control form-control-color w-100" id="settingRouteAnimationColor" value="<?= htmlspecialchars($routeAnimation['color'], ENT_QUOTES) ?>">
+            </div>
+            <div class="col-sm-6 col-lg">
+                <label for="settingRouteAnimationLineWidth" class="form-label"><?= $t('admin.settings.route_animation_line_width') ?></label>
+                <div class="input-group">
+                    <input type="number" min="1" max="30" step="1" class="form-control" id="settingRouteAnimationLineWidth" value="<?= (int) $routeAnimation['line_width'] ?>">
+                    <span class="input-group-text">px</span>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg">
+                <label for="settingRouteAnimationZoom" class="form-label"><?= $t('admin.settings.route_animation_zoom') ?></label>
+                <input type="number" min="3" max="21" step="0.1" class="form-control" id="settingRouteAnimationZoom" value="<?= htmlspecialchars((string) $routeAnimation['zoom'], ENT_QUOTES) ?>">
+            </div>
+            <div class="col-sm-6 col-lg">
+                <label for="settingRouteAnimationEndDelay" class="form-label"><?= $t('admin.settings.route_animation_end_delay') ?></label>
+                <div class="input-group">
+                    <input type="number" min="0" max="600" step="0.1" class="form-control" id="settingRouteAnimationEndDelay" value="<?= htmlspecialchars((string) $routeAnimation['end_delay_s'], ENT_QUOTES) ?>">
+                    <span class="input-group-text">s</span>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg">
+                <label for="settingRouteAnimationSpeed" class="form-label"><?= $t('admin.settings.route_animation_speed') ?></label>
+                <div class="input-group">
+                    <input type="number" min="10" max="2000" step="10" class="form-control" id="settingRouteAnimationSpeed" value="<?= (int) $routeAnimation['speed'] ?>">
+                    <span class="input-group-text">px/s</span>
+                </div>
+            </div>
+        </div>
+        <button type="button" class="btn btn-primary mt-3" id="settingRouteAnimationSaveBtn" data-on-click="saveRouteAnimationSettings();"><?= $t('common.save') ?></button>
+    </div>
+</div>
+<div class="card mt-3">
+    <div class="card-body">
         <h2 class="h6"><?= $t('admin.settings.water_distance_title') ?></h2>
         <p class="text-muted small"><?= $t('admin.settings.water_distance_hint') ?></p>
         <div class="row g-1" id="settingWaterDistanceTypes">

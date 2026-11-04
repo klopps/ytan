@@ -1,5 +1,73 @@
 # Erledigt
 
+## Routenanimation: am Ende offen bleiben, zum Start springen
+
+~~Ist die Animation am Ende angelangt, soll der Animationsmodus nicht automatisch beendet werden. Die Steuerung soll eine Option enthalten, an den Start zurückzuspringen.~~
+
+Gelöst (2026-11-04): Nach dem letzten Wegpunkt und der eingestellten Pause (Admin "Pause am Ende") wird die Animation nicht mehr geschlossen. Die Kamera der Animationskarte schwenkt stattdessen in 2 s sanft in die Ansicht von vorher, also gerade von oben mit Position und Zoom der Hauptkarte (`routeAnimationShowOverview()`/`routeAnimationOverviewStep()` in route-animation.js). So bleibt die ursprüngliche Anforderung "danach die Karte von oben wie vor dem Start" erfüllt. Linie und Marker bleiben sichtbar. Danach steht die Steuerung auf ⏸. Geschlossen wird die Animation nur noch über "Animation beenden" oder Escape. Neu vorne in der Leiste ist ⏮ "Zum Start" (`routeAnimationRestart()`, Taste Pos1/Home). Er setzt alle Linien, Marker, Kamera und Neigung auf den Anfang zurück und spielt vorwärts weiter; war die Animation mitten in der Route pausiert, bleibt sie pausiert. ▶ nach dem Ende spielt ebenfalls von vorn. ◀ aus der Endansicht folgt der Route wieder rückwärts. Die gewählte Geschwindigkeit bleibt erhalten. Die Leiste hat jetzt 7 Knöpfe; unter 480 px Breite sind sie 38 px groß, darüber 44 px, damit sie bei 390 px passt. Der Admin-Hinweistext ist angepasst. Test: `route-animation.spec.js` "at the end ... stays open, swings to the view from before, and jumps back to the start".
+
+## Routenanimation rückwärts abspielen
+
+~~Ich möchte auch die Möglchkeit haben, die Animation rückwärts laufen zu lassen.~~
+
+Gelöst (2026-11-04): Die Leiste unten hat jetzt eine Transportsteuerung "◀ ⏸ ▶ | − 1× +" (rückwärts, Pause, vorwärts; der aktive Zustand ist hervorgehoben, `aria-pressed`). Tasten: ← und →, die Leertaste hält an bzw. setzt in der letzten Richtung fort. Alles läuft über `routeAnimationSetState(paused, direction)` in route-animation.js. `routeAnimationStep()` arbeitet in beide Richtungen: Rückwärts sinkt die Strecke entlang der Route, und `routeAnimationDrawTo()` entfernt die wieder passierten Stützpunkte, die Linie schrumpft also. Der Kameraschwenk zwischen zwei Routen einer Tour läuft umgekehrt. Die Kameraperspektive bleibt dabei gleich, wie beim Zurückspulen eines Films: Die Kamera blickt weiter in Vorwärtsrichtung der Route, die Route läuft unter ihr zurück. Anfangs drehte sich die Kamera beim Umschalten um ~180° in die Rückwärtsrichtung, das war nicht gewollt. Gemessen an Tour 31: Heading 340° vor dem Umschalten, danach 337-342°. `routeAnimationSyncMarkers()` hält genau auf jeder fertigen Route einen Endmarker und nimmt ihn rückwärts wieder weg. Rückwärts aus der Pause am Ende wird der End-Timer gestoppt. Am Anfang angekommen hält die Animation von selbst an, ▶ startet sie wieder vorwärts. Der Pause-Knopf aus dem vorigen Punkt ist jetzt Teil dieser Steuerung (kein Umschalter mehr). Geprüft an Tour 31 (4 Routen): vorwärts bis Route 3, rückwärts bis zum Start (0 Marker, alle Linien zurückgenommen), wieder vorwärts bis zum Ende (4 Marker). Tests in `route-animation.spec.js`: rückwärts vom Ende, und Pause/Leertaste/rückwärts bis zum Start mit selbständigem Anhalten.
+
+## Routenanimation pausieren
+
+~~Die Animation soll auch pausiert werden können.~~
+
+Gelöst (2026-11-04): Vorne in der Geschwindigkeitsleiste unten ("⏸ | − 1× +") sitzt ein Pause-/Play-Knopf (`routeAnimationTogglePause()` in route-animation.js, auch mit der Leertaste; Symbol, Titel und `aria-pressed` wechseln; inzwischen ersetzt durch ◀ ⏸ ▶, siehe "Routenanimation rückwärts abspielen"). Pausiert läuft kein `requestAnimationFrame`, und die Uhr steht. Beim Fortsetzen wird `lastTime` zurückgesetzt, damit die Kamera nicht um die Pausenzeit springt. Wird in der Pause nach dem letzten Wegpunkt pausiert, hält auch der End-Timer an; beim Fortsetzen beginnt die eingestellte Pause neu. Geschwindigkeit und "Animation beenden" funktionieren auch im pausierten Zustand. Test: `route-animation.spec.js` "can be paused and resumed" (Strecke bleibt stehen, Leertaste setzt fort, kein Sprung).
+
+## Abspielgeschwindigkeit der Routenanimation
+
+~~Die Standardabspielgeschwindigkeit muss höher werden. Füge auf der Oberfläche Buttons hinzu, mit der man die Abspielgeschwindigkeit erhöhen und verringern kann. Die Standardabspielgeschwindigkeit soll im Admin-Bereich konfigurierbar sein.~~
+
+Gelöst (2026-11-04): Die bisher fest eingebauten 90 px/s sind jetzt die Admin-Einstellung "Standardgeschwindigkeit" in der Karte "Routen- und Tourenanimation" auf /admin/settings (`app_settings.route_animation_speed`, Migration 065, Standard 250 px/s, also knapp dreimal so schnell; erlaubt sind 10-2000). Gemessen wird in Bildschirmpixeln pro Sekunde bei der eingestellten Zoomstufe, damit die Geschwindigkeit auf dem Bildschirm unabhängig von Zoom und Breitengrad gleich wirkt. `SettingsRepository::routeAnimationSettings()` liefert den Wert als `speed` mit, `PUT /settings/route-animation` verlangt und prüft ihn. Die Begrenzung bleibt: Eine lange Tour wird bei 1× so beschleunigt, dass sie in 120 s passt. Die Testtour mit 4 Routen dauerte damit 64 s statt 126 s. Während der Animation sitzt unten mittig eine Pille "− 1× +" (`routeAnimationSlower()`/`routeAnimationFaster()`, auch mit den Tasten − und +). Sie multipliziert die Standardgeschwindigkeit mit einem Faktor aus `ROUTE_ANIMATION_SPEED_FACTORS` (0,25× bis 8×); am Rand ist der jeweilige Knopf deaktiviert. Eine Änderung wirkt sofort auf die laufende Animation, jeder Start beginnt wieder bei 1×. Tests: `SettingsControllerTest` (Standardwert, Speichern, Grenzen) und `route-animation.spec.js` (Faktor, Label, deaktivierter Knopf).
+
+## Animierte Routen- und Tourenpräsentation
+
+~~Für Touren und Routen sollen alle Benutzer eine Animation anzeigen können. Bei Routen über das Kontextmenü der Route "Zeige Routenanimation"; bei Touren im aktiven Tourmodus über einen Playbutton im tourModeBadge links neben dem Schließenkreuz. Die Route bzw. die Routen einer Tour werden aus einer Perspektive von schräg oben hinten verfolgt; die Linien werden mit einer im Adminbereich einstellbaren Farbe und Linienstärke fortschreitend überzeichnet, die Perspektive folgt der Route, der Zoomlevel ist im Adminbereich einstellbar. Am letzten Wegpunkt einer Route wird ein Positionsmarker gesetzt. Nach dem letzten Wegpunkt wird nach einer im Adminbereich einstellbaren Zeitspanne (Sekunden mit Nachkommastellen) die Karte wieder direkt von oben in Position und Zoomstufe wie vor dem Start angezeigt.~~
+
+Gelöst (2026-11-04): `public/js/route-animation.js`.
+- **Start**: Kontextmenü-Eintrag "Zeige Routenanimation" für alle (auch abgemeldet; `showRouteContextMenu()` öffnet deshalb jetzt immer), Playbutton `.tour-mode-badge-play` im `#tourModeBadge` (`playTourAnimation()`: im Tour-Modus enthält `routes[]` genau die Routen der Tour in Tour-Reihenfolge, `RouteRepository::findByTour()`).
+- **Eigene Vektorkarte**: Neigung und Drehung gibt es in Google Maps nur mit dem VECTOR-Renderer; die Hauptkarte rendert über ihre Map ID als RASTER (gemessen: `getRenderingType()`, `moveCamera({tilt: 60})` bleibt bei 0). Sie umzustellen hätte alle Overlays (Radar-/Wind-Canvas, Labels) betroffen, darum baut die Animation eine eigene, temporäre Vektorkarte im Vollbild-Element `#routeAnimation` (z-index 105, über Toolbar und Menü, unter den Panels; `panelOpened()`/`panelClosed()`) und verwirft sie am Ende. Die Hauptkarte bewegt sich dabei nie - das ist die geforderte Rückkehr zu Position und Zoomstufe von vorher, direkt von oben. Jede Animation ist ein zusätzlicher Kartenaufruf (Google-Abrechnung "Dynamic Maps").
+- **CSP**: der Vektor-Renderer kompiliert WebAssembly; ohne `wasm-unsafe-eval` in `script-src` blieb die Vektorkarte leer (getestet). Ergänzt in `ContentSecurityPolicy.php` (mit Zustimmung des Users) - erlaubt nur WebAssembly, kein `eval()`; `ContentSecurityPolicyTest` prüft weiterhin, dass kein `unsafe-eval` drin ist.
+- **Ablauf**: Kamera auf dem Kopf der Linie, Neigung 60° (in 1,5 s eingeblendet), Richtung = Peilung zu einem Punkt 120 px voraus, geglättet; Geschwindigkeit 90 px/s bei der eingestellten Zoomstufe, eine lange Tour wird auf höchstens 120 s beschleunigt; zwischen zwei Routen einer Tour fährt die Kamera in höchstens 2 s zum nächsten Start (ohne Linie). Die ganze Route liegt in ihrer eigenen Farbe darunter (bei aktivem Glätten die geglätteten Punkte wie auf der Karte), die Animationslinie wird darüber gezeichnet. Am letzten Wegpunkt jeder Route ein Pin in der Animationsfarbe; nach dem letzten wartet sie die eingestellte Pause und blendet aus. "Animation beenden" (oben rechts) bzw. Escape bricht jederzeit ab. Ohne WebGL fällt Maps auf Raster zurück, dann folgt die Kamera der Route von direkt oben.
+- **Admin**: Karte "Routen- und Tourenanimation" auf /admin/settings (Linienfarbe, Linienstärke 1-30 px, Zoomstufe 3-21 mit einer Nachkommastelle, Pause am Ende 0-600 s), `PUT /settings/route-animation` (`SettingsController::updateRouteAnimation()`), `app_settings.route_animation_*` (Migration 064; Standard #FF6A00, 6 px, 15, 2 s), im SPA als `window.YTAN_ROUTE_ANIMATION`.
+- **Tests**: PHPUnit `SettingsControllerTest` (Standardwerte, Speichern, 8 ungültige Eingaben, nur Admin), `ContentSecurityPolicyTest`; e2e `route-animation.spec.js` (Kontextmenü -> Vektorkarte geneigt, Linie, Endmarker, Toolbar versteckt; nach "beenden" Hauptkarte unverändert). Headless Chromium hat ohne `--use-gl=angle` kein WebGL (dann Raster), die Spec setzt das per Datei. Live auf Dev geprüft, mobil (390x760) und Desktop: eine Route (abgebrochen) und Testtour 13 mit 4 Routen komplett (126 s, 4 Pins, Karte danach wie vorher).
+
+## Campingplatz-Import Europa
+
+~~Ich möchte Campingplätze, ähnlich wie die Shelter und Vereine, importieren können. Dabei möchte ich auswählen können, dass nur Campingplätze mit einem maximalen Abstand von x-Metern zu Gewässern, wie bereits beim Shelter-Import, berücksichtigt werden. Mögliche Quellen: OpenCampingMap / OpenStreetMap, camping.info. Suche weitere freiverwendbare Quellen für Campingplätze und deren Detailinformationen und mache einen Vorschlag zur Umsetzung.~~
+
+Gelöst (2026-10-27): **Quellenrecherche**:
+- **OSM `tourism=camp_site`** (ODbL) ist die einzige freie Quelle für ganz Europa: rund 49.000 Plätze in der EU-27 (z. B. DE 8.362, FR 12.968, DK 1.984), mit Detail-Tags (website, phone, fee, tents/caravans/motorhome/cabins, toilets/shower/drinking_water/power_supply, capacity, opening_hours, stars, operator, `camp_site=basic|standard|serviced|deluxe`, `backcountry`, `addr:*`). OpenCampingMap stellt nur diese Daten dar.
+- **camping.info**: keine offene API, keine Lizenz; die AGB der Schwesterseite Stellplatz.info verbieten die Weiterverwendung von Inhalten. Nur mit Erlaubnis nutzbar.
+- **DATAtourisme (FR, Licence Ouverte 2.0)** hat französische Plätze mit Details, braucht aber einen Account oder API-Antrag und ist unvollständig. **Lipas (FI)** hat vermutlich einen Typ "Leirintäalue". Beide bei Bedarf später.
+- Amtliche Campingplatz-Verzeichnisse für DK/SE/NO/DE gibt es nicht; GeoFA/NVV/Kartverket führen nur Plätze für wildes Zelten.
+
+Entscheidung des Users: nur OSM, eigenes Tool.
+
+**Umsetzung** nach dem Muster des Shelter-Imports:
+- Staging-Tabelle `campsite_import` (Migration 063), `CampsiteImportRepository`, `CampsiteOsmMapper`, `CampsiteOsmImportService` (ein europäisches Land je Overpass-Abfrage, `ClubOsmImportService::EUROPE`, 30-s-Abstand über `OverpassThrottle`), `CampsiteImportService`, `CampsiteImportFile` (Transferdatei `ytan-campsite-list`, trägt die Abstände), `CampsiteImportController`.
+- Admin-Tool `/admin/campsite-import` (`admin-campsite-import.js`, Seitenleiste "Campingplatz-Import").
+- CLI `php bin/import-campsites.php [CC ...] | distances [--all]`: ohne Argumente ganz Europa, ~25 Minuten.
+
+**Abbildung**:
+- `camp_site=basic` oder `backcountry=yes` wird POI-Typ 1 "Zeltplatz", alles andere Typ 11 "Campingplatz (kommerziell)".
+- Ohne Namen heißt ein Platz "Campingplatz/Zeltplatz {Ort}, {Straße}" (Nachtrag 2026-10-27, vorher wurden Plätze ohne Namen und `addr:city` übersprungen - DK: 407 von 1.656). Ort = `addr:city`/`addr:place`, sonst der nächste `place=city/town/village/hamlet/suburb`-Knoten im Umkreis von 10 km; Straße = `addr:street`, sonst die nächste benannte Straße (`highway=*` außer Autobahnen) im Umkreis von 200 m; ein Teil allein, wenn der andere fehlt; ganz ohne beides "Campsite". Orte und Straßen kommen in derselben Overpass-Abfrage mit (`around` nur um die namenlosen Plätze), `CampsiteSurroundings` sucht den nächsten über ein 0,1°-Raster. Die Abfrage dauert dadurch für DK ~2,5 min, daher HTTP-Timeout 330 s (`CampsiteOsmImportService::REQUEST_TIMEOUT_SECONDS`, `CurlOverpassClient::fromSetting()` hat dafür einen zweiten Parameter). DK: alle 1.656 gestaget, 79 der 407 mit Straße, kein "Campsite".
+- Die Beschreibung enthält die OSM-Fakten auf Deutsch plus ODbL-Quellenzeile, die Website wird zur `url`.
+- Für die Filter gibt es Flags `tents`/`caravans` (auch Wohnmobil)/`cabins`.
+- Mögliches Duplikat = ein POI vom Typ 1/11 im Umkreis ±0,002° (≈ 220 m, weil Campingplätze Flächen sind und OSM den Mittelpunkt liefert). "Alle auswählen" lässt solche Einträge weg.
+- Die Abstände zu Meer/Fluss/See kommen beim Laden aus dem Gewässer-Index und gehen beim Import nach `poi_water_distance`. Der Index gilt nur für DK/NO/SE/FI/DE; die Erweiterung ist ein eigener todo-Punkt.
+
+**Windschatten**: Typ 1/11 verlangte bisher immer einen WSI-Code. Importierte Plätze bekommen `direction` = null: `PoiRepository` akzeptiert ein explizites null als "unbekannt", legt keine `windshelter`-Zeile an und zeigt kein WSI-Symbol (wie bei 4 Alt-Campingplätzen ohne WSI). So entsteht kein ausgedachter Code wie "0000000000000000" (= "kein Windschutz").
+
+**Getestet**:
+- `CampsiteImportTest` (Mapper, Abstände, Filter, Duplikate, Import Typ 11/1 ohne WSI, `poi_water_distance`, Transferdatei).
+- Echter Lauf auf Dev: DK mit 1.249 Plätzen, davon 433 mit Meer ≤ 300 m. Tool mobil und am Desktop geprüft.
+- 2 Plätze als private POIs importiert (#4451, #4452).
+
 ## Alle sichtbaren Routen an die Garmin-Uhr senden
 
 ~~Das Senden an die Garmin Uhr funktioniert bei Nutzern die nicht Admin sind nur für eigene Routen. Sie sollen aber alle für sie sichtbaren Routen an die Uhr senden können.~~

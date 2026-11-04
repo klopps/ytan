@@ -98,6 +98,34 @@ final class SettingsRepository
     }
 
     /**
+     * Route/tour animation (route-animation.js): line colour (#RRGGBB) and
+     * width (px), the camera's zoom level and the pause after the last
+     * waypoint before the map returns to the view from before (seconds), and
+     * the default speed (screen px per second at that zoom; migration 065) -
+     * /admin/settings, injected into the SPA as window.YTAN_ROUTE_ANIMATION.
+     *
+     * @return array{color: string, line_width: int, zoom: float, end_delay_s: float, speed: int}
+     */
+    public function routeAnimationSettings(): array
+    {
+        $row = $this->db->query('SELECT route_animation_color, route_animation_line_width, route_animation_zoom, route_animation_end_delay_s, route_animation_speed FROM app_settings WHERE id = 1')->fetch();
+
+        return [
+            'color' => (string) $row['route_animation_color'],
+            'line_width' => (int) $row['route_animation_line_width'],
+            'zoom' => (float) $row['route_animation_zoom'],
+            'end_delay_s' => (float) $row['route_animation_end_delay_s'],
+            'speed' => (int) $row['route_animation_speed'],
+        ];
+    }
+
+    public function setRouteAnimationSettings(string $color, int $lineWidth, float $zoom, float $endDelaySeconds, int $speed): void
+    {
+        $stmt = $this->db->prepare('UPDATE app_settings SET route_animation_color = ?, route_animation_line_width = ?, route_animation_zoom = ?, route_animation_end_delay_s = ?, route_animation_speed = ? WHERE id = 1');
+        $stmt->execute([$color, $lineWidth, $zoom, $endDelaySeconds, $speed]);
+    }
+
+    /**
      * The POI types whose distance to water is computed and stored
      * (poi_water_distance, PoiWaterDistanceService) - /admin/settings.
      *

@@ -1154,13 +1154,11 @@ function showRouteContextMenu(event, i) {
     // Edit/delete/share/tour stay owner-or-admin only; the GPX export has
     // its own rights (canExportRoute()) and the watch takes every route the
     // user sees (WatchController::canView()), so a visitor or a user who
-    // doesn't own the route may get a menu with just those items.
+    // doesn't own the route may get a menu with just those items. The
+    // animation (route-animation.js) is for everybody, so the menu always opens.
     var canEdit = user.id !== null && ((routes[i].user_id == user.id) || (user.is_admin === true));
     var canExport = canExportRoute(i);
     var canWatch = user.id !== null && isWatchUsable();
-    if (!canEdit && !canExport && !canWatch) {
-        return;
-    }
 
     log('Show contextMenu', LOG_DEBUG);
 
@@ -1186,6 +1184,8 @@ function showRouteContextMenu(event, i) {
             content += '<div class="contextMenuItem" data-on-click="shareRoute(' + i + ');"><i class="material-icons-round">share</i>' + t('route.context.share') + '</div>';
         }
     }
+
+    content += '<div class="contextMenuItem" data-on-click="routeContextMenuAnimate(' + i + ');"><i class="material-icons-round">play_circle_outline</i>' + t('route.context.animate') + '</div>';
 
     if (canWatch) {
         content += '<div class="contextMenuItem" data-on-click="routeContextMenuSendToWatch(' + i + ');"><i class="material-icons-round">watch</i>' + t('route.context.send_to_watch') + '</div>';

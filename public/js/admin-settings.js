@@ -60,6 +60,26 @@ function saveRouteLabelFontSizeRange() {
     });
 }
 
+/** Colour, line width, zoom level, end pause and default speed of the route/tour animation (route-animation.js). */
+function saveRouteAnimationSettings() {
+    var btn = document.getElementById('settingRouteAnimationSaveBtn');
+    var body = {
+        color: document.getElementById('settingRouteAnimationColor').value,
+        line_width: parseInt(document.getElementById('settingRouteAnimationLineWidth').value, 10),
+        zoom: parseFloat(document.getElementById('settingRouteAnimationZoom').value),
+        end_delay_s: parseFloat(document.getElementById('settingRouteAnimationEndDelay').value),
+        speed: parseInt(document.getElementById('settingRouteAnimationSpeed').value, 10)
+    };
+    btn.disabled = true;
+    Ytan.put('/settings/route-animation', body).then(function () {
+        showAdminToast(t('common.saved'), 'success');
+    }).catch(function (err) {
+        showAdminToast(t('common.save_failed', { error: err.message }), 'error');
+    }).finally(function () {
+        btn.disabled = false;
+    });
+}
+
 /** The POI types whose distance to water is computed (poi_water_distance). */
 function saveWaterDistancePoiTypes() {
     var btn = document.getElementById('settingWaterDistanceSaveBtn');

@@ -38,6 +38,7 @@
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_GPX_EXPORT_PUBLIC = <?= $gpxExportPublic ? 'true' : 'false' ?>;</script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_TRACK_DISTANCE_FILTER_PRESETS = <?= json_encode($trackDistanceFilterPresets) ?>;</script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_ROUTE_LABEL_FONT_SIZE_RANGE = <?= json_encode($routeLabelFontSizeRange) ?>;</script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_ROUTE_ANIMATION = <?= json_encode($routeAnimation) ?>;</script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_LOCALE = "<?= htmlspecialchars($translator->locale(), ENT_QUOTES) ?>";</script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_TRANSLATIONS = <?= json_encode($translator->all(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;</script>
     <!-- Must be declared before applyStoredTheme() runs below (right after
@@ -86,6 +87,7 @@
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/track-recorder.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/track-recorder.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/area.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/area.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/tour.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/tour.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/route-animation.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/route-animation.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/tour-admin.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/tour-admin.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/gpx-import.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/gpx-import.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/user.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/user.js') ?>"></script>
@@ -565,12 +567,30 @@
       </div>
     </div>
 
+    <!-- ROUTE/TOUR ANIMATION (route-animation.js): its own temporary VECTOR map
+         (tilt/heading need it), built on start and removed at the end, so
+         the main map below is never touched. -->
+    <div id="routeAnimation" class="route-animation" style="display:none;">
+      <div id="routeAnimationMap" class="route-animation-map"></div>
+      <div class="route-animation-speed" role="group" aria-label="<?= $t('animation.speed') ?>">
+        <button type="button" id="routeAnimationRestart" data-on-click="routeAnimationRestart();" title="<?= $t('animation.restart') ?>" aria-label="<?= $t('animation.restart') ?>"><i class="material-icons-round">skip_previous</i></button>
+        <button type="button" id="routeAnimationBackward" class="route-animation-backward" data-on-click="routeAnimationPlayBackward();" title="<?= $t('animation.backward') ?>" aria-label="<?= $t('animation.backward') ?>" aria-pressed="false"><i class="material-icons-round">play_arrow</i></button>
+        <button type="button" id="routeAnimationPauseBtn" data-on-click="routeAnimationPause();" title="<?= $t('animation.pause') ?>" aria-label="<?= $t('animation.pause') ?>" aria-pressed="false"><i class="material-icons-round">pause</i></button>
+        <button type="button" id="routeAnimationForward" class="route-animation-forward" data-on-click="routeAnimationPlayForward();" title="<?= $t('animation.forward') ?>" aria-label="<?= $t('animation.forward') ?>" aria-pressed="true"><i class="material-icons-round">play_arrow</i></button>
+        <button type="button" id="routeAnimationSlower" data-on-click="routeAnimationSlower();" title="<?= $t('animation.slower') ?>" aria-label="<?= $t('animation.slower') ?>"><i class="material-icons-round">remove</i></button>
+        <span id="routeAnimationSpeedLabel" class="route-animation-speed-label" aria-live="polite">1&times;</span>
+        <button type="button" id="routeAnimationFaster" data-on-click="routeAnimationFaster();" title="<?= $t('animation.faster') ?>" aria-label="<?= $t('animation.faster') ?>"><i class="material-icons-round">add</i></button>
+      </div>
+      <button type="button" class="route-animation-stop" data-on-click="stopRouteAnimation();"><i class="material-icons-round">close</i><?= $t('animation.stop') ?></button>
+    </div>
+
     <div id="tourModeBadge" class="tour-mode-badge" style="display:none;">
       <i class="material-icons-round tour-mode-badge-icon">explore</i>
       <div class="tour-mode-badge-text">
         <span id="tourModeBadgeName" class="tour-mode-badge-name"></span>
         <span class="tour-mode-badge-sub"><?= $t('app.tour_mode.label') ?></span>
       </div>
+      <div class="tour-mode-badge-play" role="button" title="<?= htmlspecialchars($t('app.tour_mode.play'), ENT_QUOTES) ?>" aria-label="<?= htmlspecialchars($t('app.tour_mode.play'), ENT_QUOTES) ?>" data-on-click="playTourAnimation();"><i class="material-icons-round">play_arrow</i></div>
       <div class="tour-mode-badge-close" data-on-click="exitTourMode();"><i class="material-icons-round">close</i></div>
     </div>
 

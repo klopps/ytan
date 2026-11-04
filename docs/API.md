@@ -42,7 +42,7 @@ just without the limit applied, so a client can compute page count from it.
 | GET | `/pois?scope=public\|mine\|mine_public\|all` | scope-dependent | `mine`/`mine_public`/`all` require auth; `all` requires `is_admin`; see Pagination above. The rows carry `data_source` (code) but not the joined `source_name/url/license/license_url/attribution` of single-POI responses - those come once per source in a top-level `data_sources: {code: {name, url, license, license_url, attribution}}` (`{}` when none). Every POI row (list, single, create/update answers) carries `water`: `[sea, river, lake]` distances in metres from `poi_water_distance` (each `null` = farther than 100 km), or `null` when none are stored; create/update answer with the values just computed |
 | GET | `/pois/bounds` | - | `{max_lat, min_lat, max_lng, min_lng}` across all POIs |
 | GET | `/pois/{id}` | - | |
-| POST | `/pois` | required | body: `poitype_id, name, description, public, latitude, longitude, url`, plus `direction` (camps/campsites, 16 chars of `0`/`1`/`2`) or `characteristic`/`sector_characteristic`/`international_id` (lighthouses; `international_id` is stored without spaces and kept as is when a request leaves it out; a lighthouse in a response also carries `imported_at`, the time of the lighthouse list import that created or overwrote it - `null` for one drawn by hand - which an ordinary edit keeps) |
+| POST | `/pois` | required | body: `poitype_id, name, description, public, latitude, longitude, url`, plus `direction` (camps/campsites, 16 chars of `0`/`1`/`2`; an explicit `null` = wind shelter not known, no WSI is stored - used by the campsite import) or `characteristic`/`sector_characteristic`/`international_id` (lighthouses; `international_id` is stored without spaces and kept as is when a request leaves it out; a lighthouse in a response also carries `imported_at`, the time of the lighthouse list import that created or overwrote it - `null` for one drawn by hand - which an ordinary edit keeps) |
 | PUT | `/pois/{id}` | required, owner or admin | same body as POST |
 | DELETE | `/pois/{id}` | required, owner or admin | |
 
@@ -173,6 +173,19 @@ Staged shelters and huts of Denmark, Norway, Sweden and Finland (`shelter_import
 | GET | `/admin/shelter-import/export` | admin | - | transfer file `{format: "ytan-shelter-list", version: 2, exported_at, entries: [{source, source_ref, name, kind, country, description, website, latitude, longitude, water_checked, sea_m, river_m, lake_m}]}` |
 | POST | `/admin/shelter-import/file` | admin | body = the transfer file (version 1 files are read without their water fields, the distances are computed) | adds/refreshes entries (same `source` + `source_ref`), keeps their imported state; `data`: `inserted`, `updated` |
 
+## Campsite import (admin only)
+
+Staged campsites from OpenStreetMap (`tourism=camp_site`, `campsite_import` table, filled by the admin tool `/admin/campsite-import` or `bin/import-campsites.php`), one European country per load. `category`: `campsite` (imported as POI type 11 "Campingplatz (kommerziell)") or `basic` (`camp_site=basic` or `backcountry=yes`, imported as type 1 "Zeltplatz"). An element without `name` is named "Campingplatz/Zeltplatz {addr:city}"; without a town either it is skipped. `place` = `addr:city` (else `addr:place`). `tents`, `caravans` (caravans OR motorhome), `cabins` (cabins, else static_caravans): `1` yes, `0` no, `null` not tagged. `sea_m`, `river_m`, `lake_m`, `water_checked_at` as in the shelter import - the water index only covers DK/NO/SE/FI/DE, elsewhere the distances are `null`.
+
+| Method | Path | Auth | Body / query | Notes |
+|---|---|---|---|---|
+| GET | `/admin/campsite-import` | admin | filters `name`, `place`, `description` (substring), `country`, `category`, `tents`/`caravans`/`cabins` (`yes`/`no`), `max_sea`, `max_river`, `max_lake`, `max_any` (metres, at most), `water` (`checked`/`unchecked`), `status` (`open`/`imported`), `duplicate` (`yes`/`no`: a POI of type 1 or 11 - not the entry's own - within about 220 m); `limit`, `offset` | every row has `neighbours`: `[{id, name, poitype_id}]` (the possible duplicates). `meta`: `total`, `open`, `unchecked`, `water_index`, `limit`, `offset`, `countries` |
+| GET | `/admin/campsite-import/ids` | admin | same filters | ids of ALL matches ("select all"; the tool adds `status=open`, and `duplicate=no` unless the admin picked a duplicate filter) |
+| POST | `/admin/campsite-import/osm` | admin | `country` (ISO 3166-1 code of a European country, `ClubOsmImportService::EUROPE`) | loads ALL the country's `tourism=camp_site`; at most one Overpass request per 30 seconds (429 `lighthouse_import.osm_too_soon`). unnamed sites get "Campingplatz/Zeltplatz {town}, {street}" (address, else nearest place within 10 km / named street within 200 m) or "Campsite"; the request can take a few minutes. `data`: `fetched`, `skipped` (the same element twice or no position), `inserted`, `updated` |
+| POST | `/admin/campsite-import` | admin | `ids` (non-empty), `public` (bool) | creates a POI of type 11 or 1 for every selected open entry: name, website as `url`, description with the OSM facts (category, stars, tents/caravans/motorhomes/cabins, facilities, pitches, fee, opening hours, phone, e-mail, operator, address) and the ODbL attribution, `direction` `null` (no WSI); the distances go to `poi_water_distance`. Nothing is merged automatically. `data`: `imported`, `skipped` |
+| GET | `/admin/campsite-import/export` | admin | - | transfer file `{format: "ytan-campsite-list", version: 1, exported_at, entries: [{source, source_ref, name, category, country, place, description, website, tents, caravans, cabins, latitude, longitude, water_checked, sea_m, river_m, lake_m}]}` |
+| POST | `/admin/campsite-import/file` | admin | body = the transfer file | adds/refreshes entries (same `source` + `source_ref`), keeps their imported state; `data`: `inserted`, `updated` |
+
 ### Distance to water per POI
 
 `poi_water_distance` (`poi_id`, `sea_m`, `river_m`, `lake_m`, `index_version`, `computed_at`) is filled for POIs of the types in `app_settings.water_distance_poitypes` (since migration 058 all types except 2, 6, 9, 14, 16) whenever such a POI is created or moved through `POST /pois` / `PUT /pois/{id}`; a POI changed to a type that isn't enabled loses its row. Not part of any response yet (display: todo.md).
@@ -180,6 +193,14 @@ Staged shelters and huts of Denmark, Norway, Sweden and Finland (`shelter_import
 | Method | Path | Auth | Body / query | Notes |
 |---|---|---|---|---|
 | PUT | `/settings/water-distance-poitypes` | admin | `poitypes` (list of POI type ids 0-16) | `data`: `water_distance_poitypes` (sorted, unique) |
+
+### Route/tour animation settings
+
+Read by the SPA as `window.YTAN_ROUTE_ANIMATION` (`{color, line_width, zoom, end_delay_s, speed}`, `app_settings` columns of migrations 064/065; defaults `#FF6A00`, 6, 15.0, 2.00, 250).
+
+| Method | Path | Auth | Body / query | Notes |
+|---|---|---|---|---|
+| PUT | `/settings/route-animation` | admin | `color` (`#RRGGBB`), `line_width` (whole px 1-30), `zoom` (3-21, rounded to 0.1), `end_delay_s` (seconds 0-600, rounded to 0.01), `speed` (default playback speed, whole screen px per second at that zoom, 10-2000) | `data`: the stored values (colour upper-case); 422 for anything else |
 
 ## Lighthouse duplicates (admin only)
 

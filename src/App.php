@@ -242,6 +242,22 @@ final class App
                 $c->get(\Ytan\Service\Water\WaterDistanceService::class)
             );
         });
+        $c->set(\Ytan\Domain\CampsiteImport\CampsiteImportRepository::class, fn ($c) => new \Ytan\Domain\CampsiteImport\CampsiteImportRepository($pdo, $c->get(\Ytan\Service\Water\WaterDistanceService::class)));
+        $c->set(\Ytan\Http\Controllers\CampsiteImportController::class, function ($c) use ($rootDir) {
+            $staging = $c->get(\Ytan\Domain\CampsiteImport\CampsiteImportRepository::class);
+
+            return new \Ytan\Http\Controllers\CampsiteImportController(
+                $staging,
+                new \Ytan\Service\CampsiteImportService($staging, $c->get(PoiRepository::class), $c->get(\Ytan\Service\Water\PoiWaterDistanceService::class)),
+                new \Ytan\Service\CampsiteOsmImportService(
+                    CurlOverpassClient::fromSetting((string) ($_ENV['OVERPASS_ENDPOINTS'] ?? ''), \Ytan\Service\CampsiteOsmImportService::REQUEST_TIMEOUT_SECONDS),
+                    $staging,
+                    new \Ytan\Service\Campsite\CampsiteOsmMapper(),
+                    new \Ytan\Service\OverpassThrottle($rootDir . '/storage/overpass-last-request')
+                ),
+                $c->get(\Ytan\Service\Water\WaterDistanceService::class)
+            );
+        });
         $c->set(LighthouseDuplicateController::class, fn ($c) => new LighthouseDuplicateController(
             new LighthouseDuplicateService(
                 $c->get(PoiRepository::class),
@@ -465,6 +481,7 @@ final class App
         $app->put('/api/v1/settings/water-distance-poitypes', [SettingsController::class, 'updateWaterDistancePoiTypes']);
         $app->put('/api/v1/settings/track-distance-filter', [SettingsController::class, 'updateTrackDistanceFilterPresets']);
         $app->put('/api/v1/settings/route-label-font-size-range', [SettingsController::class, 'updateRouteLabelFontSizeRange']);
+        $app->put('/api/v1/settings/route-animation', [SettingsController::class, 'updateRouteAnimation']);
         $app->get('/api/v1/settings/radar', [RadarSettingsController::class, 'show']);
         $app->put('/api/v1/settings/radar', [RadarSettingsController::class, 'update']);
         $app->post('/api/v1/settings/radar/run', [RadarSettingsController::class, 'run']);
@@ -483,6 +500,7 @@ final class App
             $gpxExportPublic = $c->get(SettingsRepository::class)->gpxExportPublic();
             $trackDistanceFilterPresets = $c->get(SettingsRepository::class)->trackDistanceFilterPresets();
             $routeLabelFontSizeRange = $c->get(SettingsRepository::class)->routeLabelFontSizeRange();
+            $routeAnimation = $c->get(SettingsRepository::class)->routeAnimationSettings();
             $appVersion = 'dev';
             $versionFile = $rootDir . '/VERSION';
             if (is_file($versionFile)) {
@@ -730,6 +748,27 @@ final class App
         $app->get('/api/v1/admin/shelter-import/export', [\Ytan\Http\Controllers\ShelterImportController::class, 'exportFile']);
         $app->post('/api/v1/admin/shelter-import/file', [\Ytan\Http\Controllers\ShelterImportController::class, 'importFile']);
 
+        // Admin tool: campsites from OpenStreetMap (one European country per
+        // load), filtered by their distance to water and imported as POIs of
+        // type 11 or 1 (CampsiteImportController).
+        $app->get('/admin/campsite-import', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
+            ob_start();
+            $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
+            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
+            $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
+            $mapsApiKey = $_ENV['MAPS_API_KEY'] ?? '';
+            require $rootDir . '/templates/admin-campsite-import.php';
+            $res->getBody()->write(ob_get_clean());
+
+            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
+        });
+        $app->get('/api/v1/admin/campsite-import', [\Ytan\Http\Controllers\CampsiteImportController::class, 'index']);
+        $app->get('/api/v1/admin/campsite-import/ids', [\Ytan\Http\Controllers\CampsiteImportController::class, 'ids']);
+        $app->post('/api/v1/admin/campsite-import/osm', [\Ytan\Http\Controllers\CampsiteImportController::class, 'loadOsm']);
+        $app->post('/api/v1/admin/campsite-import', [\Ytan\Http\Controllers\CampsiteImportController::class, 'import']);
+        $app->get('/api/v1/admin/campsite-import/export', [\Ytan\Http\Controllers\CampsiteImportController::class, 'exportFile']);
+        $app->post('/api/v1/admin/campsite-import/file', [\Ytan\Http\Controllers\CampsiteImportController::class, 'importFile']);
+
         // Admin tool: finds lighthouses that lie close together and merges the
         // ones the admin says are the same (LighthouseDuplicateController).
         $app->get('/admin/lighthouse-duplicates', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
@@ -757,6 +796,7 @@ final class App
             $gpxExportPublic = $c->get(SettingsRepository::class)->gpxExportPublic();
             $trackDistanceFilterPresets = $c->get(SettingsRepository::class)->trackDistanceFilterPresets();
             $routeLabelFontSizeRange = $c->get(SettingsRepository::class)->routeLabelFontSizeRange();
+            $routeAnimation = $c->get(SettingsRepository::class)->routeAnimationSettings();
             $waterDistancePoiTypes = $c->get(SettingsRepository::class)->waterDistancePoiTypes();
             require $rootDir . '/templates/admin-settings.php';
             $res->getBody()->write(ob_get_clean());

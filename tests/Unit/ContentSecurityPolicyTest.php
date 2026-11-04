@@ -63,7 +63,8 @@ final class ContentSecurityPolicyTest extends TestCase
         $this->assertStringContainsString("object-src 'none'", $policy);
         $this->assertStringContainsString("frame-ancestors 'self'", $policy);
         $this->assertStringContainsString('report-uri /ytan/public/api/v1/csp-report', $policy);
-        $this->assertStringNotContainsString('unsafe-eval', $policy);
+        $this->assertStringNotContainsString("'unsafe-eval'", $policy, 'never eval() - only WebAssembly for the Maps vector renderer');
+        $this->assertStringContainsString("'wasm-unsafe-eval'", $policy);
     }
 
     public function testJsonResponseGetsNoPolicy(): void

@@ -212,6 +212,11 @@ final class PoiRepository
         $type = (int) ($data['poitype_id'] ?? 0);
 
         if (in_array($type, [self::TYPE_CAMP, self::TYPE_CAMPSITE], true)) {
+            // An explicit null = wind shelter not known (e.g. imported campsites):
+            // no windshelter row, so the map shows no WSI icon instead of a wrong one.
+            if (array_key_exists('direction', $data) && $data['direction'] === null) {
+                return;
+            }
             $direction = $data['direction'] ?? '';
             if (preg_match('/^[012]{16}$/', (string) $direction) !== 1) {
                 throw new ValidationException('direction must be a 16-character string of 0/1/2.');
@@ -266,8 +271,12 @@ final class PoiRepository
         $type = (int) ($data['poitype_id'] ?? 0);
 
         if (in_array($type, [self::TYPE_CAMP, self::TYPE_CAMPSITE], true)) {
-            $stmt = $this->db->prepare('REPLACE INTO windshelter (poi_id, direction) VALUES (?, ?)');
-            $stmt->execute([$poiId, $data['direction']]);
+            if ($data['direction'] === null) {
+                $this->db->prepare('DELETE FROM windshelter WHERE poi_id = ?')->execute([$poiId]);
+            } else {
+                $stmt = $this->db->prepare('REPLACE INTO windshelter (poi_id, direction) VALUES (?, ?)');
+                $stmt->execute([$poiId, $data['direction']]);
+            }
         }
 
         if ($type === self::TYPE_LIGHTHOUSE) {

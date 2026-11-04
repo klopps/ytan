@@ -156,4 +156,60 @@ final class SettingsControllerTest extends ControllerTestCase
             $this->response()
         );
     }
+
+    public function testRouteAnimationHasDefaultsAndPersistsNewValues(): void
+    {
+        $repository = new SettingsRepository($this->pdo);
+        $this->assertSame(['color' => '#FF6A00', 'line_width' => 6, 'zoom' => 15.0, 'end_delay_s' => 2.0, 'speed' => 250], $repository->routeAnimationSettings(), 'migration 064/065 defaults');
+
+        $response = $this->controller->updateRouteAnimation(
+            $this->request('PUT', '/api/v1/settings/route-animation', $this->authPayload($this->createUser(), ['is_admin' => true]),
+                ['color' => '#00aa33', 'line_width' => 9, 'zoom' => '16.25', 'end_delay_s' => 1.5, 'speed' => '400']),
+            $this->response()
+        );
+
+        $decoded = $this->decode($response);
+        $this->assertSame(200, $decoded['status']);
+        $expected = ['color' => '#00AA33', 'line_width' => 9, 'zoom' => 16.3, 'end_delay_s' => 1.5, 'speed' => 400];
+        $this->assertSame($expected, $decoded['data'], 'colour upper-cased, zoom rounded to one decimal');
+        $this->assertSame($expected, $repository->routeAnimationSettings());
+    }
+
+    /** @return iterable<string, array{0: array<string,mixed>}> */
+    public static function invalidRouteAnimationBodies(): iterable
+    {
+        $valid = ['color' => '#FF6A00', 'line_width' => 6, 'zoom' => 15, 'end_delay_s' => 2, 'speed' => 250];
+        yield 'colour name' => [['color' => 'red'] + $valid];
+        yield 'short colour' => [['color' => '#F60'] + $valid];
+        yield 'width 0' => [['line_width' => 0] + $valid];
+        yield 'width with decimals' => [['line_width' => 2.5] + $valid];
+        yield 'zoom too far out' => [['zoom' => 2] + $valid];
+        yield 'zoom too far in' => [['zoom' => 22] + $valid];
+        yield 'negative delay' => [['end_delay_s' => -1] + $valid];
+        yield 'delay missing' => [array_diff_key($valid, ['end_delay_s' => 0])];
+        yield 'speed too slow' => [['speed' => 9] + $valid];
+        yield 'speed too fast' => [['speed' => 2001] + $valid];
+        yield 'speed missing' => [array_diff_key($valid, ['speed' => 0])];
+    }
+
+    /** @dataProvider invalidRouteAnimationBodies */
+    public function testUpdateRouteAnimationRejectsInvalidValues(array $body): void
+    {
+        $this->expectException(ValidationException::class);
+
+        $this->controller->updateRouteAnimation(
+            $this->request('PUT', '/api/v1/settings/route-animation', $this->authPayload($this->createUser(), ['is_admin' => true]), $body),
+            $this->response()
+        );
+    }
+
+    public function testUpdateRouteAnimationRejectsANonAdmin(): void
+    {
+        $this->expectException(ForbiddenException::class);
+
+        $this->controller->updateRouteAnimation(
+            $this->request('PUT', '/api/v1/settings/route-animation', $this->authPayload(1, ['is_admin' => false]), ['color' => '#FF6A00', 'line_width' => 6, 'zoom' => 15, 'end_delay_s' => 2, 'speed' => 250]),
+            $this->response()
+        );
+    }
 }

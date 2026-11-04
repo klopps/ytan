@@ -37,12 +37,15 @@ final class CurlOverpassClient implements OverpassClient
     ) {
     }
 
-    /** @param string $configured the OVERPASS_ENDPOINTS setting (comma separated), may be empty */
-    public static function fromSetting(string $configured): self
+    /**
+     * @param string $configured the OVERPASS_ENDPOINTS setting (comma separated), may be empty
+     * @param int $timeoutSeconds per request; should exceed the query's own [timeout:...]
+     */
+    public static function fromSetting(string $configured, int $timeoutSeconds = 90): self
     {
         $endpoints = array_values(array_filter(array_map('trim', explode(',', $configured)), fn ($e) => $e !== ''));
 
-        return new self($endpoints === [] ? [self::DEFAULT_ENDPOINT] : $endpoints);
+        return new self($endpoints === [] ? [self::DEFAULT_ENDPOINT] : $endpoints, $timeoutSeconds);
     }
 
     public function query(string $query): array

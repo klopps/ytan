@@ -16,6 +16,10 @@ namespace Ytan\Http;
  *   data-on-click (public/js/csp-events.js). 'https:' and 'unsafe-inline'
  *   are ignored by browsers that understand nonces/'strict-dynamic' and are
  *   only the fallback for very old ones (Google's "strict CSP" recipe).
+ *   'wasm-unsafe-eval' lets Google Maps' VECTOR renderer compile its
+ *   WebAssembly (the tilted map of the route animation, route-animation.js;
+ *   without it that map stays blank) - it allows WebAssembly only, not
+ *   eval()/new Function().
  * - style-src keeps 'unsafe-inline': style="..." attributes are everywhere
  *   and Google Maps injects inline styles; CSS can't run script.
  * - img/connect/frame/worker: own server plus Google Maps (tiles, Places
@@ -65,7 +69,7 @@ final class ContentSecurityPolicy
 
         return implode('; ', [
             "default-src 'self'",
-            "script-src 'nonce-" . self::nonce() . "' 'strict-dynamic' https: 'unsafe-inline'",
+            "script-src 'nonce-" . self::nonce() . "' 'strict-dynamic' 'wasm-unsafe-eval' https: 'unsafe-inline'",
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "img-src 'self' data: blob: https:",
             "font-src 'self' data: https://fonts.gstatic.com",

@@ -1,5 +1,10 @@
 # Offene Punkte
 
+
+## Gewässer-Index auf weitere Länder erweitern
+
+Der Gewässer-Index (`tools/water/build_index.py`, `storage/water/water-index.bin`) deckt nur DK/NO/SE/FI/DE ab. Der Campingplatz-Import lädt ganz Europa, der Gewässerfilter findet außerhalb dieser Länder aber nichts (Abstände leer). Weitere Geofabrik-Extrakte aufnehmen - zuerst Ostsee/Nordsee (NL, BE, PL, EE, LV, LT), ggf. ganz Europa (~30 GB PBF, langer Bau, Indexdatei deutlich über 1 GB; Speicher/Bauzeit vorher abschätzen). Danach `php bin/import-campsites.php distances --all`, `php bin/import-shelters.php distances --all` und `php bin/poi-water-distance.php` bzw. eine Migration wie 062 für die bestehenden POIs.
+
 ## Shelter und Schutzhütten in Skandinavien nahe Wasser (Shelter-Import)
 
 Liste von Sheltern und Schutzhütten in DK, NO, SE und FI nahe Meer, Fluss oder großem See (Abstand je Gewässerart filterbar), importierbar als POIs vom Typ Shelter (10). Quellen nicht nur OSM, sondern amtliche/freie Verzeichnisse.
