@@ -1,7 +1,7 @@
 """Builds the water distance index (storage/water/water-index.bin) from
 OpenStreetMap country extracts (Geofabrik .osm.pbf).
 
-    tools/water/.venv/Scripts/python tools/water/build_index.py            DK NO SE FI DE NL BE PL EE LV LT
+    tools/water/.venv/Scripts/python tools/water/build_index.py            all of COUNTRIES
     tools/water/.venv/Scripts/python tools/water/build_index.py DK         only Denmark
     tools/water/.venv/Scripts/python tools/water/build_index.py --refresh  download the extracts again
     tools/water/.venv/Scripts/python tools/water/build_index.py --coverage-only
@@ -23,6 +23,9 @@ The index only knows the water of its countries, so water-index.json also
 carries their borders (Geofabrik's .poly files of the same extracts) as
 "coverage": a position outside them gets no distances at all - otherwise a
 harbour in Germany measured 21.5 km to the nearest DANISH coast.
+
+The extracts (~30 GB for all of Europe) live in .env's WATER_PBF_DIR (an
+environment variable of that name wins), default storage/water/pbf.
 """
 
 from __future__ import annotations
@@ -46,8 +49,28 @@ import water_index  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 STORAGE = os.path.join(ROOT, "storage", "water")
-PBF_DIR = os.path.join(STORAGE, "pbf")
 
+
+def env_value(name: str) -> str | None:
+    """An environment variable, else the value of NAME=... in the repo's .env."""
+    if os.environ.get(name):
+        return os.environ[name]
+    try:
+        with open(os.path.join(ROOT, ".env"), encoding="utf-8") as source:
+            for line in source:
+                key, sep, value = line.strip().partition("=")
+                if sep and key.strip() == name:
+                    return value.strip().strip("'\"") or None
+    except OSError:
+        pass
+    return None
+
+
+PBF_DIR = env_value("WATER_PBF_DIR") or os.path.join(STORAGE, "pbf")
+
+# The European countries of the campsite import (ClubOsmImportService::EUROPE)
+# by Geofabrik extract. Gibraltar and San Marino have none of their own (they
+# are in Spain's/Italy's), Northern Ireland is in IE's, Great Britain without it.
 COUNTRIES = {
     "DK": "europe/denmark",
     "NO": "europe/norway",
@@ -60,6 +83,39 @@ COUNTRIES = {
     "EE": "europe/estonia",
     "LV": "europe/latvia",
     "LT": "europe/lithuania",
+    "AL": "europe/albania",
+    "AD": "europe/andorra",
+    "AT": "europe/austria",
+    "BY": "europe/belarus",
+    "BA": "europe/bosnia-herzegovina",
+    "BG": "europe/bulgaria",
+    "HR": "europe/croatia",
+    "CY": "europe/cyprus",
+    "CZ": "europe/czech-republic",
+    "FO": "europe/faroe-islands",
+    "FR": "europe/france",
+    "GR": "europe/greece",
+    "HU": "europe/hungary",
+    "IS": "europe/iceland",
+    "IE": "europe/ireland-and-northern-ireland",
+    "IT": "europe/italy",
+    "XK": "europe/kosovo",
+    "LI": "europe/liechtenstein",
+    "LU": "europe/luxembourg",
+    "MT": "europe/malta",
+    "MD": "europe/moldova",
+    "MC": "europe/monaco",
+    "ME": "europe/montenegro",
+    "MK": "europe/macedonia",
+    "PT": "europe/portugal",
+    "RO": "europe/romania",
+    "RS": "europe/serbia",
+    "SK": "europe/slovakia",
+    "SI": "europe/slovenia",
+    "ES": "europe/spain",
+    "CH": "europe/switzerland",
+    "UA": "europe/ukraine",
+    "GB": "europe/great-britain",
 }
 GEOFABRIK = "https://download.geofabrik.de/{}-latest.osm.pbf"
 GEOFABRIK_POLY = "https://download.geofabrik.de/{}.poly"
@@ -227,7 +283,9 @@ def main() -> int:
         return 0
 
     started = time.time()
-    lines: dict[str, list[np.ndarray]] = {k: [] for k in water_index.KINDS}
+    # Simplified per country, so only one country's raw lines are in memory at
+    # a time (all of Europe at once would not fit into 14 GB).
+    parts: dict[str, list[np.ndarray]] = {k: [] for k in water_index.KINDS}
     sources = {}
     covered = []
     for country in countries:
@@ -236,13 +294,16 @@ def main() -> int:
         sources[country] = datetime.fromtimestamp(os.path.getmtime(path), timezone.utc).strftime("%Y-%m-%d")
         log(f"{country}: reading {os.path.basename(path)} ({os.path.getsize(path) / 1e6:.0f} MB)")
         found = extract(path)
-        for kind in water_index.KINDS:
-            lines[kind].extend(found[kind])
         log(f"{country}: " + ", ".join(f"{k} {len(found[k])} lines" for k in water_index.KINDS))
+        for kind in water_index.KINDS:
+            parts[kind].append(to_segments(found[kind]))
+        found = None
+        gc.collect()
 
     segments = {}
     for kind in water_index.KINDS:
-        segments[kind] = to_segments(lines[kind])
+        segments[kind] = np.concatenate(parts[kind])
+        parts[kind] = None
         log(f"{kind}: {len(segments[kind])} segments after simplifying")
 
     os.makedirs(STORAGE, exist_ok=True)

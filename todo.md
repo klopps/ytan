@@ -1,10 +1,6 @@
 # Offene Punkte
 
 
-## Gewässer-Index auf das restliche Europa erweitern
-
-Der Gewässer-Index deckt seit 2026-11-05 DK/NO/SE/FI/DE/NL/BE/PL/EE/LV/LT ab (siehe done.md "Gewässer-Index auf weitere Länder erweitern"). Offen: weitere Länder bis ganz Europa (~30 GB PBF, Indexdatei deutlich über 1 GB). Hindernis auf dem Dev-Rechner: nur ~20 GB frei auf C: (die 11 Extrakte belegen ~13 GB, ein Extrakt über 2 GB braucht zusätzlich eine `.nodes`-Datei von mehreren GB während des Baus) und 14 GB RAM (alle Linien liegen bis zum Schreiben im Speicher) - vorher Platz schaffen oder `PBF_DIR` auf ein anderes Laufwerk legen, ggf. den Bau länderweise in Teilergebnisse aufteilen. Danach wie beim ersten Schritt: neue Länder in `COUNTRIES`, Bau, Migration nach dem Muster von 066, Shelter/Campingplätze nachrechnen, `admin.campsite_import.water_hint` (de/en) und die Länderliste in CLAUDE.md/docs/API.md anpassen.
-
 ## Shelter und Schutzhütten in Skandinavien nahe Wasser (Shelter-Import)
 
 Liste von Sheltern und Schutzhütten in DK, NO, SE und FI nahe Meer, Fluss oder großem See (Abstand je Gewässerart filterbar), importierbar als POIs vom Typ Shelter (10). Quellen nicht nur OSM, sondern amtliche/freie Verzeichnisse.

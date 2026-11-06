@@ -1,9 +1,9 @@
 # Water distance index builder
 
 Builds `storage/water/water-index.bin` (format: `docs/water-index.md`) from
-Geofabrik's OpenStreetMap extracts of Denmark, Norway, Sweden, Finland,
-Germany (DE since 2026-10-23), the Netherlands, Belgium, Poland, Estonia,
-Latvia and Lithuania (since 2026-11-05).
+Geofabrik's OpenStreetMap extracts of the European countries in `COUNTRIES`
+(the campsite import's, `ClubOsmImportService::EUROPE`; DK/NO/SE/FI since
+2026-10-21, DE since 2026-10-23, the rest of Europe since 2026-11-06).
 Runs on dev only; the servers get the finished file with
 `bin\publish-water.bat [test]` and never need Python for it.
 
@@ -18,7 +18,7 @@ tools/water/.venv/Scripts/python -m pip install osmium shapely pyproj numpy
 ## Build
 
 ```bash
-tools/water/.venv/Scripts/python tools/water/build_index.py            # DK NO SE FI DE NL BE PL EE LV LT
+tools/water/.venv/Scripts/python tools/water/build_index.py            # all of COUNTRIES
 tools/water/.venv/Scripts/python tools/water/build_index.py DK         # one country (quick test)
 tools/water/.venv/Scripts/python tools/water/build_index.py --refresh  # download the extracts again
 tools/water/.venv/Scripts/python tools/water/build_index.py --coverage-only  # only the covered area into water-index.json
@@ -32,7 +32,8 @@ without rebuilding it (new `version`). Extracts larger than 2 GB (Germany,
 ~4.5 GB) keep their node locations in a temporary file next to the `.pbf`
 (`sparse_file_array`, ~10 GB, deleted afterwards) instead of memory.
 
-The extracts land in `storage/water/pbf/` (~13 GB in all) and are only
+The extracts land in `.env`'s `WATER_PBF_DIR` (default `storage/water/pbf/`;
+on this dev box `D:\Daten\ytan\storage\water\pbf`, ~30 GB in all) and are only
 downloaded when missing (or with `--refresh`). Then:
 
 1. `bin\publish-water.bat test` / `bin\publish-water.bat` - upload.

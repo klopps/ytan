@@ -1,40 +1,163 @@
-21:54:14 DK: reading denmark-latest.osm.pbf (496 MB)
-21:55:02 DK: sea 2230 lines, river 4314 lines, lake 71 lines
-21:55:02 NO: reading norway-latest.osm.pbf (1378 MB)
-21:59:25 NO: sea 229935 lines, river 68861 lines, lake 6837 lines
-21:59:25 SE: reading sweden-latest.osm.pbf (927 MB)
-22:01:11 SE: sea 79858 lines, river 18622 lines, lake 16132 lines
-22:01:11 FI: reading finland-latest.osm.pbf (773 MB)
-22:03:09 FI: sea 92947 lines, river 14706 lines, lake 47031 lines
-22:03:09 DE: reading germany-latest.osm.pbf (4866 MB)
-22:18:13 could not delete C:\dev\www\ytan\storage\water\pbf\germany-latest.osm.pbf.nodes ([WinError 32] Der Prozess kann nicht auf die Datei zugreifen, da sie von einem anderen Prozess verwendet wird: 'C:\\dev\\www\\ytan\\storage\\water\\pbf\\germany-latest.osm.pbf.nodes') - delete it after this run
-22:18:13 DE: sea 1338 lines, river 46120 lines, lake 388 lines
-22:18:13 NL: downloading https://download.geofabrik.de/europe/netherlands.poly
-22:18:14 NL: downloading https://download.geofabrik.de/europe/netherlands-latest.osm.pbf
-22:21:14 NL: reading netherlands-latest.osm.pbf (1410 MB)
-22:23:35 NL: sea 563 lines, river 22383 lines, lake 619 lines
-22:23:35 BE: downloading https://download.geofabrik.de/europe/belgium.poly
-22:23:35 BE: downloading https://download.geofabrik.de/europe/belgium-latest.osm.pbf
-22:24:41 BE: reading belgium-latest.osm.pbf (699 MB)
-22:25:40 BE: sea 26 lines, river 4775 lines, lake 0 lines
-22:25:40 PL: downloading https://download.geofabrik.de/europe/poland.poly
-22:25:40 PL: downloading https://download.geofabrik.de/europe/poland-latest.osm.pbf
-22:28:00 PL: reading poland-latest.osm.pbf (2116 MB)
-22:32:23 could not delete C:\dev\www\ytan\storage\water\pbf\poland-latest.osm.pbf.nodes ([WinError 32] Der Prozess kann nicht auf die Datei zugreifen, da sie von einem anderen Prozess verwendet wird: 'C:\\dev\\www\\ytan\\storage\\water\\pbf\\poland-latest.osm.pbf.nodes') - delete it after this run
-22:32:23 PL: sea 970 lines, river 27363 lines, lake 546 lines
-22:32:23 EE: downloading https://download.geofabrik.de/europe/estonia.poly
-22:32:23 EE: downloading https://download.geofabrik.de/europe/estonia-latest.osm.pbf
-22:32:35 EE: reading estonia-latest.osm.pbf (124 MB)
-22:32:49 EE: sea 3509 lines, river 7520 lines, lake 412 lines
-22:32:49 LV: downloading https://download.geofabrik.de/europe/latvia.poly
-22:32:49 LV: downloading https://download.geofabrik.de/europe/latvia-latest.osm.pbf
-22:33:24 LV: reading latvia-latest.osm.pbf (141 MB)
-22:33:40 LV: sea 275 lines, river 5597 lines, lake 550 lines
-22:33:40 LT: downloading https://download.geofabrik.de/europe/lithuania.poly
-22:33:40 LT: downloading https://download.geofabrik.de/europe/lithuania-latest.osm.pbf
-22:34:29 LT: reading lithuania-latest.osm.pbf (224 MB)
-22:34:48 LT: sea 254 lines, river 3223 lines, lake 166 lines
-22:35:50 sea: 5228128 segments after simplifying
-22:36:23 river: 4035693 segments after simplifying
-22:36:41 lake: 2722605 segments after simplifying
-22:36:48 written C:\dev\www\ytan\storage\water\water-index.bin (209.2 MB) in 2554 s, version 202611052136
+09:55:38 DK: reading denmark-latest.osm.pbf (496 MB)
+09:56:22 DK: sea 2230 lines, river 4314 lines, lake 71 lines
+09:56:23 NO: reading norway-latest.osm.pbf (1378 MB)
+10:02:15 NO: sea 229935 lines, river 68861 lines, lake 6837 lines
+10:03:07 SE: reading sweden-latest.osm.pbf (927 MB)
+10:05:10 SE: sea 79858 lines, river 18622 lines, lake 16132 lines
+10:05:30 FI: reading finland-latest.osm.pbf (773 MB)
+10:07:47 FI: sea 92947 lines, river 14706 lines, lake 47031 lines
+10:08:21 DE: reading germany-latest.osm.pbf (4866 MB)
+10:46:53 could not delete D:\Daten\ytan\storage\water\pbf\germany-latest.osm.pbf.nodes ([WinError 32] Der Prozess kann nicht auf die Datei zugreifen, da sie von einem anderen Prozess verwendet wird: 'D:\\Daten\\ytan\\storage\\water\\pbf\\germany-latest.osm.pbf.nodes') - delete it after this run
+10:46:53 DE: sea 1338 lines, river 46120 lines, lake 388 lines
+10:47:01 NL: reading netherlands-latest.osm.pbf (1410 MB)
+10:49:52 NL: sea 563 lines, river 22383 lines, lake 619 lines
+10:49:55 BE: reading belgium-latest.osm.pbf (699 MB)
+10:51:01 BE: sea 26 lines, river 4775 lines, lake 0 lines
+10:51:02 PL: reading poland-latest.osm.pbf (2116 MB)
+10:55:42 could not delete D:\Daten\ytan\storage\water\pbf\poland-latest.osm.pbf.nodes ([WinError 32] Der Prozess kann nicht auf die Datei zugreifen, da sie von einem anderen Prozess verwendet wird: 'D:\\Daten\\ytan\\storage\\water\\pbf\\poland-latest.osm.pbf.nodes') - delete it after this run
+10:55:42 PL: sea 970 lines, river 27363 lines, lake 546 lines
+10:55:47 EE: reading estonia-latest.osm.pbf (124 MB)
+10:56:06 EE: sea 3509 lines, river 7520 lines, lake 412 lines
+10:56:09 LV: reading latvia-latest.osm.pbf (141 MB)
+10:56:24 LV: sea 275 lines, river 5597 lines, lake 550 lines
+10:56:26 LT: reading lithuania-latest.osm.pbf (224 MB)
+10:56:49 LT: sea 254 lines, river 3223 lines, lake 166 lines
+10:56:51 AL: downloading https://download.geofabrik.de/europe/albania.poly
+10:56:52 AL: downloading https://download.geofabrik.de/europe/albania-latest.osm.pbf
+10:56:58 AL: reading albania-latest.osm.pbf (54 MB)
+10:57:02 AL: sea 114 lines, river 1966 lines, lake 149 lines
+10:57:03 AD: downloading https://download.geofabrik.de/europe/andorra.poly
+10:57:03 AD: downloading https://download.geofabrik.de/europe/andorra-latest.osm.pbf
+10:57:04 AD: reading andorra-latest.osm.pbf (4 MB)
+10:57:04 AD: sea 0 lines, river 95 lines, lake 0 lines
+10:57:05 AT: downloading https://download.geofabrik.de/europe/austria.poly
+10:57:05 AT: downloading https://download.geofabrik.de/europe/austria-latest.osm.pbf
+10:58:18 AT: reading austria-latest.osm.pbf (815 MB)
+10:59:32 AT: sea 0 lines, river 6687 lines, lake 139 lines
+10:59:33 BY: downloading https://download.geofabrik.de/europe/belarus.poly
+10:59:34 BY: downloading https://download.geofabrik.de/europe/belarus-latest.osm.pbf
+11:01:02 BY: reading belarus-latest.osm.pbf (352 MB)
+11:01:39 BY: sea 0 lines, river 16842 lines, lake 490 lines
+11:01:42 BA: downloading https://download.geofabrik.de/europe/bosnia-herzegovina.poly
+11:01:42 BA: downloading https://download.geofabrik.de/europe/bosnia-herzegovina-latest.osm.pbf
+11:02:13 BA: reading bosnia-herzegovina-latest.osm.pbf (162 MB)
+11:02:32 BA: sea 10 lines, river 1910 lines, lake 96 lines
+11:02:33 BG: downloading https://download.geofabrik.de/europe/bulgaria.poly
+11:02:33 BG: downloading https://download.geofabrik.de/europe/bulgaria-latest.osm.pbf
+11:03:07 BG: reading bulgaria-latest.osm.pbf (177 MB)
+11:03:22 BG: sea 195 lines, river 4588 lines, lake 37 lines
+11:03:24 HR: downloading https://download.geofabrik.de/europe/croatia.poly
+11:03:24 HR: downloading https://download.geofabrik.de/europe/croatia-latest.osm.pbf
+11:04:01 HR: reading croatia-latest.osm.pbf (201 MB)
+11:04:21 HR: sea 3009 lines, river 2002 lines, lake 9 lines
+11:04:23 CY: downloading https://download.geofabrik.de/europe/cyprus.poly
+11:04:23 CY: downloading https://download.geofabrik.de/europe/cyprus-latest.osm.pbf
+11:04:32 CY: reading cyprus-latest.osm.pbf (38 MB)
+11:04:36 CY: sea 418 lines, river 974 lines, lake 0 lines
+11:04:36 CZ: downloading https://download.geofabrik.de/europe/czech-republic.poly
+11:04:36 CZ: downloading https://download.geofabrik.de/europe/czech-republic-latest.osm.pbf
+11:07:37 CZ: reading czech-republic-latest.osm.pbf (952 MB)
+11:09:23 CZ: sea 0 lines, river 2788 lines, lake 19 lines
+11:09:24 FO: downloading https://download.geofabrik.de/europe/faroe-islands.poly
+11:09:24 FO: downloading https://download.geofabrik.de/europe/faroe-islands-latest.osm.pbf
+11:09:25 FO: reading faroe-islands-latest.osm.pbf (8 MB)
+11:09:27 FO: sea 579 lines, river 449 lines, lake 0 lines
+11:09:28 FR: downloading https://download.geofabrik.de/europe/france.poly
+11:09:28 FR: downloading https://download.geofabrik.de/europe/france-latest.osm.pbf
+11:15:29 FR: reading france-latest.osm.pbf (5110 MB)
+11:59:17 could not delete D:\Daten\ytan\storage\water\pbf\france-latest.osm.pbf.nodes ([WinError 32] Der Prozess kann nicht auf die Datei zugreifen, da sie von einem anderen Prozess verwendet wird: 'D:\\Daten\\ytan\\storage\\water\\pbf\\france-latest.osm.pbf.nodes') - delete it after this run
+11:59:17 FR: sea 9555 lines, river 82059 lines, lake 401 lines
+11:59:44 GR: downloading https://download.geofabrik.de/europe/greece.poly
+11:59:44 GR: downloading https://download.geofabrik.de/europe/greece-latest.osm.pbf
+11:59:59 GR: reading greece-latest.osm.pbf (343 MB)
+12:00:38 GR: sea 18749 lines, river 8896 lines, lake 380 lines
+12:00:45 HU: downloading https://download.geofabrik.de/europe/hungary.poly
+12:00:46 HU: downloading https://download.geofabrik.de/europe/hungary-latest.osm.pbf
+12:01:28 HU: reading hungary-latest.osm.pbf (329 MB)
+12:02:06 HU: sea 0 lines, river 4585 lines, lake 428 lines
+12:02:07 IS: downloading https://download.geofabrik.de/europe/iceland.poly
+12:02:07 IS: downloading https://download.geofabrik.de/europe/iceland-latest.osm.pbf
+12:02:13 IS: reading iceland-latest.osm.pbf (65 MB)
+12:02:36 IS: sea 6979 lines, river 4811 lines, lake 438 lines
+12:02:40 IE: downloading https://download.geofabrik.de/europe/ireland-and-northern-ireland.poly
+12:02:40 IE: downloading https://download.geofabrik.de/europe/ireland-and-northern-ireland-latest.osm.pbf
+12:03:04 IE: reading ireland-and-northern-ireland-latest.osm.pbf (417 MB)
+12:04:01 IE: sea 10651 lines, river 30134 lines, lake 1630 lines
+12:04:08 IT: downloading https://download.geofabrik.de/europe/italy.poly
+12:04:09 IT: downloading https://download.geofabrik.de/europe/italy-latest.osm.pbf
+12:05:48 IT: reading italy-latest.osm.pbf (2250 MB)
+12:13:21 could not delete D:\Daten\ytan\storage\water\pbf\italy-latest.osm.pbf.nodes ([WinError 32] Der Prozess kann nicht auf die Datei zugreifen, da sie von einem anderen Prozess verwendet wird: 'D:\\Daten\\ytan\\storage\\water\\pbf\\italy-latest.osm.pbf.nodes') - delete it after this run
+12:13:21 IT: sea 4844 lines, river 40666 lines, lake 2140 lines
+12:13:36 XK: downloading https://download.geofabrik.de/europe/kosovo.poly
+12:13:36 XK: downloading https://download.geofabrik.de/europe/kosovo-latest.osm.pbf
+12:13:39 XK: reading kosovo-latest.osm.pbf (31 MB)
+12:13:42 XK: sea 0 lines, river 339 lines, lake 0 lines
+12:13:42 LI: downloading https://download.geofabrik.de/europe/liechtenstein.poly
+12:13:42 LI: downloading https://download.geofabrik.de/europe/liechtenstein-latest.osm.pbf
+12:13:43 LI: reading liechtenstein-latest.osm.pbf (3 MB)
+12:13:43 LI: sea 0 lines, river 27 lines, lake 0 lines
+12:13:43 LU: downloading https://download.geofabrik.de/europe/luxembourg.poly
+12:13:43 LU: downloading https://download.geofabrik.de/europe/luxembourg-latest.osm.pbf
+12:13:48 LU: reading luxembourg-latest.osm.pbf (48 MB)
+12:13:53 LU: sea 0 lines, river 307 lines, lake 0 lines
+12:13:54 MT: downloading https://download.geofabrik.de/europe/malta.poly
+12:13:54 MT: downloading https://download.geofabrik.de/europe/malta-latest.osm.pbf
+12:13:55 MT: reading malta-latest.osm.pbf (9 MB)
+12:13:56 MT: sea 93 lines, river 27 lines, lake 0 lines
+12:13:56 MD: downloading https://download.geofabrik.de/europe/moldova.poly
+12:13:57 MD: downloading https://download.geofabrik.de/europe/moldova-latest.osm.pbf
+12:14:07 MD: reading moldova-latest.osm.pbf (101 MB)
+12:14:20 MD: sea 0 lines, river 1490 lines, lake 111 lines
+12:14:21 MC: downloading https://download.geofabrik.de/europe/monaco.poly
+12:14:21 MC: downloading https://download.geofabrik.de/europe/monaco-latest.osm.pbf
+12:14:22 MC: reading monaco-latest.osm.pbf (1 MB)
+12:14:22 MC: sea 24 lines, river 0 lines, lake 0 lines
+12:14:22 ME: downloading https://download.geofabrik.de/europe/montenegro.poly
+12:14:22 ME: downloading https://download.geofabrik.de/europe/montenegro-latest.osm.pbf
+12:14:25 ME: reading montenegro-latest.osm.pbf (35 MB)
+12:14:29 ME: sea 263 lines, river 378 lines, lake 68 lines
+12:14:29 MK: downloading https://download.geofabrik.de/europe/macedonia.poly
+12:14:29 MK: downloading https://download.geofabrik.de/europe/macedonia-latest.osm.pbf
+12:14:33 MK: reading macedonia-latest.osm.pbf (30 MB)
+12:14:37 MK: sea 0 lines, river 695 lines, lake 50 lines
+12:14:37 PT: downloading https://download.geofabrik.de/europe/portugal.poly
+12:14:37 PT: downloading https://download.geofabrik.de/europe/portugal-latest.osm.pbf
+12:15:09 PT: reading portugal-latest.osm.pbf (428 MB)
+12:15:58 PT: sea 3374 lines, river 9200 lines, lake 977 lines
+12:16:01 RO: downloading https://download.geofabrik.de/europe/romania.poly
+12:16:01 RO: downloading https://download.geofabrik.de/europe/romania-latest.osm.pbf
+12:16:13 RO: reading romania-latest.osm.pbf (333 MB)
+12:16:59 RO: sea 87 lines, river 11068 lines, lake 151 lines
+12:17:03 RS: downloading https://download.geofabrik.de/europe/serbia.poly
+12:17:03 RS: downloading https://download.geofabrik.de/europe/serbia-latest.osm.pbf
+12:17:17 RS: reading serbia-latest.osm.pbf (242 MB)
+12:17:47 RS: sea 0 lines, river 2927 lines, lake 19 lines
+12:17:48 SK: downloading https://download.geofabrik.de/europe/slovakia.poly
+12:17:48 SK: downloading https://download.geofabrik.de/europe/slovakia-latest.osm.pbf
+12:18:19 SK: reading slovakia-latest.osm.pbf (348 MB)
+12:19:15 SK: sea 0 lines, river 2261 lines, lake 85 lines
+12:19:16 SI: downloading https://download.geofabrik.de/europe/slovenia.poly
+12:19:16 SI: downloading https://download.geofabrik.de/europe/slovenia-latest.osm.pbf
+12:20:04 SI: reading slovenia-latest.osm.pbf (314 MB)
+12:20:43 SI: sea 61 lines, river 1302 lines, lake 38 lines
+12:20:43 ES: downloading https://download.geofabrik.de/europe/spain.poly
+12:20:43 ES: downloading https://download.geofabrik.de/europe/spain-latest.osm.pbf
+12:25:16 ES: reading spain-latest.osm.pbf (1499 MB)
+12:28:07 ES: sea 9190 lines, river 35799 lines, lake 1411 lines
+12:28:17 CH: downloading https://download.geofabrik.de/europe/switzerland.poly
+12:28:17 CH: downloading https://download.geofabrik.de/europe/switzerland-latest.osm.pbf
+12:29:56 CH: reading switzerland-latest.osm.pbf (550 MB)
+12:30:44 CH: sea 0 lines, river 5245 lines, lake 254 lines
+12:30:45 UA: downloading https://download.geofabrik.de/europe/ukraine.poly
+12:30:45 UA: downloading https://download.geofabrik.de/europe/ukraine-latest.osm.pbf
+12:33:27 UA: reading ukraine-latest.osm.pbf (883 MB)
+12:35:25 UA: sea 1985 lines, river 31707 lines, lake 3708 lines
+12:35:35 GB: downloading https://download.geofabrik.de/europe/great-britain.poly
+12:35:35 GB: downloading https://download.geofabrik.de/europe/great-britain-latest.osm.pbf
+12:39:44 GB: reading great-britain-latest.osm.pbf (2197 MB)
+12:49:20 could not delete D:\Daten\ytan\storage\water\pbf\great-britain-latest.osm.pbf.nodes ([WinError 32] Der Prozess kann nicht auf die Datei zugreifen, da sie von einem anderen Prozess verwendet wird: 'D:\\Daten\\ytan\\storage\\water\\pbf\\great-britain-latest.osm.pbf.nodes') - delete it after this run
+12:49:20 GB: sea 28214 lines, river 36844 lines, lake 382 lines
+12:49:44 sea: 7574235 segments after simplifying
+12:49:46 river: 10639118 segments after simplifying
+12:49:47 lake: 3606189 segments after simplifying
+12:50:06 written C:\dev\www\ytan\storage\water\water-index.bin (391.2 MB) in 10468 s, version 202611061150

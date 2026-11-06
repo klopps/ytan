@@ -1,5 +1,5 @@
 """Finds a place name for positions, from the OpenStreetMap extracts the water
-index is built from (storage/water/pbf/): the smallest named protected area
+index is built from (build_index.PBF_DIR, only PLACE_COUNTRIES): the smallest named protected area
 the position lies in, else the nearest named place (village, hamlet,
 locality, ...) within MAX_PLACE_METERS. Used to name shelters that have no
 name of their own ("Gapahuk Femundsmarka", "Shelter Lønstrup").
@@ -33,6 +33,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import build_index  # noqa: E402
 
 CACHE_VERSION = 1
+# The shelter import's countries (ShelterOsmImportService::SCANDINAVIA) - the
+# PBF directory holds all of Europe, reading that would not fit into memory.
+PLACE_COUNTRIES = ("DK", "NO", "SE", "FI")
 MAX_PLACE_METERS = 20000
 PLACE_TYPES = {"city", "town", "village", "hamlet", "suburb", "quarter", "neighbourhood", "locality",
                "isolated_dwelling", "farm"}
@@ -91,9 +94,10 @@ def _extract_to_cache(path: str) -> str:
 def load(refresh: bool) -> tuple[list[str], list, list[str], np.ndarray]:
     import multiprocessing
 
-    pbfs = [os.path.join(build_index.PBF_DIR, f) for f in sorted(os.listdir(build_index.PBF_DIR)) if f.endswith(".osm.pbf")]
+    names = [build_index.COUNTRIES[c].split("/")[-1] + "-latest.osm.pbf" for c in PLACE_COUNTRIES]
+    pbfs = [os.path.join(build_index.PBF_DIR, n) for n in names if os.path.exists(os.path.join(build_index.PBF_DIR, n))]
     if not pbfs:
-        raise SystemExit("No extracts in storage/water/pbf - run build_index.py first.")
+        raise SystemExit(f"No extracts in {build_index.PBF_DIR} - run build_index.py first.")
     areas, places = [], []
     for path in pbfs:
         cache = os.path.join(build_index.STORAGE, "places-" + os.path.basename(path).split("-latest")[0] + ".pkl")

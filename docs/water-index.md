@@ -1,7 +1,8 @@
 # Water distance index
 
-`storage/water/water-index.bin` holds the water features of Denmark, Norway,
-Sweden, Finland and Germany as line segments sorted into a grid, so the distance from a
+`storage/water/water-index.bin` holds the water features of the European
+countries (`COUNTRIES` in `tools/water/build_index.py`, those of the campsite
+import) as line segments sorted into a grid, so the distance from a
 position to the nearest sea, river and large lake can be looked up in
 milliseconds, on the servers too, without any external request.
 
