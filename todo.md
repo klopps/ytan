@@ -1,9 +1,9 @@
 # Offene Punkte
 
 
-## Gewässer-Index auf weitere Länder erweitern
+## Gewässer-Index auf das restliche Europa erweitern
 
-Der Gewässer-Index (`tools/water/build_index.py`, `storage/water/water-index.bin`) deckt nur DK/NO/SE/FI/DE ab. Der Campingplatz-Import lädt ganz Europa, der Gewässerfilter findet außerhalb dieser Länder aber nichts (Abstände leer). Weitere Geofabrik-Extrakte aufnehmen - zuerst Ostsee/Nordsee (NL, BE, PL, EE, LV, LT), ggf. ganz Europa (~30 GB PBF, langer Bau, Indexdatei deutlich über 1 GB; Speicher/Bauzeit vorher abschätzen). Danach `php bin/import-campsites.php distances --all`, `php bin/import-shelters.php distances --all` und `php bin/poi-water-distance.php` bzw. eine Migration wie 062 für die bestehenden POIs.
+Der Gewässer-Index deckt seit 2026-11-05 DK/NO/SE/FI/DE/NL/BE/PL/EE/LV/LT ab (siehe done.md "Gewässer-Index auf weitere Länder erweitern"). Offen: weitere Länder bis ganz Europa (~30 GB PBF, Indexdatei deutlich über 1 GB). Hindernis auf dem Dev-Rechner: nur ~20 GB frei auf C: (die 11 Extrakte belegen ~13 GB, ein Extrakt über 2 GB braucht zusätzlich eine `.nodes`-Datei von mehreren GB während des Baus) und 14 GB RAM (alle Linien liegen bis zum Schreiben im Speicher) - vorher Platz schaffen oder `PBF_DIR` auf ein anderes Laufwerk legen, ggf. den Bau länderweise in Teilergebnisse aufteilen. Danach wie beim ersten Schritt: neue Länder in `COUNTRIES`, Bau, Migration nach dem Muster von 066, Shelter/Campingplätze nachrechnen, `admin.campsite_import.water_hint` (de/en) und die Länderliste in CLAUDE.md/docs/API.md anpassen.
 
 ## Shelter und Schutzhütten in Skandinavien nahe Wasser (Shelter-Import)
 

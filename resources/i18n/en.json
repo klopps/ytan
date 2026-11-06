@@ -1253,7 +1253,7 @@
     "admin.campsite_import.osm_title": "Load from OpenStreetMap",
     "admin.campsite_import.osm_hint": "Loads all campsites (tourism=camp_site) of a country. Big countries (France, Germany) take several minutes; at least 30 seconds pass between two requests. Source: © OpenStreetMap contributors (ODbL).",
     "admin.campsite_import.osm_load": "Load campsites",
-    "admin.campsite_import.water_hint": "Computed while loading from the local water index - only for Denmark, Norway, Sweden, Finland and Germany; in other countries the distances stay empty and the water filters find nothing there. Compute again with \"php bin/import-campsites.php distances\".",
+    "admin.campsite_import.water_hint": "Computed while loading from the local water index - only for Denmark, Norway, Sweden, Finland, Germany, the Netherlands, Belgium, Poland, Estonia, Latvia and Lithuania; in other countries the distances stay empty and the water filters find nothing there. Compute again with \"php bin/import-campsites.php distances\".",
     "admin.campsite_import.col_category": "Kind",
     "admin.campsite_import.col_place": "Town",
     "admin.campsite_import.col_allowed": "For",

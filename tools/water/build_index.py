@@ -1,7 +1,7 @@
 """Builds the water distance index (storage/water/water-index.bin) from
 OpenStreetMap country extracts (Geofabrik .osm.pbf).
 
-    tools/water/.venv/Scripts/python tools/water/build_index.py            DK NO SE FI DE
+    tools/water/.venv/Scripts/python tools/water/build_index.py            DK NO SE FI DE NL BE PL EE LV LT
     tools/water/.venv/Scripts/python tools/water/build_index.py DK         only Denmark
     tools/water/.venv/Scripts/python tools/water/build_index.py --refresh  download the extracts again
     tools/water/.venv/Scripts/python tools/water/build_index.py --coverage-only
@@ -54,6 +54,12 @@ COUNTRIES = {
     "SE": "europe/sweden",
     "FI": "europe/finland",
     "DE": "europe/germany",
+    "NL": "europe/netherlands",
+    "BE": "europe/belgium",
+    "PL": "europe/poland",
+    "EE": "europe/estonia",
+    "LV": "europe/latvia",
+    "LT": "europe/lithuania",
 }
 GEOFABRIK = "https://download.geofabrik.de/{}-latest.osm.pbf"
 GEOFABRIK_POLY = "https://download.geofabrik.de/{}.poly"
