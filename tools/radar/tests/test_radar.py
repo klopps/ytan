@@ -100,6 +100,29 @@ class ReprojectTest(unittest.TestCase):
         self.assertTrue(np.isnan(rp.render(field)).all())
 
 
+class ReprojectCacheTest(unittest.TestCase):
+    def test_lookup_is_stored_reused_and_replaced(self):
+        from ytanradar import reproject
+        grid = TileGrid(south=54.0, west=10.0, north=56.0, east=13.0, zmin=7, zmax=8)
+        regions = [{"south": 54.5, "west": 10.5, "north": 55.5, "east": 12.0}]
+        with tempfile.TemporaryDirectory() as d:
+            built, from_cache = reproject.cached(d, grid, OPERA, regions)
+            self.assertFalse(from_cache)
+            loaded, from_cache = reproject.cached(d, grid, OPERA, regions)
+            self.assertTrue(from_cache)
+            self.assertEqual(loaded.crop, built.crop)
+            np.testing.assert_array_equal(loaded.map_x, built.map_x)
+            np.testing.assert_array_equal(loaded.map_y, built.map_y)
+            first = [n for n in os.listdir(d) if n.startswith("reproject-")]
+            self.assertEqual(len(first), 1)
+            # other regions: built again, the old file goes
+            _, from_cache = reproject.cached(d, grid, OPERA, None)
+            self.assertFalse(from_cache)
+            files = [n for n in os.listdir(d) if n.startswith("reproject-")]
+            self.assertEqual(len(files), 1)
+            self.assertNotEqual(files, first)
+
+
 class SmoothingTest(unittest.TestCase):
     def test_single_noisy_pixel_is_damped_and_nodata_stays_nodata(self):
         f = np.full((40, 40), opera.UNDETECT_DBZ, np.float32)

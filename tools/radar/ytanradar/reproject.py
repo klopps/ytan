@@ -1,11 +1,18 @@
 """Composite grid (LAEA) -> mosaic grid (Web Mercator) via cv2.remap.
 
 The lookup (which source pixel feeds which mosaic pixel) depends only on
-the two grids, so it is built once per run (~4 s for ~30 M pixels) and then
-applied to every frame in ~0.2 s.
+the two grids, so it is built once (~4 s for ~30 M pixels locally, ~27 s on
+the production host for 18 regions) and then applied to every frame in
+~0.2 s. cached() keeps it on disk between runs - rebuilding it on every
+5-minute run was ~18 % of a run (measured 2026-11-06).
 """
 
 from __future__ import annotations
+
+import glob
+import hashlib
+import json
+import os
 
 import cv2
 import numpy as np
@@ -20,6 +27,9 @@ DISPLAY_SMOOTH_M = 1500.0  # Gaussian sigma before colouring, see smooth_for_dis
 
 # Sends a mosaic pixel outside every source pixel, so cv2.remap gives NaN there.
 OUTSIDE = -10.0
+# Bump when the lookup is computed differently: cached files are then rebuilt.
+CACHE_VERSION = 1
+CACHE_PREFIX = "reproject-"
 
 
 class Reprojector:
@@ -67,6 +77,13 @@ class Reprojector:
         self.map_x = col
         self.map_y = row
 
+    @classmethod
+    def from_arrays(cls, grid: TileGrid, geom: Geometry, crop: tuple[int, int, int, int],
+                    map_x: np.ndarray, map_y: np.ndarray) -> "Reprojector":
+        rp = cls.__new__(cls)
+        rp.grid, rp.geom, rp.crop, rp.map_x, rp.map_y = grid, geom, crop, map_x, map_y
+        return rp
+
     def render(self, field: np.ndarray) -> np.ndarray:
         """Cropped composite field (dBZ, NaN = no coverage) -> bbox window of the mosaic.
 
@@ -75,6 +92,36 @@ class Reprojector:
         """
         return cv2.remap(field, self.map_x, self.map_y, cv2.INTER_LINEAR,
                          borderMode=cv2.BORDER_CONSTANT, borderValue=float("nan"))
+
+
+def cache_key(grid: TileGrid, geom: Geometry, regions: list[dict] | None) -> str:
+    text = json.dumps([CACHE_VERSION, repr(grid), repr(geom), regions or None], sort_keys=True)
+    return hashlib.sha1(text.encode("utf-8")).hexdigest()[:16]
+
+
+def cached(cache_dir: str, grid: TileGrid, geom: Geometry, regions: list[dict] | None) -> tuple[Reprojector, bool]:
+    """The lookup from cache_dir/reproject-KEY.npz, else built and stored there
+    (other reproject-*.npz files are deleted then). (reprojector, from_cache).
+    Uncompressed (~8 bytes per mosaic pixel): loading must stay far below the
+    build time, compressing would not."""
+    path = os.path.join(cache_dir, CACHE_PREFIX + cache_key(grid, geom, regions) + ".npz")
+    try:
+        with np.load(path) as data:
+            crop = tuple(int(v) for v in data["crop"])
+            return Reprojector.from_arrays(grid, geom, crop, data["map_x"], data["map_y"]), True
+    except (OSError, KeyError, ValueError):
+        pass
+    rp = Reprojector(grid, geom, regions=regions)
+    try:
+        tmp = path[:-4] + ".tmp.npz"
+        np.savez(tmp, map_x=rp.map_x, map_y=rp.map_y, crop=np.array(rp.crop, np.int64))
+        os.replace(tmp, path)
+        for old in glob.glob(os.path.join(cache_dir, CACHE_PREFIX + "*.npz")):
+            if old != path:
+                os.remove(old)
+    except OSError:
+        pass  # no cache this time - the next run builds it again
+    return rp, False
 
 
 def smooth_for_display(field: np.ndarray, geom: Geometry, sigma_m: float = DISPLAY_SMOOTH_M) -> np.ndarray:

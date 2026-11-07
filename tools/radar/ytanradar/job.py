@@ -31,6 +31,7 @@ import numpy as np
 
 from . import nowcast, opera, palette
 from .mercator import TileGrid
+from . import reproject
 from .reproject import Reprojector, smooth_for_display
 from .tiles import write_pyramid
 
@@ -181,13 +182,15 @@ _WORKER: dict = {}
 
 
 def _init_worker(frames_dir: str, grid: TileGrid, geom: opera.Geometry, rp: Reprojector | None,
-                 regions: list[dict] | None = None, signature: str = "") -> None:
+                 regions: list[dict] | None = None, signature: str = "", cache_dir: str | None = None) -> None:
     # fork: rp is the parent's object, shared copy-on-write (~250 MB lookup).
-    # spawn (Windows): rp is None - rebuilding (~5 s) beats pickling it; it
-    # needs the regions too, or everything outside them gets drawn (seen
-    # 2026-10-18: rain over France with the regions DE/DK).
-    _WORKER.update(frames_dir=frames_dir, grid=grid, signature=signature,
-                   rp=rp or Reprojector(grid, geom, regions=regions))
+    # spawn (Windows): rp is None - loading it from the parent's cache file
+    # (or rebuilding, ~5 s) beats pickling it; it needs the regions too, or
+    # everything outside them gets drawn (seen 2026-10-18: rain over France
+    # with the regions DE/DK).
+    if rp is None:
+        rp = reproject.cached(cache_dir, grid, geom, regions)[0] if cache_dir else Reprojector(grid, geom, regions=regions)
+    _WORKER.update(frames_dir=frames_dir, grid=grid, signature=signature, rp=rp)
 
 
 def _publish_in_worker(frame_id: str, field: np.ndarray) -> tuple[str, bool, int, int, str | None]:
@@ -221,10 +224,11 @@ class Job:
     def reprojector(self, geom: opera.Geometry) -> Reprojector:
         if self._reprojector is None or self._geom != geom:
             started = time.monotonic()
-            self._reprojector = Reprojector(self.cfg.grid, geom, regions=self.cfg.regions or None)
+            self._reprojector, from_cache = reproject.cached(self.cfg.storage, self.cfg.grid, geom,
+                                                             self.cfg.regions or None)
             self._geom = geom
-            log.info("reprojection lookup built in %.1f s, crop %s", time.monotonic() - started,
-                     self._reprojector.crop)
+            log.info("reprojection lookup %s in %.1f s, crop %s", "loaded" if from_cache else "built",
+                     time.monotonic() - started, self._reprojector.crop)
         return self._reprojector
 
     def fetch(self, t: datetime) -> bool:
@@ -343,7 +347,8 @@ class Job:
             with ProcessPoolExecutor(max_workers=workers, mp_context=ctx, initializer=_init_worker,
                                      initargs=(self.frames_dir, self.cfg.grid, self._geom,
                                                rp if method == "fork" else None,
-                                               self.cfg.regions or None, self.signature)) as pool:
+                                               self.cfg.regions or None, self.signature,
+                                               self.cfg.storage)) as pool:
                 results = list(pool.map(_publish_in_worker, [i[0] for i in items], [i[1] for i in items]))
         done = set()
         for frame_id, ok, count, size, error in results:
