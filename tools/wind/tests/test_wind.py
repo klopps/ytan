@@ -443,6 +443,11 @@ class JobTest(unittest.TestCase):
             self.assertEqual(len(self.requested), before)
             self.assertEqual(Job(d, settings).read_status()["last_run"]["outcome"], "unchanged")
 
+            # an hour later the window has moved, but the model runs are the same: still nothing
+            later = datetime(2026, 10, 18, 22, 40, tzinfo=timezone.utc)
+            self.assertIsNone(Job(d, settings, now=later).run())
+            self.assertEqual(len(self.requested), before)
+
             # --force does it again
             self.assertIsNotNone(Job(d, settings, force=True, now=self.NOW).run())
 

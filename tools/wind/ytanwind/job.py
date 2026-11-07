@@ -239,7 +239,12 @@ class Job:
         key = {"eu": f"{plan.eu_run:%Y%m%d%H}" if plan.eu_run else None,
                "d2": f"{plan.d2_run:%Y%m%d%H}" if plan.d2_run else None,
                "gl": f"{plan.gl_run:%Y%m%d%H}" if plan.gl_run else None,
-               "signature": self.s.signature(), "hours": [iso(h.valid) for h in plan.hours]}
+               "signature": self.s.signature()}
+        # The hours are not part of the key: the window moves on every full hour,
+        # which made the job redo the whole area (~600 MB download) hourly without
+        # any new model run (measured 2026-11-06: 36 runs a day, blocking ~20 % of
+        # the rain radar's ticks). The app shows the current hour of the manifest
+        # itself; until the next model run the horizon only shrinks by its interval.
         if not self.force and manifest and manifest.get("key") == key:
             log.info("runs unchanged (EU %s, D2 %s, global %s)", key["eu"], key["d2"], key["gl"])
             self.cleanup(manifest)
@@ -277,7 +282,7 @@ class Job:
         new_manifest = {
             "run": run_id, "generated": iso(self.now), "key": key,
             "sources": {"eu": key["eu"], "d2": key["d2"], "gl": key["gl"]},
-            "hours": key["hours"],
+            "hours": [iso(h.valid) for h in plan.hours],
             "scale": {"uv": list(blocks.UV_RANGE), "gust": list(blocks.GUST_RANGE), "nodata": blocks.NODATA},
             "channels": self.s.channels, "levels": levels,
         }
