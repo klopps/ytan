@@ -2,6 +2,17 @@
 
 Punkte, die bewusst zurückgestellt sind - weder offen (todo.md) noch erledigt (done.md). Ein Punkt wandert zurück nach todo.md, sobald er angegangen wird.
 
+## Ortsnamen (place_names.py) für alle europäischen Länder
+
+Was würde es bedeuten, die Ortsnamen (Schutzgebiet, sonst nächster Ort) für alle 44 Länder des Gewässer-Index zu hinterlegen statt nur für DK/NO/SE/FI?
+
+### Erkenntnisse (2026-11-06)
+- **Ist**: `tools/water/place_names.py` liest nur `PLACE_COUNTRIES` = DK/NO/SE/FI. Einziger Nutzer ist `bin/import-shelters.php places` (Shelter ohne Namen -> "Typ Ort"), und der Shelter-Import umfasst nur diese vier Länder. Caches `storage/water/places-*.pkl`: 56 MB für die vier Länder, je Land ein Kindprozess, wenige Minuten. `load()` lädt alle Caches in eine Liste und baut einen STRtree über alles.
+- **Nutzen erst mit einem neuen Nutzer**: (a) Shelter-Import auf weitere Länder ausdehnen (eigenes Vorhaben, Quellen je Land), oder (b) Campingplätze lokal statt per Overpass benennen (heute `CampsiteSurroundings` in derselben Overpass-Abfrage, nächster Ort 10 km + benannte Straße 200 m - macht die Abfrage langsam, DK ~2,5 min). Bei (b): nur auf Dev (das Prod-Admin-Tool hat kein Python), und ohne Straße - Straßen bräuchten einen eigenen, sehr großen Extrakt -, also "Campingplatz {Ort}" statt "Campingplatz {Ort}, {Straße}".
+- **Aufwand**: alle 44 PBFs (30 GB, liegen in `WATER_PBF_DIR`) einmal mit Flächenbildung lesen, grob 1-2 h. Caches geschätzt 0,5-1,5 GB (DE/FR/IT/GB mit sehr vielen, detaillierten Schutzgebieten, FR mit sehr vielen `locality`/`hamlet`/`isolated_dwelling`) - besser unter `WATER_PBF_DIR` ablegen statt auf C:.
+- **Nötiger Umbau**: alle Caches zugleich passen nicht in 14 GB RAM. Der Lookup müsste je Land laufen: Punkte über die Ländergrenze (`.poly`, `build_index.coverage()`/`parse_poly()`) einem Land zuordnen, nur dessen Cache laden, nachschlagen, freigeben - Speicher = größtes Land statt Summe.
+- Entscheidung 2026-11-06: nicht bauen, solange es keinen Nutzer gibt.
+
 ## iOS-App neben der Android-App
 
 Was ist nötig, um neben der Android-App auch eine App für iOS zu bauen, und was ist der günstigste Weg dafür?
