@@ -1,6 +1,6 @@
 ---
 title: Touren
-keywords: Tour, Etappen, Tour-Modus, PDF, GPX-Export, Tour veröffentlichen, Tour kopieren, Tags, Fotos
+keywords: Tour, Etappen, Tour-Modus, Tourenanimation, PDF, GPX-Export, Tour veröffentlichen, Tour kopieren, Tags, Fotos
 ---
 
 Eine **Tour** fasst mehrere Routen zu einer Reise zusammen - zum Beispiel die Tagesetappen einer Wochenfahrt. Eine Tour hat einen Namen, eine Beschreibung, Schlagwörter (Tags), Fotos und die **geordnete Liste ihrer Routen**; ihre Gesamtlänge rechnet YTAN selbst aus.
@@ -50,7 +50,7 @@ Der Tour-Modus blendet alle Routen aus, die nicht zur Tour gehören. So siehst d
 
 ![Der Tour-Modus](tour-modus.jpg)
 
-Oben links zeigt ein Hinweis den Namen der Tour. Das **×** daneben beendet den Modus.
+Oben links zeigt ein Hinweis den Namen der Tour. Das **Abspielen-Symbol** darin spielt die ganze Tour als Kameraflug ab, siehe [Routen- und Tourenanimation](#chapter-animation). Das **×** daneben beendet den Modus.
 
 ## Wer darf was?
 

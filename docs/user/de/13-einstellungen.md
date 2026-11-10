@@ -1,6 +1,6 @@
 ---
 title: Einstellungen
-keywords: Einstellungen, Hell, Dunkel, Dark Mode, Einheiten, metrisch, nautisch, Koordinatenformat, Windeinheit, Sprache, Routendarstellung, Schriftgröße, Cookies
+keywords: Einstellungen, Hell, Dunkel, Dark Mode, Einheiten, metrisch, nautisch, Koordinatenformat, Windeinheit, Deckkraft Windfarbfläche, Sprache, Routendarstellung, Schriftgröße, Cookies
 ---
 
 Menü > **Einstellungen**. Alle Einstellungen gelten sofort und werden auf deinem Gerät gespeichert (in dem Cookie, dem du beim Start zugestimmt hast).
@@ -16,6 +16,7 @@ Menü > **Einstellungen**. Alle Einstellungen gelten sofort und werden auf deine
 | **Koordinatenformat** | Dezimalgrad / Grad/Min / Grad/Min/Sek | Format der Koordinaten, zum Beispiel am Standort-Punkt und im POI-Fenster. Beispiel: 54.32330° N oder 54° 19,398′ N. |
 | **Routendarstellung** | Geglättet / Eckig | Zeichnet Routen als sanft verlaufende Kurve oder mit den echten Ecken der Wegpunkte. |
 | **Schriftgröße Entfernungsangaben** | Schieberegler | Größe der Entfernungen an den Wegpunkten einer Route. Die Grenzen legen die Administratoren fest. |
+| **Deckkraft Windfarbfläche** | Schieberegler 0-100 % | Wie kräftig die Farbfläche der Windebene die Karte einfärbt (Standard 40 %), siehe [Wetter](#chapter-wetter). Eine eingeblendete Windebene ändert sich sofort mit. |
 | **Sprache** | Deutsch / English | Sprache der Oberfläche. Dieses Handbuch gibt es bisher nur auf Deutsch; bei Englisch zeigt YTAN es deshalb auf Deutsch an. |
 
 ## Kartendarstellung und POI-Filter

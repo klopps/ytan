@@ -44,5 +44,6 @@ Drücke lange auf einen leeren Kartenpunkt (am Rechner: rechte Maustaste) und w�
 | verstehen, was die Symbole und Klicks bedeuten | [Karteninhalte](#chapter-karteninhalte) |
 | POIs, Routen und Gebiete selbst anlegen | [Anlegen und Bearbeiten](#chapter-anlegen-bearbeiten) |
 | mehrere Etappen zu einer Tour verbinden | [Touren](#chapter-touren) |
+| eine Route oder Tour als Kameraflug vorführen | [Routen- und Tourenanimation](#chapter-animation) |
 | eine Strecke aus Garmin Connect oder Komoot übernehmen | [GPX-Import](#chapter-gpx-import) |
 | meine Fahrt aufzeichnen | [Android-App](#chapter-android-app) |

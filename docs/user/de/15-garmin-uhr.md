@@ -1,6 +1,6 @@
 ---
 title: Garmin-Uhr
-keywords: Garmin, Uhr, Datenfeld, Connect IQ, Sideloading, SET-Datei, Uhr-Schlüssel, fenix, Wegpunkt, ETA, Navigation
+keywords: Garmin, Uhr, Datenfeld, Datenfelder herunterladen, Connect IQ, Sideloading, SET-Datei, Uhr-Schlüssel, fenix, Venu, Wegpunkt, ETA, Navigation
 ---
 
 Das YTAN-Datenfeld zeigt dir auf deiner Garmin-Uhr **während einer Aktivität** den Weg entlang deiner Route: Richtung und Entfernung zum nächsten Wegpunkt, Fortschritt, voraussichtliche Ankunftszeit.
@@ -44,6 +44,7 @@ Beide Wege lassen sich kombinieren.
 | fenix 7 / 7S / 7X (auch Pro) | ja |
 | fenix 6 Pro / 6S Pro / 6X Pro | ja |
 | Forerunner 245 **Music** | ja |
+| Venu 3S | ja |
 | fenix 6 / 6S ohne Pro, Forerunner 245 ohne Music | **nein** (zu wenig Speicher für das Datenfeld) |
 
 ## Einrichtung (Sideloading)
@@ -52,7 +53,7 @@ Das Datenfeld ist nicht im Connect-IQ-Store. Du installierst es von Hand auf der
 
 ### 1. Das Datenfeld für deine Uhr besorgen
 
-Du brauchst die Datei **`ytan-<Uhrmodell>.prg`** (zum Beispiel `ytan-fenix7x.prg`). Die Administratoren von YTAN stellen sie bereit - es gibt **eine Datei pro Uhrmodell**, die für alle Nutzer gleich ist. Die persönliche Verbindung zu deinem Konto kommt erst im nächsten Schritt in einer kleinen Zusatzdatei.
+Du brauchst die Datei **`ytan-<Uhrmodell>.prg`** (zum Beispiel `ytan-fenix7x.prg`). Es gibt **eine Datei pro Uhrmodell**, die für alle Nutzer gleich ist. Du lädst sie in YTAN herunter: Menü > **Profil** > **Garmin-Uhr** > **Datenfelder**. Dort steht eine Zeile je Uhrmodell; ein Tipp darauf lädt die Datei (in der Android-App öffnet sich dazu das Teilen-Menü, über das du sie speicherst). Fehlt dein Modell, frag die Administratoren. Die persönliche Verbindung zu deinem Konto kommt erst in Schritt 4 in einer kleinen Zusatzdatei - mit der Android-App brauchst du sie nicht unbedingt.
 
 ### 2. Auf die Uhr kopieren
 

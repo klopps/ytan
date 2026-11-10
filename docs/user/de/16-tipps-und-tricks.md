@@ -14,6 +14,7 @@ Reagiert YTAN nicht mehr richtig oder zeigt eine veraltete Oberfläche, hilft ei
 - **Alle POIs im Bild:** Menü > **POIs** > **Zeige alle aktivierten POIs** zoomt so, dass alle sichtbaren POIs zu sehen sind.
 - **Wenig Platz auf dem Smartphone:** Schalte im Menü > **POIs** alles aus, was du gerade nicht brauchst - die Karte wird sofort übersichtlicher.
 - **Nur das Nötige im Tour-Modus:** Er blendet alle fremden Routen aus (siehe [Touren](#chapter-touren)).
+- **Strecke vorab kennenlernen:** Die [Routen- und Tourenanimation](#chapter-animation) fliegt die Route ab und zeigt, wie sie entlang der Küste verläuft. Mit **−** wird sie langsamer, mit der Leertaste hält sie an.
 - **Dunkler Modus unterwegs:** Das dunkle Erscheinungsbild schont die Augen bei Nacht und den Akku bei OLED-Bildschirmen.
 
 ## Genauer arbeiten

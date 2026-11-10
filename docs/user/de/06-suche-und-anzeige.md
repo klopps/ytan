@@ -46,4 +46,4 @@ Die Schalter gelten nur für die Anzeige - nichts wird gelöscht.
 
 ## Touren-Modus
 
-Wenn du in der Tour-Ansicht den **Tour-Modus** aktivierst, zeigt die Karte nur die Routen dieser Tour. Oben links erscheint ein Hinweis mit dem Tournamen; das **×** beendet den Modus. Siehe [Touren](#chapter-touren).
+Wenn du in der Tour-Ansicht den **Tour-Modus** aktivierst, zeigt die Karte nur die Routen dieser Tour. Oben links erscheint ein Hinweis mit dem Tournamen; das Abspielen-Symbol darin startet die [Tourenanimation](#chapter-animation), das **×** beendet den Modus. Siehe [Touren](#chapter-touren).

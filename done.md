@@ -1,5 +1,20 @@
 # Erledigt
 
+## Anleitung auf den Entwicklungsstand bringen
+
+~~In der Anleitung fehlt einiges, das neu gebaut wurde, so ist die Routen- und Tourenanimation nicht enthalten. Entwicklungsstand mit der Dokumentation abgleichen und Fehlendes ergänzen.~~
+
+Gelöst (2026-11-10): Abgleich der Anleitung (`docs/user/de/`, zuletzt geändert am 2026-10-19) mit den Commits seither und dem Code (Kontextmenüs in `route.js`/`poi.js`, Kartenkontextmenü-Einträge, Profil, Einstellungen, `watch/manifest.xml`). Neues Kapitel `08-animation.md` "Routen- und Tourenanimation": Start über das Routen-Kontextmenü bzw. den Abspielknopf im Tour-Modus-Hinweis, Steuerleiste mit Tasten, Ende, WebGL-Hinweis. Die Kapitel 08-15 rücken deshalb auf 09-16; Links gehen über den Dateinamen ohne Nummer, es musste also nichts umverlinkt werden. Ergänzt wurde außerdem:
+- Kartenkontextmenü vollständig, mit Wind ein-/ausblenden.
+- Routen-Kontextmenü: "Zeige Routenanimation", Senden an die Uhr auch für fremde sichtbare Routen, Uhr-Symbol im Infofenster.
+- POI-Infofenster: Abstand zum Wasser, Quelle bei Leuchtfeuern, "Zeige Sektorlicht", "POI verschieben"; neuer Abschnitt "Einen POI verschieben".
+- Regenradar- und Windregionen sind jetzt Administratorwahl, Wind auch außerhalb Europas (ICON global, ~13 km, 72 h).
+- Einstellung "Deckkraft Windfarbfläche" und Profil "Auf allen Geräten abmelden".
+- Garmin: Download der Datenfelder unter Profil > Garmin-Uhr > Datenfelder, Venu 3S unterstützt.
+- Verweise auf die Animation in Einführung, Quickstart, Suche/Anzeige, Touren und Tipps; Schlagwörter erweitert.
+
+Die Screenshots wurden mit `npm run screenshots` neu erzeugt (Kontextmenüs, Tour-Modus mit Abspielknopf, POI-Fenster mit Gewässerabstand). `UserGuideServiceTest` ist grün.
+
 ## Regenradar: Messung nach drei Wochen Betrieb
 
 ~~Aus dem todo-Punkt "Regenradar mit Kurzfristvorhersage als Kartenebene": Deploy und Cron, Laufzeit normaler Läufe im `radar.log` prüfen und ggf. die Zahl der Worker anpassen, `storage/radar/verify.csv` über einige Regentage auswerten (bis zu welcher Vorlaufzeit schlägt der Nowcast die Persistenz?), Speicherbedarf nach einer Woche messen; dazu das Flackern an der spanisch-französischen Grenze.~~

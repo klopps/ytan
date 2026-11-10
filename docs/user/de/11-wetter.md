@@ -18,7 +18,7 @@ Zusätzlich bietet das Kartenkontextmenü **Auf Windy öffnen** und **Regenradar
 
 ## Regenradar auf der Karte
 
-YTAN kann den Niederschlag direkt über die Karte legen: im Menü **Wetter** > **Regenradar ein-/ausblenden** wählen, oder lang auf einen leeren Kartenpunkt drücken (Rechtsklick) und **Regenradar ein-/ausblenden** wählen. YTAN merkt sich die Einstellung. Das Radar gibt es für **Deutschland, Dänemark und Schweden** samt Ostsee, bis in die Zoomstufen, mit denen du paddelst.
+YTAN kann den Niederschlag direkt über die Karte legen: im Menü **Wetter** > **Regenradar ein-/ausblenden** wählen, oder lang auf einen leeren Kartenpunkt drücken (Rechtsklick) und **Regenradar ein-/ausblenden** wählen. YTAN merkt sich die Einstellung. Das Radar gibt es für die europäischen Länder, die die Administratoren ausgewählt haben (zum Beispiel Deutschland, Dänemark und Schweden samt Ostsee), bis in die Zoomstufen, mit denen du paddelst.
 
 | Teil | Bedeutung |
 |---|---|
@@ -37,7 +37,7 @@ Die Radardaten stammen von **EUMETNET OPERA**, dem Verbund der europäischen Wet
 
 ## Wind auf der Karte
 
-Der Wind lässt sich auch direkt über die Karte legen: im Menü **Wetter** > **Wind ein-/ausblenden** wählen, oder lang auf einen leeren Kartenpunkt drücken (Rechtsklick) und **Wind ein-/ausblenden** wählen. Kleine **Striche** ziehen mit dem Wind über die Karte - je stärker der Wind, desto schneller bewegen sie sich. Darunter färbt eine blasse **Farbfläche** die Windstärke ein. Die Ebene gibt es für die Gebiete, die auch das Regenradar abdeckt. Wind und Regenradar lassen sich nicht gleichzeitig einblenden: Das eine schaltet das andere aus.
+Der Wind lässt sich auch direkt über die Karte legen: im Menü **Wetter** > **Wind ein-/ausblenden** wählen, oder lang auf einen leeren Kartenpunkt drücken (Rechtsklick) und **Wind ein-/ausblenden** wählen. Kleine **Striche** ziehen mit dem Wind über die Karte - je stärker der Wind, desto schneller bewegen sie sich. Darunter färbt eine blasse **Farbfläche** die Windstärke ein; wie kräftig sie ist, stellst du unter **Einstellungen** > **Deckkraft Windfarbfläche** ein. Die Ebene gibt es für die Gebiete, die die Administratoren dafür ausgewählt haben - meist dieselben wie beim Regenradar, auf Wunsch auch außerhalb Europas. Wind und Regenradar lassen sich nicht gleichzeitig einblenden: Das eine schaltet das andere aus.
 
 | Teil | Bedeutung |
 |---|---|
@@ -50,9 +50,9 @@ Der Wind lässt sich auch direkt über die Karte legen: im Menü **Wetter** > **
 
 Die Striche **bewegen sich nur, solange du die Karte ansiehst**: Beim Ziehen und Zoomen pausieren sie, und nach einer Minute ohne Bewegung der Karte bleiben sie stehen (die Farbfläche bleibt). Das spart Akku. Ein Fingertipp auf das Feld oder jede Kartenbewegung startet sie wieder. Ohne Internetverbindung verschwindet die Ebene und kommt mit der Verbindung zurück.
 
-Die Vorhersage ist ein **Modell mit etwa 2 km Raster** (in Deutschland und Umgebung, sonst etwa 6,5 km). Wind in engen Förden, hinter Landzungen und an Steilküsten kann deutlich davon abweichen, Böen und Düseneffekte kennt das Modell nur grob. Prüfe vor jeder Fahrt zusätzlich die amtlichen Seewetterberichte.
+Die Vorhersage ist ein **Modell mit etwa 2 km Raster** (in Deutschland und Umgebung, im übrigen Europa etwa 6,5 km, außerhalb Europas etwa 13 km und nur für die nächsten drei Tage). Wind in engen Förden, hinter Landzungen und an Steilküsten kann deutlich davon abweichen, Böen und Düseneffekte kennt das Modell nur grob. Prüfe vor jeder Fahrt zusätzlich die amtlichen Seewetterberichte.
 
-Die Winddaten stammen vom **Deutschen Wetterdienst** (Modelle ICON-D2 und ICON-EU, Wind in 10 m Höhe).
+Die Winddaten stammen vom **Deutschen Wetterdienst** (Modelle ICON-D2, ICON-EU und außerhalb Europas ICON, Wind in 10 m Höhe).
 
 ## Woher kommen die Daten?
 

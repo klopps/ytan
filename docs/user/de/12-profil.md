@@ -1,6 +1,6 @@
 ---
 title: Profil
-keywords: Anmeldung, Login, Passwort, Passwort vergessen, E-Mail ändern, Standardgeschwindigkeit, Abmelden, Konto
+keywords: Anmeldung, Login, Passwort, Passwort vergessen, E-Mail ändern, Standardgeschwindigkeit, Abmelden, Auf allen Geräten abmelden, Konto
 ---
 
 Menü > **Profil** ist die Zentrale für dein Konto.
@@ -30,6 +30,9 @@ Oben siehst du deinen Namen und deine E-Mail-Adresse. Darunter:
 | **Standard-Geschwindigkeit** | Deine übliche Paddelgeschwindigkeit, siehe unten. |
 | **Garmin-Uhr** | Verbindung mit der Garmin-Uhr, siehe [Garmin-Uhr](#chapter-garmin-uhr). |
 | **Abmelden** | Beendet die Anmeldung auf diesem Gerät. |
+| **Auf allen Geräten abmelden** | Meldet dich nach einer Rückfrage auf allen **anderen** Geräten und Apps ab, zum Beispiel wenn du ein Handy verloren hast. Dieses Gerät bleibt angemeldet. |
+
+Auch wenn du dein Passwort änderst oder über „Passwort vergessen" neu setzt, meldet YTAN dich auf allen anderen Geräten ab.
 
 ### Passwortregeln
 

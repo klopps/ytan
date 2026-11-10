@@ -1,6 +1,6 @@
 ---
 title: Anlegen und Bearbeiten
-keywords: Werkzeugleiste, Route anlegen, Wegpunkt, Route teilen, Split, POI anlegen, Windschatten-Indikator, WSI, Leuchtfeuer, Gebiet anlegen, Löschen, Fotos, öffentlich, privat
+keywords: Werkzeugleiste, Route anlegen, Wegpunkt, Route teilen, Split, POI anlegen, POI verschieben, Sektor-Kennung, Windschatten-Indikator, WSI, Leuchtfeuer, Gebiet anlegen, Löschen, Fotos, öffentlich, privat
 ---
 
 Mit der Werkzeugleiste legst du Routen, POIs und Gebiete an. Dazu musst du angemeldet sein. Alles Neue ist zunächst **privat**.
@@ -77,6 +77,16 @@ Es gibt zwei Wege:
 | **Fotos** | Wie bei Routen. |
 | **Öffentlich (für alle sichtbar)** | Ohne Haken sieht nur du den POI. |
 
+### Einen POI verschieben
+
+Liegt ein eigener POI an der falschen Stelle, verschiebst du ihn, ohne das Bearbeiten-Fenster zu öffnen:
+
+1. Tippe im Infofenster des POIs auf das **Kreuzpfeil-Symbol** (unten links) oder wähle im Kontextmenü **POI verschieben**.
+2. Ziehe das Symbol an die richtige Stelle.
+3. Bestätige oben in der zweiten Leiste mit **Speichern** (auf schmalen Bildschirmen ein Haken) oder verwirf mit **Abbrechen** (Kreuz).
+
+Nach dem Verschieben berechnet YTAN den Abstand zum Wasser neu.
+
 ### Sonderfall: Windschatten-Indikator (WSI)
 
 Bei **Zeltplatz** und **Campingplatz (kommerziell)** gibst du an, aus welchen Richtungen der Platz vor Wind **geschützt** ist. Dazu teilt YTAN den Kreis in **16 Sektoren zu je 22,5°**, beginnend im Norden und im Uhrzeigersinn. Jeder Sektor hat einen von drei Werten:
@@ -93,7 +103,7 @@ Der WSI ist eine Zeichenfolge aus genau 16 Ziffern. Am einfachsten füllst du si
 
 ### Sonderfall: Leuchtfeuer
 
-Bei **Leuchtfeuer** (Leuchttürme, Seezeichen) trägst du die **Kennung** ein, zum Beispiel „Iso WRG 6s". YTAN kann daraus den Verlauf der Lichtsektoren auf der Karte zeichnen: Im Kontextmenü des Leuchtfeuers schaltest du **Sektorleuchtfeuer anzeigen** ein oder aus.
+Bei **Leuchtfeuer** (Leuchttürme, Seezeichen) trägst du die **Kennung** ein, zum Beispiel „Iso WRG 6s". Für die farbigen Sektoren gibt es das Feld **Sektor-Kennung**. YTAN zeichnet daraus die Lichtsektoren auf die Karte: über **Zeige Sektorlicht** im Infofenster oder **Sektorleuchtfeuer anzeigen** im Kontextmenü des Leuchtfeuers.
 
 ## Gebiete
 
