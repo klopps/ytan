@@ -263,11 +263,31 @@ body.app-update-required #tourRouteManagerSaveBtn {
 #gdpr {
   height: calc(100% - 40px);
   text-align: center;
+  /* Photo instead of the old plain colour + YTAN logo: centred, its bottom
+     edge on the window's bottom edge, scaled (aspect ratio kept) so it always
+     covers the whole screen; the colour only shows while it loads. */
   background-color: var(--color-gdpr-bg);
+  background-image: url("../images/ytan_background.jpg");
+  background-position: center bottom;
+  background-size: cover;
+  background-repeat: no-repeat;
   margin: 0;
   padding: 20px;
   display: none;
+  position: relative;
   z-index: 10;
+}
+
+/* The YTAN logo over the photo: at most 400px wide, at least 40px from the
+   left/right edges, exactly 40px above the bottom edge. */
+.gdpr-logo {
+  position: absolute;
+  left: 50%;
+  bottom: 40px;
+  transform: translateX(-50%);
+  width: min(400px, calc(100% - 80px));
+  height: auto;
+  display: block;
 }
 
 #policy-disclaimer {
@@ -956,7 +976,7 @@ img.wsi {
    screen the entire time a panel is open, which covers whatever content
    happens to scroll underneath it, not just content past the very end.
    As a flow element it only ever appears once, after everything else. */
-/* .panel-logo and .logo_large (below) render the YTAN mark via mask-image
+/* .panel-logo renders the YTAN mark via mask-image
    rather than <img src="images/ytan.svg">, so background-color can tint it
    with our theme tokens instead of it staying the SVG's own hardcoded black
    (invisible on a dark panel). A div has no intrinsic size like an <img>
@@ -3371,25 +3391,6 @@ img.wsi {
   background-size: contain;
   background-repeat: no-repeat;
   z-index: 1;
-}
-
-.logo_large {
-  display: block;
-  width: 100%;
-  aspect-ratio: 1873 / 1349;
-  margin-left: auto;
-  margin-right: auto;
-  margin-top: 50px;
-  max-width: 500px;
-  background-color: var(--color-text);
-  mask-image: url("../images/ytan.svg");
-  -webkit-mask-image: url("../images/ytan.svg");
-  mask-repeat: no-repeat;
-  -webkit-mask-repeat: no-repeat;
-  mask-position: center;
-  -webkit-mask-position: center;
-  mask-size: contain;
-  -webkit-mask-size: contain;
 }
 
 /* Browser-only "cold start" splash screen, see splashscreen.js. z-index

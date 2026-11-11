@@ -141,7 +141,7 @@
           <button id="startBtn" class="startbtn" data-on-click="loadGoogleMaps('<?= htmlspecialchars($mapsApiKey) ?>')" disabled><?= $t('app.gdpr.start') ?></button>
         </p>
       </div>
-      <div class="logo_large"></div>
+      <img class="gdpr-logo" src="<?= $baseUrl ?>/images/ytan.svg?v=<?= \Ytan\App::assetVersion($rootDir, '/images/ytan.svg') ?>" alt="<?= htmlspecialchars($appName) ?>">
     </div>
 
     <!-- Persistent, non-dismissable notice shown once AppVersionMiddleware
