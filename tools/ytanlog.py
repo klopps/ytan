@@ -8,7 +8,10 @@ Same rules as the PHP side (src/Service/Log/LogWriter.php, LogRotation.php):
 - once a file has more than MAX_LINES lines, its oldest ARCHIVE_LINES lines
   move into a new file NAME.N.log (N = the next free number), as often as
   needed - the file is rewritten in place, so a shell redirection that holds
-  it open in append mode keeps working.
+  it open in append mode keeps working;
+- more than MAX_ARCHIVES archives: all but the newest KEEP_ARCHIVES go into
+  NAME.A-B.zip under their own names (deleted once the ZIP holds them), the
+  numbers keep counting.
 
 Console output only when stderr is a terminal: cron and /admin/radar start the
 jobs with their output redirected (old cron lines even into the same file),
@@ -22,9 +25,12 @@ import os
 import re
 import sys
 import time
+import zipfile
 
 MAX_LINES = 2000
 ARCHIVE_LINES = 1000
+MAX_ARCHIVES = 20
+KEEP_ARCHIVES = 10
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 LOG_DIR = os.path.join(ROOT, "storage", "logs")
@@ -55,7 +61,8 @@ def count_lines(path: str) -> int:
 def _next_archive_number(path: str) -> int:
     folder, base = os.path.split(path)
     stem = base[:-4] if base.endswith(".log") else base
-    pattern = re.compile(re.escape(stem) + r"\.(\d+)\.log$")
+    # NAME.N.log, and NAME.A-B.zip of packed ones: numbering never starts again after compact()
+    pattern = re.compile(re.escape(stem) + r"\.(?:\d+-)?(\d+)\.(?:log|zip)$")
     numbers = [int(m.group(1)) for m in (pattern.match(f) for f in os.listdir(folder or ".")) if m]
     return max(numbers, default=0) + 1
 
@@ -81,7 +88,42 @@ def rotate(path: str, max_lines: int = MAX_LINES, archive_lines: int = ARCHIVE_L
         handle.seek(0)
         handle.write(rest)
         handle.truncate()
+    compact(path)
     return archives
+
+
+def archives(path: str) -> dict[int, str]:
+    """number -> path of the NAME.N.log archives, oldest first."""
+    folder, base = os.path.split(path)
+    stem = base[:-4] if base.endswith(".log") else base
+    pattern = re.compile(re.escape(stem) + r"\.(\d+)\.log$")
+    found = {int(m.group(1)): os.path.join(folder, m.group(0))
+             for m in (pattern.match(f) for f in os.listdir(folder or ".")) if m}
+    return dict(sorted(found.items()))
+
+
+def compact(path: str, max_archives: int = MAX_ARCHIVES, keep: int = KEEP_ARCHIVES) -> str | None:
+    """More than max_archives archives: all but the newest keep go into NAME.A-B.zip, under their own
+    names, and are deleted once the ZIP holds them. The remaining ones keep their numbers."""
+    found = archives(path)
+    if len(found) <= max_archives:
+        return None
+    old = dict(list(found.items())[:len(found) - keep])
+    numbers = list(old)
+    stem = path[:-4] if path.endswith(".log") else path
+    zip_path = f"{stem}.{numbers[0]}-{numbers[-1]}.zip"
+    try:
+        with zipfile.ZipFile(zip_path, "x", zipfile.ZIP_DEFLATED) as archive:
+            for file in old.values():
+                archive.write(file, arcname=os.path.basename(file))
+        with zipfile.ZipFile(zip_path) as archive:
+            if sorted(archive.namelist()) != sorted(os.path.basename(f) for f in old.values()):
+                return None
+    except FileExistsError:
+        return None
+    for file in old.values():
+        os.remove(file)
+    return zip_path
 
 
 class StampedFormatter(logging.Formatter):

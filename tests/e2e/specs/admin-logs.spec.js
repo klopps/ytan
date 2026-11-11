@@ -11,16 +11,20 @@ const { test, expect } = require('../fixtures');
 const LOG_DIR = path.join(__dirname, '..', '..', '..', 'storage', 'logs');
 const LOG_NAME = 'e2e-admin-logs.log';
 const LOG_FILE = path.join(LOG_DIR, LOG_NAME);
+const ZIP_NAME = 'e2e-admin-logs.1-11.zip';
+const ZIP_FILE = path.join(LOG_DIR, ZIP_NAME);
 
 test.use({ viewport: { width: 390, height: 660 } });
 
 test.beforeEach(() => {
   fs.mkdirSync(LOG_DIR, { recursive: true });
   fs.writeFileSync(LOG_FILE, 'first line\nsecond line\n');
+  fs.writeFileSync(ZIP_FILE, 'PK not really a zip');
 });
 
 test.afterEach(() => {
   fs.rmSync(LOG_FILE, { force: true });
+  fs.rmSync(ZIP_FILE, { force: true });
 });
 
 async function openAdminLogs(page, request, credentials) {
@@ -71,4 +75,10 @@ test('downloads one file as is and several as a ZIP', async ({ page, request, cr
   download = page.waitForEvent('download');
   await page.locator('#logsDownloadSelected').click();
   expect((await download).suggestedFilename()).toMatch(/^ytan-logs-\d{8}-\d{6}\.zip$/);
+
+  // A packed archive (NAME.A-B.zip) is downloaded on click, not shown as text.
+  download = page.waitForEvent('download');
+  await page.locator('#logsList tr', { hasText: ZIP_NAME }).getByRole('link').click();
+  expect((await download).suggestedFilename()).toBe(ZIP_NAME);
+  await expect(page.locator('#logsViewer')).toBeHidden();
 });

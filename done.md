@@ -1,5 +1,18 @@
 # Erledigt
 
+## Alte Log-Archive in ZIP packen
+
+~~Sollten mehr als 20 archivierte Logfiles existieren, werden alle bis auf die 10 letzten in einem ZIP-Archiv zusammengefasst und dann die älteren gelöscht. Die Nummerierung darf nicht geändert werden und muss fortlaufen; die Namen der ins ZIP verschobenen Logfiles dürfen sich nicht ändern.~~
+
+Gelöst (2026-11-11): `LogRotation::compact()` (PHP) bzw. `ytanlog.compact()` (Python) läuft nach jeder Rotation.
+- **Auslöser:** mehr als 20 Archive `name.N.log` eines Logs.
+- **Packen:** Alle außer den 10 neuesten kommen in `name.A-B.zip` (A-B = kleinste/größte enthaltene Nummer, z. B. `radar.1-11.zip`), jeweils unter ihrem eigenen Namen (`radar.1.log` ...).
+- **Löschen:** Die Originale werden erst gelöscht, wenn das ZIP geschrieben und noch einmal geöffnet geprüft ist (Anzahl bzw. Namensliste).
+- **Kein Überschreiben:** Ein schon vorhandenes gleichnamiges ZIP wird nicht überschrieben, dann wird nichts gelöscht. Ohne PHP-Zip-Extension wird nichts gepackt.
+- **Nummerierung:** Die verbleibenden 10 Archive behalten ihre Nummern. Die nächste Nummer folgt auf die höchste `.N.log` oder das Ende des ZIP-Bereichs, sie fängt also auch dann nicht neu an, wenn einmal nur noch ZIPs übrig sind.
+- **Logviewer:** Er zeigt die ZIPs in der Liste und lädt sie per Klick herunter, statt sie als Text anzuzeigen.
+- **Tests:** `LogWriterTest` und `tools/tests/test_ytanlog.py` (bis 20 nichts, 21 → ZIP mit 1-11 unter Originalnamen, 12-21 unverändert, nächste Nummer 22, nur ZIP vorhanden → Nummer danach, vorhandenes ZIP bleibt) sowie e2e `admin-logs.spec.js` (ZIP-Klick lädt herunter).
+
 ## Aussagekräftige Logs für alle Import-Tools
 
 ~~Alle Import-Tools, nicht nur der Campingplatz-Import, sollen aussagekräftige Logfiles erzeugen.~~

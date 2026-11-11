@@ -167,6 +167,11 @@ async function logsOpen(index) {
     if (!file) {
         return;
     }
+    // Packed old archives (NAME.A-B.zip, LogRotation::compact()) aren't text - download them.
+    if (/\.zip$/i.test(file.name)) {
+        logsDownload([file.id], file.name);
+        return;
+    }
     logsState.current = file.id;
     logsState.offset = 0;
     var pre = document.getElementById('logsContent');

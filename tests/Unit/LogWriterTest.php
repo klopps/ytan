@@ -114,6 +114,73 @@ final class LogWriterTest extends TestCase
         $this->assertSame(1001, LogRotation::countLines($path));
     }
 
+    /** job.N.log for every N, content "archive N". */
+    private function archives(int $from, int $to): void
+    {
+        foreach (range($from, $to) as $n) {
+            $this->write("job.$n.log", ["archive $n"]);
+        }
+    }
+
+    public function testUpTo20ArchivesNothingIsPacked(): void
+    {
+        $this->archives(1, 20);
+
+        $this->assertNull(LogRotation::compact($this->dir . '/job.log'));
+        $this->assertCount(20, LogRotation::archives($this->dir . '/job.log'));
+    }
+
+    public function testMoreThan20ArchivesAllButTheNewest10GoIntoAZipUnderTheirOwnNames(): void
+    {
+        $this->archives(1, 21);
+
+        $zipPath = LogRotation::compact($this->dir . '/job.log');
+
+        $this->assertSame($this->dir . '/job.1-11.zip', $zipPath);
+        $zip = new \ZipArchive();
+        $this->assertTrue($zip->open($zipPath));
+        $names = [];
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $names[] = $zip->getNameIndex($i);
+        }
+        sort($names, SORT_NATURAL);
+        $this->assertSame(array_map(fn ($n) => "job.$n.log", range(1, 11)), $names);
+        $this->assertSame("archive 7\n", $zip->getFromName('job.7.log'));
+        $zip->close();
+
+        // The newest 10 stay as they are, numbers unchanged.
+        $this->assertSame(range(12, 21), array_keys(LogRotation::archives($this->dir . '/job.log')));
+        $this->assertSame("archive 12\n", file_get_contents($this->dir . '/job.12.log'));
+    }
+
+    public function testNumberingContinuesAfterPacking(): void
+    {
+        $this->archives(1, 21);
+        LogRotation::compact($this->dir . '/job.log');
+        $path = $this->write('job.log', $this->numbered(1, 2001));
+
+        $this->assertSame([$this->dir . '/job.22.log'], LogRotation::rotate($path));
+
+    }
+
+    public function testWithOnlyAZipLeftTheNumberFollowsIt(): void
+    {
+        file_put_contents($this->dir . '/job.5-30.zip', 'packed');
+        $path = $this->write('job.log', $this->numbered(1, 2001));
+
+        $this->assertSame([$this->dir . '/job.31.log'], LogRotation::rotate($path));
+    }
+
+    public function testAnExistingZipIsNeitherOverwrittenNorAreArchivesDeleted(): void
+    {
+        $this->archives(1, 21);
+        file_put_contents($this->dir . '/job.1-11.zip', 'keep me');
+
+        $this->assertNull(LogRotation::compact($this->dir . '/job.log'));
+        $this->assertSame('keep me', file_get_contents($this->dir . '/job.1-11.zip'));
+        $this->assertCount(21, LogRotation::archives($this->dir . '/job.log'));
+    }
+
     public function testRotationKeepsAnAppendHandleWorking(): void
     {
         $path = $this->write('job.log', $this->numbered(1, 2500));

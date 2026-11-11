@@ -65,6 +65,57 @@ class RotateTest(unittest.TestCase):
         self.assertEqual("after rotation", lines[-1])
 
 
+
+class CompactTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = self.tmp.name
+        self.path = os.path.join(self.dir, "job.log")
+
+    def tearDown(self) -> None:
+        self.tmp.cleanup()
+
+    def archives(self, first: int, last: int) -> None:
+        for n in range(first, last + 1):
+            with open(os.path.join(self.dir, f"job.{n}.log"), "w", newline="\n") as handle:
+                handle.write(f"archive {n}\n")
+
+    def test_up_to_20_archives_nothing_is_packed(self) -> None:
+        self.archives(1, 20)
+        self.assertIsNone(ytanlog.compact(self.path))
+        self.assertEqual(20, len(ytanlog.archives(self.path)))
+
+    def test_all_but_newest_10_into_zip_under_own_names(self) -> None:
+        import zipfile
+        self.archives(1, 21)
+        zip_path = ytanlog.compact(self.path)
+        self.assertEqual(os.path.join(self.dir, "job.1-11.zip"), zip_path)
+        with zipfile.ZipFile(zip_path) as archive:
+            self.assertEqual(sorted(f"job.{n}.log" for n in range(1, 12)), sorted(archive.namelist()))
+            self.assertEqual(b"archive 7\n", archive.read("job.7.log"))
+        self.assertEqual(list(range(12, 22)), list(ytanlog.archives(self.path)))
+
+    def test_numbering_continues(self) -> None:
+        self.archives(1, 21)
+        ytanlog.compact(self.path)
+        write(self.path, 1, 2001)
+        self.assertEqual(["job.22.log"], [os.path.basename(a) for a in ytanlog.rotate(self.path)])
+
+    def test_only_zip_left_number_follows_it(self) -> None:
+        with open(os.path.join(self.dir, "job.5-30.zip"), "wb") as handle:
+            handle.write(b"packed")
+        write(self.path, 1, 2001)
+        self.assertEqual(["job.31.log"], [os.path.basename(a) for a in ytanlog.rotate(self.path)])
+
+    def test_existing_zip_kept_and_nothing_deleted(self) -> None:
+        self.archives(1, 21)
+        with open(os.path.join(self.dir, "job.1-11.zip"), "wb") as handle:
+            handle.write(b"keep me")
+        self.assertIsNone(ytanlog.compact(self.path))
+        with open(os.path.join(self.dir, "job.1-11.zip"), "rb") as handle:
+            self.assertEqual(b"keep me", handle.read())
+        self.assertEqual(21, len(ytanlog.archives(self.path)))
+
 class LoggingTest(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
