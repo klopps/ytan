@@ -28,6 +28,7 @@ use Ytan\Domain\LighthouseImport\LighthouseImportRepository;
 use Ytan\Service\LighthouseList\DanishLighthouseListParser;
 use Ytan\Service\LighthouseList\NgaLighthouseListParser;
 use Ytan\Service\LighthouseList\PdfTextFragments;
+use Ytan\Service\Log\LogWriter;
 
 $args = array_slice($argv, 1);
 $dryRun = in_array('--dry-run', $args, true);
@@ -40,23 +41,39 @@ if (count($args) !== 2 || !isset($parsers[$args[0]]) || !is_file($args[1])) {
 }
 [$source, $pdfPath] = $args;
 
+$root = dirname(__DIR__);
+$log = LogWriter::cli($root, 'lighthouse-import'); // storage/logs/lighthouse-import.log (also the admin tool's)
+$label = 'cli: ' . $source . ' ' . basename($pdfPath);
+
 ini_set('memory_limit', '4G');
 
-$entries = (new $parsers[$source]())->parse(PdfTextFragments::pagesOf($pdfPath));
+$started = microtime(true);
+try {
+    $entries = (new $parsers[$source]())->parse(PdfTextFragments::pagesOf($pdfPath));
+} catch (Throwable $e) {
+    $log->error("$label: reading the PDF FAILED - " . $e->getMessage());
+    exit(1);
+}
 
 $withSector = count(array_filter($entries, fn ($e) => $e['sector_characteristic'] !== null));
 $missingRange = count(array_filter($entries, fn ($e) => $e['sector_missing_range']));
-echo count($entries) . " entries read ($withSector with sectors, $missingRange of them with sectors that have no range in the list - the default range chosen at import applies to those).\n";
+$log->line(sprintf(
+    '%s: %d entries read in %d s (%d with sectors, %d of them with sectors that have no range in the list - the default range chosen at import applies to those).',
+    $label,
+    count($entries),
+    (int) round(microtime(true) - $started),
+    $withSector,
+    $missingRange
+));
 
 if ($dryRun) {
-    echo "Dry run - nothing written.\n";
+    $log->line("$label: dry run - nothing written.");
     exit(0);
 }
 
-$root = dirname(__DIR__);
 if (is_file($root . '/.env')) {
     Dotenv::createImmutable($root)->load();
 }
 
 $result = (new LighthouseImportRepository(Connection::fromEnv()))->upsertMany($source, $entries);
-echo "Staged: {$result['inserted']} new, {$result['updated']} refreshed.\n";
+$log->line("$label: staged {$result['inserted']} new, {$result['updated']} refreshed.");

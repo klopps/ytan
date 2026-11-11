@@ -42,14 +42,14 @@ final class LogRotation
         $stem = str_ends_with($path, '.log') ? substr($path, 0, -4) : $path;
         $number = self::nextArchiveNumber($path);
 
-        $handle = fopen($path, 'r+b');
+        $handle = @fopen($path, 'r+b');
         if ($handle === false) {
             return [];
         }
         $archives = [];
         for ($c = 0; $c < $chunks; $c++) {
             $archive = $stem . '.' . $number . '.log';
-            $out = fopen($archive, 'wb');
+            $out = @fopen($archive, 'wb');
             if ($out === false) {
                 break;
             }
@@ -78,7 +78,7 @@ final class LogRotation
         $base = basename($path);
         $stem = str_ends_with($base, '.log') ? substr($base, 0, -4) : $base;
         $max = 0;
-        foreach (scandir(dirname($path)) ?: [] as $file) {
+        foreach (@scandir(dirname($path)) ?: [] as $file) {
             if (preg_match('/^' . preg_quote($stem, '/') . '\.(\d+)\.log$/', $file, $m) === 1) {
                 $max = max($max, (int) $m[1]);
             }

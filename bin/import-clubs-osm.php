@@ -22,9 +22,11 @@ use Ytan\Database\Connection;
 use Ytan\Domain\ClubImport\ClubImportRepository;
 use Ytan\Service\ClubList\ClubOsmMapper;
 use Ytan\Service\ClubOsmImportService;
+use Ytan\Service\Log\LogWriter;
 use Ytan\Service\Overpass\CurlOverpassClient;
 
 $root = dirname(__DIR__);
+$log = LogWriter::cli($root, 'club-import'); // storage/logs/club-import.log (also the admin tool's)
 if (is_file($root . '/.env')) {
     Dotenv::createImmutable($root)->load();
 }
@@ -39,16 +41,17 @@ $service = new ClubOsmImportService(
 
 $failed = [];
 foreach ($countries as $country) {
+    $started = microtime(true);
     try {
         $r = $service->import($country, true);
-        echo sprintf("%s: %d fetched, %d new, %d updated, %d skipped (no name/position)\n", strtoupper($country), $r['fetched'], $r['inserted'], $r['updated'], $r['skipped']);
+        $log->line(sprintf('cli: load OpenStreetMap %s: %d fetched, %d new, %d updated, %d skipped (no name/position) (%.1f s)', strtoupper($country), $r['fetched'], $r['inserted'], $r['updated'], $r['skipped'], microtime(true) - $started));
     } catch (Throwable $e) {
         $failed[] = strtoupper($country);
-        fwrite(STDERR, strtoupper($country) . ': FAILED - ' . $e->getMessage() . "\n");
+        $log->error(sprintf('cli: load OpenStreetMap %s: FAILED - %s (%.1f s)', strtoupper($country), $e->getMessage(), microtime(true) - $started));
     }
 }
 
 if ($failed !== []) {
-    fwrite(STDERR, 'Failed: ' . implode(' ', $failed) . " - rerun with these codes.\n");
+    $log->error('cli: failed: ' . implode(' ', $failed) . ' - rerun with these codes.');
     exit(1);
 }

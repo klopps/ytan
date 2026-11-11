@@ -10,6 +10,7 @@ use Ytan\Domain\LighthouseImport\LighthouseImportRepository;
 use Ytan\Exception\ValidationException;
 use Ytan\Service\LighthouseImportFile;
 use Ytan\Service\LighthouseImportService;
+use Ytan\Service\Log\ImportLog;
 use Ytan\Service\NgaMsiImportService;
 use Ytan\Service\OsmImportService;
 
@@ -35,6 +36,7 @@ final class LighthouseImportController extends BaseController
         private readonly LighthouseImportService $importService,
         private readonly ?OsmImportService $osmImport = null,
         private readonly ?NgaMsiImportService $ngaImport = null,
+        private readonly ImportLog $log = new ImportLog(),
     ) {
     }
 
@@ -80,18 +82,25 @@ final class LighthouseImportController extends BaseController
      */
     public function importFile(Request $request, Response $response): Response
     {
-        $this->requireAdmin($request);
+        $authUser = $this->requireAdmin($request);
+        $body = $this->jsonBody($request);
 
-        $bySource = LighthouseImportFile::parse($this->jsonBody($request));
-        $inserted = 0;
-        $updated = 0;
-        foreach ($bySource as $source => $entries) {
-            $result = $this->staging->upsertMany((string) $source, $entries);
-            $inserted += $result['inserted'];
-            $updated += $result['updated'];
-        }
+        return $this->json($response, ['data' => $this->log->run(
+            $authUser,
+            'read transfer file',
+            ['entries' => $body['entries'] ?? null],
+            function () use ($body) {
+                $inserted = 0;
+                $updated = 0;
+                foreach (LighthouseImportFile::parse($body) as $source => $entries) {
+                    $result = $this->staging->upsertMany((string) $source, $entries);
+                    $inserted += $result['inserted'];
+                    $updated += $result['updated'];
+                }
 
-        return $this->json($response, ['data' => ['inserted' => $inserted, 'updated' => $updated]]);
+                return ['inserted' => $inserted, 'updated' => $updated];
+            }
+        )]);
     }
 
     /**
@@ -100,24 +109,36 @@ final class LighthouseImportController extends BaseController
      */
     public function loadOsm(Request $request, Response $response): Response
     {
-        $this->requireAdmin($request);
-        if ($this->osmImport === null) {
-            throw new ValidationException('The OpenStreetMap import is not configured.');
-        }
-
+        $authUser = $this->requireAdmin($request);
         $body = $this->jsonBody($request);
+        $params = ['label' => (string) ($body['label'] ?? '')];
         foreach (['south', 'west', 'north', 'east'] as $key) {
-            if (!isset($body[$key]) || !is_numeric($body[$key])) {
-                throw new ValidationException("$key must be a number.");
-            }
+            $params[$key] = is_scalar($body[$key] ?? null) ? $body[$key] : null;
         }
 
-        return $this->json($response, ['data' => $this->osmImport->import(
-            (float) $body['south'],
-            (float) $body['west'],
-            (float) $body['north'],
-            (float) $body['east'],
-            (string) ($body['label'] ?? '')
+        return $this->json($response, ['data' => $this->log->run(
+            $authUser,
+            'load OpenStreetMap',
+            $params,
+            function () use ($body) {
+                if ($this->osmImport === null) {
+                    throw new ValidationException('The OpenStreetMap import is not configured.');
+                }
+                foreach (['south', 'west', 'north', 'east'] as $key) {
+                    if (!isset($body[$key]) || !is_numeric($body[$key])) {
+                        throw new ValidationException("$key must be a number.");
+                    }
+                }
+
+                return $this->osmImport->import(
+                    (float) $body['south'],
+                    (float) $body['west'],
+                    (float) $body['north'],
+                    (float) $body['east'],
+                    (string) ($body['label'] ?? '')
+                );
+            },
+            true
         )]);
     }
 
@@ -128,24 +149,53 @@ final class LighthouseImportController extends BaseController
      */
     public function loadNga(Request $request, Response $response): Response
     {
-        $this->requireAdmin($request);
-        if ($this->ngaImport === null) {
-            throw new ValidationException('The NGA import is not configured.');
-        }
-
+        $authUser = $this->requireAdmin($request);
         $volume = $this->jsonBody($request)['volume'] ?? null;
-        if (!is_numeric($volume)) {
-            throw new ValidationException('volume must be a number.');
-        }
 
-        return $this->json($response, ['data' => $this->ngaImport->import((int) $volume)]);
+        return $this->json($response, ['data' => $this->log->run(
+            $authUser,
+            'load NGA List of Lights',
+            ['volume' => is_scalar($volume) ? $volume : null],
+            function () use ($volume) {
+                if ($this->ngaImport === null) {
+                    throw new ValidationException('The NGA import is not configured.');
+                }
+                if (!is_numeric($volume)) {
+                    throw new ValidationException('volume must be a number.');
+                }
+
+                return $this->ngaImport->import((int) $volume);
+            },
+            true
+        )]);
     }
 
     public function import(Request $request, Response $response): Response
     {
         $authUser = $this->requireAdmin($request);
         $body = $this->jsonBody($request);
+        $ids = $body['ids'] ?? null;
 
+        return $this->json($response, ['data' => $this->log->run(
+            $authUser,
+            'import as POIs',
+            [
+                'selected' => is_array($ids) ? count($ids) : null,
+                'public' => (bool) ($body['public'] ?? false),
+                'on_conflict' => is_scalar($body['on_conflict'] ?? null) ? $body['on_conflict'] : null,
+                'decisions' => is_array($body['decisions'] ?? null) ? $body['decisions'] : null,
+            ],
+            fn () => $this->importSelection($authUser, $body)
+        )]);
+    }
+
+    /**
+     * @param array<string,mixed> $authUser
+     * @param array<string,mixed> $body
+     * @return array<string,mixed>
+     */
+    private function importSelection(array $authUser, array $body): array
+    {
         $ids = $body['ids'] ?? null;
         if (!is_array($ids) || $ids === []) {
             throw new ValidationException('ids must be a non-empty list.');
@@ -177,7 +227,7 @@ final class LighthouseImportController extends BaseController
             $decisions
         );
 
-        return $this->json($response, ['data' => $result]);
+        return $result;
     }
 
     /**

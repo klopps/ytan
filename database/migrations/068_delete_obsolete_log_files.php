@@ -13,7 +13,8 @@ declare(strict_types=1);
 return function (PDO $pdo): void {
     $written = [
         'jobs', 'radar', 'wind', 'water-index', 'place-names', 'shelter-import', 'campsite-import',
-        'poi-water-distance', 'weather-cleanup', 'file-cache-cleanup', 'console',
+        'poi-water-distance', 'weather-cleanup', 'file-cache-cleanup', 'console', 'club-import',
+        'lighthouse-import', 'gpx-import',
     ];
     $dir = dirname(__DIR__, 2) . '/storage/logs';
     foreach (glob($dir . '/*.log') ?: [] as $file) {

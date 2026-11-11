@@ -69,18 +69,18 @@ if ($steps === []) {
 
 $failed = [];
 foreach ($steps as $step) {
+    $started = microtime(true);
     try {
         if ($step === 'places') {
             $n = findPlaces($root, $staging, $all);
-            $log->line(sprintf("places: %d shelters without a name got one", $n));
+            $log->line(sprintf("cli: places: %d shelters without a name got one (%.1f s)", $n, microtime(true) - $started));
             continue;
         }
         if ($step === 'distances') {
-            $started = microtime(true);
             $n = $staging->recomputeDistances($all, function (int $done) use ($log) {
-                $log->line("distances: $done ...");
+                $log->line("cli: distances: $done ...");
             });
-            $log->line(sprintf("distances: %d computed in %d s", $n, (int) round(microtime(true) - $started)));
+            $log->line(sprintf("cli: distances: %d computed in %d s", $n, (int) round(microtime(true) - $started)));
             continue;
         }
         if (str_starts_with($step, 'osm:')) {
@@ -88,13 +88,13 @@ foreach ($steps as $step) {
         } else {
             $r = $sources->import($step);
         }
-        $log->line(sprintf("%s: %d read, %d new, %d updated", $step, $r['fetched'], $r['inserted'], $r['updated']));
+        $log->line(sprintf("cli: %s: %d read, %d new, %d updated (%.1f s)", $step, $r['fetched'], $r['inserted'], $r['updated'], microtime(true) - $started));
     } catch (Throwable $e) {
         $failed[] = $step;
-        $log->error($step . ': FAILED - ' . $e->getMessage());
+        $log->error(sprintf('cli: %s: FAILED - %s (%.1f s)', $step, $e->getMessage(), microtime(true) - $started));
     }
 }
-$log->line(sprintf("%d entries without distances to water", $staging->countUnchecked()));
+$log->line(sprintf("cli: %d entries without distances to water", $staging->countUnchecked()));
 
 exit($failed === [] ? 0 : 1);
 

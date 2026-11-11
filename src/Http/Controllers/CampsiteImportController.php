@@ -11,6 +11,7 @@ use Ytan\Exception\ValidationException;
 use Ytan\Service\CampsiteImportFile;
 use Ytan\Service\CampsiteImportService;
 use Ytan\Service\CampsiteOsmImportService;
+use Ytan\Service\Log\ImportLog;
 use Ytan\Service\Water\WaterDistanceService;
 
 /**
@@ -34,6 +35,7 @@ final class CampsiteImportController extends BaseController
         private readonly CampsiteImportService $importService,
         private readonly ?CampsiteOsmImportService $osmImport = null,
         private readonly ?WaterDistanceService $water = null,
+        private readonly ImportLog $log = new ImportLog(),
     ) {
     }
 
@@ -81,38 +83,65 @@ final class CampsiteImportController extends BaseController
     /** Reads a transfer file (the request body is its JSON): new entries are added, existing ones refreshed. */
     public function importFile(Request $request, Response $response): Response
     {
-        $this->requireAdmin($request);
+        $authUser = $this->requireAdmin($request);
+        $body = $this->jsonBody($request);
 
-        return $this->json($response, ['data' => $this->staging->upsertMany(CampsiteImportFile::parse($this->jsonBody($request)))]);
+        return $this->json($response, ['data' => $this->log->run(
+            $authUser,
+            'read transfer file',
+            ['entries' => $body['entries'] ?? null],
+            fn () => $this->staging->upsertMany(CampsiteImportFile::parse($body))
+        )]);
     }
 
     /** Loads all campsites of one country from OpenStreetMap: body {country}. */
     public function loadOsm(Request $request, Response $response): Response
     {
-        $this->requireAdmin($request);
+        $authUser = $this->requireAdmin($request);
+        $country = (string) ($this->jsonBody($request)['country'] ?? '');
+
+        return $this->json($response, ['data' => $this->log->run(
+            $authUser,
+            'load OpenStreetMap',
+            ['country' => $country],
+            fn () => $this->loadOsmCountry($country),
+            true
+        )]);
+    }
+
+    /** @return array{fetched:int, skipped:int, inserted:int, updated:int} */
+    private function loadOsmCountry(string $country): array
+    {
         if ($this->osmImport === null) {
             throw new ValidationException('The OpenStreetMap import is not configured.');
         }
         // The query alone may take minutes (place/street lookups); Windows counts wall time.
         set_time_limit(CampsiteOsmImportService::REQUEST_TIMEOUT_SECONDS + 60);
 
-        return $this->json($response, ['data' => $this->osmImport->import((string) ($this->jsonBody($request)['country'] ?? ''))]);
+        return $this->osmImport->import($country);
     }
 
     public function import(Request $request, Response $response): Response
     {
         $authUser = $this->requireAdmin($request);
         $body = $this->jsonBody($request);
-
         $ids = $body['ids'] ?? null;
-        if (!is_array($ids) || $ids === []) {
-            throw new ValidationException('ids must be a non-empty list.');
-        }
 
-        return $this->json($response, ['data' => $this->importService->import(
-            array_map('intval', $ids),
-            (int) $authUser['sub'],
-            (bool) ($body['public'] ?? false)
+        return $this->json($response, ['data' => $this->log->run(
+            $authUser,
+            'import as POIs',
+            ['selected' => is_array($ids) ? count($ids) : null, 'public' => (bool) ($body['public'] ?? false)],
+            function () use ($ids, $authUser, $body) {
+                if (!is_array($ids) || $ids === []) {
+                    throw new ValidationException('ids must be a non-empty list.');
+                }
+
+                return $this->importService->import(
+                    array_map('intval', $ids),
+                    (int) $authUser['sub'],
+                    (bool) ($body['public'] ?? false)
+                );
+            }
         )]);
     }
 

@@ -9,6 +9,7 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 use Ytan\Domain\ShelterImport\ShelterImportRepository;
 use Ytan\Exception\ValidationException;
 use Ytan\Service\ShelterImportFile;
+use Ytan\Service\Log\ImportLog;
 use Ytan\Service\ShelterImportService;
 use Ytan\Service\ShelterOsmImportService;
 use Ytan\Service\ShelterSourceImportService;
@@ -33,6 +34,7 @@ final class ShelterImportController extends BaseController
         private readonly ?ShelterOsmImportService $osmImport = null,
         private readonly ?ShelterSourceImportService $sourceImport = null,
         private readonly ?WaterDistanceService $water = null,
+        private readonly ImportLog $log = new ImportLog(),
     ) {
     }
 
@@ -80,47 +82,80 @@ final class ShelterImportController extends BaseController
     /** Reads a transfer file (the request body is its JSON): new entries are added, existing ones refreshed. */
     public function importFile(Request $request, Response $response): Response
     {
-        $this->requireAdmin($request);
+        $authUser = $this->requireAdmin($request);
+        $body = $this->jsonBody($request);
 
-        return $this->json($response, ['data' => $this->staging->upsertMany(ShelterImportFile::parse($this->jsonBody($request)))]);
+        return $this->json($response, ['data' => $this->log->run(
+            $authUser,
+            'read transfer file',
+            ['entries' => $body['entries'] ?? null],
+            fn () => $this->staging->upsertMany(ShelterImportFile::parse($body))
+        )]);
     }
 
     /** Loads all shelters of one country from OpenStreetMap: body {country}. */
     public function loadOsm(Request $request, Response $response): Response
     {
-        $this->requireAdmin($request);
-        if ($this->osmImport === null) {
-            throw new ValidationException('The OpenStreetMap import is not configured.');
-        }
+        $authUser = $this->requireAdmin($request);
+        $country = (string) ($this->jsonBody($request)['country'] ?? '');
 
-        return $this->json($response, ['data' => $this->osmImport->import((string) ($this->jsonBody($request)['country'] ?? ''))]);
+        return $this->json($response, ['data' => $this->log->run(
+            $authUser,
+            'load OpenStreetMap',
+            ['country' => $country],
+            function () use ($country) {
+                if ($this->osmImport === null) {
+                    throw new ValidationException('The OpenStreetMap import is not configured.');
+                }
+
+                return $this->osmImport->import($country);
+            },
+            true
+        )]);
     }
 
     /** Loads one official list completely: body {source} (geofa, nvv, kv, lipas). */
     public function loadSource(Request $request, Response $response): Response
     {
-        $this->requireAdmin($request);
-        if ($this->sourceImport === null) {
-            throw new ValidationException('The official shelter lists are not configured.');
-        }
+        $authUser = $this->requireAdmin($request);
+        $source = (string) ($this->jsonBody($request)['source'] ?? '');
 
-        return $this->json($response, ['data' => $this->sourceImport->import((string) ($this->jsonBody($request)['source'] ?? ''))]);
+        return $this->json($response, ['data' => $this->log->run(
+            $authUser,
+            'load official list',
+            ['source' => $source],
+            function () use ($source) {
+                if ($this->sourceImport === null) {
+                    throw new ValidationException('The official shelter lists are not configured.');
+                }
+
+                return $this->sourceImport->import($source);
+            },
+            true
+        )]);
     }
 
     public function import(Request $request, Response $response): Response
     {
         $authUser = $this->requireAdmin($request);
         $body = $this->jsonBody($request);
-
         $ids = $body['ids'] ?? null;
-        if (!is_array($ids) || $ids === []) {
-            throw new ValidationException('ids must be a non-empty list.');
-        }
 
-        return $this->json($response, ['data' => $this->importService->import(
-            array_map('intval', $ids),
-            (int) $authUser['sub'],
-            (bool) ($body['public'] ?? false)
+        return $this->json($response, ['data' => $this->log->run(
+            $authUser,
+            'import as POIs',
+            ['selected' => is_array($ids) ? count($ids) : null, 'public' => (bool) ($body['public'] ?? false)],
+            function () use ($ids, $authUser, $body) {
+                if (!is_array($ids) || $ids === []) {
+                    throw new ValidationException('ids must be a non-empty list.');
+                }
+
+                return $this->importService->import(
+                    array_map('intval', $ids),
+                    (int) $authUser['sub'],
+                    (bool) ($body['public'] ?? false)
+                );
+            }
         )]);
     }
 

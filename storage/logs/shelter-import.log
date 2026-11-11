@@ -259,3 +259,4 @@ water check: 10 checked, 7 near water, 28881 remaining
 water check: 10 checked, 7 near water, 28871 remaining
 water check: 10 checked, 8 near water, 28861 remaining
 water check: 10 checked, 6 near water, 28851 remaining
+2026-11-11 12:48:48 ERROR admin-test: read transfer file entries=- - FAILED (HTTP 422): This is not a shelter transfer file. (0.0 s)

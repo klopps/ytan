@@ -1,5 +1,20 @@
 # Erledigt
 
+## Aussagekräftige Logs für alle Import-Tools
+
+~~Alle Import-Tools, nicht nur der Campingplatz-Import, sollen aussagekräftige Logfiles erzeugen.~~
+
+Gelöst (2026-11-11): Bisher schrieben nur einige CLI-Skripte ein Log. Die Aktionen der Admin-Seiten liefen im Web-Request ohne jede Spur, auch Fehler wie ein Overpass-Timeout nicht.
+- **Ein Log pro Tool:** Jedes Import-Tool schreibt jetzt in eine Datei, die Web und CLI gemeinsam nutzen: `campsite-import`, `shelter-import`, `club-import`, `lighthouse-import` und `gpx-import` (der GPX-Import der Nutzer).
+- **Admin-Aktionen:** Die Controller bekommen ein `ImportLog` (`src/Service/Log/ImportLog.php`, in `App.php` per `ImportLog::file()`). Jede ändernde Aktion läuft durch `ImportLog::run()`: Quelle laden (OSM, NGA-Band, amtliche Liste), Übertragungsdatei einlesen, Auswahl als POIs importieren, GPX importieren.
+  - Eine Zeile pro Aktion mit Benutzer, Parametern (Land/Quelle/Band/Gebiet, Anzahl ausgewählt, öffentlich, Konfliktentscheidungen), Ergebnis (`fetched=94 inserted=0 updated=94`, Listen als Anzahl) und Dauer.
+  - Bei einem Fehler: `ERROR ... FAILED (HTTP 422): Meldung`, auch für Validierungsfehler.
+  - Aktionen, die extern laden, schreiben vorher eine Zeile „started“. So bleibt eine Spur, wenn der Request am Zeitlimit stirbt.
+- **CLI-Skripte:** `import-campsites.php`, `import-shelters.php`, `import-clubs-osm.php` und `import-lighthouse-list.php` schreiben ins selbe Log, mit `cli:` vorne und der Dauer pro Schritt.
+- **Robustheit:** Das Schreiben eines Logs wirft nie und erzeugt keine PHP-Warnung. Eine Warnung würde mit `display_errors` sonst im JSON landen, etwa bei fehlenden Schreibrechten des Webserver-Benutzers.
+- Migration 068 kennt die neuen Namen und löscht sie also nicht.
+- **Tests:** `tests/Unit/ImportLogTest.php`. Live geprüft: `/admin/campsite-import`, Laden von LU und ein ungültiges Land, beides steht im Log.
+
 ## Logfiles
 
 ~~Folgendes soll für alle bestehenden und zukünftigen Logfiles gelten.~~

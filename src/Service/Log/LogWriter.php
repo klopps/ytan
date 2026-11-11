@@ -77,7 +77,10 @@ final class LogWriter
 
     private function append(string $stamped): void
     {
-        file_put_contents($this->path, $stamped, FILE_APPEND | LOCK_EX);
+        // @: a log that can't be written (permissions) must never break a request's JSON
+        if (@file_put_contents($this->path, $stamped, FILE_APPEND | LOCK_EX) === false) {
+            return;
+        }
         $this->lines += substr_count($stamped, "\n");
         if ($this->lines > $this->maxLines) {
             $this->rotate();

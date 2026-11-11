@@ -9,6 +9,7 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 use Ytan\Domain\ClubImport\ClubImportRepository;
 use Ytan\Exception\ValidationException;
 use Ytan\Service\ClubImportFile;
+use Ytan\Service\Log\ImportLog;
 use Ytan\Service\ClubImportService;
 use Ytan\Service\ClubOsmImportService;
 
@@ -27,6 +28,7 @@ final class ClubImportController extends BaseController
         private readonly ClubImportRepository $staging,
         private readonly ClubImportService $importService,
         private readonly ?ClubOsmImportService $osmImport = null,
+        private readonly ImportLog $log = new ImportLog(),
     ) {
     }
 
@@ -66,36 +68,59 @@ final class ClubImportController extends BaseController
     /** Reads a transfer file (the request body is its JSON): new entries are added, existing ones refreshed. */
     public function importFile(Request $request, Response $response): Response
     {
-        $this->requireAdmin($request);
+        $authUser = $this->requireAdmin($request);
+        $body = $this->jsonBody($request);
 
-        return $this->json($response, ['data' => $this->staging->upsertMany(ClubImportFile::parse($this->jsonBody($request)))]);
+        return $this->json($response, ['data' => $this->log->run(
+            $authUser,
+            'read transfer file',
+            ['entries' => $body['entries'] ?? null],
+            fn () => $this->staging->upsertMany(ClubImportFile::parse($body))
+        )]);
     }
 
     /** Loads the clubs of one country from OpenStreetMap into the staging table: body {country}. */
     public function loadOsm(Request $request, Response $response): Response
     {
-        $this->requireAdmin($request);
-        if ($this->osmImport === null) {
-            throw new ValidationException('The OpenStreetMap import is not configured.');
-        }
+        $authUser = $this->requireAdmin($request);
+        $country = (string) ($this->jsonBody($request)['country'] ?? '');
 
-        return $this->json($response, ['data' => $this->osmImport->import((string) ($this->jsonBody($request)['country'] ?? ''))]);
+        return $this->json($response, ['data' => $this->log->run(
+            $authUser,
+            'load OpenStreetMap',
+            ['country' => $country],
+            function () use ($country) {
+                if ($this->osmImport === null) {
+                    throw new ValidationException('The OpenStreetMap import is not configured.');
+                }
+
+                return $this->osmImport->import($country);
+            },
+            true
+        )]);
     }
 
     public function import(Request $request, Response $response): Response
     {
         $authUser = $this->requireAdmin($request);
         $body = $this->jsonBody($request);
-
         $ids = $body['ids'] ?? null;
-        if (!is_array($ids) || $ids === []) {
-            throw new ValidationException('ids must be a non-empty list.');
-        }
 
-        return $this->json($response, ['data' => $this->importService->import(
-            array_map('intval', $ids),
-            (int) $authUser['sub'],
-            (bool) ($body['public'] ?? false)
+        return $this->json($response, ['data' => $this->log->run(
+            $authUser,
+            'import as POIs',
+            ['selected' => is_array($ids) ? count($ids) : null, 'public' => (bool) ($body['public'] ?? false)],
+            function () use ($ids, $authUser, $body) {
+                if (!is_array($ids) || $ids === []) {
+                    throw new ValidationException('ids must be a non-empty list.');
+                }
+
+                return $this->importService->import(
+                    array_map('intval', $ids),
+                    (int) $authUser['sub'],
+                    (bool) ($body['public'] ?? false)
+                );
+            }
         )]);
     }
 

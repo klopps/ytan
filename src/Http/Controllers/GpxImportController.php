@@ -13,6 +13,7 @@ use Ytan\Domain\Route\RouteRepository;
 use Ytan\Domain\Tour\TourRepository;
 use Ytan\Exception\ValidationException;
 use Ytan\Service\GpxImportService;
+use Ytan\Service\Log\ImportLog;
 
 /**
  * GPX import (gpx-import.js): the client sends the file's text as
@@ -39,6 +40,7 @@ final class GpxImportController extends BaseController
         private readonly PoiRepository $pois,
         private readonly GpxImportService $gpx,
         private readonly PDO $db,
+        private readonly ImportLog $log = new ImportLog(),
     ) {
     }
 
@@ -54,7 +56,32 @@ final class GpxImportController extends BaseController
     {
         $auth = $this->requireAuthUser($request);
         $body = $this->jsonBody($request);
-        $parsed = $this->gpx->parse((string) ($body['gpx'] ?? ''));
+        $gpx = (string) ($body['gpx'] ?? '');
+
+        return $this->json($response, ['data' => $this->log->run(
+            $auth,
+            'import GPX',
+            [
+                'bytes' => strlen($gpx),
+                'mode' => is_scalar($body['mode'] ?? null) ? $body['mode'] : 'separate',
+                'tracks' => is_array($body['tracks'] ?? null) ? $body['tracks'] : null,
+                'create_tour' => (bool) ($body['create_tour'] ?? false),
+                'import_waypoints' => (bool) ($body['import_waypoints'] ?? false),
+            ],
+            fn () => $this->importGpx($auth, $body, $gpx),
+            false,
+            fn (array $r) => ['routes' => $r['routes'], 'tour' => $r['tour']['id'] ?? null, 'pois' => $r['pois']]
+        )], 201);
+    }
+
+    /**
+     * @param array<string,mixed> $auth
+     * @param array<string,mixed> $body
+     * @return array{routes: list<array{id:int, name:string}>, tour: array{id:int, name:string}|null, pois: int}
+     */
+    private function importGpx(array $auth, array $body, string $gpx): array
+    {
+        $parsed = $this->gpx->parse($gpx);
 
         $mode = $body['mode'] ?? 'separate';
         if (!in_array($mode, ['merge', 'separate'], true)) {
@@ -132,7 +159,7 @@ final class GpxImportController extends BaseController
             throw $e;
         }
 
-        return $this->json($response, ['data' => ['routes' => $created, 'tour' => $tour, 'pois' => $poiCount]], 201);
+        return ['routes' => $created, 'tour' => $tour, 'pois' => $poiCount];
     }
 
     /**

@@ -210,7 +210,8 @@ final class App
                 $c->get(LighthouseImportRepository::class),
                 new NgaMsiLightMapper(),
                 $rootDir . '/storage/nga-msi-last-request'
-            )
+            ),
+            \Ytan\Service\Log\ImportLog::file($rootDir, 'lighthouse-import')
         ));
         $c->set(\Ytan\Domain\ClubImport\ClubImportRepository::class, fn () => new \Ytan\Domain\ClubImport\ClubImportRepository($pdo));
         $c->set(\Ytan\Http\Controllers\ClubImportController::class, fn ($c) => new \Ytan\Http\Controllers\ClubImportController(
@@ -221,7 +222,8 @@ final class App
                 $c->get(\Ytan\Domain\ClubImport\ClubImportRepository::class),
                 new \Ytan\Service\ClubList\ClubOsmMapper(),
                 $rootDir . '/storage/overpass-last-request'
-            )
+            ),
+            \Ytan\Service\Log\ImportLog::file($rootDir, 'club-import')
         ));
         $c->set(\Ytan\Domain\ShelterImport\ShelterImportRepository::class, fn ($c) => new \Ytan\Domain\ShelterImport\ShelterImportRepository($pdo, $c->get(\Ytan\Service\Water\WaterDistanceService::class)));
         $c->set(\Ytan\Http\Controllers\ShelterImportController::class, function ($c) use ($rootDir) {
@@ -239,7 +241,8 @@ final class App
                     new \Ytan\Service\ShelterList\KartverketShelterSource(),
                     new \Ytan\Service\ShelterList\LipasShelterSource(),
                 ]),
-                $c->get(\Ytan\Service\Water\WaterDistanceService::class)
+                $c->get(\Ytan\Service\Water\WaterDistanceService::class),
+                \Ytan\Service\Log\ImportLog::file($rootDir, 'shelter-import')
             );
         });
         $c->set(\Ytan\Domain\CampsiteImport\CampsiteImportRepository::class, fn ($c) => new \Ytan\Domain\CampsiteImport\CampsiteImportRepository($pdo, $c->get(\Ytan\Service\Water\WaterDistanceService::class)));
@@ -255,7 +258,8 @@ final class App
                     new \Ytan\Service\Campsite\CampsiteOsmMapper(),
                     new \Ytan\Service\OverpassThrottle($rootDir . '/storage/overpass-last-request')
                 ),
-                $c->get(\Ytan\Service\Water\WaterDistanceService::class)
+                $c->get(\Ytan\Service\Water\WaterDistanceService::class),
+                \Ytan\Service\Log\ImportLog::file($rootDir, 'campsite-import')
             );
         });
         $c->set(LighthouseDuplicateController::class, fn ($c) => new LighthouseDuplicateController(
@@ -296,7 +300,7 @@ final class App
         $c->set(RadarSettingsController::class, fn ($c) => new RadarSettingsController($c->get(SettingsRepository::class), $rootDir . '/storage/radar', new RadarJobRunner($rootDir)));
         $c->set(GpxExportController::class, fn ($c) => new GpxExportController($c->get(RouteRepository::class), $c->get(TourRepository::class), $c->get(SettingsRepository::class), $appName));
         $c->set(RouteSplitController::class, fn ($c) => new RouteSplitController($c->get(RouteRepository::class), $c->get(TourRepository::class), $c->get('images.route'), $pdo));
-        $c->set(GpxImportController::class, fn ($c) => new GpxImportController($c->get(RouteRepository::class), $c->get(TourRepository::class), $c->get(PoiRepository::class), new GpxImportService(), $pdo));
+        $c->set(GpxImportController::class, fn ($c) => new GpxImportController($c->get(RouteRepository::class), $c->get(TourRepository::class), $c->get(PoiRepository::class), new GpxImportService(), $pdo, \Ytan\Service\Log\ImportLog::file($rootDir, 'gpx-import')));
         $c->set(TranslationController::class, fn () => new TranslationController(
             new TranslationRepository($rootDir . '/resources/i18n'),
             new TranslationUsageScanner($rootDir)

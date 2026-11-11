@@ -58,25 +58,25 @@ if ($steps === []) {
 
 $failed = [];
 foreach ($steps as $step) {
+    $started = microtime(true);
     try {
         if ($step === 'distances') {
-            $started = microtime(true);
             $n = $staging->recomputeDistances($all, function (int $done) use ($log) {
-                $log->line("distances: $done ...");
+                $log->line("cli: distances: $done ...");
             });
-            $log->line(sprintf("distances: %d computed in %d s", $n, (int) round(microtime(true) - $started)));
+            $log->line(sprintf("cli: distances: %d computed in %d s", $n, (int) round(microtime(true) - $started)));
             continue;
         }
         $r = $osm->import($step, true);
-        $log->line(sprintf("%s: %d read, %d skipped, %d new, %d updated", strtoupper($step), $r['fetched'], $r['skipped'], $r['inserted'], $r['updated']));
+        $log->line(sprintf("cli: load OpenStreetMap %s: %d read, %d skipped, %d new, %d updated (%.1f s)", strtoupper($step), $r['fetched'], $r['skipped'], $r['inserted'], $r['updated'], microtime(true) - $started));
     } catch (Throwable $e) {
         $failed[] = $step;
-        $log->error($step . ': FAILED - ' . $e->getMessage());
+        $log->error(sprintf('cli: %s: FAILED - %s (%.1f s)', $step, $e->getMessage(), microtime(true) - $started));
     }
 }
-$log->line(sprintf("%d entries without distances to water", $staging->countUnchecked()));
+$log->line(sprintf("cli: %d entries without distances to water", $staging->countUnchecked()));
 if ($failed !== []) {
-    $log->error('Failed: ' . implode(' ', $failed) . " - run them again (big countries: Overpass may time out).");
+    $log->error('cli: failed: ' . implode(' ', $failed) . " - run them again (big countries: Overpass may time out).");
 }
 
 exit($failed === [] ? 0 : 1);
