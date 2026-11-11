@@ -23,7 +23,6 @@ final class ShelterHttp
         ]);
         $body = curl_exec($ch);
         $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-        curl_close($ch);
         if (!is_string($body) || $status !== 200) {
             throw new ApiException('The shelter source ' . parse_url($url, PHP_URL_HOST) . ' is not reachable (HTTP ' . $status . ').', 502, 'shelter_import.source_unreachable');
         }

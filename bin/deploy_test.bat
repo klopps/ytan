@@ -120,7 +120,10 @@ REM from ssh.exe's known_hosts, so the very first run against a host may
 REM still show a one-time "store this host key?" prompt even though the
 REM password itself is no longer asked for - accept it once and it's cached
 REM for every run after that.
-tar -C "%BUILD_DIR%" -cf - . | "%DEPLOY_SSH_CLIENT%" -ssh -P %DEPLOY_PORT% -l %DEPLOY_USER% -pw %DEPLOY_SSH_PASSWORD% %DEPLOY_HOST% "mkdir -p '%DEPLOY_PATH%' && tar -C '%DEPLOY_PATH%' -xf - && cd '%DEPLOY_PATH%' && %REMOTE_PHP% bin/merge-i18n.php && %REMOTE_PHP% bin/migrate.php"
+REM docs/user is removed first: tar only adds/overwrites, so a renamed or
+REM deleted chapter (e.g. the renumbering of 2026-11-10) would otherwise stay
+REM on the server and show up twice in the user guide.
+tar -C "%BUILD_DIR%" -cf - . | "%DEPLOY_SSH_CLIENT%" -ssh -P %DEPLOY_PORT% -l %DEPLOY_USER% -pw %DEPLOY_SSH_PASSWORD% %DEPLOY_HOST% "mkdir -p '%DEPLOY_PATH%' && rm -rf '%DEPLOY_PATH%/docs/user' && tar -C '%DEPLOY_PATH%' -xf - && cd '%DEPLOY_PATH%' && %REMOTE_PHP% bin/merge-i18n.php && %REMOTE_PHP% bin/migrate.php"
 if errorlevel 1 goto :error
 
 echo ==^> Deploy finished.

@@ -26,7 +26,7 @@ Reagiert YTAN nicht mehr richtig oder zeigt eine veraltete Oberfläche, hilft ei
 ## Unterwegs
 
 - **Vor der Fahrt** Wetter prüfen: Tippe lange auf deinen Start- und Zielpunkt und vergleiche Wind und Böen.
-- **Akku:** Die Aufzeichnung läuft auch bei gesperrtem Bildschirm; **Akkusparend** reicht für lange Fahrten.
+- **Akku:** Die Routenaufzeichnung läuft mit der App (nicht als PWA oder im Browser) auch bei gesperrtem Bildschirm. Der Modus **Akkusparend** reicht für lange Fahrten.
 - **Kein Netz?** Auf See und in Buchten gibt es oft keins. Speichere Aufzeichnungen und Änderungen lokal - sie werden später automatisch übertragen.
 - **Route auf die Uhr** schon zu Hause senden und den Abgleich prüfen (Anzeige **YTAN** statt **YTAN ?**).
 

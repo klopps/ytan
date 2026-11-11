@@ -39,7 +39,6 @@ final class CurlJsonHttpClient implements JsonHttpClient
         $body = curl_exec($ch);
         $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $errno = curl_errno($ch);
-        curl_close($ch);
 
         if ($errno !== 0 || $body === false || $statusCode !== 200) {
             return null;

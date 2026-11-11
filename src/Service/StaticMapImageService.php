@@ -153,7 +153,6 @@ final class StaticMapImageService
         $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
         $errno = curl_errno($ch);
-        curl_close($ch);
 
         if ($errno !== 0 || $body === false || $statusCode !== 200 || !str_starts_with((string) $contentType, 'image/')) {
             return null;

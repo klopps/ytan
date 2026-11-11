@@ -37,7 +37,6 @@ final class CurlNgaMsiClient implements NgaMsiClient
         $body = curl_exec($ch);
         $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
-        curl_close($ch);
 
         if ($body === false || $status !== 200) {
             throw new NgaMsiException('NGA Maritime Safety Information not available (' . ($status > 0 ? "HTTP $status" : ($error !== '' ? $error : 'no answer')) . ').');
