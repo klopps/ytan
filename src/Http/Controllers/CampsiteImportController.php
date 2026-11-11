@@ -12,6 +12,7 @@ use Ytan\Service\CampsiteImportFile;
 use Ytan\Service\CampsiteImportService;
 use Ytan\Service\CampsiteOsmImportService;
 use Ytan\Service\Log\ImportLog;
+use Ytan\Service\OsmImportService;
 use Ytan\Service\Water\WaterDistanceService;
 
 /**
@@ -94,31 +95,38 @@ final class CampsiteImportController extends BaseController
         )]);
     }
 
-    /** Loads all campsites of one country from OpenStreetMap: body {country}. */
+    /** Loads the campsites of one tile of a country from OpenStreetMap: body {country, tile = 0}. */
     public function loadOsm(Request $request, Response $response): Response
     {
         $authUser = $this->requireAdmin($request);
-        $country = (string) ($this->jsonBody($request)['country'] ?? '');
+        $body = $this->jsonBody($request);
+        $country = (string) ($body['country'] ?? '');
+        $tile = (int) ($body['tile'] ?? 0);
 
         return $this->json($response, ['data' => $this->log->run(
             $authUser,
             'load OpenStreetMap',
-            ['country' => $country],
-            fn () => $this->loadOsmCountry($country),
+            ['country' => $country, 'tile' => $tile],
+            fn () => $this->loadOsmCountry($country, $tile),
             true
         )]);
     }
 
-    /** @return array{fetched:int, skipped:int, inserted:int, updated:int} */
-    private function loadOsmCountry(string $country): array
+    /**
+     * One tile per request (the page asks for the next one until tile + 1 = tiles);
+     * later tiles wait for the Overpass gap instead of being refused.
+     *
+     * @return array{fetched:int, skipped:int, inserted:int, updated:int, tile:int, tiles:int}
+     */
+    private function loadOsmCountry(string $country, int $tile): array
     {
         if ($this->osmImport === null) {
             throw new ValidationException('The OpenStreetMap import is not configured.');
         }
         // The query alone may take minutes (place/street lookups); Windows counts wall time.
-        set_time_limit(CampsiteOsmImportService::REQUEST_TIMEOUT_SECONDS + 60);
+        set_time_limit(CampsiteOsmImportService::REQUEST_TIMEOUT_SECONDS + OsmImportService::MIN_SECONDS_BETWEEN_REQUESTS + 60);
 
-        return $this->osmImport->import($country);
+        return $this->osmImport->import($country, $tile > 0, $tile);
     }
 
     public function import(Request $request, Response $response): Response

@@ -94,7 +94,7 @@ final class CampsiteImportTest extends ControllerTestCase
     {
         $result = $this->osm->import('dk');
 
-        $this->assertSame(['fetched' => 5, 'skipped' => 1, 'inserted' => 4, 'updated' => 0], $result, 'one duplicate element');
+        $this->assertSame(['fetched' => 5, 'skipped' => 1, 'inserted' => 4, 'updated' => 0, 'tile' => 0, 'tiles' => 6], $result, 'one duplicate element');
         $rows = $this->rows();
         ksort($rows);
         $this->assertSame(['node/2', 'node/3', 'node/4', 'way/1'], array_keys($rows));
@@ -122,6 +122,29 @@ final class CampsiteImportTest extends ControllerTestCase
         $this->assertStringContainsString('nwr.c[!"name"]->.u;', $query, 'surroundings only for unnamed sites');
     }
 
+    public function testBigCountriesAreLoadedInTilesOfAtMostThreeDegrees(): void
+    {
+        $tiles = CampsiteOsmImportService::tiles('FR');
+        $this->assertCount(20, $tiles, 'France at 3 degrees: 4 x 5 (CountryTilesTest)');
+
+        $this->assertStringContainsString('nwr["tourism"="camp_site"](area.a)(41.3,-5.3,43.775,-2.3)->.c;', CampsiteOsmImportService::query('FR', $tiles[0]));
+        $this->assertStringContainsString('nwr["tourism"="camp_site"](area.a)->.c;', CampsiteOsmImportService::query('FO'));
+
+        $result = $this->osm->import('FR', false, 19);
+        $this->assertSame([19, 20], [$result['tile'], $result['tiles']]);
+        $this->assertStringContainsString('(48.725,6.7,51.2,9.7)', $this->client->queries[0]);
+        $this->expectException(ValidationException::class);
+        $this->now += 60;
+        $this->osm->import('FR', false, 20);
+    }
+
+    public function testControllerPassesTheTile(): void
+    {
+        $answer = $this->decode($this->controller->loadOsm($this->request('POST', '/x', $this->admin(), ['country' => 'DK', 'tile' => 2]), $this->response()))['data'];
+        $this->assertSame([2, 6], [$answer['tile'], $answer['tiles']]);
+        $this->assertStringContainsString('(54.5,12.8333,56.15,15.3)', $this->client->queries[0]);
+    }
+
     public function testUnnamedCampsitesAreNamedByNearestPlaceAndStreetOrCampsite(): void
     {
         $this->client->willAnswer(['elements' => [
@@ -146,7 +169,7 @@ final class CampsiteImportTest extends ControllerTestCase
 
         $result = $this->osm->import('DK');
 
-        $this->assertSame(['fetched' => 4, 'skipped' => 0, 'inserted' => 4, 'updated' => 0], $result, 'places and streets are no campsites');
+        $this->assertSame(['fetched' => 4, 'skipped' => 0, 'inserted' => 4, 'updated' => 0, 'tile' => 0, 'tiles' => 6], $result, 'places and streets are no campsites');
         $rows = $this->rows();
         $this->assertSame('Campingplatz Ry, Søvej', $rows['node/10']['name']);
         $this->assertSame('Ry', $rows['node/10']['place'], 'nearest place fills the town filter too');

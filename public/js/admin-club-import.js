@@ -168,22 +168,22 @@ async function ciImport() {
     }
 }
 
-/** Loads the clubs of the chosen country from OpenStreetMap into the list (can take a minute for big countries). */
+/** Loads the clubs of the chosen country from OpenStreetMap into the list, tile by tile (a few minutes for big countries). */
 async function ciLoadOsm() {
     var button = document.getElementById('ciOsmLoad');
     button.disabled = true;
     button.textContent = t('admin.club_import.osm_loading');
     try {
-        var answer = await Ytan.post('/admin/club-import/osm', { country: document.getElementById('ciOsmCountry').value });
-        showAdminToast(t('admin.club_import.osm_result', {
-            fetched: answer.data.fetched,
-            inserted: answer.data.inserted,
-            updated: answer.data.updated,
-            skipped: answer.data.skipped,
-        }), 'success');
+        var sum = await adminLoadOsmTiles('/admin/club-import/osm', document.getElementById('ciOsmCountry').value, function (tile, tiles) {
+            button.textContent = t('admin.osm_tiles.loading_tile', { tile: tile, tiles: tiles });
+        });
+        showAdminToast(t('admin.club_import.osm_result', sum), 'success');
         ciReload(true);
     } catch (err) {
-        showAdminToast(t('admin.club_import.osm_failed', { error: translateApiError(err.data) || err.message }), 'error');
+        if (err.tile > 1) {
+            ciReload(true);
+        }
+        showAdminToast(t('admin.club_import.osm_failed', { error: adminOsmTileError(err) }), 'error');
     } finally {
         button.disabled = false;
         button.innerHTML = '<i class="bi bi-cloud-download"></i> ' + ciEscape(t('admin.club_import.osm_load'));

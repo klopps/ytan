@@ -228,22 +228,22 @@ async function ciImport() {
     }
 }
 
-/** Loads all campsites of the chosen country from OpenStreetMap (can take minutes for big countries). */
+/** Loads all campsites of the chosen country from OpenStreetMap, tile by tile (can take many minutes for big countries). */
 async function ciLoadOsm() {
     var button = document.getElementById('ciOsmLoad');
     button.disabled = true;
     button.textContent = t('admin.shelter_import.loading');
     try {
-        var answer = await Ytan.post('/admin/campsite-import/osm', { country: document.getElementById('ciOsmCountry').value });
-        showAdminToast(t('admin.campsite_import.load_result', {
-            fetched: answer.data.fetched,
-            skipped: answer.data.skipped,
-            inserted: answer.data.inserted,
-            updated: answer.data.updated,
-        }), 'success');
+        var sum = await adminLoadOsmTiles('/admin/campsite-import/osm', document.getElementById('ciOsmCountry').value, function (tile, tiles) {
+            button.textContent = t('admin.osm_tiles.loading_tile', { tile: tile, tiles: tiles });
+        });
+        showAdminToast(t('admin.campsite_import.load_result', sum), 'success');
         ciReload(true);
     } catch (err) {
-        showAdminToast(t('admin.shelter_import.load_source_failed', { error: translateApiError(err.data) || err.message }), 'error');
+        if (err.tile > 1) {
+            ciReload(true);
+        }
+        showAdminToast(t('admin.shelter_import.load_source_failed', { error: adminOsmTileError(err) }), 'error');
     } finally {
         button.disabled = false;
         button.innerHTML = '<i class="bi bi-cloud-download"></i> ' + ciEscape(t('admin.campsite_import.osm_load'));

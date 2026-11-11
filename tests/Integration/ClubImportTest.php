@@ -108,7 +108,7 @@ final class ClubImportTest extends ControllerTestCase
     {
         $result = $this->osm->import('de');
 
-        $this->assertSame(['fetched' => 4, 'skipped' => 1, 'inserted' => 3, 'updated' => 0], $result);
+        $this->assertSame(['fetched' => 4, 'skipped' => 1, 'inserted' => 3, 'updated' => 0, 'tile' => 0, 'tiles' => count(ClubOsmImportService::tiles('DE'))], $result);
         $this->assertSame(['DE'], $this->staging->countries());
         $query = $this->client->queries[0];
         $this->assertStringContainsString('area["ISO3166-1"="DE"]', $query);
@@ -117,6 +117,22 @@ final class ClubImportTest extends ControllerTestCase
         $this->now += \Ytan\Service\OsmImportService::MIN_SECONDS_BETWEEN_REQUESTS;
         $this->assertSame(0, $this->osm->import('DE')['inserted'], 'a second load refreshes instead of duplicating');
         $this->assertSame(3, $this->staging->count([]));
+    }
+
+    public function testBigCountriesAreLoadedTileByTile(): void
+    {
+        $tiles = ClubOsmImportService::tiles('FR');
+        $this->assertGreaterThan(1, count($tiles));
+        $last = count($tiles) - 1;
+
+        $result = $this->osm->import('FR', false, $last);
+        $this->assertSame([$last, count($tiles)], [$result['tile'], $result['tiles']]);
+        $bbox = \Ytan\Service\Overpass\CountryTiles::bbox($tiles[$last]);
+        $this->assertSame(3, substr_count($this->client->queries[0], '(area.a)' . $bbox . ';'), 'every clause cut to the tile');
+
+        $this->now += \Ytan\Service\OsmImportService::MIN_SECONDS_BETWEEN_REQUESTS;
+        $this->expectException(ValidationException::class);
+        $this->osm->import('FR', false, count($tiles));
     }
 
     public function testRejectsABadCountryCode(): void

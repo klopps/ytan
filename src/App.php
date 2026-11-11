@@ -218,7 +218,7 @@ final class App
             $c->get(\Ytan\Domain\ClubImport\ClubImportRepository::class),
             new \Ytan\Service\ClubImportService($c->get(\Ytan\Domain\ClubImport\ClubImportRepository::class), $c->get(PoiRepository::class), $pdo),
             new \Ytan\Service\ClubOsmImportService(
-                CurlOverpassClient::fromSetting((string) ($_ENV['OVERPASS_ENDPOINTS'] ?? '')),
+                CurlOverpassClient::fromSetting((string) ($_ENV['OVERPASS_ENDPOINTS'] ?? ''), \Ytan\Service\ClubOsmImportService::REQUEST_TIMEOUT_SECONDS),
                 $c->get(\Ytan\Domain\ClubImport\ClubImportRepository::class),
                 new \Ytan\Service\ClubList\ClubOsmMapper(),
                 $rootDir . '/storage/overpass-last-request'
@@ -228,7 +228,7 @@ final class App
         $c->set(\Ytan\Domain\ShelterImport\ShelterImportRepository::class, fn ($c) => new \Ytan\Domain\ShelterImport\ShelterImportRepository($pdo, $c->get(\Ytan\Service\Water\WaterDistanceService::class)));
         $c->set(\Ytan\Http\Controllers\ShelterImportController::class, function ($c) use ($rootDir) {
             $staging = $c->get(\Ytan\Domain\ShelterImport\ShelterImportRepository::class);
-            $overpass = CurlOverpassClient::fromSetting((string) ($_ENV['OVERPASS_ENDPOINTS'] ?? ''));
+            $overpass = CurlOverpassClient::fromSetting((string) ($_ENV['OVERPASS_ENDPOINTS'] ?? ''), \Ytan\Service\ShelterOsmImportService::REQUEST_TIMEOUT_SECONDS);
             $throttle = new \Ytan\Service\OverpassThrottle($rootDir . '/storage/overpass-last-request');
 
             return new \Ytan\Http\Controllers\ShelterImportController(

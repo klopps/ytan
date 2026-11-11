@@ -33,7 +33,7 @@ if (is_file($root . '/.env')) {
 
 $countries = array_slice($argv, 1) ?: ClubOsmImportService::EUROPE;
 $service = new ClubOsmImportService(
-    CurlOverpassClient::fromSetting((string) ($_ENV['OVERPASS_ENDPOINTS'] ?? '')),
+    CurlOverpassClient::fromSetting((string) ($_ENV['OVERPASS_ENDPOINTS'] ?? ''), ClubOsmImportService::REQUEST_TIMEOUT_SECONDS),
     new ClubImportRepository(Connection::fromEnv()),
     new ClubOsmMapper(),
     $root . '/storage/overpass-last-request'
@@ -41,17 +41,22 @@ $service = new ClubOsmImportService(
 
 $failed = [];
 foreach ($countries as $country) {
-    $started = microtime(true);
-    try {
-        $r = $service->import($country, true);
-        $log->line(sprintf('cli: load OpenStreetMap %s: %d fetched, %d new, %d updated, %d skipped (no name/position) (%.1f s)', strtoupper($country), $r['fetched'], $r['inserted'], $r['updated'], $r['skipped'], microtime(true) - $started));
-    } catch (Throwable $e) {
-        $failed[] = strtoupper($country);
-        $log->error(sprintf('cli: load OpenStreetMap %s: FAILED - %s (%.1f s)', strtoupper($country), $e->getMessage(), microtime(true) - $started));
+    // Big countries come in tiles (ClubOsmImportService::tiles()); a failed tile doesn't stop the others.
+    $code = strtoupper($country);
+    $tiles = count(ClubOsmImportService::tiles($code));
+    for ($tile = 0; $tile < $tiles; $tile++) {
+        $started = microtime(true);
+        try {
+            $r = $service->import($code, true, $tile);
+            $log->line(sprintf('cli: load OpenStreetMap %s tile %d/%d: %d fetched, %d new, %d updated, %d skipped (no name/position) (%.1f s)', $code, $tile + 1, $tiles, $r['fetched'], $r['inserted'], $r['updated'], $r['skipped'], microtime(true) - $started));
+        } catch (Throwable $e) {
+            $failed[] = $code;
+            $log->error(sprintf('cli: load OpenStreetMap %s tile %d/%d: FAILED - %s (%.1f s)', $code, $tile + 1, $tiles, $e->getMessage(), microtime(true) - $started));
+        }
     }
 }
 
 if ($failed !== []) {
-    $log->error('cli: failed: ' . implode(' ', $failed) . ' - rerun with these codes.');
+    $log->error('cli: failed: ' . implode(' ', array_unique($failed)) . ' - rerun with these codes.');
     exit(1);
 }

@@ -24,6 +24,11 @@ final class ImportLog
 {
     private ?LogWriter $writer = null;
 
+    /** @var array{0:string,1:float}|null head and start time of the action in progress */
+    private ?array $running = null;
+
+    private bool $shutdownRegistered = false;
+
     /** @param Closure(): LogWriter|null $factory */
     public function __construct(private readonly ?Closure $factory = null)
     {
@@ -57,17 +62,49 @@ final class ImportLog
             $this->write($head . ' - started');
         }
         $started = microtime(true);
+        $this->watchForFatal($head, $started);
         try {
             $result = $action();
         } catch (Throwable $e) {
+            $this->running = null;
             $status = $e instanceof ApiException ? ' (HTTP ' . $e->getStatusCode() . ')' : '';
             $this->write('ERROR ' . $head . ' - FAILED' . $status . ': ' . $e->getMessage() . self::took($started));
             throw $e;
         }
+        $this->running = null;
         $logged = $summary !== null ? $summary($result) : $result;
         $this->write($head . ' - ' . (is_array($logged) && $logged !== [] ? 'result' . self::describe($logged, ' ') : 'done') . self::took($started));
 
         return $result;
+    }
+
+    /**
+     * A PHP fatal error (memory exhausted, time limit) ends the request without
+     * reaching run()'s catch block, which left only the "started" line - so a
+     * shutdown function logs it while an action is still running.
+     */
+    private function watchForFatal(string $head, float $started): void
+    {
+        $this->running = [$head, $started];
+        if ($this->shutdownRegistered || $this->factory === null) {
+            return;
+        }
+        $this->shutdownRegistered = true;
+        // Freed first thing on shutdown: after "memory exhausted" writing the line needs a little room.
+        $reserve = str_repeat(' ', 256 * 1024);
+        register_shutdown_function(function () use (&$reserve): void {
+            $reserve = null;
+            if ($this->running === null) {
+                return;
+            }
+            [$head, $started] = $this->running;
+            $this->running = null;
+            $error = error_get_last();
+            $fatal = $error !== null && in_array($error['type'], [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR], true);
+            $this->write('ERROR ' . $head . ' - FAILED (PHP fatal): '
+                . ($fatal ? $error['message'] . ' in ' . basename($error['file']) . ':' . $error['line'] : 'request ended unexpectedly')
+                . self::took($started));
+        });
     }
 
     /** One free line (e.g. a CLI step). */

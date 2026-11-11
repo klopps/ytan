@@ -140,3 +140,47 @@ function adminRememberTab(tabsId, storageKey) {
         bootstrap.Tab.getOrCreateInstance(tab).show();
     }
 }
+
+/**
+ * Loads one country from OpenStreetMap through an import tool's
+ * POST {path} {country, tile}: big countries come in tiles, one request each
+ * (the answer's `tiles` says how many), so no single request runs into the
+ * web server's time limit. onTile(next, tiles) is called before every tile
+ * after the first (progress text). Resolves with the summed numeric result
+ * fields; rejects with the request's error plus `tile`/`tiles` (1-based tile
+ * that failed) - the tiles before it are saved.
+ */
+async function adminLoadOsmTiles(path, country, onTile) {
+    var sum = {};
+    var tile = 0;
+    var tiles = 1;
+    do {
+        var answer;
+        try {
+            answer = await Ytan.post(path, { country: country, tile: tile });
+        } catch (err) {
+            err.tile = tile + 1;
+            err.tiles = tiles;
+            throw err;
+        }
+        Object.keys(answer.data).forEach(function (key) {
+            if (key !== 'tile' && key !== 'tiles' && typeof answer.data[key] === 'number') {
+                sum[key] = (sum[key] || 0) + answer.data[key];
+            }
+        });
+        tiles = answer.data.tiles || 1;
+        tile++;
+        if (tile < tiles && onTile) {
+            onTile(tile + 1, tiles);
+        }
+    } while (tile < tiles);
+
+    return sum;
+}
+
+/** The error text of a failed adminLoadOsmTiles(), naming the tile when the country had several. */
+function adminOsmTileError(err) {
+    var error = translateApiError(err.data) || err.message;
+
+    return err.tiles > 1 ? t('admin.osm_tiles.tile_failed', { tile: err.tile, tiles: err.tiles, error: error }) : error;
+}

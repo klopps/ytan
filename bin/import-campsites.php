@@ -67,8 +67,18 @@ foreach ($steps as $step) {
             $log->line(sprintf("cli: distances: %d computed in %d s", $n, (int) round(microtime(true) - $started)));
             continue;
         }
-        $r = $osm->import($step, true);
-        $log->line(sprintf("cli: load OpenStreetMap %s: %d read, %d skipped, %d new, %d updated (%.1f s)", strtoupper($step), $r['fetched'], $r['skipped'], $r['inserted'], $r['updated'], microtime(true) - $started));
+        // Big countries come in tiles (CampsiteOsmImportService::tiles()); a failed tile doesn't stop the others.
+        $tiles = count(CampsiteOsmImportService::tiles(strtoupper($step)));
+        for ($tile = 0; $tile < $tiles; $tile++) {
+            $tileStarted = microtime(true);
+            try {
+                $r = $osm->import($step, true, $tile);
+                $log->line(sprintf("cli: load OpenStreetMap %s tile %d/%d: %d read, %d skipped, %d new, %d updated (%.1f s)", strtoupper($step), $tile + 1, $tiles, $r['fetched'], $r['skipped'], $r['inserted'], $r['updated'], microtime(true) - $tileStarted));
+            } catch (Throwable $e) {
+                $failed[] = $tiles > 1 ? $step . ' (tile ' . ($tile + 1) . '/' . $tiles . ')' : $step;
+                $log->error(sprintf('cli: %s tile %d/%d: FAILED - %s (%.1f s)', strtoupper($step), $tile + 1, $tiles, $e->getMessage(), microtime(true) - $tileStarted));
+            }
+        }
     } catch (Throwable $e) {
         $failed[] = $step;
         $log->error(sprintf('cli: %s: FAILED - %s (%.1f s)', $step, $e->getMessage(), microtime(true) - $started));

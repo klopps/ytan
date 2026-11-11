@@ -8,6 +8,7 @@ use Ytan\Domain\ClubImport\ClubImportRepository;
 use Ytan\Exception\ApiException;
 use Ytan\Exception\ValidationException;
 use Ytan\Service\ClubList\ClubOsmMapper;
+use Ytan\Service\Overpass\CountryTiles;
 use Ytan\Service\Overpass\OverpassClient;
 
 /**
@@ -29,6 +30,17 @@ final class ClubOsmImportService
         'RO', 'SM', 'RS', 'SK', 'SI', 'ES', 'SE', 'CH', 'UA', 'GB',
     ];
 
+    /** HTTP timeout per tile (the default 90 s was too close: all Norwegian shelters took 80 s, 2026-11-11). */
+    public const REQUEST_TIMEOUT_SECONDS = 180;
+
+    /**
+     * Big countries are loaded in tiles of at most this size (degrees, see
+     * CountryTiles); Overpass time grows with the elements tested against the
+     * country polygon (measured 2026-11-11: all French clubs 41 s, all
+     * Norwegian shelters 80 s, the 8-degree tile with 63 % of them 49-72 s).
+     */
+    public const TILE_DEGREES = 8.0;
+
     /** @var callable():int */
     private $clock;
 
@@ -44,27 +56,24 @@ final class ClubOsmImportService
     }
 
     /**
-     * @param bool $wait sleep until the next request is allowed instead of refusing (CLI)
-     * @return array{fetched:int, skipped:int, inserted:int, updated:int}
+     * Loads ONE tile of a country (see tiles()); the caller goes on with the
+     * next tile until `tile + 1 == tiles`.
+     *
+     * @param bool $wait sleep until the next request is allowed instead of refusing (CLI, later tiles)
+     * @return array{fetched:int, skipped:int, inserted:int, updated:int, tile:int, tiles:int}
      */
-    public function import(string $country, bool $wait = false): array
+    public function import(string $country, bool $wait = false, int $tile = 0): array
     {
         $country = strtoupper(trim($country));
         if (!preg_match('/^[A-Z]{2}$/', $country)) {
             throw new ValidationException('country must be a two-letter ISO 3166-1 code.');
         }
 
-        $this->throttle($wait);
+        $tiles = self::tiles($country);
+        $box = CountryTiles::pick($tiles, $tile);
 
-        $sport = '["sport"~"' . ClubOsmMapper::SPORT_PATTERN . '"]';
-        $area = '(area.a)';
-        $answer = $this->client->query(
-            '[out:json][timeout:300];area["ISO3166-1"="' . $country . '"]["boundary"="administrative"]->.a;('
-            . 'nwr' . $sport . '["club"]' . $area . ';'
-            . 'nwr' . $sport . '["leisure"="sports_club"]' . $area . ';'
-            . 'nwr' . $sport . '["amenity"="club"]' . $area . ';'
-            . ');out tags center;'
-        );
+        $this->throttle($wait);
+        $answer = $this->client->query(self::query($country, $box));
 
         $entries = [];
         foreach ($answer['elements'] as $element) {
@@ -80,7 +89,36 @@ final class ClubOsmImportService
             'skipped' => count($answer['elements']) - count($entries),
             'inserted' => $saved['inserted'],
             'updated' => $saved['updated'],
+            'tile' => $tile,
+            'tiles' => count($tiles),
         ];
+    }
+
+    /**
+     * The tiles a country is loaded in (CountryTiles, TILE_DEGREES).
+     *
+     * @return list<array{south:float, west:float, north:float, east:float}|null>
+     */
+    public static function tiles(string $country): array
+    {
+        return CountryTiles::tiles($country, self::TILE_DEGREES);
+    }
+
+    /**
+     * The Overpass QL query for one country or one tile of it (public for tests).
+     *
+     * @param array{south:float, west:float, north:float, east:float}|null $tile
+     */
+    public static function query(string $country, ?array $tile = null): string
+    {
+        $sport = '["sport"~"' . ClubOsmMapper::SPORT_PATTERN . '"]';
+        $area = '(area.a)' . CountryTiles::bbox($tile);
+
+        return '[out:json][timeout:300];area["ISO3166-1"="' . $country . '"]["boundary"="administrative"]->.a;('
+            . 'nwr' . $sport . '["club"]' . $area . ';'
+            . 'nwr' . $sport . '["leisure"="sports_club"]' . $area . ';'
+            . 'nwr' . $sport . '["amenity"="club"]' . $area . ';'
+            . ');out tags center;';
     }
 
     private function throttle(bool $wait): void

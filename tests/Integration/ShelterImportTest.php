@@ -236,6 +236,19 @@ final class ShelterImportTest extends ControllerTestCase
         $this->assertStringContainsString('area["ISO3166-1"="DK"]', $query);
         $this->assertStringNotContainsString('around', $query, 'no distance filter in Overpass');
         $this->assertStringContainsString('picnic_shelter', $query);
+        $this->assertSame([0, count(ShelterOsmImportService::tiles('DK'))], [$result['tile'], $result['tiles']]);
+    }
+
+    public function testBigCountriesAreLoadedTileByTile(): void
+    {
+        $tiles = ShelterOsmImportService::tiles('NO');
+        $this->assertGreaterThan(1, count($tiles));
+
+        $result = $this->osm->import('NO', false, 1);
+        $this->assertSame([1, count($tiles)], [$result['tile'], $result['tiles']]);
+        $bbox = \Ytan\Service\Overpass\CountryTiles::bbox($tiles[1]);
+        $this->assertSame(2, substr_count($this->client->queries[0], '(area.a)' . $bbox . ';'), 'both clauses cut to the tile');
+        $this->assertStringContainsString('(area.a);', ShelterOsmImportService::query('NO'), 'no tile: the whole area');
     }
 
     public function testOsmRejectsABadCountryAndSpacesRequests(): void

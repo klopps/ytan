@@ -50,7 +50,7 @@ if (!$water->available()) {
     $log->error("No water index at storage/water/water-index.bin - distances stay empty (run tools/water/build_index.py).");
 }
 $staging = new ShelterImportRepository(Connection::fromEnv(), $water);
-$overpass = CurlOverpassClient::fromSetting((string) ($_ENV['OVERPASS_ENDPOINTS'] ?? ''));
+$overpass = CurlOverpassClient::fromSetting((string) ($_ENV['OVERPASS_ENDPOINTS'] ?? ''), ShelterOsmImportService::REQUEST_TIMEOUT_SECONDS);
 $throttle = new OverpassThrottle($root . '/storage/overpass-last-request');
 $sources = new ShelterSourceImportService($staging, [
     new GeoFaShelterSource(),
@@ -84,10 +84,22 @@ foreach ($steps as $step) {
             continue;
         }
         if (str_starts_with($step, 'osm:')) {
-            $r = $osm->import(substr($step, 4), true);
-        } else {
-            $r = $sources->import($step);
+            // Big countries come in tiles (ShelterOsmImportService::tiles()); a failed tile doesn't stop the others.
+            $code = strtoupper(substr($step, 4));
+            $tiles = count(ShelterOsmImportService::tiles($code));
+            for ($tile = 0; $tile < $tiles; $tile++) {
+                $tileStarted = microtime(true);
+                try {
+                    $r = $osm->import($code, true, $tile);
+                    $log->line(sprintf("cli: %s tile %d/%d: %d read, %d new, %d updated (%.1f s)", $step, $tile + 1, $tiles, $r['fetched'], $r['inserted'], $r['updated'], microtime(true) - $tileStarted));
+                } catch (Throwable $e) {
+                    $failed[] = $step;
+                    $log->error(sprintf('cli: %s tile %d/%d: FAILED - %s (%.1f s)', $step, $tile + 1, $tiles, $e->getMessage(), microtime(true) - $tileStarted));
+                }
+            }
+            continue;
         }
+        $r = $sources->import($step);
         $log->line(sprintf("cli: %s: %d read, %d new, %d updated (%.1f s)", $step, $r['fetched'], $r['inserted'], $r['updated'], microtime(true) - $started));
     } catch (Throwable $e) {
         $failed[] = $step;

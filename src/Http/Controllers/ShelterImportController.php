@@ -93,22 +93,30 @@ final class ShelterImportController extends BaseController
         )]);
     }
 
-    /** Loads all shelters of one country from OpenStreetMap: body {country}. */
+    /**
+     * Loads the shelters of one tile of a country from OpenStreetMap: body
+     * {country, tile = 0}; the page asks for the next tile until tile + 1 = tiles
+     * (answer), later tiles wait for the Overpass gap instead of being refused.
+     */
     public function loadOsm(Request $request, Response $response): Response
     {
         $authUser = $this->requireAdmin($request);
-        $country = (string) ($this->jsonBody($request)['country'] ?? '');
+        $body = $this->jsonBody($request);
+        $country = (string) ($body['country'] ?? '');
+        $tile = (int) ($body['tile'] ?? 0);
 
         return $this->json($response, ['data' => $this->log->run(
             $authUser,
             'load OpenStreetMap',
-            ['country' => $country],
-            function () use ($country) {
+            ['country' => $country, 'tile' => $tile],
+            function () use ($country, $tile) {
                 if ($this->osmImport === null) {
                     throw new ValidationException('The OpenStreetMap import is not configured.');
                 }
+                // HTTP timeout + Overpass gap (later tiles wait); Windows counts wall time.
+                set_time_limit(ShelterOsmImportService::REQUEST_TIMEOUT_SECONDS + \Ytan\Service\OsmImportService::MIN_SECONDS_BETWEEN_REQUESTS + 60);
 
-                return $this->osmImport->import($country);
+                return $this->osmImport->import($country, $tile > 0, $tile);
             },
             true
         )]);

@@ -109,4 +109,33 @@ final class ImportLogTest extends TestCase
         file_put_contents($blocker, '');
         $this->assertSame(2, ImportLog::file($blocker, 'x')->run(null, 'x', [], fn () => 2));
     }
+
+    /** A fatal error (here: memory exhausted) in a separate PHP process still leaves an ERROR line. */
+    public function testFatalErrorIsLogged(): void
+    {
+        $script = $this->dir . '/storage/logs/fatal.php';
+        file_put_contents($script, '<?php require ' . var_export(dirname(__DIR__, 2) . '/vendor/autoload.php', true) . ';'
+            . 'ini_set("memory_limit", "32M");'
+            . '\Ytan\Service\Log\ImportLog::file(' . var_export($this->dir, true) . ', "test-import")'
+            . '->run(null, "load OpenStreetMap", ["country" => "FR"], function () { $a = []; while (true) { $a[] = str_repeat("x", 1024); } }, true);');
+        exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($script) . ' 2>&1', $output);
+        unlink($script);
+
+        $lines = $this->lines();
+        $this->assertCount(2, $lines, implode("\n", $output));
+        $this->assertSame('cli: load OpenStreetMap country=FR - started', $lines[0]);
+        $this->assertMatchesRegularExpression('/^ERROR cli: load OpenStreetMap country=FR - FAILED \(PHP fatal\): Allowed memory size .* in fatal\.php:1 \(\d+\.\d s\)$/', $lines[1]);
+    }
+
+    public function testNoFatalLineAfterACompletedAction(): void
+    {
+        $script = $this->dir . '/storage/logs/ok.php';
+        file_put_contents($script, '<?php require ' . var_export(dirname(__DIR__, 2) . '/vendor/autoload.php', true) . ';'
+            . '\Ytan\Service\Log\ImportLog::file(' . var_export($this->dir, true) . ', "test-import")->run(null, "x", [], fn () => 1);'
+            . 'exit(0);');
+        exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($script) . ' 2>&1');
+        unlink($script);
+
+        $this->assertSame(['cli: x - done (0.0 s)'], $this->lines());
+    }
 }
