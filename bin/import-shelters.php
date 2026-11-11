@@ -24,6 +24,7 @@ declare(strict_types=1);
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 
+use Ytan\Service\Log\LogWriter;
 use Dotenv\Dotenv;
 use Ytan\Database\Connection;
 use Ytan\Domain\ShelterImport\ShelterImportRepository;
@@ -39,13 +40,14 @@ use Ytan\Service\ShelterSourceImportService;
 use Ytan\Service\Water\WaterDistanceService;
 
 $root = dirname(__DIR__);
+$log = LogWriter::cli($root, 'shelter-import'); // storage/logs/shelter-import.log
 if (is_file($root . '/.env')) {
     Dotenv::createImmutable($root)->load();
 }
 
 $water = new WaterDistanceService($root . '/storage/water/water-index.bin', $root . '/storage/water/water-index.json');
 if (!$water->available()) {
-    fwrite(STDERR, "No water index at storage/water/water-index.bin - distances stay empty (run tools/water/build_index.py).\n");
+    $log->error("No water index at storage/water/water-index.bin - distances stay empty (run tools/water/build_index.py).");
 }
 $staging = new ShelterImportRepository(Connection::fromEnv(), $water);
 $overpass = CurlOverpassClient::fromSetting((string) ($_ENV['OVERPASS_ENDPOINTS'] ?? ''));
@@ -70,16 +72,15 @@ foreach ($steps as $step) {
     try {
         if ($step === 'places') {
             $n = findPlaces($root, $staging, $all);
-            echo sprintf("places: %d shelters without a name got one
-", $n);
+            $log->line(sprintf("places: %d shelters without a name got one", $n));
             continue;
         }
         if ($step === 'distances') {
             $started = microtime(true);
-            $n = $staging->recomputeDistances($all, function (int $done) {
-                echo "distances: $done ...\n";
+            $n = $staging->recomputeDistances($all, function (int $done) use ($log) {
+                $log->line("distances: $done ...");
             });
-            echo sprintf("distances: %d computed in %d s\n", $n, (int) round(microtime(true) - $started));
+            $log->line(sprintf("distances: %d computed in %d s", $n, (int) round(microtime(true) - $started)));
             continue;
         }
         if (str_starts_with($step, 'osm:')) {
@@ -87,13 +88,13 @@ foreach ($steps as $step) {
         } else {
             $r = $sources->import($step);
         }
-        echo sprintf("%s: %d read, %d new, %d updated\n", $step, $r['fetched'], $r['inserted'], $r['updated']);
+        $log->line(sprintf("%s: %d read, %d new, %d updated", $step, $r['fetched'], $r['inserted'], $r['updated']));
     } catch (Throwable $e) {
         $failed[] = $step;
-        fwrite(STDERR, $step . ': FAILED - ' . $e->getMessage() . "\n");
+        $log->error($step . ': FAILED - ' . $e->getMessage());
     }
 }
-echo sprintf("%d entries without distances to water\n", $staging->countUnchecked());
+$log->line(sprintf("%d entries without distances to water", $staging->countUnchecked()));
 
 exit($failed === [] ? 0 : 1);
 

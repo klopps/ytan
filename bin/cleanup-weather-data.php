@@ -15,11 +15,14 @@ declare(strict_types=1);
 // This is the first scheduled/recurring task in this project - nothing
 // invokes it automatically. Add a cron entry (or systemd timer) on each
 // deployed host yourself, e.g. once a day at a quiet hour:
-//   0 3 * * * /usr/bin/php /path/to/ytan/bin/cleanup-weather-data.php >> /path/to/ytan/storage/logs/weather-cleanup.log 2>&1
+//   0 3 * * * /usr/bin/php /path/to/ytan/bin/cleanup-weather-data.php >> /path/to/ytan/storage/logs/console.log 2>&1
+// The script writes storage/logs/weather-cleanup.log itself (LogWriter); console.log only
+// catches what goes wrong before that.
 // See CLAUDE.md's Commands section.
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 
+use Ytan\Service\Log\LogWriter;
 use Dotenv\Dotenv;
 use Ytan\Database\Connection;
 use Ytan\Domain\Weather\WeatherForecastRepository;
@@ -27,6 +30,7 @@ use Ytan\Domain\Weather\WeatherForecastRepository;
 const MAX_AGE_DAYS = 7;
 
 $root = dirname(__DIR__);
+$log = LogWriter::cli($root, 'weather-cleanup'); // storage/logs/weather-cleanup.log
 if (is_file($root . '/.env')) {
     Dotenv::createImmutable($root)->load();
 }
@@ -34,4 +38,4 @@ if (is_file($root . '/.env')) {
 $forecasts = new WeatherForecastRepository(Connection::fromEnv());
 $deleted = $forecasts->deleteOlderThan(MAX_AGE_DAYS);
 
-echo "Deleted $deleted weather_forecast row(s) older than " . MAX_AGE_DAYS . " days.\n";
+$log->line("Deleted $deleted weather_forecast row(s) older than " . MAX_AGE_DAYS . " days.");

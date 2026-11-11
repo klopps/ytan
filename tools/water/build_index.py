@@ -45,7 +45,9 @@ import shapely
 from pyproj import Transformer
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # tools/: ytanlog
 import water_index  # noqa: E402
+import ytanlog  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 STORAGE = os.path.join(ROOT, "storage", "water")
@@ -133,8 +135,15 @@ TO_METRIC = Transformer.from_crs("EPSG:4326", "EPSG:3035", always_xy=True)
 TO_DEGREES = Transformer.from_crs("EPSG:3035", "EPSG:4326", always_xy=True)
 
 
+_log = None
+
+
 def log(message: str) -> None:
-    print(time.strftime("%H:%M:%S"), message, flush=True)
+    """Progress line: storage/logs/water-index.log (ytanlog: date in front, rotated) and stdout."""
+    global _log
+    if _log is None:
+        _log = ytanlog.SimpleLog("water-index", sys.stdout)
+    _log(message)
 
 
 def download(country: str, refresh: bool) -> str:

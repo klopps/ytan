@@ -64,8 +64,15 @@ Linux they share the reprojection lookup via fork, on Windows (spawn) each
 builds its own (~5 s, and needs the regions too):
 
 ```
-*/5 * * * * /path/to/ytan/tools/radar/.venv/bin/python /path/to/ytan/tools/ytan_jobs.py >> /path/to/ytan/storage/logs/radar.log 2>&1
+*/5 * * * * /path/to/ytan/tools/radar/.venv/bin/python /path/to/ytan/tools/ytan_jobs.py >> /path/to/ytan/storage/logs/console.log 2>&1
 ```
+
+The jobs write their logs themselves (`tools/ytanlog.py`: `storage/logs/jobs.log`,
+`radar.log`, `wind.log`; date and time in front of every line, the oldest 1000
+lines moved to `NAME.N.log` once a file has more than 2000). `console.log` only
+catches what goes wrong before that, e.g. a missing package. An old cron line
+that still redirects into `radar.log` does no harm (nothing is printed when the
+output is not a terminal).
 
 `radar_job.py` itself stays runnable by hand (and is what /admin/radar's "update
 now" starts); overlapping runs skip themselves via `storage/radar/.lock`.

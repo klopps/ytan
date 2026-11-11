@@ -1,6 +1,5 @@
 # Offene Punkte
 
-
 ## Regenradar mit Kurzfristvorhersage als Kartenebene
 
 Eigenes Regenradar über Google Maps für DE, DK und SE: Beobachtung der letzten 60 Minuten plus Vorhersage bis +120 Minuten, nutzbar bei Zoomstufe 12-16 (Grund für den neuen Anlauf: RainViewer liefert kostenlos nur bis Zoomstufe 7, siehe done.md "Regenradar-Layer").

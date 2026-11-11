@@ -17,9 +17,11 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+sys.path.insert(0, os.path.dirname(HERE))  # tools/: ytanlog
 
 from ytanradar.job import Config, Job  # noqa: E402
 from ytanradar.settings import grid_for, load_settings, regions_hash  # noqa: E402
+import ytanlog  # noqa: E402
 
 
 class Lock:
@@ -58,8 +60,8 @@ def main() -> int:
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
-                        format="%(asctime)s %(levelname)s %(message)s")
+    # storage/logs/radar.log, written by the job itself (ytanlog: date in front, rotated)
+    ytanlog.setup("radar", logging.DEBUG if args.verbose else logging.INFO)
     log = logging.getLogger("ytanradar")
     os.makedirs(args.storage, exist_ok=True)
 

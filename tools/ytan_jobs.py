@@ -2,7 +2,10 @@
 """YTAN's scheduled jobs from ONE cron entry, one after the other.
 
 Cron, every 5 minutes (replaces the separate radar and wind entries):
-    */5 * * * * tools/radar/.venv/bin/python tools/ytan_jobs.py >> storage/logs/radar.log 2>&1
+    */5 * * * * tools/radar/.venv/bin/python tools/ytan_jobs.py >> storage/logs/console.log 2>&1
+
+The jobs write their own logs (storage/logs/jobs.log, radar.log, wind.log - tools/ytanlog.py);
+console.log only catches what goes wrong before that (e.g. a missing package).
 
 Each tick takes storage/.jobs.lock (no second tick starts while this one is
 still working - it just ends) and goes through JOBS in order; a job that is
@@ -31,6 +34,9 @@ from datetime import datetime, timezone
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, ".."))
+sys.path.insert(0, HERE)
+import ytanlog  # noqa: E402
+
 log = logging.getLogger("ytanjobs")
 
 
@@ -118,7 +124,8 @@ def run_due(jobs: list[JobSpec], storage_root: str, now: datetime, runner=run_jo
 
 
 def main() -> int:
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    # storage/logs/jobs.log (the jobs themselves write radar.log / wind.log)
+    ytanlog.setup("jobs")
     storage_root = os.path.join(ROOT, "storage")
     os.makedirs(storage_root, exist_ok=True)
     with Lock(os.path.join(storage_root, ".jobs.lock")) as locked:

@@ -202,6 +202,16 @@ Read by the SPA as `window.YTAN_ROUTE_ANIMATION` (`{color, line_width, zoom, end
 |---|---|---|---|---|
 | PUT | `/settings/route-animation` | admin | `color` (`#RRGGBB`), `line_width` (whole px 1-30), `zoom` (3-21, rounded to 0.1), `end_delay_s` (seconds 0-600, rounded to 0.01), `speed` (default playback speed, whole screen px per second at that zoom, 10-2000) | `data`: the stored values (colour upper-case); 422 for anything else |
 
+## Log files (admin only)
+
+The admin tool `/admin/logs` (`LogController`, `LogFileService`). Reachable files: every regular file in `storage/logs` (id `s:{name}`), PHP's `error_log` if it is a file (id `php`) and the existing files of `.env`'s `ADMIN_LOG_FILES` (comma separated, id `x:{index}`). Files are only ever addressed by these ids, never by a path.
+
+| Method | Path | Auth | Body / query | Notes |
+|---|---|---|---|---|
+| GET | `/admin/logs` | admin | - | `data`: `[{id, name, path, source (storage/php/extra), size, modified (ISO 8601)}]` |
+| GET | `/admin/logs/read` | admin | `id`; `from` (byte offset, optional); `bytes` (default 262144, at most 1 MB) | without `from`: the file's last `bytes`, cut to a line start (`truncated` true if older text was left out); with `from`: what follows that offset (auto-follow). A file now shorter than `from` was rotated/emptied: its tail with `reset` true. `data`: `content` (invalid UTF-8 replaced), `from`, `to` (next offset), `size`, `modified`, `truncated`, `reset`, `more` (more data after `to`); 404 for an unknown id |
+| GET | `/admin/logs/download` | admin | `ids` (comma separated) | one file: as it is; several: a ZIP `ytan-logs-YYYYMMDD-HHMMSS.zip` (needs PHP's zip extension). `application/octet-stream` with `Content-Disposition: attachment`; unknown ids are ignored, none left = 422 |
+
 ## Lighthouse duplicates (admin only)
 
 Finds lighthouse POIs that lie close together and merges the ones the admin says describe the same lighthouse (admin tool `/admin/lighthouse-duplicates`).
@@ -334,8 +344,9 @@ the background (`radar_job.py --force`, the fetch interval doesn't apply):
 202 `{started: true}`; 409 `radar.job_paused` while paused, `radar.job_running` while a run holds the job's
 lock (`storage/radar/.lock`, the same check gives `running` in the GET
 above); 503 `radar.job_not_installed` (no `tools/radar/.venv`) or
-`radar.job_cannot_start` (`exec` disabled). The job's output goes to
-`storage/logs/radar.log` like the cron runs'.
+`radar.job_cannot_start` (`exec` disabled). The job writes
+`storage/logs/radar.log` itself (`tools/ytanlog.py`); its console output
+(only what fails before that) goes to `storage/logs/console.log`.
 
 Errors (422): `radar.settings_invalid_history`, `radar.settings_invalid_forecast`,
 `radar.settings_invalid_interval`, `radar.settings_invalid_workers`,
@@ -418,8 +429,8 @@ once. Errors (422): `wind.settings_invalid_horizon`,
 `POST /api/v1/settings/wind/run` (admin only) starts the job in the background
 (`wind_job.py --force`): 202 `{started: true}`; 409 `wind.job_disabled` while
 switched off, `wind.job_running` while a run holds `storage/wind/.lock`; 503
-`wind.job_not_installed` / `wind.job_cannot_start`. Output goes to
-`storage/logs/wind.log`.
+`wind.job_not_installed` / `wind.job_cannot_start`. The job writes
+`storage/logs/wind.log` itself; console output to `storage/logs/console.log`.
 
 ## CSP reports
 

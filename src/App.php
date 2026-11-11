@@ -266,6 +266,13 @@ final class App
                 $pdo
             )
         ));
+        $c->set(\Ytan\Http\Controllers\LogController::class, fn ($c) => new \Ytan\Http\Controllers\LogController(
+            new \Ytan\Service\Log\LogFileService(
+                $rootDir . '/storage/logs',
+                (string) ini_get('error_log'),
+                \Ytan\Service\Log\LogFileService::parseExtraFiles((string) ($_ENV['ADMIN_LOG_FILES'] ?? ''))
+            )
+        ));
         $c->set(AdminController::class, fn ($c) => new AdminController(
             new ImageReconciliationService([
                 'tour' => ['repository' => $c->get(TourRepository::class), 'images' => $c->get('images.tour')],
@@ -817,6 +824,21 @@ final class App
 
             return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
         });
+
+        // Log files: view (with auto-follow) and download the system's logs (LogController, LogFileService).
+        $app->get('/admin/logs', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
+            ob_start();
+            $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
+            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
+            $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
+            require $rootDir . '/templates/admin-logs.php';
+            $res->getBody()->write(ob_get_clean());
+
+            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
+        });
+        $app->get('/api/v1/admin/logs', [\Ytan\Http\Controllers\LogController::class, 'index']);
+        $app->get('/api/v1/admin/logs/read', [\Ytan\Http\Controllers\LogController::class, 'read']);
+        $app->get('/api/v1/admin/logs/download', [\Ytan\Http\Controllers\LogController::class, 'download']);
 
         // Wind layer: the wind job's settings and its last runs (WindSettingsController).
         $app->get('/admin/wind', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator, $c) {

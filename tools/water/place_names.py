@@ -22,7 +22,6 @@ import json
 import os
 import pickle
 import sys
-import time
 
 import numpy as np
 import osmium
@@ -42,8 +41,15 @@ PLACE_TYPES = {"city", "town", "village", "hamlet", "suburb", "quarter", "neighb
 TO_METRIC = Transformer.from_crs("EPSG:4326", "EPSG:3035", always_xy=True)
 
 
+_log = None
+
+
 def log(message: str) -> None:
-    print(time.strftime("%H:%M:%S"), message, file=sys.stderr, flush=True)
+    """Progress line: storage/logs/place-names.log (ytanlog: date in front, rotated) and stderr."""
+    global _log
+    if _log is None:
+        _log = build_index.ytanlog.SimpleLog("place-names", sys.stderr)
+    _log(message)
 
 
 def is_protected_area(tags) -> bool:

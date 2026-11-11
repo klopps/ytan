@@ -12,7 +12,7 @@ use Ytan\Exception\ApiException;
  * fetch interval doesn't apply to a manual start).
  *
  * Also starts the wind job (tools/wind/wind_job.py, `new RadarJobRunner($root, 'wind')`):
- * same lock-file check on storage/wind/.lock, log storage/logs/wind.log, error
+ * same lock-file check on storage/wind/.lock, log storage/logs/wind.log (written by the job, tools/ytanlog.py), error
  * codes wind.job_*, and the same Python environment (tools/radar/.venv).
  *
  * "Is a run in progress?" is answered by the job's own lock file
@@ -71,7 +71,9 @@ final class RadarJobRunner
         if (!is_dir($logDir)) {
             @mkdir($logDir, 0775, true);
         }
-        $log = $logDir . '/' . $this->job . '.log';
+        // The job writes storage/logs/{job}.log itself (tools/ytanlog.py); this only catches
+        // what goes wrong before that, e.g. a missing package.
+        $log = $logDir . '/console.log';
         $command = escapeshellarg($python) . ' ' . escapeshellarg($script) . ' --force';
 
         if (DIRECTORY_SEPARATOR === '\\') {

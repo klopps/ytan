@@ -16,9 +16,11 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+sys.path.insert(0, os.path.dirname(HERE))  # tools/: ytanlog
 
 from ytanwind.job import Job  # noqa: E402
 from ytanwind.settings import load_settings  # noqa: E402
+import ytanlog  # noqa: E402
 
 
 class Lock:
@@ -72,8 +74,8 @@ def main() -> int:
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
-                        format="%(asctime)s %(levelname)s %(message)s")
+    # storage/logs/wind.log, written by the job itself (ytanlog: date in front, rotated)
+    ytanlog.setup("wind", logging.DEBUG if args.verbose else logging.INFO)
     log = logging.getLogger("ytanwind")
     os.makedirs(args.storage, exist_ok=True)
 

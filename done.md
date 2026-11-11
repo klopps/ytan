@@ -1,5 +1,35 @@
 # Erledigt
 
+## Logfiles
+
+~~Folgendes soll für alle bestehenden und zukünftigen Logfiles gelten.~~
+
+~~**Datum und Uhrzeit:** Alle Log-Files die das YTAN selbst erzeugt sollen am Anfang jeder Zeile Datum und Uhrzeit haben (YYYY-MM-DD hh:mm:ss). Z.B. fehlt das Datum im water-build.log, water-index-build.log, water-index.log, shelter-places.log, shelter-import.log, shelter-distances.log.~~
+
+~~**Auto-Archivierung:** Die Log-Files sollen nicht überschrieben werden, sondern immer Länger werden. Ist ein Logfile länger als 2000 Zeilen, sollen ältesten 1000 Zeilen archiviert werden, in dem ein neues Logfile mit diesen Zeilen mit der Endung .<number>.log erzeugt wird, wobei <number> durch eine fortlaufende Nummer ersetzt wird.~~
+
+Gelöst (2026-11-11): Die Logs entstanden bisher per Shell-Umleitung (`> storage/logs/x.log` von Hand, `>>` aus Cron und `RadarJobRunner`). Deshalb gab es kein einheitliches Format, und `>` überschrieb die Datei. Jetzt schreibt jedes Programm sein Log selbst, über zwei gleichartige Helfer:
+- **PHP:** `Ytan\Service\Log\LogWriter` (`LogWriter::cli($root, 'name')`, `line()`/`error()`) mit `LogRotation`.
+- **Python:** `tools/ytanlog.py` (`setup('name')` für `logging`, `SimpleLog` für Fortschrittszeilen).
+- **Regeln:** Es wird nur angehängt. Jede Zeile beginnt mit lokalem `YYYY-MM-DD hh:mm:ss`, auch Folgezeilen mehrzeiliger Meldungen wie Tracebacks. Bei mehr als 2000 Zeilen wandern die ältesten 1000 in `name.N.log` (nächste freie Nummer, so oft wie nötig, ältester Block zuerst). Die Datei wird dabei an Ort und Stelle neu geschrieben, nicht ersetzt. So schreibt ein Prozess, der sie per Append-Umleitung offen hält, weiter hinein. Geprüft wird beim Start und laufend beim Schreiben.
+- **Logs:** `jobs` (`tools/ytan_jobs.py`), `radar`, `wind`, `water-index` (`build_index.py`), `place-names` (`place_names.py`), `shelter-import` (alle Schritte von `bin/import-shelters.php`), `campsite-import`, `poi-water-distance`, `weather-cleanup`, `file-cache-cleanup`. Uncaught Exceptions der Python-Jobs landen per `sys.excepthook` mit Datum im Log.
+- **Konsole:** Ausgabe nur, wenn stdout/stderr ein Terminal ist. Sonst würden Cron-Zeilen, die noch in dieselbe Datei umleiten (prod: `>> radar.log`), jede Zeile doppelt schreiben. Die Wasser-Tools zeigen ihren Fortschritt weiter immer an (sie werden von Hand gestartet).
+- **Umleitungen:** Cron-Vorschläge und `RadarJobRunner` leiten jetzt nach `storage/logs/console.log`. Diese Datei fängt nur Fehler vor dem Logging-Start ab, etwa ein fehlendes Paket. Vorher landete die Ausgabe des Wind-Jobs aus dem Cron-Lauf in `radar.log`, jetzt in `wind.log`.
+- **Alte Logs:** Ältere Zeilen in den vorhandenen Logs bleiben, wie sie sind. Die von Hand benannten Dateien (`water-build.log`, `shelter-places.log` usw.) werden nicht mehr geschrieben.
+- **Tests:** `tests/Unit/LogWriterTest.php`, `tools/tests/test_ytanlog.py` (Format, Anhängen, Archivnummern, mehrere Archive, Append-Handle nach Rotation, Rotation beim Schreiben, Tracebacks).
+
+## Zugriff auf die Log-Files im Admin-Bereich
+
+~~Im Admin-Bereich soll man Zugriff alle möglichen Log-Files, die das System erzeugt Zugriff und Einsicht haben. Auch ein Download einzelner oder aller mehrerer Logfiles auf einmal als ZIP-File soll möglich sein.
+Zeigt man ein Logfile an, so soll ein Auto-follow angeschaltet werden können, so dass neue Einträge sofort angezeigt werden und das Log-File automatisch mitscrollt. Datum und Uhrzeit der letzten Änderung jedes Log-Files soll angezeigt werden.~~
+
+Gelöst (2026-11-11): Neue Admin-Seite `/admin/logs` (Sidebar "Logs"; `templates/admin-logs.php`, `public/js/admin-logs.js`, `LogController`, `LogFileService`, API in `docs/API.md`).
+- Welche Dateien: alles in `storage/logs` (Radar-/Wind-Job, Importe, Cron-Ausgaben), das PHP-`error_log`, falls es eine Datei ist, und die Dateien aus dem neuen `.env`-Eintrag `ADMIN_LOG_FILES` (kommagetrennt, z. B. die Logs des Webservers - der PHP-Prozess muss sie lesen dürfen). Eine Datei wird nur über eine vom Server vergebene id angesprochen (`s:radar.log`, `php`, `x:0`), nie über einen Pfad aus der Anfrage - so kann keine Anfrage beliebige Dateien lesen.
+- Liste mit Größe und Datum/Uhrzeit der letzten Änderung, alle 15 s aktualisiert (nicht im Hintergrund-Tab).
+- Anzeige: Klick auf den Namen zeigt die letzten 256 KB, ab einem Zeilenanfang. "Mitlaufen" fragt alle 2 s ab dem letzten Byte-Offset nach (`/admin/logs/read?from=`), hängt Neues an und scrollt ans Ende. Mehr als 1 MB auf einmal wird in Stücken nachgeladen (`more`). Eine geleerte oder rotierte Datei (kürzer als der Offset) wird erkannt und neu begonnen. Der Viewer hält höchstens 2 Mio. Zeichen. Ungültiges UTF-8 wird ersetzt, sonst scheitert das JSON.
+- Download: eine Datei unverändert, mehrere als ZIP (`ZipArchive`) - per Auswahl-Checkboxen oder aus dem Viewer. Antwort als `application/octet-stream`, damit `CompressionMiddleware` große Logs nicht puffert.
+- Tests: `LogControllerTest` (PHPUnit: Liste, Admin-Pflicht, unbekannte id, Tail/Follow/Rotation/Stücke, UTF-8, Download einzeln und als ZIP) und `tests/e2e/specs/admin-logs.spec.js` (mobil: Liste, Anzeige, Mitlaufen mit angehängter Zeile, beide Downloads).
+
 ## Anleitung auf den Entwicklungsstand bringen
 
 ~~In der Anleitung fehlt einiges, das neu gebaut wurde, so ist die Routen- und Tourenanimation nicht enthalten. Entwicklungsstand mit der Dokumentation abgleichen und Fehlendes ergänzen.~~

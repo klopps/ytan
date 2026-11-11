@@ -20,6 +20,7 @@ declare(strict_types=1);
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 
+use Ytan\Service\Log\LogWriter;
 use Dotenv\Dotenv;
 use Ytan\Database\Connection;
 use Ytan\Domain\CampsiteImport\CampsiteImportRepository;
@@ -31,13 +32,14 @@ use Ytan\Service\OverpassThrottle;
 use Ytan\Service\Water\WaterDistanceService;
 
 $root = dirname(__DIR__);
+$log = LogWriter::cli($root, 'campsite-import'); // storage/logs/campsite-import.log
 if (is_file($root . '/.env')) {
     Dotenv::createImmutable($root)->load();
 }
 
 $water = new WaterDistanceService($root . '/storage/water/water-index.bin', $root . '/storage/water/water-index.json');
 if (!$water->available()) {
-    fwrite(STDERR, "No water index at storage/water/water-index.bin - distances stay empty (run tools/water/build_index.py).\n");
+    $log->error("No water index at storage/water/water-index.bin - distances stay empty (run tools/water/build_index.py).");
 }
 $staging = new CampsiteImportRepository(Connection::fromEnv(), $water);
 $osm = new CampsiteOsmImportService(
@@ -59,22 +61,22 @@ foreach ($steps as $step) {
     try {
         if ($step === 'distances') {
             $started = microtime(true);
-            $n = $staging->recomputeDistances($all, function (int $done) {
-                echo "distances: $done ...\n";
+            $n = $staging->recomputeDistances($all, function (int $done) use ($log) {
+                $log->line("distances: $done ...");
             });
-            echo sprintf("distances: %d computed in %d s\n", $n, (int) round(microtime(true) - $started));
+            $log->line(sprintf("distances: %d computed in %d s", $n, (int) round(microtime(true) - $started)));
             continue;
         }
         $r = $osm->import($step, true);
-        echo sprintf("%s: %d read, %d skipped, %d new, %d updated\n", strtoupper($step), $r['fetched'], $r['skipped'], $r['inserted'], $r['updated']);
+        $log->line(sprintf("%s: %d read, %d skipped, %d new, %d updated", strtoupper($step), $r['fetched'], $r['skipped'], $r['inserted'], $r['updated']));
     } catch (Throwable $e) {
         $failed[] = $step;
-        fwrite(STDERR, $step . ': FAILED - ' . $e->getMessage() . "\n");
+        $log->error($step . ': FAILED - ' . $e->getMessage());
     }
 }
-echo sprintf("%d entries without distances to water\n", $staging->countUnchecked());
+$log->line(sprintf("%d entries without distances to water", $staging->countUnchecked()));
 if ($failed !== []) {
-    fwrite(STDERR, 'Failed: ' . implode(' ', $failed) . " - run them again (big countries: Overpass may time out).\n");
+    $log->error('Failed: ' . implode(' ', $failed) . " - run them again (big countries: Overpass may time out).");
 }
 
 exit($failed === [] ? 0 : 1);

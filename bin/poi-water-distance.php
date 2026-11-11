@@ -16,6 +16,7 @@ declare(strict_types=1);
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 
+use Ytan\Service\Log\LogWriter;
 use Dotenv\Dotenv;
 use Ytan\Database\Connection;
 use Ytan\Domain\Poi\PoiWaterDistanceRepository;
@@ -24,13 +25,14 @@ use Ytan\Service\Water\PoiWaterDistanceService;
 use Ytan\Service\Water\WaterDistanceService;
 
 $root = dirname(__DIR__);
+$log = LogWriter::cli($root, 'poi-water-distance'); // storage/logs/poi-water-distance.log
 if (is_file($root . '/.env')) {
     Dotenv::createImmutable($root)->load();
 }
 
 $water = new WaterDistanceService($root . '/storage/water/water-index.bin', $root . '/storage/water/water-index.json');
 if (!$water->available()) {
-    fwrite(STDERR, "No water index at storage/water/water-index.bin.\n");
+    $log->error("No water index at storage/water/water-index.bin.");
     exit(1);
 }
 
@@ -46,17 +48,17 @@ if ($types === []) {
     $types = $settings->waterDistancePoiTypes();
 }
 if ($types === []) {
-    fwrite(STDERR, "No POI types given and none enabled on /admin/settings.\n");
+    $log->error("No POI types given and none enabled on /admin/settings.");
     exit(1);
 }
 
 $pois = $repository->poisToCompute($types, $water->version(), $all);
-echo sprintf("POI types %s: %d POIs to compute (index %s)\n", implode(', ', $types), count($pois), $water->version() ?? '?');
+$log->line(sprintf("POI types %s: %d POIs to compute (index %s)", implode(', ', $types), count($pois), $water->version() ?? '?'));
 $started = microtime(true);
 foreach ($pois as $i => $poi) {
     $service->compute($poi);
     if (($i + 1) % 1000 === 0) {
-        echo sprintf("%d ...\n", $i + 1);
+        $log->line(sprintf("%d ...", $i + 1));
     }
 }
-echo sprintf("%d computed in %d s\n", count($pois), (int) round(microtime(true) - $started));
+$log->line(sprintf("%d computed in %d s", count($pois), (int) round(microtime(true) - $started)));
