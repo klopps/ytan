@@ -210,13 +210,21 @@ Read by the SPA as `window.YTAN_ROUTE_ANIMATION` (`{color, line_width, zoom, end
 
 ## Log files (admin only)
 
-The admin tool `/admin/logs` (`LogController`, `LogFileService`). Reachable files: every regular file in `storage/logs` (id `s:{name}`), PHP's `error_log` if it is a file (id `php`) and the existing files of `.env`'s `ADMIN_LOG_FILES` (comma separated, id `x:{index}`). Files are only ever addressed by these ids, never by a path.
+The admin tool `/admin/logs` (`LogController`, `LogFileService`). Reachable files: every regular file in `storage/logs` (id `s:{name}`), the YTAN worker's uploaded logs in `storage/logs/worker` (id `w:{name}`), PHP's `error_log` if it is a file (id `php`) and the existing files of `.env`'s `ADMIN_LOG_FILES` (comma separated, id `x:{index}`). Files are only ever addressed by these ids, never by a path.
 
 | Method | Path | Auth | Body / query | Notes |
 |---|---|---|---|---|
-| GET | `/admin/logs` | admin | - | `data`: `[{id, name, path, source (storage/php/extra), size, modified (ISO 8601)}]` |
+| GET | `/admin/logs` | admin | - | `data`: `[{id, name, path, source (storage/worker/php/extra), size, modified (ISO 8601)}]` |
 | GET | `/admin/logs/read` | admin | `id`; `from` (byte offset, optional); `bytes` (default 262144, at most 1 MB) | without `from`: the file's last `bytes`, cut to a line start (`truncated` true if older text was left out); with `from`: what follows that offset (auto-follow). A file now shorter than `from` was rotated/emptied: its tail with `reset` true. `data`: `content` (invalid UTF-8 replaced), `from`, `to` (next offset), `size`, `modified`, `truncated`, `reset`, `more` (more data after `to`); 404 for an unknown id |
 | GET | `/admin/logs/download` | admin | `ids` (comma separated) | one file: as it is; several: a ZIP `ytan-logs-YYYYMMDD-HHMMSS.zip` (needs PHP's zip extension). `application/octet-stream` with `Content-Disposition: attachment`; unknown ids are ignored, none left = 422 |
+
+## Admin dashboard problems (admin only)
+
+`AdminHealthController`/`AdminHealthService`, shown as the "Probleme" card on `/admin`. Reads only what the jobs write (status/manifest files, `worker-status.json`, the OSM import status, log modification times) plus one count on `weather_forecast`.
+
+| Method | Path | Auth | Body / query | Notes |
+|---|---|---|---|---|
+| GET | `/admin/health` | admin | - | `data`: `{issues: [{severity (error/warning/info), code, vars, page}], checked_at}` - errors first; `code` e.g. `cron.silent`, `radar.failed`, `radar.stale`, `wind.stale`, `worker.silent`, `osm.failed`, `weather.old_rows`, `cleanup.never`, `errorlog.errors` (errors/warnings of the last 24 h in PHP's `error_log` or an `ADMIN_LOG_FILES` entry named `*error*`), `errorlog.none` (texts `admin.health.{code}`), `vars` its placeholders (times as ISO 8601 UTC), `page` the admin page it concerns (`/admin/{page}`) or null |
 
 ## Lighthouse duplicates (admin only)
 

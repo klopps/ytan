@@ -1,7 +1,5 @@
 # Offene Punkte
 
-## Informationen über Probleme im Admin-Dashboard
-
 
 
 ## Regenradar mit Kurzfristvorhersage als Kartenebene

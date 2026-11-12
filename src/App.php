@@ -139,6 +139,12 @@ final class App
         $c->set(RouteRepository::class, fn () => new RouteRepository($pdo));
         $c->set(AreaRepository::class, fn () => new AreaRepository($pdo));
         $c->set(SettingsRepository::class, fn () => new SettingsRepository($pdo));
+        $c->set(\Ytan\Http\Controllers\AdminHealthController::class, fn ($c) => new \Ytan\Http\Controllers\AdminHealthController(
+            new \Ytan\Service\AdminHealthService($rootDir, $c->get(SettingsRepository::class), $pdo, \Ytan\Service\AdminHealthService::errorLogFiles(
+                (string) ini_get('error_log'),
+                \Ytan\Service\Log\LogFileService::parseExtraFiles((string) ($_ENV['ADMIN_LOG_FILES'] ?? ''))
+            )),
+        ));
         $c->set(LighthouseImportRepository::class, fn () => new LighthouseImportRepository($pdo));
         $c->set(RequestThrottle::class, fn () => new RequestThrottle($pdo));
         $c->set(CaptchaService::class, fn () => new CaptchaService($jwtKey));
@@ -612,6 +618,7 @@ final class App
             return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
         });
         $app->get('/api/v1/admin/dashboard-stats', [AdminController::class, 'dashboardStats']);
+        $app->get('/api/v1/admin/health', [\Ytan\Http\Controllers\AdminHealthController::class, 'index']);
 
         // User management, moved out of the main SPA's drawer
         // (templates/admin-users.php, public/js/admin-users.js) - loads a
