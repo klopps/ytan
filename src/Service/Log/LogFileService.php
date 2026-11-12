@@ -10,7 +10,8 @@ use ZipArchive;
 /**
  * The log files an admin may look at on /admin/logs (LogController): every
  * regular file in storage/logs (the jobs' own logs - radar, wind, imports,
- * cron output), PHP's own error_log if it is a file, and the files listed in
+ * cron output), the YTAN worker's logs (storage/logs/worker, "w:wind.log"),
+ * PHP's own error_log if it is a file, and the files listed in
  * .env's ADMIN_LOG_FILES (comma separated, e.g. the web server's logs).
  *
  * Only these files are reachable - a file is addressed by an id from list()
@@ -21,6 +22,9 @@ final class LogFileService
 {
     /** What one read() returns at most - more is fetched by the next call. */
     public const MAX_READ_BYTES = 1048576;
+
+    /** Subdirectory of storage/logs the YTAN worker uploads its own logs to. */
+    public const WORKER_DIR = 'worker';
 
     /** @param list<string> $extraFiles */
     public function __construct(
@@ -167,6 +171,16 @@ final class LogFileService
             $path = $this->logDir . DIRECTORY_SEPARATOR . $name;
             if ($name[0] !== '.' && is_file($path) && is_readable($path)) {
                 $paths['s:' . $name] = [$path, 'storage'];
+            }
+        }
+        // the YTAN worker's logs, uploaded by tools/ytan_worker.py (publish_logs()) on every tick
+        $workerDir = $this->logDir . DIRECTORY_SEPARATOR . self::WORKER_DIR;
+        $names = is_dir($workerDir) ? (scandir($workerDir) ?: []) : [];
+        sort($names);
+        foreach ($names as $name) {
+            $path = $workerDir . DIRECTORY_SEPARATOR . $name;
+            if ($name[0] !== '.' && is_file($path) && is_readable($path)) {
+                $paths['w:' . $name] = [$path, 'worker'];
             }
         }
         if ($this->phpErrorLog !== null && $this->phpErrorLog !== '' && is_file($this->phpErrorLog) && is_readable($this->phpErrorLog)) {

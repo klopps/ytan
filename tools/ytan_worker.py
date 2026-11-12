@@ -134,6 +134,21 @@ def publish(spec: ytan_jobs.JobSpec, storage_root: str, remote: Remote, drop_req
     return ok
 
 
+def publish_logs(storage_root: str, remote: Remote) -> bool:
+    """The worker's current logs (worker.log and the jobs' own) to the server's storage/logs/worker/.
+
+    A directory of their own, so they never mix with the server's logs of the
+    same name (wind.log when the job ran there before); /admin/logs lists them
+    as "YTAN worker". Only the current files, not the archives (NAME.N.log,
+    ZIPs) - and no --delete. Filtered directory sync like put() (rrsync).
+    """
+    local = os.path.join(storage_root, "logs")
+    if not os.path.isdir(local):
+        return True
+    return remote.rsync(["-rt", "--exclude", "*.[0-9]*.log", "--include", "/*.log", "--exclude", "*",
+                         local + "/", remote.path("logs/worker/")]) == 0
+
+
 def set_job_workers(storage_root: str, workers: int) -> None:
     """The add-on's thread/process count instead of the server's (radar "workers", wind "workers")."""
     path = os.path.join(storage_root, "radar", "config.json")
@@ -200,6 +215,7 @@ def tick(storage_root: str, remote: Remote, now: datetime, runner=ytan_jobs.run_
         json.dump(report, f, ensure_ascii=False, indent=2)
     if not remote.put(heartbeat, "worker-status.json"):
         report["error"] = "worker-status.json could not be uploaded"
+    publish_logs(storage_root, remote)  # never fails the tick; rsync() logs a failure
     return report
 
 

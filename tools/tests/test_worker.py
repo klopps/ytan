@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fnmatch
 import json
 import os
 import shutil
@@ -37,10 +38,11 @@ class FakeServer:
             return SimpleNamespace(returncode=0 if "--ignore-missing-args" in args else 23, stderr="missing")
         if os.path.isdir(src.rstrip("/")):
             os.makedirs(dst, exist_ok=True)
-            only = [args[i + 1].lstrip("/") for i, a in enumerate(args) if a == "--include"]
-            if only:  # put(): "--include /NAME --exclude *" = just that file into the directory
-                for name in only:
-                    if os.path.exists(os.path.join(src, name)):  # a missing one is simply not transferred
+            rules = [(a == "--include", args[i + 1].lstrip("/")) for i, a in enumerate(args) if a in ("--include", "--exclude")]
+            if any(include for include, _ in rules):  # filtered sync of top-level files: the first matching rule wins
+                for name in os.listdir(src):
+                    match = next((include for include, p in rules if fnmatch.fnmatchcase(name, p)), True)
+                    if match and os.path.isfile(os.path.join(src, name)):  # a missing one is simply not transferred
                         shutil.copy2(os.path.join(src, name), os.path.join(dst, name))
             else:
                 shutil.copytree(src, dst, dirs_exist_ok=True)
@@ -114,6 +116,16 @@ class WorkerTest(unittest.TestCase):
         fetches = [c for c in self.fake.commands if "u@h:wind/" in c[:-1]]
         self.assertTrue(fetches and "/run-request" in fetches[0])  # run-request asked for as a filtered directory
         self.assertIn("--delete", uploads[3])
+
+    def test_the_current_logs_go_to_their_own_directory_on_the_server(self):
+        self.server_config([])
+        logs = os.path.join(self.local, "logs")
+        os.makedirs(logs)
+        for name in ("worker.log", "wind.log", "wind.3.log", "wind.1-10.zip"):
+            with open(os.path.join(logs, name), "w") as f:
+                f.write(name)
+        ytan_worker.tick(self.local, self.remote, NOW, runner=self.runner)
+        self.assertEqual(sorted(os.listdir(os.path.join(self.server, "logs", "worker"))), ["wind.log", "worker.log"])
 
     def test_nothing_runs_when_no_job_is_external(self):
         self.server_config([])

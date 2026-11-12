@@ -69,6 +69,23 @@ final class LogControllerTest extends ControllerTestCase
         $this->assertNotNull($result['data'][0]['modified']);
     }
 
+    public function testTheWorkersUploadedLogsAreListedSeparately(): void
+    {
+        mkdir($this->dir . '/logs/worker');
+        file_put_contents($this->dir . '/logs/worker/wind.log', "from the pi\n");
+        try {
+            $result = $this->decode($this->controller->index($this->request('GET', '/api/v1/admin/logs', $this->admin()), $this->response()));
+            $this->assertSame(['s:radar.log', 's:wind.log', 'w:wind.log', 'x:0'], array_column($result['data'], 'id'));
+            $this->assertSame('worker', $result['data'][2]['source']);
+
+            $read = $this->decode($this->controller->read($this->request('GET', '/api/v1/admin/logs/read', $this->admin(), null, ['id' => 'w:wind.log']), $this->response()));
+            $this->assertSame("from the pi\n", $read['data']['content']);
+        } finally {
+            unlink($this->dir . '/logs/worker/wind.log');
+            rmdir($this->dir . '/logs/worker');
+        }
+    }
+
     public function testNonAdminIsRejected(): void
     {
         $this->expectException(ForbiddenException::class);

@@ -1299,6 +1299,7 @@
     "admin.logs.source_php": "PHP-Fehlerlog",
     "admin.logs.source_extra": "ADMIN_LOG_FILES",
     "admin.logs.source_storage": "storage/logs",
+    "admin.logs.source_worker": "YTAN-Worker",
     "admin.logs.load_failed": "Laden fehlgeschlagen: {error}",
     "admin.logs.none": "Keine Log-Dateien gefunden.",
     "admin.logs.select_all": "Alle auswählen",

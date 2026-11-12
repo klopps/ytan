@@ -64,6 +64,9 @@ function logsSourceLabel(source) {
     if (source === 'extra') {
         return t('admin.logs.source_extra');
     }
+    if (source === 'worker') {
+        return t('admin.logs.source_worker');
+    }
     return t('admin.logs.source_storage');
 }
 
