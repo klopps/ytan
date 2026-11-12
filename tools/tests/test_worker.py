@@ -201,6 +201,22 @@ class ServerSkipTest(unittest.TestCase):
             self.assertEqual(ran, ["radar"])
             self.assertIsNone(results["wind"])
 
+    def test_every_tick_logs_what_ran_and_what_not(self):
+        with tempfile.TemporaryDirectory() as d:
+            os.makedirs(os.path.join(d, "radar"))
+            with open(os.path.join(d, "radar", "status.json"), "w") as f:
+                json.dump({"last_run": {"outcome": "no_composite"}}, f)
+            with self.assertLogs(ytan_jobs.log, level="INFO") as logs:
+                ytan_jobs.run_due(ytan_jobs.JOBS, d, NOW, runner=lambda s: 0, skip=["wind"])
+            self.assertEqual(len(logs.records), 1)
+            self.assertRegex(logs.output[0], r"tick: radar exit 0 in \d+\.\d s \(no_composite\); wind on the YTAN worker$")
+
+    def test_every_tick_leaves_a_heartbeat(self):
+        with tempfile.TemporaryDirectory() as d:
+            ytan_jobs.write_heartbeat(d, NOW)
+            with open(os.path.join(d, ytan_jobs.HEARTBEAT)) as f:
+                self.assertEqual(json.load(f)["tick"], "2026-11-12T16:00:05Z")
+
     def test_no_config_means_nothing_external(self):
         with tempfile.TemporaryDirectory() as d:
             self.assertEqual(ytan_jobs.external_jobs(d), [])

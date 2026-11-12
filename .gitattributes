@@ -1,3 +1,4 @@
 # The Home Assistant add-on is built on Linux: its shell script must keep LF line endings
 # (core.autocrlf on Windows would otherwise check it out with CRLF and bash fails).
 ha-addon/** text eol=lf
+*.sh text eol=lf

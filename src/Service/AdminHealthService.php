@@ -26,7 +26,7 @@ use Ytan\Service\Overpass\OsmImportJob;
  */
 final class AdminHealthService
 {
-    /** Cron runs tools/ytan_jobs.py every 5 minutes; its log not written for longer = cron is not running. */
+    /** Cron runs tools/ytan_jobs.py every 5 minutes; no heartbeat (storage/jobs-heartbeat.json) for longer = cron is not running. */
     public const CRON_SILENT_SECONDS = 15 * 60;
     /** The radar job writes status.json on every run (also "nothing new", "paused"), the longest fetch interval is 15 min. */
     public const RADAR_SILENT_SECONDS = 20 * 60;
@@ -106,9 +106,9 @@ final class AdminHealthService
 
     private function checkCron(string $storage, int $now, array &$issues): void
     {
-        $log = $storage . '/logs/jobs.log';
-        clearstatcache(true, $log);
-        $modified = is_file($log) ? (int) filemtime($log) : null;
+        // tools/ytan_jobs.py writes storage/jobs-heartbeat.json on every tick (jobs.log only gets
+        // warnings - its age said nothing, found on prod 2026-11-12)
+        $modified = self::time(self::json($storage . '/jobs-heartbeat.json')['tick'] ?? null);
         if ($modified === null) {
             self::add($issues, 'error', 'cron.never', [], 'logs');
         } elseif ($now - $modified > self::CRON_SILENT_SECONDS) {

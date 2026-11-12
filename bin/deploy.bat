@@ -122,7 +122,7 @@ REM for every run after that.
 REM docs/user is removed first: tar only adds/overwrites, so a renamed or
 REM deleted chapter (e.g. the renumbering of 2026-11-10) would otherwise stay
 REM on the server and show up twice in the user guide.
-tar -C "%BUILD_DIR%" -cf - . | "%DEPLOY_SSH_CLIENT%" -ssh -P %DEPLOY_PORT% -l %DEPLOY_USER% -pw %DEPLOY_SSH_PASSWORD% %DEPLOY_HOST% "mkdir -p '%DEPLOY_PATH%' && rm -rf '%DEPLOY_PATH%/docs/user' && tar -C '%DEPLOY_PATH%' -xf - && cd '%DEPLOY_PATH%' && %REMOTE_PHP% bin/merge-i18n.php && %REMOTE_PHP% bin/migrate.php"
+tar -C "%BUILD_DIR%" -cf - . | "%DEPLOY_SSH_CLIENT%" -ssh -P %DEPLOY_PORT% -l %DEPLOY_USER% -pw %DEPLOY_SSH_PASSWORD% %DEPLOY_HOST% "mkdir -p '%DEPLOY_PATH%' && rm -rf '%DEPLOY_PATH%/docs/user' && tar -C '%DEPLOY_PATH%' -xf - && cd '%DEPLOY_PATH%' && chmod 755 bin/cron.sh && %REMOTE_PHP% bin/merge-i18n.php && %REMOTE_PHP% bin/migrate.php"
 if errorlevel 1 goto :error
 
 echo ==^> Deploy finished.

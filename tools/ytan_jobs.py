@@ -122,13 +122,15 @@ def run_due(jobs: list[JobSpec], storage_root: str, now: datetime, runner=run_jo
     """Run what is due, one after the other; {name: exit code, or None when it was not due}.
     Jobs in skip (they run on the YTAN worker) are left out here."""
     results: dict[str, int | None] = {}
+    summary: list[str] = []  # one line per tick in jobs.log: what ran, how it ended, what was left out
     for spec in jobs:
         if spec.name in skip:
             results[spec.name] = None
-            log.debug("%s runs on the YTAN worker, skipped here", spec.name)
+            summary.append(f"{spec.name} on the YTAN worker")
             continue
         if not is_due(spec, last_start(storage_root, spec.name), now):
             results[spec.name] = None
+            summary.append(f"{spec.name} not due")
             continue
         started = time.monotonic()
         try:
@@ -137,11 +139,20 @@ def run_due(jobs: list[JobSpec], storage_root: str, now: datetime, runner=run_jo
             log.exception("%s could not be started", spec.name)
             code = -1
         results[spec.name] = code
+        seconds = time.monotonic() - started
         if code != 0:
-            log.error("%s ended with exit code %s", spec.name, code)
-        else:
-            log.debug("%s done in %.1f s", spec.name, time.monotonic() - started)
+            log.error("%s ended with exit code %s after %.1f s", spec.name, code, seconds)
+        outcome = last_outcome(storage_root, spec.name)
+        summary.append(f"{spec.name} exit {code} in {seconds:.1f} s" + (f" ({outcome})" if outcome else ""))
+    log.info("tick: %s", "; ".join(summary) if summary else "no jobs")
     return results
+
+
+def last_outcome(storage_root: str, name: str) -> str | None:
+    """last_run.outcome of the job's status.json (processed, unchanged, no_composite, failed, ...)."""
+    status = _read_json(os.path.join(storage_root, name, "status.json")) or {}
+    last = status.get("last_run") if isinstance(status, dict) else None
+    return str(last.get("outcome")) if isinstance(last, dict) and last.get("outcome") else None
 
 
 # --- Resuming a background OpenStreetMap import ------------------------------
@@ -220,11 +231,27 @@ def resume_osm_import(storage_root: str, spawn=_spawn_detached) -> str | None:
     return "resumed"
 
 
+HEARTBEAT = "jobs-heartbeat.json"
+
+
+def write_heartbeat(storage_root: str, now: datetime) -> None:
+    """storage/jobs-heartbeat.json on every cron tick (the admin dashboard's "cron is running" check,
+    AdminHealthService) - jobs.log only gets a line when something is worth logging."""
+    path = os.path.join(storage_root, HEARTBEAT)
+    try:
+        with open(path + ".tmp", "w", encoding="utf-8") as f:
+            json.dump({"tick": now.strftime("%Y-%m-%dT%H:%M:%SZ"), "pid": os.getpid()}, f)
+        os.replace(path + ".tmp", path)
+    except OSError as e:
+        log.warning("could not write %s: %s", HEARTBEAT, e)
+
+
 def main() -> int:
     # storage/logs/jobs.log (the jobs themselves write radar.log / wind.log)
     ytanlog.setup("jobs")
     storage_root = os.path.join(ROOT, "storage")
     os.makedirs(storage_root, exist_ok=True)
+    write_heartbeat(storage_root, datetime.now(timezone.utc))
     with Lock(os.path.join(storage_root, ".jobs.lock")) as locked:
         if not locked:
             log.warning("the previous tick is still working (or a job was started by hand), skipped")

@@ -67,7 +67,7 @@ final class AdminHealthServiceTest extends ControllerTestCase
     /** Everything fresh: cron just ran, radar and wind current, cleanup ran today. */
     private function healthy(): void
     {
-        $this->write('logs/jobs.log', "x\n", self::NOW - 60);
+        $this->write('jobs-heartbeat.json', ['tick' => self::iso(self::NOW - 60)]);
         $this->write('logs/file-cache-cleanup.log', "x\n", self::NOW - 3600);
         $this->write('logs/web-error.log', '', self::NOW - 3600);
         $this->write('radar/status.json', ['last_run' => ['start' => self::iso(self::NOW - 120), 'outcome' => 'processed']]);
@@ -119,7 +119,7 @@ final class AdminHealthServiceTest extends ControllerTestCase
 
     public function testCronAndWindJobsThatStoppedRunning(): void
     {
-        touch($this->root . '/storage/logs/jobs.log', self::NOW - 3600);
+        $this->write('jobs-heartbeat.json', ['tick' => self::iso(self::NOW - 3600)]);
         $this->write('wind/status.json', ['last_run' => ['start' => self::iso(self::NOW - 2 * 3600), 'outcome' => 'unchanged']]);
         $this->write('wind/manifest.json', ['generated' => self::iso(self::NOW - 30 * 3600), 'hours' => [self::iso(self::NOW - 3600)]]);
 
@@ -204,7 +204,7 @@ final class AdminHealthServiceTest extends ControllerTestCase
     public function testErrorsComeFirstAndOnlyAdminsMayAsk(): void
     {
         $this->settings->setRadarPause(null, true);
-        touch($this->root . '/storage/logs/jobs.log', self::NOW - 3600);
+        $this->write('jobs-heartbeat.json', ['tick' => self::iso(self::NOW - 3600)]);
         $issues = ($this->service())->issues(self::NOW);
         $this->assertSame(['error', 'info'], array_column($issues, 'severity'));
 

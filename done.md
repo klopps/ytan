@@ -5,7 +5,7 @@
 ~~Auf der Admin-Dashboard sollen Ereignisse, wie Fehler bei Job-Runs oder veraltete Daten für Wetter, Wind und Niederschlagsradar dargestellt werdeb.~~
 
 Gelöst (2026-11-12): Das Dashboard (`/admin`) hat oben eine Karte „Probleme“ (`admin-dashboard.js`, `GET /api/v1/admin/health`, `AdminHealthController`/`AdminHealthService`). Sie wird beim Laden und danach jede Minute (nur sichtbarer Tab) neu geprüft, Fehler zuerst, dann Warnungen, dann Hinweise, jeder Eintrag mit Zeitpunkt („vor 33 h“) und Link auf die zuständige Admin-Seite. Geprüft wird nur, was die Jobs ohnehin schreiben - nichts wird extern abgefragt:
-- **Cron**: `storage/logs/jobs.log` seit 15 min nicht geschrieben bzw. fehlt = `tools/ytan_jobs.py` läuft nicht.
+- **Cron**: `storage/jobs-heartbeat.json` (schreibt `tools/ytan_jobs.py` bei jedem Takt) älter als 15 min bzw. fehlt = Cron läuft nicht. (Zuerst `jobs.log` - das bekam aber nur Warnungen und meldete auf prod fälschlich „läuft nicht mehr“; seitdem schreibt jeder Takt dort auch eine Zeile `tick: radar exit 0 in 0.9 s (no_composite); wind on the YTAN worker`.)
 - **Regenradar**: letzter Lauf `failed` (mit Fehlertext), letzter Lauf älter als 20 min, neueste Messung im Manifest älter als 30 min (Warnung) bzw. 3 h (Fehler) - das zeigt z. B. den aktuellen OPERA-Ausfall seit 11.11.; ist das Radar pausiert, nur ein Hinweis.
 - **Wind** (nur wenn eingeschaltet): letzter Lauf `failed`, älter als 45 min, Daten älter als Laufintervall + 4 h (Fehler, wenn die Vorhersage die Gegenwart nicht mehr erreicht).
 - **YTAN-Worker** (nur bei extern gerechneten Jobs): nie gemeldet, Lebenszeichen älter als 15 min, Fehler im Takt, Job mit Exit-Code ≠ 0 oder fehlgeschlagenem Upload.
@@ -13,7 +13,7 @@ Gelöst (2026-11-12): Das Dashboard (`/admin`) hat oben eine Karte „Probleme�
 - **Wetter**: Vorhersagen in `weather_forecast` älter als 8 Tage = `bin/cleanup-weather-data.php` läuft nicht per Cron (die Wetterdaten selbst holt die App bei Bedarf frisch, veralten können sie dort nicht).
 - **Cache-Bereinigung**: `storage/logs/file-cache-cleanup.log` fehlt oder älter als 2 Tage.
 - **Fehlerlog von Webserver/PHP**: PHPs `error_log` und jede Datei aus `.env`s `ADMIN_LOG_FILES` mit „error“ im Namen (dieselben Dateien wie /admin/logs); gelesen werden die letzten 512 KB, gezählt Fehler (PHP Fatal/Parse/Uncaught, Apache/nginx `error`/`crit`/`alert`/`emerg`) und Warnungen der letzten 24 h, mit der letzten Meldung; Deprecated/Notice und Zeilen ohne Stufe (eigene `error_log()`-Aufrufe, CSP-Berichte) zählen nicht. Formate: PHP-eigenes Log, Apache, nginx (`AdminHealthService::parseErrorLine()`). Ist gar keine solche Datei lesbar, ein Hinweis - so auf prod: die Apache-Logs des Hosters (`/var/log/apache`) sind für den SSH-User nicht lesbar und `error_log` ist für YTAN nicht gesetzt.
-Schwellen als Konstanten in `AdminHealthService`; Tests `AdminHealthServiceTest`.
+Schwellen als Konstanten in `AdminHealthService`; Tests `AdminHealthServiceTest`. Gleich beim ersten Blick auf prod gefunden: die tägliche Aufräum-Cron (`bin/cron.sh`, bis dahin nur auf prod von Hand angelegt) rief `php` ohne Pfad auf - der Cron-PATH ist `/usr/bin:/bin`, PHP liegt in `/usr/local/bin`, also liefen `cleanup-file-caches.php`/`cleanup-weather-data.php` nie. `bin/cron.sh` liegt jetzt im Repo, sucht PHP selbst und wird vom Deploy ausführbar gemacht.
 
 ## YTAN-Worker: Jobs auf dem Home-Assistant-System rechnen (zuerst Wind)
 
