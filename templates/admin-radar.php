@@ -42,6 +42,7 @@ $minuteOptions = function (int $from, int $to, int $step, int $selected, ?string
             </div>
         </div>
         <div class="alert alert-info small py-2" id="radarRunning" hidden></div>
+        <?php $placementJob = 'radar'; require $rootDir . '/templates/partials/admin-job-placement.php'; ?>
         <div class="d-flex flex-wrap align-items-center gap-2 mb-3" id="radarPauseRow">
             <span class="small fw-semibold"><?= $t('admin.radar.fetching') ?>:</span>
             <span class="small" id="radarPauseState"></span>
@@ -163,5 +164,5 @@ window.YTAN_RADAR_SETTINGS = <?= json_encode($radarSettings + [
     'preset_regions' => RadarConfig::PRESETS,
     'max_mosaic_pixels_min' => RadarConfig::MAX_MOSAIC_PIXELS_MIN,
     'max_mosaic_pixels_limit' => RadarConfig::MAX_MOSAIC_PIXELS_LIMIT,
-], JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) ?>;</script>
+] + \Ytan\Service\JobPlacement::payload($rootDir . '/storage', 'radar', $externalJobs), JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) ?>;</script>
 <?php require $rootDir . '/templates/partials/admin-shell-footer.php'; ?>

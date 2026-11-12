@@ -476,11 +476,13 @@ final class App
         $app->get('/api/v1/settings/radar', [RadarSettingsController::class, 'show']);
         $app->put('/api/v1/settings/radar', [RadarSettingsController::class, 'update']);
         $app->post('/api/v1/settings/radar/run', [RadarSettingsController::class, 'run']);
+        $app->put('/api/v1/settings/radar/placement', [RadarSettingsController::class, 'placement']);
         $app->post('/api/v1/settings/radar/pause', [RadarSettingsController::class, 'pause']);
         $app->delete('/api/v1/settings/radar/pause', [RadarSettingsController::class, 'resume']);
         $app->get('/api/v1/settings/wind', [WindSettingsController::class, 'show']);
         $app->put('/api/v1/settings/wind', [WindSettingsController::class, 'update']);
         $app->post('/api/v1/settings/wind/run', [WindSettingsController::class, 'run']);
+        $app->put('/api/v1/settings/wind/placement', [WindSettingsController::class, 'placement']);
 
         $app->get('/', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $c, $translator) {
             ob_start();
@@ -801,6 +803,7 @@ final class App
             $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
             $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
             $radarSettings = $c->get(SettingsRepository::class)->radarSettings();
+            $externalJobs = $c->get(SettingsRepository::class)->externalJobs();
             $mapsApiKey = $_ENV['MAPS_API_KEY'] ?? '';
             require $rootDir . '/templates/admin-radar.php';
             $res->getBody()->write(ob_get_clean());
@@ -830,6 +833,7 @@ final class App
             $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
             $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
             $windSettings = $c->get(SettingsRepository::class)->windSettings();
+            $externalJobs = $c->get(SettingsRepository::class)->externalJobs();
             $mapsApiKey = $_ENV['MAPS_API_KEY'] ?? '';
             require $rootDir . '/templates/admin-wind.php';
             $res->getBody()->write(ob_get_clean());

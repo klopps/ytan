@@ -352,6 +352,10 @@ function refreshRadarStatus(quiet) {
         radarSettingsData().paused = answer.data.paused;
         radarSettingsData().paused_until = answer.data.paused_until;
         radarSettingsData().paused_forever = answer.data.paused_forever;
+        radarSettingsData().external = answer.data.external;
+        radarSettingsData().run_requested = answer.data.run_requested;
+        radarSettingsData().worker = answer.data.worker;
+        renderAdminJobPlacement(radarSettingsData());
         renderRadarStatus();
         return answer.data.running;
     }).catch(function (err) {
@@ -452,7 +456,13 @@ function radarStartPolling() {
 function startRadarRun() {
     var btn = document.getElementById('radarRunNow');
     btn.disabled = true;
-    Ytan.post('/settings/radar/run', {}).then(function () {
+    Ytan.post('/settings/radar/run', {}).then(function (answer) {
+        if (answer.data && answer.data.external) {
+            // the worker picks it up at its next tick - nothing runs here to poll for
+            showAdminToast(t('admin.job_placement.run_requested_toast'), 'success');
+            refreshRadarStatus(true);
+            return;
+        }
         showAdminToast(t('admin.radar.run_started'), 'success');
         // the job takes a moment to start and take its lock
         setTimeout(function () {
@@ -511,6 +521,9 @@ function initRadarPage() {
         btn.addEventListener('click', function () { setRadarPause(btn.dataset.radarPause); });
     });
     document.getElementById('radarResume').addEventListener('click', function () { setRadarPause(null); });
+    initAdminJobPlacement('radar', radarSettingsData(), function (data) {
+        Object.assign(radarSettingsData(), { external: data.external, run_requested: data.run_requested, worker: data.worker });
+    });
     setInterval(radarIdleCheck, RADAR_IDLE_CHECK_MS);
     initRadarSettings();
 }

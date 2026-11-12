@@ -45,12 +45,16 @@ class JobSpec:
     name: str         # also the storage/{name} directory with status.json
     script: str       # relative to tools/
     slot_minutes: int  # due once per slot of this many minutes
+    # worker mode: what of storage/{name} NOT to upload (local caches/working files; also protected
+    # from --delete on the server) besides manifest.json/status.json/.lock/run-request/*.tmp
+    publish_excludes: tuple[str, ...] = ()
 
 
 # in this order: the rain radar first (it is the one people watch minute by minute)
 JOBS = [
-    JobSpec("radar", os.path.join("radar", "radar_job.py"), 5),
-    JobSpec("wind", os.path.join("wind", "wind_job.py"), 15),
+    JobSpec("radar", os.path.join("radar", "radar_job.py"), 5,
+            ("raw/", "download/", "verify.csv", "verify.last", "reproject-*.npz", "config.json")),
+    JobSpec("wind", os.path.join("wind", "wind_job.py"), 15, ("icon-global-index.npy",)),
 ]
 
 
@@ -96,16 +100,33 @@ def is_due(spec: JobSpec, last: datetime | None, now: datetime) -> bool:
     return last is None or slot_of(last, spec.slot_minutes) != slot_of(now, spec.slot_minutes)
 
 
-def run_job(spec: JobSpec) -> int:
+def run_job(spec: JobSpec, force: bool = False) -> int:
     """The job in a process of its own; its output goes on to ours (the cron log)."""
     env = dict(os.environ, YTAN_JOBS_LOCK_HELD="1")
-    return subprocess.call([sys.executable, os.path.join(HERE, spec.script)], env=env, cwd=ROOT)
+    command = [sys.executable, os.path.join(HERE, spec.script)] + (["--force"] if force else [])
+    return subprocess.call(command, env=env, cwd=ROOT)
 
 
-def run_due(jobs: list[JobSpec], storage_root: str, now: datetime, runner=run_job) -> dict[str, int | None]:
-    """Run what is due, one after the other; {name: exit code, or None when it was not due}."""
+def external_jobs(storage_root: str) -> list[str]:
+    """The jobs the admin moved to the YTAN worker (storage/radar/config.json "external_jobs", JobPlacement)."""
+    try:
+        with open(os.path.join(storage_root, "radar", "config.json"), encoding="utf-8") as f:
+            jobs = json.load(f).get("external_jobs") or []
+        return [str(j) for j in jobs] if isinstance(jobs, list) else []
+    except (OSError, ValueError, AttributeError):
+        return []
+
+
+def run_due(jobs: list[JobSpec], storage_root: str, now: datetime, runner=run_job,
+            skip: list[str] | tuple[str, ...] = ()) -> dict[str, int | None]:
+    """Run what is due, one after the other; {name: exit code, or None when it was not due}.
+    Jobs in skip (they run on the YTAN worker) are left out here."""
     results: dict[str, int | None] = {}
     for spec in jobs:
+        if spec.name in skip:
+            results[spec.name] = None
+            log.debug("%s runs on the YTAN worker, skipped here", spec.name)
+            continue
         if not is_due(spec, last_start(storage_root, spec.name), now):
             results[spec.name] = None
             continue
@@ -212,7 +233,7 @@ def main() -> int:
             resume_osm_import(storage_root)
         except Exception:
             log.exception("resuming the OpenStreetMap import failed")
-        results = run_due(JOBS, storage_root, datetime.now(timezone.utc))
+        results = run_due(JOBS, storage_root, datetime.now(timezone.utc), skip=external_jobs(storage_root))
     return 1 if any(code not in (None, 0) for code in results.values()) else 0
 
 

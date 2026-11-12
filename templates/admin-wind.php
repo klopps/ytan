@@ -21,6 +21,7 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
         </div>
         <p class="text-muted small"><?= $t('admin.wind.hint') ?></p>
         <div class="alert alert-info small py-2" id="windRunning" hidden><?= $t('admin.wind.running') ?></div>
+        <?php $placementJob = 'wind'; require $rootDir . '/templates/partials/admin-job-placement.php'; ?>
         <dl class="row small mb-2">
             <dt class="col-sm-4"><?= $t('admin.wind.model_runs') ?></dt>
             <dd class="col-sm-8" id="windModelRuns"></dd>
@@ -100,5 +101,5 @@ window.YTAN_WIND_SETTINGS = <?= json_encode($windSettings + [
     'max_regions' => \Ytan\Service\WindConfig::MAX_REGIONS,
     'status' => \Ytan\Service\WindConfig::readStatus($rootDir . '/storage/wind'),
     'running' => (new \Ytan\Service\RadarJobRunner($rootDir, 'wind'))->isRunning(),
-], JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) ?>;</script>
+] + \Ytan\Service\JobPlacement::payload($rootDir . '/storage', 'wind', $externalJobs), JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) ?>;</script>
 <?php require $rootDir . '/templates/partials/admin-shell-footer.php'; ?>

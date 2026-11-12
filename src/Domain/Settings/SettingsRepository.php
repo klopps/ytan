@@ -224,6 +224,26 @@ final class SettingsRepository
         ];
     }
 
+    /**
+     * The scheduled jobs that run on the external worker instead of this server (JobPlacement).
+     *
+     * @return list<string>
+     */
+    public function externalJobs(): array
+    {
+        $value = $this->db->query('SELECT external_jobs FROM app_settings WHERE id = 1')->fetchColumn();
+        $jobs = $value === false || $value === null ? [] : json_decode((string) $value, true);
+
+        return \Ytan\Service\JobPlacement::normalize(is_array($jobs) ? $jobs : []);
+    }
+
+    /** @param list<string> $jobs */
+    public function setExternalJobs(array $jobs): void
+    {
+        $this->db->prepare('UPDATE app_settings SET external_jobs = ? WHERE id = 1')
+            ->execute([json_encode(\Ytan\Service\JobPlacement::normalize($jobs))]);
+    }
+
     /** @param array<string, mixed> $config normalized by WindConfig::normalize() */
     public function setWindSettings(array $config): void
     {

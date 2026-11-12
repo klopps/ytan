@@ -121,6 +121,10 @@ function refreshWindStatus(quiet) {
         // only the status: unsaved edits of the settings stay as they are
         windData().status = answer.data.status;
         windData().running = answer.data.running;
+        windData().external = answer.data.external;
+        windData().run_requested = answer.data.run_requested;
+        windData().worker = answer.data.worker;
+        renderAdminJobPlacement(windData());
         renderWindStatus();
         return answer.data.running;
     }).catch(function (err) {
@@ -151,7 +155,13 @@ function windStartPolling() {
 function startWindRun() {
     var btn = document.getElementById('windRunNow');
     btn.disabled = true;
-    Ytan.post('/settings/wind/run', {}).then(function () {
+    Ytan.post('/settings/wind/run', {}).then(function (answer) {
+        if (answer.data && answer.data.external) {
+            // the worker picks it up at its next tick - nothing runs here to poll for
+            showAdminToast(t('admin.job_placement.run_requested_toast'), 'success');
+            refreshWindStatus(true);
+            return;
+        }
         showAdminToast(t('admin.wind.run_started'), 'success');
         // the job takes a moment to start and take its lock
         setTimeout(function () {
@@ -375,6 +385,9 @@ function initWindPage() {
     document.getElementById('windRunNow').addEventListener('click', startWindRun);
     document.getElementById('windStatusRefresh').addEventListener('click', function () { refreshWindStatus(); });
     document.getElementById('windEnabled').addEventListener('change', renderWindStatus);
+    initAdminJobPlacement('wind', windData(), function (data) {
+        Object.assign(windData(), { external: data.external, run_requested: data.run_requested, worker: data.worker });
+    });
     renderWindStatus();
     // a run started by cron meanwhile shows up too (not in a background tab)
     setInterval(function () {

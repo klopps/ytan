@@ -9,6 +9,7 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 use Ytan\Domain\Settings\SettingsRepository;
 use Ytan\Exception\ApiException;
 use Ytan\Exception\ValidationException;
+use Ytan\Service\JobPlacement;
 use Ytan\Service\RadarConfig;
 use Ytan\Service\RadarJobRunner;
 
@@ -35,9 +36,34 @@ final class RadarSettingsController extends BaseController
         if (RadarConfig::isPaused($this->settings->radarSettings())) {
             throw new ApiException('The radar job is paused.', 409, 'radar.job_paused');
         }
+        if (in_array('radar', $this->settings->externalJobs(), true)) {
+            // runs on the external worker: it picks the request up at its next tick (JobPlacement)
+            JobPlacement::requestRun(dirname($this->radarDir), 'radar');
+
+            return $this->json($response, ['data' => ['started' => true, 'external' => true]], 202);
+        }
         $this->runner->start();
 
         return $this->json($response, ['data' => ['started' => true]], 202);
+    }
+
+    /** Where the job runs: {external: true} = on the YTAN worker (JobPlacement), false = on this server. */
+    public function placement(Request $request, Response $response): Response
+    {
+        $this->requireAdmin($request);
+        $external = $this->jsonBody($request)['external'] ?? null;
+        if (!is_bool($external)) {
+            throw new ValidationException('external must be true or false.', 'job.placement_invalid');
+        }
+        $jobs = JobPlacement::with($this->settings->externalJobs(), 'radar', $external);
+        $this->settings->setExternalJobs($jobs);
+        if (!$external) {
+            JobPlacement::clearRequest(dirname($this->radarDir), 'radar');
+        }
+        $config = $this->settings->radarSettings();
+        RadarConfig::writeJobConfig($this->radarDir, $config, $this->settings->windSettings(), $jobs);
+
+        return $this->json($response, ['data' => $this->payload($config)]);
     }
 
     public function show(Request $request, Response $response): Response
@@ -56,7 +82,7 @@ final class RadarSettingsController extends BaseController
         // the pause is set separately (pause()/resume()) and stays as it is
         $config['paused_until'] = $stored['paused_until'];
         $config['paused_forever'] = $stored['paused_forever'];
-        RadarConfig::writeJobConfig($this->radarDir, $config, $this->settings->windSettings());
+        RadarConfig::writeJobConfig($this->radarDir, $config, $this->settings->windSettings(), $this->settings->externalJobs());
 
         return $this->json($response, ['data' => $this->payload($config)]);
     }
@@ -94,7 +120,7 @@ final class RadarSettingsController extends BaseController
     private function afterPauseChange(Response $response): Response
     {
         $config = $this->settings->radarSettings();
-        RadarConfig::writeJobConfig($this->radarDir, $config, $this->settings->windSettings());
+        RadarConfig::writeJobConfig($this->radarDir, $config, $this->settings->windSettings(), $this->settings->externalJobs());
 
         return $this->json($response, ['data' => $this->payload($config)]);
     }
@@ -110,6 +136,6 @@ final class RadarSettingsController extends BaseController
                 : (int) RadarConfig::mosaicPixels(RadarConfig::enclosing(RadarConfig::regions($config))),
             'max_mosaic_pixels_min' => RadarConfig::MAX_MOSAIC_PIXELS_MIN,
             'max_mosaic_pixels_limit' => RadarConfig::MAX_MOSAIC_PIXELS_LIMIT,
-        ];
+        ] + JobPlacement::payload(dirname($this->radarDir), 'radar', $this->settings->externalJobs());
     }
 }

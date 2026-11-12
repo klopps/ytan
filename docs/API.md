@@ -438,6 +438,35 @@ switched off, `wind.job_running` while a run holds `storage/wind/.lock`; 503
 `wind.job_not_installed` / `wind.job_cannot_start`. The job writes
 `storage/logs/wind.log` itself; console output to `storage/logs/console.log`.
 
+### Where a job runs (YTAN worker)
+
+`PUT /api/v1/settings/radar/placement` and `PUT /api/v1/settings/wind/placement`
+(admin only), body `{external: true|false}`: `true` = the job runs on the YTAN
+worker (Home Assistant add-on `ha-addon/ytan-worker/`, `tools/ytan_worker.py`)
+instead of this server, `false` = back on this server. Stored in
+`app_settings.external_jobs` and written as `external_jobs` into
+`storage/radar/config.json` (cron here skips those jobs, the worker runs only
+those, from its next tick on). Answers the page's settings object like the
+GET. 422 `job.placement_invalid` without a boolean.
+
+The GETs of both pages (and the page payloads) carry `external`,
+`run_requested` (an "update now" is waiting for the worker) and `worker` (the
+worker's last report `storage/worker-status.json`: `tick` UTC, `host`,
+`external_jobs`, `jobs` {name: ran, code, seconds, published, requested,
+last_run}, plus `stale` = no report for 15 minutes; null if it never reported).
+For an external job `POST .../run` does not start anything here: it writes
+`storage/{job}/run-request` and answers 202 `{started: true, external: true}`;
+the worker fetches the request at its next tick (within 5 minutes), runs the
+job with `--force` and deletes the request.
+
+The worker connects to the server only, by rsync over SSH with a key that
+`authorized_keys` restricts to rsync below `storage/`
+(`command="/usr/bin/rrsync .../storage",restrict`): it reads
+`radar/config.json` and `{job}/run-request`, and writes the job's directory
+(files first, then `status.json`, `manifest.json` last via `--delay-updates`,
+then a `--delete` pass; per-job excludes in `ytan_jobs.JOBS`) and
+`worker-status.json`.
+
 ## CSP reports
 
 `POST /api/v1/csp-report` - target of the HTML pages' Content-Security-Policy

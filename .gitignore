@@ -48,6 +48,8 @@ Thumbs.db
 storage/static-maps-cache/*
 /storage/overpass-last-request
 /storage/nga-msi-last-request
+# heartbeat of the YTAN worker (Home Assistant add-on, tools/ytan_worker.py)
+/storage/worker-status.json
 # background OpenStreetMap import (OsmImportJob): lock and status
 /storage/osm-import.lock
 /storage/osm-import-status.json

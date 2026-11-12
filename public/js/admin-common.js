@@ -233,3 +233,57 @@ function adminWatchOsmImport(tool, button, idleHtml, onFinished, started) {
     poll();
 }
 
+
+/* ---- where a scheduled job runs (JobPlacement) ------------------------ */
+
+/**
+ * The "run on the YTAN worker" switch of /admin/radar and /admin/wind
+ * (templates/partials/admin-job-placement.php): data is the page's settings
+ * object (external, run_requested, worker from JobPlacement::payload()), saved
+ * with PUT /settings/{job}/placement; onChanged(newData) lets the page redraw.
+ */
+function initAdminJobPlacement(job, data, onChanged) {
+    var box = document.getElementById('jobPlacementExternal');
+    box.checked = !!data.external;
+    box.addEventListener('change', function () {
+        box.disabled = true;
+        Ytan.put('/settings/' + job + '/placement', { external: box.checked }).then(function (answer) {
+            showAdminToast(box.checked ? t('admin.job_placement.saved_external') : t('admin.job_placement.saved_local'), 'success');
+            if (onChanged) {
+                onChanged(answer.data);
+            }
+            renderAdminJobPlacement(answer.data);
+        }).catch(function (err) {
+            box.checked = !box.checked;
+            showAdminToast(t('common.save_failed', { error: err.data ? translateApiError(err.data) : err.message }), 'error');
+        }).finally(function () {
+            box.disabled = false;
+        });
+    });
+    renderAdminJobPlacement(data);
+}
+
+/** The worker line: last contact, host, what it did - or that it never reported / is away. */
+function renderAdminJobPlacement(data) {
+    var el = document.getElementById('jobPlacementWorker');
+    if (!el) {
+        return;
+    }
+    document.getElementById('jobPlacementExternal').checked = !!data.external;
+    var worker = data.worker;
+    var parts = [];
+    if (!worker) {
+        parts.push(t('admin.job_placement.worker_never'));
+    } else {
+        var minutes = Math.max(0, Math.round((Date.now() - new Date(worker.tick)) / 60000));
+        parts.push(t('admin.job_placement.worker_contact', { min: minutes, host: worker.host || '?' }));
+        if (worker.stale) {
+            parts.push(t('admin.job_placement.worker_stale'));
+        }
+    }
+    if (data.external && data.run_requested) {
+        parts.push(t('admin.job_placement.run_requested'));
+    }
+    el.textContent = parts.join(' ');
+    el.className = worker && worker.stale && data.external ? 'text-danger' : 'text-secondary';
+}

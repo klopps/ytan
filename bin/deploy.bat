@@ -87,6 +87,7 @@ tar -C "%ROOT_DIR%" ^
     --exclude="node_modules" ^
     --exclude="android" ^
     --exclude="watch" ^
+    --exclude="ha-addon" ^
     --exclude="assets" ^
     --exclude="docs/API.md" ^
     --exclude="tests" ^

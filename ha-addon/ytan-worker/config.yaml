@@ -1,0 +1,33 @@
+# YTAN worker - Home Assistant add-on (local add-on: copied to the "addons" share by bin\publish-ha-addon.bat).
+# Runs the YTAN jobs the admin moved off the server (/admin/wind, /admin/radar: "Extern berechnen")
+# and uploads their output; see DOCS.md and tools/ytan_worker.py.
+name: YTAN Worker
+version: "1.0.0"
+slug: ytan_worker
+description: Berechnet YTAN-Jobs (Windkarte, später Regenradar) für den YTAN-Server und lädt die Ergebnisse hoch.
+url: https://ytan.pesr.org
+arch:
+  - aarch64
+  - amd64
+startup: application
+boot: auto
+# sets sensor.ytan_worker / sensor.ytan_worker_<job> (tools/ytan_worker.py post_sensors())
+homeassistant_api: true
+options:
+  server_host: steindorff.de
+  server_user: csteindorff
+  server_storage: /home/www/doc/9769/ytan.pesr.org/www/storage
+  workers: 2
+  tick_minutes: 5
+  host_name: homeassistant
+schema:
+  server_host: str
+  server_user: str
+  server_storage: str
+  workers: int(1,8)
+  tick_minutes: int(1,60)
+  host_name: str
+# the job output (several GB, recomputed at any time) stays out of Home Assistant's backups;
+# the SSH key and known_hosts in /data/ssh are kept
+backup_exclude:
+  - "storage"
