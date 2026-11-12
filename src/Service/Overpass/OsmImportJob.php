@@ -20,6 +20,11 @@ use Ytan\Exception\ValidationException;
  * One OSM import at a time (they share the Overpass gap): the script holds an
  * exclusive lock on storage/osm-import.lock for its whole run (lock()), and
  * reports its progress in storage/osm-import-status.json (writeStatus()).
+ *
+ * The process started here lives in the php-fpm service's cgroup and dies
+ * with it (prod: the service is stopped when idle). tools/ytan_jobs.py
+ * (cron) resumes such a run - see OsmImportCliRun; status() reports it as
+ * "interrupted" until then.
  */
 final class OsmImportJob
 {
@@ -34,6 +39,9 @@ final class OsmImportJob
 
     private const LOCK = '/storage/osm-import.lock';
     private const STATUS = '/storage/osm-import-status.json';
+
+    /** How often tools/ytan_jobs.py resumes one run (MAX_RESUMES there must match). */
+    public const MAX_RESUMES = 3;
 
     /** @var Closure(string $command, string $consoleLog): void */
     private Closure $spawn;
@@ -132,15 +140,32 @@ final class OsmImportJob
         return $status + ['running' => true];
     }
 
-    /** The last status written (empty array if none), plus whether a run holds the lock now. */
-    public function status(): array
+    /** The status file as written (empty array if none or unreadable). */
+    public function readStatus(): array
     {
         $file = $this->rootDir . self::STATUS;
         $status = is_file($file) ? json_decode((string) @file_get_contents($file), true) : null;
-        $status = is_array($status) ? $status : [];
+
+        return is_array($status) ? $status : [];
+    }
+
+    /** The last status written (empty array if none), plus whether a run holds the lock now. */
+    public function status(): array
+    {
+        $status = $this->readStatus();
         $running = $this->isRunning();
+        // Died, but resumable: tools/ytan_jobs.py starts it again at its next tick (OsmImportCliRun).
+        if (!$running && in_array($status['state'] ?? null, ['running', 'retrying'], true)
+            && isset($status['resume']) && (int) ($status['resumes'] ?? 0) < self::MAX_RESUMES) {
+            $status['state'] = 'interrupted';
+            $status['message'] = 'The background process was stopped; the cron job continues it within 5 minutes.';
+
+            return $status + ['running' => false];
+        }
         // Started but the process never took the lock (crashed at once) - after a minute that's a failure.
-        if (!$running && ($status['state'] ?? null) === 'starting' && strtotime((string) ($status['started'] ?? '')) < time() - 60) {
+        // (a resume by tools/ytan_jobs.py keeps the run's "started" and stamps "started_resume")
+        $startedAt = (string) ($status['started_resume'] ?? $status['started'] ?? '');
+        if (!$running && ($status['state'] ?? null) === 'starting' && strtotime($startedAt) < time() - 60) {
             $status['state'] = 'failed';
             $status['message'] = 'The background process did not start (see storage/logs/console.log).';
         }

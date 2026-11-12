@@ -131,5 +131,61 @@ class LockTest(unittest.TestCase):
                     self.assertFalse(second)
 
 
+class ResumeOsmImportTest(unittest.TestCase):
+    STATUS = {
+        "tool": "campsite", "country": "FR", "user": "anna", "state": "running", "tile": 12, "tiles": 20,
+        "resumes": 0, "started": "2026-11-12T06:35:49+01:00",
+        "resume": {"php": "/usr/bin/php", "script": "/x/bin/import-campsites.php", "args": ["FR"], "log": "campsite-import"},
+    }
+
+    def run_with(self, d: str, status: dict | None):
+        if status is not None:
+            with open(os.path.join(d, ytan_jobs.OSM_STATUS), "w", encoding="utf-8") as f:
+                json.dump(status, f)
+        spawned = []
+        result = ytan_jobs.resume_osm_import(d, spawn=lambda cmd, out: spawned.append(cmd))
+        return result, spawned
+
+    def read(self, d: str) -> dict:
+        with open(os.path.join(d, ytan_jobs.OSM_STATUS), encoding="utf-8") as f:
+            return json.load(f)
+
+    def log(self, d: str) -> str:
+        with open(os.path.join(d, "logs", "campsite-import.log"), encoding="utf-8") as f:
+            return f.read()
+
+    def test_a_dead_run_is_resumed_with_its_arguments(self):
+        with tempfile.TemporaryDirectory() as d:
+            result, spawned = self.run_with(d, dict(self.STATUS))
+            self.assertEqual(result, "resumed")
+            self.assertEqual(spawned, [["/usr/bin/php", "/x/bin/import-campsites.php", "FR", "--resume", "--user=anna"]])
+            status = self.read(d)
+            self.assertEqual((status["state"], status["resumes"], status["tile"]), ("starting", 1, 12))
+            self.assertIn("started_resume", status)
+            self.assertIn("FR tile 12/20 had ended unexpectedly - resuming (1/3)", self.log(d))
+
+    def test_a_running_import_is_left_alone(self):
+        with tempfile.TemporaryDirectory() as d:
+            with ytan_jobs.Lock(os.path.join(d, ytan_jobs.OSM_LOCK)) as held:
+                self.assertTrue(held)
+                self.assertEqual(self.run_with(d, dict(self.STATUS)), (None, []))
+
+    def test_nothing_to_do_for_finished_unresumable_or_missing_status(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(self.run_with(d, None), (None, []))
+            self.assertEqual(self.run_with(d, dict(self.STATUS, state="done")), (None, []))
+            self.assertEqual(self.run_with(d, dict(self.STATUS, state="starting")), (None, []))
+            no_resume = dict(self.STATUS)
+            del no_resume["resume"]
+            self.assertEqual(self.run_with(d, no_resume), (None, []))
+
+    def test_gives_up_after_three_resumes(self):
+        with tempfile.TemporaryDirectory() as d:
+            result, spawned = self.run_with(d, dict(self.STATUS, resumes=3))
+            self.assertEqual((result, spawned), ("gave up", []))
+            self.assertEqual(self.read(d)["state"], "failed")
+            self.assertIn("GAVE UP after 3 resumes", self.log(d))
+
+
 if __name__ == "__main__":
     unittest.main()

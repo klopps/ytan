@@ -187,14 +187,17 @@ function adminWatchOsmImport(tool, button, idleHtml, onFinished, started) {
 
             return;
         }
-        var active = status.running || (status.state === 'starting');
+        // interrupted = the process was killed, tools/ytan_jobs.py (cron) resumes it within 5 minutes
+        var active = status.running || status.state === 'starting' || status.state === 'interrupted';
         if (active) {
             button.disabled = true;
             if (status.tool !== tool) {
                 button.textContent = t('admin.osm_job.other_running', { what: status.country || '' });
             } else {
                 seenRunning = true;
-                button.textContent = status.state === 'retrying'
+                button.textContent = status.state === 'interrupted'
+                    ? t('admin.osm_job.interrupted', { what: status.country || '', tile: status.tile || 1, tiles: status.tiles || 1 })
+                    : status.state === 'retrying'
                     ? t('admin.osm_job.retrying', { what: status.country || '', tile: status.tile || 1, tiles: status.tiles || 1 })
                     : (status.tiles > 1
                         ? t('admin.osm_job.running_tile', { what: status.country || '', tile: status.tile || 1, tiles: status.tiles })

@@ -35,7 +35,8 @@ if (is_file($root . '/.env')) {
 }
 
 // --user=NAME: started in the background from the admin page (OsmImportJob)
-[$args, $user] = OsmImportCliRun::parseArgs(array_slice($argv, 1));
+// --resume: tools/ytan_jobs.py continues a run whose process was killed (OsmImportCliRun)
+[$args, $user, $resume] = OsmImportCliRun::parseArgs(array_slice($argv, 1));
 $countries = $args ?: ClubOsmImportService::EUROPE;
 $service = new ClubOsmImportService(
     CurlOverpassClient::fromSetting((string) ($_ENV['OVERPASS_ENDPOINTS'] ?? ''), ClubOsmImportService::REQUEST_TIMEOUT_SECONDS),
@@ -45,12 +46,12 @@ $service = new ClubOsmImportService(
 );
 
 // One OSM import at a time (shared Overpass gap); the admin pages read the status it writes.
-$run = new OsmImportCliRun(new OsmImportJob($root), 'club', $user);
+$run = new OsmImportCliRun(new OsmImportJob($root), 'club', $user, $resume, $args, __FILE__, fn (string $line) => $log->line($line));
 if (!$run->begin()) {
     $log->error('cli: another OpenStreetMap import is running - nothing done.');
     exit(1);
 }
-if ($user !== null) {
+if ($user !== null && !$resume) {
     $log->line(sprintf('cli: started in the background by %s: %s', $user, implode(' ', $countries)));
 }
 
@@ -60,7 +61,7 @@ foreach ($countries as $country) {
     $code = strtoupper($country);
     $tiles = count(ClubOsmImportService::tiles($code));
     $run->country($code, $tiles);
-    for ($tile = 0; $tile < $tiles; $tile++) {
+    for ($tile = $run->firstTile($code); $tile < $tiles; $tile++) {
         $started = microtime(true);
         try {
             // Overpass didn't deliver: up to 3 retries 30 s apart, each one logged.

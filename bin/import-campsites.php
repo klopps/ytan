@@ -53,7 +53,8 @@ $osm = new CampsiteOsmImportService(
 );
 
 // --user=NAME: started in the background from the admin page (OsmImportJob)
-[$args, $user] = OsmImportCliRun::parseArgs(array_slice($argv, 1));
+// --resume: tools/ytan_jobs.py continues a run whose process was killed (OsmImportCliRun)
+[$args, $user, $resume] = OsmImportCliRun::parseArgs(array_slice($argv, 1));
 $all = in_array('--all', $args, true);
 $steps = array_values(array_filter($args, fn ($a) => $a !== '--all'));
 if ($steps === []) {
@@ -61,12 +62,12 @@ if ($steps === []) {
 }
 
 // One OSM import at a time (shared Overpass gap); the admin pages read the status it writes.
-$run = new OsmImportCliRun(new OsmImportJob($root), 'campsite', $user);
+$run = new OsmImportCliRun(new OsmImportJob($root), 'campsite', $user, $resume, $args, __FILE__, fn (string $line) => $log->line($line));
 if (!$run->begin()) {
     $log->error('cli: another OpenStreetMap import is running - nothing done.');
     exit(1);
 }
-if ($user !== null) {
+if ($user !== null && !$resume) {
     $log->line(sprintf('cli: started in the background by %s: %s', $user, implode(' ', $args)));
 }
 
@@ -84,7 +85,7 @@ foreach ($steps as $step) {
         // Big countries come in tiles (CampsiteOsmImportService::tiles()); a failed tile doesn't stop the others.
         $tiles = count(CampsiteOsmImportService::tiles(strtoupper($step)));
         $run->country(strtoupper($step), $tiles);
-        for ($tile = 0; $tile < $tiles; $tile++) {
+        for ($tile = $run->firstTile(strtoupper($step)); $tile < $tiles; $tile++) {
             $tileStarted = microtime(true);
             try {
                 // Overpass didn't deliver: up to 3 retries 30 s apart, each one logged.

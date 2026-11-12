@@ -123,6 +123,82 @@ def run_due(jobs: list[JobSpec], storage_root: str, now: datetime, runner=run_jo
     return results
 
 
+# --- Resuming a background OpenStreetMap import ------------------------------
+# An OSM import started from an admin page (OsmImportJob) runs in the cgroup of
+# the account's php-fpm systemd service and is killed with it when the service
+# is stopped (prod, found 2026-11-12: France ended silently after 11 of 20
+# tiles). Its status file says how to run it again; this tick - started by
+# cron, i.e. outside that cgroup - does that with --resume when the status says
+# running but nobody holds the import's lock. The script continues at the tile
+# that was in progress (src/Service/Overpass/OsmImportCliRun.php).
+
+OSM_STATUS = "osm-import-status.json"
+OSM_LOCK = "osm-import.lock"
+OSM_MAX_RESUMES = 3  # = OsmImportJob::MAX_RESUMES
+
+
+def _read_json(path: str) -> dict | None:
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else None
+    except (OSError, ValueError):
+        return None
+
+
+def _write_json(path: str, data: dict) -> None:
+    tmp = path + ".%d.tmp" % os.getpid()
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
+    os.replace(tmp, path)
+
+
+def _spawn_detached(command: list[str], console_log: str) -> None:
+    """Starts the command without waiting for it; it outlives this tick (and keeps none of our locks)."""
+    with open(console_log, "a", encoding="utf-8") as out:
+        kwargs = {"cwd": ROOT, "stdin": subprocess.DEVNULL, "stdout": out, "stderr": subprocess.STDOUT, "close_fds": True}
+        if os.name == "nt":
+            kwargs["creationflags"] = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+        else:
+            kwargs["start_new_session"] = True
+        env = dict(os.environ)
+        env.pop("YTAN_JOBS_LOCK_HELD", None)
+        subprocess.Popen(command, env=env, **kwargs)
+
+
+def resume_osm_import(storage_root: str, spawn=_spawn_detached) -> str | None:
+    """Resumes a killed background OSM import; returns what was done ('resumed', 'gave up') or None."""
+    status_path = os.path.join(storage_root, OSM_STATUS)
+    status = _read_json(status_path)
+    if not status or status.get("state") not in ("running", "retrying"):
+        return None
+    resume = status.get("resume")
+    if not isinstance(resume, dict) or not resume.get("php") or not resume.get("script"):
+        return None
+    with Lock(os.path.join(storage_root, OSM_LOCK)) as free:
+        if not free:
+            return None  # still running
+    tool_log = ytanlog.LogFile(ytanlog.log_path(str(resume.get("log") or "jobs"), os.path.join(storage_root, "logs")))
+    where = "%s tile %s/%s" % (status.get("country", "?"), status.get("tile", "?"), status.get("tiles", "?"))
+    resumes = int(status.get("resumes") or 0)
+    if resumes >= OSM_MAX_RESUMES:
+        status.update(state="failed", finished=datetime.now().astimezone().isoformat(timespec="seconds"),
+                      message="GAVE UP: the background process ended unexpectedly %d times" % (resumes + 1))
+        _write_json(status_path, status)
+        tool_log.write("ERROR cron: background import %s ended unexpectedly again - GAVE UP after %d resumes" % (where, resumes))
+        log.error("OSM import %s: gave up after %d resumes", where, resumes)
+        return "gave up"
+    status.update(state="starting", resumes=resumes + 1, started_resume=datetime.now().astimezone().isoformat(timespec="seconds"))
+    _write_json(status_path, status)
+    command = [str(resume["php"]), str(resume["script"])] + [str(a) for a in resume.get("args") or []] + ["--resume"]
+    if status.get("user") and status.get("user") != "cli":
+        command.append("--user=" + str(status["user"]))
+    tool_log.write("cron: background import %s had ended unexpectedly - resuming (%d/%d)" % (where, resumes + 1, OSM_MAX_RESUMES))
+    log.info("OSM import %s resumed (%d/%d)", where, resumes + 1, OSM_MAX_RESUMES)
+    spawn(command, os.path.join(storage_root, "logs", "console.log"))
+    return "resumed"
+
+
 def main() -> int:
     # storage/logs/jobs.log (the jobs themselves write radar.log / wind.log)
     ytanlog.setup("jobs")
@@ -132,6 +208,10 @@ def main() -> int:
         if not locked:
             log.warning("the previous tick is still working (or a job was started by hand), skipped")
             return 0
+        try:
+            resume_osm_import(storage_root)
+        except Exception:
+            log.exception("resuming the OpenStreetMap import failed")
         results = run_due(JOBS, storage_root, datetime.now(timezone.utc))
     return 1 if any(code not in (None, 0) for code in results.values()) else 0
 

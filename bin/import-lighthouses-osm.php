@@ -33,7 +33,8 @@ if (is_file($root . '/.env')) {
 }
 
 // --user=NAME: started in the background from the admin page (OsmImportJob)
-[$args, $user] = OsmImportCliRun::parseArgs(array_slice($argv, 1));
+// --resume: tools/ytan_jobs.py runs it again after its process was killed (OsmImportCliRun)
+[$args, $user, $resume] = OsmImportCliRun::parseArgs(array_slice($argv, 1));
 $area = [];
 foreach ($args as $arg) {
     if (preg_match('/^--(south|west|north|east|label)=(.*)$/s', $arg, $m)) {
@@ -60,12 +61,12 @@ $service = new OsmImportService(
 );
 
 // One OSM import at a time (shared Overpass gap); the admin page reads the status it writes.
-$run = new OsmImportCliRun(new OsmImportJob($root), 'lighthouse', $user);
+$run = new OsmImportCliRun(new OsmImportJob($root), 'lighthouse', $user, $resume, $args, __FILE__, fn (string $line) => $log->line($line));
 if (!$run->begin()) {
     $log->error('cli: another OpenStreetMap import is running - nothing done.');
     exit(1);
 }
-if ($user !== null) {
+if ($user !== null && !$resume) {
     $log->line(sprintf('cli: started in the background by %s: %s', $user, $describe));
 }
 
