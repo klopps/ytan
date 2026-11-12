@@ -37,7 +37,13 @@ class FakeServer:
             return SimpleNamespace(returncode=0 if "--ignore-missing-args" in args else 23, stderr="missing")
         if os.path.isdir(src.rstrip("/")):
             os.makedirs(dst, exist_ok=True)
-            shutil.copytree(src, dst, dirs_exist_ok=True)
+            only = [args[i + 1].lstrip("/") for i, a in enumerate(args) if a == "--include"]
+            if only:  # put(): "--include /NAME --exclude *" = just that file into the directory
+                for name in only:
+                    if os.path.exists(os.path.join(src, name)):  # a missing one is simply not transferred
+                        shutil.copy2(os.path.join(src, name), os.path.join(dst, name))
+            else:
+                shutil.copytree(src, dst, dirs_exist_ok=True)
         else:
             os.makedirs(os.path.dirname(dst) or ".", exist_ok=True)
             shutil.copy2(src, dst)
@@ -99,9 +105,14 @@ class WorkerTest(unittest.TestCase):
         # order: files (manifest excluded), status.json, manifest.json, then the --delete pass
         uploads = [c for c in self.fake.commands if c[-1].startswith("u@h:wind")]
         self.assertIn("manifest.json", uploads[0])  # as an --exclude pattern
-        self.assertTrue(uploads[1][-1].endswith("wind/status.json"))
-        self.assertTrue(uploads[2][-1].endswith("wind/manifest.json"))
+        self.assertIn("/status.json", uploads[1])
+        self.assertIn("/manifest.json", uploads[2])
         self.assertIn("--delay-updates", uploads[2])
+        # single files go as a filtered directory sync (rrsync cannot replace a file named as the target)
+        self.assertEqual(uploads[2][-1], "u@h:wind/")
+        self.assertIn("-rt", uploads[2])  # without -r rsync skips a directory source and still exits 0
+        fetches = [c for c in self.fake.commands if "u@h:wind/" in c[:-1]]
+        self.assertTrue(fetches and "/run-request" in fetches[0])  # run-request asked for as a filtered directory
         self.assertIn("--delete", uploads[3])
 
     def test_nothing_runs_when_no_job_is_external(self):

@@ -77,14 +77,35 @@ class Remote:
     def fetch(self, relative: str, local: str, optional: bool = False) -> bool:
         """One file from the server; optional = a missing file is no error (and removes the local copy)."""
         os.makedirs(os.path.dirname(local), exist_ok=True)
-        if optional and os.path.exists(local):
-            os.remove(local)
-        args = ["-t"] + (["--ignore-missing-args"] if optional else []) + [self.path(relative), local]
-        return self.rsync(args) == 0 and (os.path.exists(local) or optional)
+        if optional:
+            if os.path.exists(local):
+                os.remove(local)
+            # the server's rrsync refuses a source path that does not exist ("post-realpath open
+            # failed"), --ignore-missing-args notwithstanding - so ask for the directory, filtered
+            # to that one name: a missing file is then simply not transferred
+            name = os.path.basename(relative)
+            remote_dir = os.path.dirname(relative)
+            return self.rsync(["-rt", "--include", "/" + name, "--exclude", "*",
+                               self.path((remote_dir + "/") if remote_dir else "./"), os.path.dirname(local) + "/"]) == 0
+        return self.rsync(["-t", self.path(relative), local]) == 0 and os.path.exists(local)
 
     def put(self, local: str, relative: str) -> bool:
-        """One file to the server, replaced atomically (temp file + rename)."""
-        return self.rsync(["-t", "--delay-updates", local, self.path(relative)]) == 0
+        """One file to the server, replaced atomically (temp file + rename).
+
+        Sent as a filtered DIRECTORY sync, never "file -> remote file": the
+        server's rrsync pins the destination argument as /proc/self/fd/N, and
+        rsync then cannot replace an existing destination FILE ("delete_file:
+        unlink(4) failed: Operation not permitted" - found 2026-11-12, the
+        first upload of worker-status.json worked, every later one failed).
+        The local and the remote file name must be the same.
+        """
+        name = os.path.basename(local)
+        if name != os.path.basename(relative):
+            raise ValueError("put() needs the same file name on both sides")
+        remote_dir = os.path.dirname(relative)
+        # -r: without it rsync skips a directory source silently ("skipping directory .") and still exits 0
+        return self.rsync(["-rt", "--delay-updates", "--include", "/" + name, "--exclude", "*",
+                           os.path.dirname(local) + "/", self.path((remote_dir + "/") if remote_dir else "./")]) == 0
 
 
 def excludes(spec: ytan_jobs.JobSpec, keep_request: bool = True) -> list[str]:

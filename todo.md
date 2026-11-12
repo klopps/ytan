@@ -1,16 +1,5 @@
 # Offene Punkte
 
-## YTAN-Worker: Jobs auf dem Home-Assistant-System rechnen (zuerst Wind)
-
-Der Wind-Job braucht auf prod 200-1340 s pro neuem Modelllauf und hält dabei `storage/.jobs.lock`, Regenradar-Ticks fallen aus (prod `jobs.log` 12.11.2026 10:05-10:35). Er soll auf dem Raspberry Pi 4 (HA OS 18.3, `aarch64`, Daten-SSD) rechnen und die Ergebnisse nach prod hochladen - allgemein gebaut, sodass weitere Jobs dort laufen können; wo ein Job läuft, wird auf prod eingestellt.
-
-Stand 2026-11-12, gebaut und lokal getestet:
-- prod: Schalter „Extern berechnen“ je Job auf `/admin/wind` und `/admin/radar` (`PUT /settings/{job}/placement`, `app_settings.external_jobs`, Migration 069, `JobPlacement`), landet als `external_jobs` in `storage/radar/config.json`; `tools/ytan_jobs.py` überspringt externe Jobs; „Jetzt aktualisieren“ legt für externe Jobs `storage/{job}/run-request` an; Lebenszeichen `storage/worker-status.json` auf den Admin-Seiten.
-- Worker `tools/ytan_worker.py`: Konfiguration per rsync holen, fällige/angeforderte externe Jobs rechnen, hochladen (Dateien, `status.json`, `manifest.json` zuletzt, dann `--delete`), Lebenszeichen, HA-Sensoren.
-- Add-on `ha-addon/ytan-worker/` auf dem Pi installiert (`bin\publish-ha-addon.bat`), Schlüssel auf prod in `~/.ssh/authorized_keys` mit `rrsync` auf `storage/` beschränkt; erster Takt 17:46: `config.json` geholt, `worker-status.json` auf prod, `sensor.ytan_worker` = ok.
-
-Offen: Deploy auf prod (Migration 069, neue Admin-Oberfläche), dann auf `/admin/wind` „Extern berechnen“ einschalten und den ersten echten Lauf auf dem Pi prüfen (Laufzeit, RAM, Upload, Windebene in der App, `jobs.log` ohne Wind-Läufe).
-
 ## Informationen über Probleme im Admin-Dashboard
 
 
