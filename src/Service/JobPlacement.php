@@ -27,6 +27,9 @@ final class JobPlacement
     /** A worker that has not reported for this long counts as away. */
     public const WORKER_STALE_SECONDS = 15 * 60;
 
+    /** While the worker reports a running job, it only counts as away after this long. */
+    public const WORKER_RUNNING_STALE_SECONDS = 2 * 3600;
+
     /**
      * Known job names only, each once, in JOBS order.
      *
@@ -89,7 +92,9 @@ final class JobPlacement
             return null;
         }
         $at = strtotime((string) ($data['tick'] ?? ''));
-        $data['stale'] = $at === false || $at < ($now ?? time()) - self::WORKER_STALE_SECONDS;
+        // "running" = the worker sent its heartbeat right before starting a job (a wind run takes ~15 min)
+        $limit = is_array($data['running'] ?? null) ? self::WORKER_RUNNING_STALE_SECONDS : self::WORKER_STALE_SECONDS;
+        $data['stale'] = $at === false || $at < ($now ?? time()) - $limit;
 
         return $data;
     }

@@ -1296,6 +1296,7 @@
     "admin.job_placement.saved_local": "Saved: from the next tick on the job runs on this server again.",
     "admin.job_placement.worker_never": "The YTAN worker has never reported.",
     "admin.job_placement.worker_contact": "YTAN worker ({host}): last contact {min} min ago.",
+    "admin.job_placement.worker_running": "It is computing: {job}.",
     "admin.job_placement.worker_stale": "The worker no longer reports - is the add-on running?",
     "admin.job_placement.run_requested": "An update is requested; the worker starts it at its next tick (within 5 min).",
     "admin.job_placement.run_requested_toast": "Requested: the YTAN worker updates within 5 minutes.",

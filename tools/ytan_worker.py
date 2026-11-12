@@ -38,7 +38,7 @@ import subprocess
 import sys
 import time
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -176,8 +176,23 @@ def job_outcome(storage_root: str, name: str) -> dict:
 
 def tick(storage_root: str, remote: Remote, now: datetime, runner=ytan_jobs.run_job,
          workers: int | None = None, host: str | None = None) -> dict:
-    """One round: config down, due/requested external jobs run and uploaded, heartbeat up. Returns the report."""
+    """One round: config down, due/requested external jobs run and uploaded, heartbeat up. Returns the report.
+
+    The heartbeat's "tick" is the time it is written, not the start of the round: a wind run takes
+    ~15 minutes, and a start time made the admin pages call the worker "silent" right after every
+    long run (found 2026-11-12). Before each job it is also sent once with "running" = {job, since},
+    so the server knows the worker is busy, not gone (JobPlacement::workerStatus())."""
+    started_round = time.monotonic()
     report: dict = {"tick": now.strftime("%Y-%m-%dT%H:%M:%SZ"), "host": host or socket.gethostname(), "jobs": {}}
+    heartbeat = os.path.join(storage_root, "worker-status.json")
+
+    def send_heartbeat(running: dict | None = None) -> bool:
+        stamp = (now + timedelta(seconds=time.monotonic() - started_round)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        body = dict(report, tick=stamp, **({"running": running} if running else {}))
+        with open(heartbeat, "w", encoding="utf-8") as f:
+            json.dump(body, f, ensure_ascii=False, indent=2)
+        return remote.put(heartbeat, "worker-status.json")
+
     if not remote.fetch("radar/config.json", os.path.join(storage_root, "radar", "config.json")):
         report["error"] = "config.json could not be fetched from the server"
         log.error(report["error"])
@@ -194,6 +209,7 @@ def tick(storage_root: str, remote: Remote, now: datetime, runner=ytan_jobs.run_
         due = requested or ytan_jobs.is_due(spec, ytan_jobs.last_start(storage_root, spec.name), now)
         entry = {"ran": False, "requested": requested}
         if due:
+            send_heartbeat({"job": spec.name, "since": (now + timedelta(seconds=time.monotonic() - started_round)).strftime("%Y-%m-%dT%H:%M:%SZ")})
             started = time.monotonic()
             try:
                 entry["code"] = runner(spec, force=requested)
@@ -210,10 +226,7 @@ def tick(storage_root: str, remote: Remote, now: datetime, runner=ytan_jobs.run_
                      " (requested)" if requested else "", "ok" if entry["published"] else "FAILED")
         entry["last_run"] = job_outcome(storage_root, spec.name)
         report["jobs"][spec.name] = entry
-    heartbeat = os.path.join(storage_root, "worker-status.json")
-    with open(heartbeat, "w", encoding="utf-8") as f:
-        json.dump(report, f, ensure_ascii=False, indent=2)
-    if not remote.put(heartbeat, "worker-status.json"):
+    if not send_heartbeat():
         report["error"] = "worker-status.json could not be uploaded"
     publish_logs(storage_root, remote)  # never fails the tick; rsync() logs a failure
     return report

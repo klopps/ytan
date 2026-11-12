@@ -136,5 +136,10 @@ final class JobPlacementTest extends ControllerTestCase
         $this->assertFalse(JobPlacement::workerStatus($storage, 1_800_000_000 + 60)['stale']);
         $this->assertTrue(JobPlacement::workerStatus($storage, 1_800_000_000 + JobPlacement::WORKER_STALE_SECONDS + 1)['stale']);
         $this->assertSame('homeassistant', JobPlacement::payload($storage, 'wind', [])['worker']['host']);
+
+        // busy with a long job: not "away" before WORKER_RUNNING_STALE_SECONDS
+        file_put_contents($storage . '/worker-status.json', json_encode(['tick' => gmdate('c', 1_800_000_000), 'running' => ['job' => 'wind']]));
+        $this->assertFalse(JobPlacement::workerStatus($storage, 1_800_000_000 + JobPlacement::WORKER_STALE_SECONDS + 1)['stale']);
+        $this->assertTrue(JobPlacement::workerStatus($storage, 1_800_000_000 + JobPlacement::WORKER_RUNNING_STALE_SECONDS + 1)['stale']);
     }
 }

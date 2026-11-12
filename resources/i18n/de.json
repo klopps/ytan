@@ -1296,6 +1296,7 @@
     "admin.job_placement.saved_local": "Gespeichert: Der Job läuft ab dem nächsten Takt wieder auf diesem Server.",
     "admin.job_placement.worker_never": "Der YTAN-Worker hat sich noch nie gemeldet.",
     "admin.job_placement.worker_contact": "YTAN-Worker ({host}): letzter Kontakt vor {min} min.",
+    "admin.job_placement.worker_running": "Er rechnet gerade: {job}.",
     "admin.job_placement.worker_stale": "Der Worker meldet sich nicht mehr - läuft das Add-on?",
     "admin.job_placement.run_requested": "Eine Aktualisierung ist angefordert, der Worker startet sie bei seinem nächsten Takt (spätestens 5 min).",
     "admin.job_placement.run_requested_toast": "Angefordert: Der YTAN-Worker aktualisiert innerhalb von 5 Minuten.",

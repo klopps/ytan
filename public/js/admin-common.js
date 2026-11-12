@@ -277,6 +277,9 @@ function renderAdminJobPlacement(data) {
     } else {
         var minutes = Math.max(0, Math.round((Date.now() - new Date(worker.tick)) / 60000));
         parts.push(t('admin.job_placement.worker_contact', { min: minutes, host: worker.host || '?' }));
+        if (worker.running && worker.running.job) {
+            parts.push(t('admin.job_placement.worker_running', { job: worker.running.job }));
+        }
         if (worker.stale) {
             parts.push(t('admin.job_placement.worker_stale'));
         }

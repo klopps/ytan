@@ -128,6 +128,29 @@ class WorkerTest(unittest.TestCase):
         ytan_worker.tick(self.local, self.remote, NOW, runner=self.runner)
         self.assertEqual(sorted(os.listdir(os.path.join(self.server, "logs", "worker"))), ["wind.log", "worker.log"])
 
+    def test_the_heartbeat_says_running_before_a_job_and_carries_the_end_time(self):
+        self.server_config(["wind"])
+        seen = []
+
+        def runner(spec, force=False):
+            with open(os.path.join(self.server, "worker-status.json")) as f:
+                seen.append(json.load(f))  # what the server sees while the job runs
+            return self.runner(spec, force)
+
+        clock = [1000.0]
+        old = ytan_worker.time.monotonic
+        ytan_worker.time.monotonic = lambda: clock.__setitem__(0, clock[0] + 300) or clock[0]  # every call: +5 min
+        try:
+            ytan_worker.tick(self.local, self.remote, NOW, runner=runner)
+        finally:
+            ytan_worker.time.monotonic = old
+        self.assertEqual(seen[0]["running"]["job"], "wind")
+        with open(os.path.join(self.server, "worker-status.json")) as f:
+            final = json.load(f)
+        self.assertNotIn("running", final)
+        self.assertGreater(final["tick"], seen[0]["tick"])  # written at the end, not the round's start
+        self.assertGreater(seen[0]["tick"], NOW.strftime("%Y-%m-%dT%H:%M:%SZ"))
+
     def test_nothing_runs_when_no_job_is_external(self):
         self.server_config([])
         report = ytan_worker.tick(self.local, self.remote, NOW, runner=self.runner)
