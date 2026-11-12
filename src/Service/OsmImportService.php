@@ -46,22 +46,14 @@ final class OsmImportService
 
     /**
      * @param string $label name of the area, stored as the entries' region
+     * @param bool $wait sleep until the next request is allowed instead of refusing (background run)
      * @return array{fetched:int, skipped:int, inserted:int, updated:int}
      */
-    public function import(float $south, float $west, float $north, float $east, string $label): array
+    public function import(float $south, float $west, float $north, float $east, string $label, bool $wait = false): array
     {
-        $label = trim($label);
-        if ($label === '' || mb_strlen($label) > 100) {
-            throw new ValidationException('label must be 1-100 characters.');
-        }
-        if ($south < -90 || $north > 90 || $west < -180 || $east > 180 || $south >= $north || $west >= $east) {
-            throw new ValidationException('The area is not a valid bounding box (south < north, west < east).');
-        }
-        if (($north - $south) * ($east - $west) > self::MAX_AREA_SQUARE_DEGREES) {
-            throw new ValidationException('The area is too large (at most 10 x 10 degrees per request).');
-        }
+        self::validateArea($south, $west, $north, $east, $label);
 
-        $this->throttle();
+        $this->throttle($wait);
 
         // One equality clause per seamark type, not one regex: measured on the
         // main instance the union answers in about a second, the regex takes
@@ -94,17 +86,40 @@ final class OsmImportService
     }
 
     /**
-     * Refuses a request that comes too soon after the previous one and
-     * records this one's time (also if it then fails - an overloaded server
-     * shouldn't be hammered either).
+     * The area rules (also checked before a background run is started).
+     *
+     * @throws ValidationException
      */
-    private function throttle(): void
+    public static function validateArea(float $south, float $west, float $north, float $east, string $label): void
+    {
+        $label = trim($label);
+        if ($label === '' || mb_strlen($label) > 100) {
+            throw new ValidationException('label must be 1-100 characters.');
+        }
+        if ($south < -90 || $north > 90 || $west < -180 || $east > 180 || $south >= $north || $west >= $east) {
+            throw new ValidationException('The area is not a valid bounding box (south < north, west < east).');
+        }
+        if (($north - $south) * ($east - $west) > self::MAX_AREA_SQUARE_DEGREES) {
+            throw new ValidationException('The area is too large (at most 10 x 10 degrees per request).');
+        }
+    }
+
+    /**
+     * Refuses (or with $wait: waits for) a request that comes too soon after
+     * the previous one and records this one's time (also if it then fails -
+     * an overloaded server shouldn't be hammered either).
+     */
+    private function throttle(bool $waitForIt = false): void
     {
         $now = ($this->clock)();
         $last = is_file($this->throttleFile) ? (int) @file_get_contents($this->throttleFile) : 0;
         $wait = $last + self::MIN_SECONDS_BETWEEN_REQUESTS - $now;
         if ($wait > 0) {
-            throw new ApiException("The Overpass API is asked for at most one area per " . self::MIN_SECONDS_BETWEEN_REQUESTS . " seconds - please wait $wait s.", 429, 'lighthouse_import.osm_too_soon');
+            if (!$waitForIt) {
+                throw new ApiException("The Overpass API is asked for at most one area per " . self::MIN_SECONDS_BETWEEN_REQUESTS . " seconds - please wait $wait s.", 429, 'lighthouse_import.osm_too_soon');
+            }
+            sleep($wait);
+            $now += $wait;
         }
 
         $dir = dirname($this->throttleFile);

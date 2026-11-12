@@ -48,6 +48,9 @@ Thumbs.db
 storage/static-maps-cache/*
 /storage/overpass-last-request
 /storage/nga-msi-last-request
+# background OpenStreetMap import (OsmImportJob): lock and status
+/storage/osm-import.lock
+/storage/osm-import-status.json
 
 # Rain radar (tools/radar/): the job's output and the Python venv
 /storage/radar/*

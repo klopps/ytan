@@ -147,7 +147,6 @@ final class NgaMsiImportTest extends ControllerTestCase
         $controller = new LighthouseImportController(
             $this->staging,
             new LighthouseImportService($this->staging, new PoiRepository($this->pdo)),
-            null,
             $this->service
         );
         $admin = $this->authPayload($this->createUser(['is_admin' => 1]), ['is_admin' => true]);

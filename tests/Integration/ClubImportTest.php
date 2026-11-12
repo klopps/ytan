@@ -40,8 +40,7 @@ final class ClubImportTest extends ControllerTestCase
         $this->osm = new ClubOsmImportService($this->client, $this->staging, new ClubOsmMapper(), $this->throttleFile, fn () => $this->now);
         $this->controller = new ClubImportController(
             $this->staging,
-            new ClubImportService($this->staging, new PoiRepository($this->pdo), $this->pdo),
-            $this->osm
+            new ClubImportService($this->staging, new PoiRepository($this->pdo), $this->pdo)
         );
     }
 

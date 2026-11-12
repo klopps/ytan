@@ -248,24 +248,14 @@ async function liLoadOsm() {
         return;
     }
 
-    var button = document.getElementById('liOsmLoad');
-    button.disabled = true;
-    button.textContent = t('admin.lighthouse_import.osm_loading');
-    try {
-        var answer = await Ytan.post('/admin/lighthouse-import/osm', area);
-        showAdminToast(t('admin.lighthouse_import.osm_result', {
-            fetched: answer.data.fetched,
-            inserted: answer.data.inserted,
-            updated: answer.data.updated,
-            skipped: answer.data.skipped,
-        }), 'success');
-        liReload(true);
-    } catch (err) {
-        showAdminToast(t('admin.lighthouse_import.osm_failed', { error: translateApiError(err.data) || err.message }), 'error');
-    } finally {
-        button.disabled = false;
-        button.innerHTML = '<i class="bi bi-cloud-download"></i> ' + liEscape(t('admin.lighthouse_import.osm_load'));
-    }
+    // In the background on the server, so it goes on when the page is left; the button shows the progress.
+    area.tool = 'lighthouse';
+    await adminStartOsmImport(area, document.getElementById('liOsmLoad'), liOsmIdleHtml(), function () { liReload(true); });
+}
+
+/** The load button's normal content. */
+function liOsmIdleHtml() {
+    return '<i class="bi bi-cloud-download"></i> ' + liEscape(t('admin.lighthouse_import.osm_load'));
 }
 
 /** Fills the area fields from a preset ("label|south|west|north|east"). */
@@ -560,6 +550,8 @@ function liInit() {
 
     document.getElementById('liNgaForm').addEventListener('submit', liLoadNga);
     document.getElementById('liOsmForm').addEventListener('submit', liLoadOsm);
+    // An import started earlier may still run in the background.
+    adminWatchOsmImport('lighthouse', document.getElementById('liOsmLoad'), liOsmIdleHtml(), function () { liReload(true); });
     document.getElementById('liOsmPreset').addEventListener('change', function (event) {
         liApplyOsmPreset(event.target.value);
     });

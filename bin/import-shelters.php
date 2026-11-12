@@ -29,6 +29,9 @@ use Dotenv\Dotenv;
 use Ytan\Database\Connection;
 use Ytan\Domain\ShelterImport\ShelterImportRepository;
 use Ytan\Service\Overpass\CurlOverpassClient;
+use Ytan\Service\Overpass\OsmImportCliRun;
+use Ytan\Service\Overpass\OsmImportJob;
+use Ytan\Service\Overpass\OverpassRetry;
 use Ytan\Service\OverpassThrottle;
 use Ytan\Service\ShelterList\GeoFaShelterSource;
 use Ytan\Service\ShelterList\KartverketShelterSource;
@@ -60,11 +63,24 @@ $sources = new ShelterSourceImportService($staging, [
 ]);
 $osm = new ShelterOsmImportService($overpass, $staging, new ShelterOsmMapper(), $throttle);
 
-$args = array_slice($argv, 1);
+// --user=NAME: started in the background from the admin page (OsmImportJob)
+[$args, $user] = OsmImportCliRun::parseArgs(array_slice($argv, 1));
 $all = in_array('--all', $args, true);
 $steps = array_values(array_filter($args, fn ($a) => $a !== '--all'));
 if ($steps === []) {
     $steps = array_merge($sources->codes(), array_map(fn ($c) => 'osm:' . $c, ShelterOsmImportService::SCANDINAVIA), ['places']);
+}
+
+// One OSM import at a time (shared Overpass gap) - only when OSM steps are asked for;
+// the admin pages read the status it writes.
+$run = new OsmImportCliRun(new OsmImportJob($root), 'shelter', $user);
+$osmSteps = array_filter($steps, fn ($s) => str_starts_with($s, 'osm:'));
+if ($osmSteps !== [] && !$run->begin()) {
+    $log->error('cli: another OpenStreetMap import is running - nothing done.');
+    exit(1);
+}
+if ($user !== null) {
+    $log->line(sprintf('cli: started in the background by %s: %s', $user, implode(' ', $steps)));
 }
 
 $failed = [];
@@ -87,13 +103,23 @@ foreach ($steps as $step) {
             // Big countries come in tiles (ShelterOsmImportService::tiles()); a failed tile doesn't stop the others.
             $code = strtoupper(substr($step, 4));
             $tiles = count(ShelterOsmImportService::tiles($code));
+            $run->country($code, $tiles);
             for ($tile = 0; $tile < $tiles; $tile++) {
                 $tileStarted = microtime(true);
                 try {
-                    $r = $osm->import($code, true, $tile);
+                    // Overpass didn't deliver: up to 3 retries 30 s apart, each one logged.
+                    $r = OverpassRetry::logged(
+                        fn () => $osm->import($code, true, $tile),
+                        fn (string $line) => $log->line('cli: ' . $line),
+                        sprintf('%s tile %d/%d', $step, $tile + 1, $tiles),
+                        null,
+                        fn (int $attempt, int $max, int $delay, Throwable $e) => $run->retry($tile, $attempt, $max, $delay, $e)
+                    );
+                    $run->tileDone($tile, $r);
                     $log->line(sprintf("cli: %s tile %d/%d: %d read, %d new, %d updated (%.1f s)", $step, $tile + 1, $tiles, $r['fetched'], $r['inserted'], $r['updated'], microtime(true) - $tileStarted));
                 } catch (Throwable $e) {
                     $failed[] = $step;
+                    $run->tileFailed($tile, $e);
                     $log->error(sprintf('cli: %s tile %d/%d: FAILED - %s (%.1f s)', $step, $tile + 1, $tiles, $e->getMessage(), microtime(true) - $tileStarted));
                 }
             }
@@ -107,6 +133,8 @@ foreach ($steps as $step) {
     }
 }
 $log->line(sprintf("cli: %d entries without distances to water", $staging->countUnchecked()));
+$run->finish($failed === [], $failed === [] ? '' : 'failed: ' . implode(' ', array_unique($failed)));
+$log->line('cli: finished' . ($failed === [] ? '' : ' with errors'));
 
 exit($failed === [] ? 0 : 1);
 

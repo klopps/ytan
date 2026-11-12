@@ -12,13 +12,13 @@ use Ytan\Service\LighthouseImportFile;
 use Ytan\Service\LighthouseImportService;
 use Ytan\Service\Log\ImportLog;
 use Ytan\Service\NgaMsiImportService;
-use Ytan\Service\OsmImportService;
 
 /**
  * Backend of the admin tool "Lighthouse import" (templates/admin-lighthouse-import.php):
  * lists the staged entries of the official lighthouse lists (paginated and
  * filterable), returns the ids of all matches (for "select all") and
- * imports a selection as lighthouse POIs. Admin only. An entry whose
+ * imports a selection as lighthouse POIs (loading an area from OpenStreetMap
+ * runs in the background, OsmImportJobController). Admin only. An entry whose
  * international number already belongs to a lighthouse (or occurs twice in
  * the selection) is a conflict: while on_conflict is "ask" (the default) and
  * a conflicting entry has no entry in decisions, the request imports nothing
@@ -34,7 +34,6 @@ final class LighthouseImportController extends BaseController
     public function __construct(
         private readonly LighthouseImportRepository $staging,
         private readonly LighthouseImportService $importService,
-        private readonly ?OsmImportService $osmImport = null,
         private readonly ?NgaMsiImportService $ngaImport = null,
         private readonly ImportLog $log = new ImportLog(),
     ) {
@@ -100,45 +99,6 @@ final class LighthouseImportController extends BaseController
 
                 return ['inserted' => $inserted, 'updated' => $updated];
             }
-        )]);
-    }
-
-    /**
-     * Loads the lights of an area from OpenStreetMap into the staging table
-     * (source "osm"): body {south, west, north, east, label}.
-     */
-    public function loadOsm(Request $request, Response $response): Response
-    {
-        $authUser = $this->requireAdmin($request);
-        $body = $this->jsonBody($request);
-        $params = ['label' => (string) ($body['label'] ?? '')];
-        foreach (['south', 'west', 'north', 'east'] as $key) {
-            $params[$key] = is_scalar($body[$key] ?? null) ? $body[$key] : null;
-        }
-
-        return $this->json($response, ['data' => $this->log->run(
-            $authUser,
-            'load OpenStreetMap',
-            $params,
-            function () use ($body) {
-                if ($this->osmImport === null) {
-                    throw new ValidationException('The OpenStreetMap import is not configured.');
-                }
-                foreach (['south', 'west', 'north', 'east'] as $key) {
-                    if (!isset($body[$key]) || !is_numeric($body[$key])) {
-                        throw new ValidationException("$key must be a number.");
-                    }
-                }
-
-                return $this->osmImport->import(
-                    (float) $body['south'],
-                    (float) $body['west'],
-                    (float) $body['north'],
-                    (float) $body['east'],
-                    (string) ($body['label'] ?? '')
-                );
-            },
-            true
         )]);
     }
 

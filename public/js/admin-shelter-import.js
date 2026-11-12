@@ -246,26 +246,19 @@ function siLoadResultToast(data) {
     }), 'success');
 }
 
-/** Loads all shelters of the chosen country from OpenStreetMap, tile by tile (can take minutes for big countries). */
+/** The load button's normal content. */
+function siOsmIdleHtml() {
+    return '<i class="bi bi-cloud-download"></i> ' + siEscape(t('admin.shelter_import.osm_load'));
+}
+
+/**
+ * Loads all shelters of the chosen country from OpenStreetMap - in the
+ * background on the server (tile by tile, minutes for big countries), so it
+ * goes on when the page is left; the button shows the progress.
+ */
 async function siLoadOsm() {
-    var button = document.getElementById('siOsmLoad');
-    button.disabled = true;
-    button.textContent = t('admin.shelter_import.loading');
-    try {
-        var sum = await adminLoadOsmTiles('/admin/shelter-import/osm', document.getElementById('siOsmCountry').value, function (tile, tiles) {
-            button.textContent = t('admin.osm_tiles.loading_tile', { tile: tile, tiles: tiles });
-        });
-        siLoadResultToast(sum);
-        siReload(true);
-    } catch (err) {
-        if (err.tile > 1) {
-            siReload(true);
-        }
-        showAdminToast(t('admin.shelter_import.load_source_failed', { error: adminOsmTileError(err) }), 'error');
-    } finally {
-        button.disabled = false;
-        button.innerHTML = '<i class="bi bi-cloud-download"></i> ' + siEscape(t('admin.shelter_import.osm_load'));
-    }
+    await adminStartOsmImport({ tool: 'shelter', country: document.getElementById('siOsmCountry').value },
+        document.getElementById('siOsmLoad'), siOsmIdleHtml(), function () { siReload(true); });
 }
 
 /** Loads one official list completely. */
@@ -382,6 +375,8 @@ function siInit() {
     });
 
     document.getElementById('siOsmForm').addEventListener('submit', siLoadOsm);
+    // An import started earlier may still run in the background.
+    adminWatchOsmImport('shelter', document.getElementById('siOsmLoad'), siOsmIdleHtml(), function () { siReload(true); });
     document.querySelectorAll('.siSourceLoad').forEach(function (button) {
         button.addEventListener('click', function () { siLoadSource(button); });
     });

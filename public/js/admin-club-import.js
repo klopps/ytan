@@ -168,26 +168,19 @@ async function ciImport() {
     }
 }
 
-/** Loads the clubs of the chosen country from OpenStreetMap into the list, tile by tile (a few minutes for big countries). */
+/** The load button's normal content. */
+function ciOsmIdleHtml() {
+    return '<i class="bi bi-cloud-download"></i> ' + ciEscape(t('admin.club_import.osm_load'));
+}
+
+/**
+ * Loads the clubs of the chosen country from OpenStreetMap - in the
+ * background on the server (tile by tile), so it goes on when the page is
+ * left; the button shows the progress.
+ */
 async function ciLoadOsm() {
-    var button = document.getElementById('ciOsmLoad');
-    button.disabled = true;
-    button.textContent = t('admin.club_import.osm_loading');
-    try {
-        var sum = await adminLoadOsmTiles('/admin/club-import/osm', document.getElementById('ciOsmCountry').value, function (tile, tiles) {
-            button.textContent = t('admin.osm_tiles.loading_tile', { tile: tile, tiles: tiles });
-        });
-        showAdminToast(t('admin.club_import.osm_result', sum), 'success');
-        ciReload(true);
-    } catch (err) {
-        if (err.tile > 1) {
-            ciReload(true);
-        }
-        showAdminToast(t('admin.club_import.osm_failed', { error: adminOsmTileError(err) }), 'error');
-    } finally {
-        button.disabled = false;
-        button.innerHTML = '<i class="bi bi-cloud-download"></i> ' + ciEscape(t('admin.club_import.osm_load'));
-    }
+    await adminStartOsmImport({ tool: 'club', country: document.getElementById('ciOsmCountry').value },
+        document.getElementById('ciOsmLoad'), ciOsmIdleHtml(), function () { ciReload(true); });
 }
 
 /** Downloads every staged entry as a transfer file (read by ciLoadFile() on another system). */
@@ -287,6 +280,8 @@ function ciInit() {
     });
 
     document.getElementById('ciOsmForm').addEventListener('submit', ciLoadOsm);
+    // An import started earlier may still run in the background.
+    adminWatchOsmImport('club', document.getElementById('ciOsmLoad'), ciOsmIdleHtml(), function () { ciReload(true); });
     document.getElementById('ciExportButton').addEventListener('click', ciExport);
     document.getElementById('ciFileButton').addEventListener('click', function () {
         document.getElementById('ciFileInput').click();

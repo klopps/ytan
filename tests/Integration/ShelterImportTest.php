@@ -54,7 +54,6 @@ final class ShelterImportTest extends ControllerTestCase
         $this->controller = new ShelterImportController(
             $this->staging,
             new ShelterImportService($this->staging, new PoiRepository($this->pdo)),
-            $this->osm,
             new ShelterSourceImportService($this->staging, [new GeoFaShelterSource(fn () => $this->geoFaAnswer())]),
             $this->water
         );

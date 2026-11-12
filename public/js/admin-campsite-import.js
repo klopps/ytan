@@ -228,26 +228,19 @@ async function ciImport() {
     }
 }
 
-/** Loads all campsites of the chosen country from OpenStreetMap, tile by tile (can take many minutes for big countries). */
+/** The load button's normal content. */
+function ciOsmIdleHtml() {
+    return '<i class="bi bi-cloud-download"></i> ' + ciEscape(t('admin.campsite_import.osm_load'));
+}
+
+/**
+ * Loads all campsites of the chosen country from OpenStreetMap - in the
+ * background on the server (tile by tile, many minutes for big countries),
+ * so it goes on when the page is left; the button shows the progress.
+ */
 async function ciLoadOsm() {
-    var button = document.getElementById('ciOsmLoad');
-    button.disabled = true;
-    button.textContent = t('admin.shelter_import.loading');
-    try {
-        var sum = await adminLoadOsmTiles('/admin/campsite-import/osm', document.getElementById('ciOsmCountry').value, function (tile, tiles) {
-            button.textContent = t('admin.osm_tiles.loading_tile', { tile: tile, tiles: tiles });
-        });
-        showAdminToast(t('admin.campsite_import.load_result', sum), 'success');
-        ciReload(true);
-    } catch (err) {
-        if (err.tile > 1) {
-            ciReload(true);
-        }
-        showAdminToast(t('admin.shelter_import.load_source_failed', { error: adminOsmTileError(err) }), 'error');
-    } finally {
-        button.disabled = false;
-        button.innerHTML = '<i class="bi bi-cloud-download"></i> ' + ciEscape(t('admin.campsite_import.osm_load'));
-    }
+    await adminStartOsmImport({ tool: 'campsite', country: document.getElementById('ciOsmCountry').value },
+        document.getElementById('ciOsmLoad'), ciOsmIdleHtml(), function () { ciReload(true); });
 }
 
 /** Downloads every staged entry as a transfer file (read by ciLoadFile() on another system). */
@@ -347,6 +340,8 @@ function ciInit() {
     });
 
     document.getElementById('ciOsmForm').addEventListener('submit', ciLoadOsm);
+    // An import started earlier may still run in the background.
+    adminWatchOsmImport('campsite', document.getElementById('ciOsmLoad'), ciOsmIdleHtml(), function () { ciReload(true); });
     document.getElementById('ciExportButton').addEventListener('click', ciExport);
     document.getElementById('ciFileButton').addEventListener('click', function () {
         document.getElementById('ciFileInput').click();

@@ -11,12 +11,12 @@ use Ytan\Exception\ValidationException;
 use Ytan\Service\ClubImportFile;
 use Ytan\Service\Log\ImportLog;
 use Ytan\Service\ClubImportService;
-use Ytan\Service\ClubOsmImportService;
 
 /**
  * Backend of the admin tool "Club import" (templates/admin-club-import.php):
  * lists the staged canoe/rowing clubs (paginated, filterable), returns the
- * ids of all matches, loads one country from OpenStreetMap, imports a
+ * ids of all matches (loading a country from OpenStreetMap runs in the
+ * background, OsmImportJobController), imports a
  * selection as POIs and moves the staged list between systems as a file.
  * Admin only.
  */
@@ -27,7 +27,6 @@ final class ClubImportController extends BaseController
     public function __construct(
         private readonly ClubImportRepository $staging,
         private readonly ClubImportService $importService,
-        private readonly ?ClubOsmImportService $osmImport = null,
         private readonly ImportLog $log = new ImportLog(),
     ) {
     }
@@ -76,35 +75,6 @@ final class ClubImportController extends BaseController
             'read transfer file',
             ['entries' => $body['entries'] ?? null],
             fn () => $this->staging->upsertMany(ClubImportFile::parse($body))
-        )]);
-    }
-
-    /**
-     * Loads the clubs of one tile of a country from OpenStreetMap: body
-     * {country, tile = 0}; the page asks for the next tile until tile + 1 = tiles
-     * (answer), later tiles wait for the Overpass gap instead of being refused.
-     */
-    public function loadOsm(Request $request, Response $response): Response
-    {
-        $authUser = $this->requireAdmin($request);
-        $body = $this->jsonBody($request);
-        $country = (string) ($body['country'] ?? '');
-        $tile = (int) ($body['tile'] ?? 0);
-
-        return $this->json($response, ['data' => $this->log->run(
-            $authUser,
-            'load OpenStreetMap',
-            ['country' => $country, 'tile' => $tile],
-            function () use ($country, $tile) {
-                if ($this->osmImport === null) {
-                    throw new ValidationException('The OpenStreetMap import is not configured.');
-                }
-                // HTTP timeout + Overpass gap (later tiles wait); Windows counts wall time.
-                set_time_limit(ClubOsmImportService::REQUEST_TIMEOUT_SECONDS + \Ytan\Service\OsmImportService::MIN_SECONDS_BETWEEN_REQUESTS + 60);
-
-                return $this->osmImport->import($country, $tile > 0, $tile);
-            },
-            true
         )]);
     }
 

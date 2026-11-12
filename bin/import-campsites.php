@@ -28,6 +28,9 @@ use Ytan\Service\Campsite\CampsiteOsmMapper;
 use Ytan\Service\CampsiteOsmImportService;
 use Ytan\Service\ClubOsmImportService;
 use Ytan\Service\Overpass\CurlOverpassClient;
+use Ytan\Service\Overpass\OsmImportCliRun;
+use Ytan\Service\Overpass\OsmImportJob;
+use Ytan\Service\Overpass\OverpassRetry;
 use Ytan\Service\OverpassThrottle;
 use Ytan\Service\Water\WaterDistanceService;
 
@@ -49,11 +52,22 @@ $osm = new CampsiteOsmImportService(
     new OverpassThrottle($root . '/storage/overpass-last-request')
 );
 
-$args = array_slice($argv, 1);
+// --user=NAME: started in the background from the admin page (OsmImportJob)
+[$args, $user] = OsmImportCliRun::parseArgs(array_slice($argv, 1));
 $all = in_array('--all', $args, true);
 $steps = array_values(array_filter($args, fn ($a) => $a !== '--all'));
 if ($steps === []) {
     $steps = ClubOsmImportService::EUROPE;
+}
+
+// One OSM import at a time (shared Overpass gap); the admin pages read the status it writes.
+$run = new OsmImportCliRun(new OsmImportJob($root), 'campsite', $user);
+if (!$run->begin()) {
+    $log->error('cli: another OpenStreetMap import is running - nothing done.');
+    exit(1);
+}
+if ($user !== null) {
+    $log->line(sprintf('cli: started in the background by %s: %s', $user, implode(' ', $args)));
 }
 
 $failed = [];
@@ -69,13 +83,23 @@ foreach ($steps as $step) {
         }
         // Big countries come in tiles (CampsiteOsmImportService::tiles()); a failed tile doesn't stop the others.
         $tiles = count(CampsiteOsmImportService::tiles(strtoupper($step)));
+        $run->country(strtoupper($step), $tiles);
         for ($tile = 0; $tile < $tiles; $tile++) {
             $tileStarted = microtime(true);
             try {
-                $r = $osm->import($step, true, $tile);
+                // Overpass didn't deliver: up to 3 retries 30 s apart, each one logged.
+                $r = OverpassRetry::logged(
+                    fn () => $osm->import($step, true, $tile),
+                    fn (string $line) => $log->line('cli: ' . $line),
+                    sprintf('load OpenStreetMap %s tile %d/%d', strtoupper($step), $tile + 1, $tiles),
+                    null,
+                    fn (int $attempt, int $max, int $delay, Throwable $e) => $run->retry($tile, $attempt, $max, $delay, $e)
+                );
+                $run->tileDone($tile, $r);
                 $log->line(sprintf("cli: load OpenStreetMap %s tile %d/%d: %d read, %d skipped, %d new, %d updated (%.1f s)", strtoupper($step), $tile + 1, $tiles, $r['fetched'], $r['skipped'], $r['inserted'], $r['updated'], microtime(true) - $tileStarted));
             } catch (Throwable $e) {
                 $failed[] = $tiles > 1 ? $step . ' (tile ' . ($tile + 1) . '/' . $tiles . ')' : $step;
+                $run->tileFailed($tile, $e);
                 $log->error(sprintf('cli: %s tile %d/%d: FAILED - %s (%.1f s)', strtoupper($step), $tile + 1, $tiles, $e->getMessage(), microtime(true) - $tileStarted));
             }
         }
@@ -88,5 +112,7 @@ $log->line(sprintf("cli: %d entries without distances to water", $staging->count
 if ($failed !== []) {
     $log->error('cli: failed: ' . implode(' ', $failed) . " - run them again (big countries: Overpass may time out).");
 }
+$run->finish($failed === [], $failed === [] ? '' : 'failed: ' . implode(' ', $failed));
+$log->line('cli: finished' . ($failed === [] ? '' : ' with errors'));
 
 exit($failed === [] ? 0 : 1);

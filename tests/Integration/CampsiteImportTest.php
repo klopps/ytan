@@ -48,7 +48,6 @@ final class CampsiteImportTest extends ControllerTestCase
         $this->controller = new CampsiteImportController(
             $this->staging,
             new CampsiteImportService($this->staging, new PoiRepository($this->pdo)),
-            $this->osm,
             $this->water
         );
     }
@@ -138,9 +137,9 @@ final class CampsiteImportTest extends ControllerTestCase
         $this->osm->import('FR', false, 20);
     }
 
-    public function testControllerPassesTheTile(): void
+    public function testATileIsCutToItsBox(): void
     {
-        $answer = $this->decode($this->controller->loadOsm($this->request('POST', '/x', $this->admin(), ['country' => 'DK', 'tile' => 2]), $this->response()))['data'];
+        $answer = $this->osm->import('DK', false, 2);
         $this->assertSame([2, 6], [$answer['tile'], $answer['tiles']]);
         $this->assertStringContainsString('(54.5,12.8333,56.15,15.3)', $this->client->queries[0]);
     }
@@ -264,7 +263,7 @@ final class CampsiteImportTest extends ControllerTestCase
     public function testImportCreatesPoisOfTheRightTypeWithLinkAndAttribution(): void
     {
         $admin = $this->admin();
-        $this->controller->loadOsm($this->request('POST', '/x', $admin, ['country' => 'DK']), $this->response());
+        $this->osm->import('DK');
         $ids = $this->decode($this->controller->ids($this->request('GET', '/x', $admin, null, ['status' => 'open']), $this->response()))['data'];
         $this->assertCount(4, $ids);
 

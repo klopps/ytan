@@ -11,15 +11,15 @@ use Ytan\Exception\ValidationException;
 use Ytan\Service\ShelterImportFile;
 use Ytan\Service\Log\ImportLog;
 use Ytan\Service\ShelterImportService;
-use Ytan\Service\ShelterOsmImportService;
 use Ytan\Service\ShelterSourceImportService;
 use Ytan\Service\Water\WaterDistanceService;
 
 /**
  * Backend of the admin tool "Shelter import" (templates/admin-shelter-import.php):
  * lists the staged shelters (paginated, filterable), returns the ids of all
- * matches, loads shelters from OpenStreetMap (one country) or an official list
- * (GeoFA, Naturvardsverket, Kartverket, Lipas) - their distances to water are
+ * matches, loads shelters from an official list (GeoFA, Naturvardsverket,
+ * Kartverket, Lipas; OpenStreetMap runs in the background,
+ * OsmImportJobController) - their distances to water are
  * computed while loading, from the local water index - * imports a selection as POIs and moves the staged list between systems as a
  * file. Every listed entry comes with its possible duplicates (`neighbours`).
  * Admin only.
@@ -31,7 +31,6 @@ final class ShelterImportController extends BaseController
     public function __construct(
         private readonly ShelterImportRepository $staging,
         private readonly ShelterImportService $importService,
-        private readonly ?ShelterOsmImportService $osmImport = null,
         private readonly ?ShelterSourceImportService $sourceImport = null,
         private readonly ?WaterDistanceService $water = null,
         private readonly ImportLog $log = new ImportLog(),
@@ -90,35 +89,6 @@ final class ShelterImportController extends BaseController
             'read transfer file',
             ['entries' => $body['entries'] ?? null],
             fn () => $this->staging->upsertMany(ShelterImportFile::parse($body))
-        )]);
-    }
-
-    /**
-     * Loads the shelters of one tile of a country from OpenStreetMap: body
-     * {country, tile = 0}; the page asks for the next tile until tile + 1 = tiles
-     * (answer), later tiles wait for the Overpass gap instead of being refused.
-     */
-    public function loadOsm(Request $request, Response $response): Response
-    {
-        $authUser = $this->requireAdmin($request);
-        $body = $this->jsonBody($request);
-        $country = (string) ($body['country'] ?? '');
-        $tile = (int) ($body['tile'] ?? 0);
-
-        return $this->json($response, ['data' => $this->log->run(
-            $authUser,
-            'load OpenStreetMap',
-            ['country' => $country, 'tile' => $tile],
-            function () use ($country, $tile) {
-                if ($this->osmImport === null) {
-                    throw new ValidationException('The OpenStreetMap import is not configured.');
-                }
-                // HTTP timeout + Overpass gap (later tiles wait); Windows counts wall time.
-                set_time_limit(ShelterOsmImportService::REQUEST_TIMEOUT_SECONDS + \Ytan\Service\OsmImportService::MIN_SECONDS_BETWEEN_REQUESTS + 60);
-
-                return $this->osmImport->import($country, $tile > 0, $tile);
-            },
-            true
         )]);
     }
 

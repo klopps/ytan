@@ -28,7 +28,11 @@ function showAdminToast(message, type) {
     toastEl.querySelector('.toast-body').textContent = message;
     container.appendChild(toastEl);
 
-    var toast = new bootstrap.Toast(toastEl, { delay: 4000 });
+    // Errors stay until closed: an import that fails after a minute of waiting must not vanish unseen.
+    var toast = new bootstrap.Toast(toastEl, variant === 'danger' ? { autohide: false } : { delay: 4000 });
+    if (variant === 'danger' && window.console) {
+        console.error(message);
+    }
     toastEl.addEventListener('hidden.bs.toast', function () {
         toastEl.remove();
     });
@@ -141,46 +145,88 @@ function adminRememberTab(tabsId, storageKey) {
     }
 }
 
+/** How often a page asks for the status of a background OpenStreetMap import. */
+var ADMIN_OSM_JOB_POLL_MS = 4000;
+
 /**
- * Loads one country from OpenStreetMap through an import tool's
- * POST {path} {country, tile}: big countries come in tiles, one request each
- * (the answer's `tiles` says how many), so no single request runs into the
- * web server's time limit. onTile(next, tiles) is called before every tile
- * after the first (progress text). Resolves with the summed numeric result
- * fields; rejects with the request's error plus `tile`/`tiles` (1-based tile
- * that failed) - the tiles before it are saved.
+ * Starts loading from OpenStreetMap in the background (POST /admin/osm-import,
+ * OsmImportJob - the import goes on when the page is left) and then shows its
+ * progress in the load button (adminWatchOsmImport()). body = {tool, country}
+ * or the lighthouse tool's {tool: 'lighthouse', south, west, north, east, label}.
  */
-async function adminLoadOsmTiles(path, country, onTile) {
-    var sum = {};
-    var tile = 0;
-    var tiles = 1;
-    do {
-        var answer;
+async function adminStartOsmImport(body, button, idleHtml, onFinished) {
+    button.disabled = true;
+    try {
+        await Ytan.post('/admin/osm-import', body);
+    } catch (err) {
+        button.disabled = false;
+        showAdminToast(t('admin.osm_job.start_failed', { error: translateApiError(err.data) || err.message }), 'error');
+
+        return;
+    }
+    adminWatchOsmImport(body.tool, button, idleHtml, onFinished, true);
+}
+
+/**
+ * Follows the background OpenStreetMap import (GET /admin/osm-import/status,
+ * every ADMIN_OSM_JOB_POLL_MS): while one runs the load button is disabled
+ * and says what is happening (this tool: country/area, tile, a pending retry;
+ * another tool: that one is busy); when this tool's import ends - and the page
+ * saw it running - a toast gives the result and onFinished() runs (reload the
+ * list). Called on page load too, so coming back shows a running import.
+ */
+function adminWatchOsmImport(tool, button, idleHtml, onFinished, started) {
+    var seenRunning = !!started;
+    var lastTile = 0;
+    async function poll() {
+        var status;
         try {
-            answer = await Ytan.post(path, { country: country, tile: tile });
+            status = (await Ytan.get('/admin/osm-import/status')).data || {};
         } catch (err) {
-            err.tile = tile + 1;
-            err.tiles = tiles;
-            throw err;
+            setTimeout(poll, ADMIN_OSM_JOB_POLL_MS); // a missed poll is no reason to stop following
+
+            return;
         }
-        Object.keys(answer.data).forEach(function (key) {
-            if (key !== 'tile' && key !== 'tiles' && typeof answer.data[key] === 'number') {
-                sum[key] = (sum[key] || 0) + answer.data[key];
+        var active = status.running || (status.state === 'starting');
+        if (active) {
+            button.disabled = true;
+            if (status.tool !== tool) {
+                button.textContent = t('admin.osm_job.other_running', { what: status.country || '' });
+            } else {
+                seenRunning = true;
+                button.textContent = status.state === 'retrying'
+                    ? t('admin.osm_job.retrying', { what: status.country || '', tile: status.tile || 1, tiles: status.tiles || 1 })
+                    : (status.tiles > 1
+                        ? t('admin.osm_job.running_tile', { what: status.country || '', tile: status.tile || 1, tiles: status.tiles })
+                        : t('admin.osm_job.running', { what: status.country || '' }));
+                if (onFinished && lastTile && status.tile > lastTile) {
+                    onFinished(false); // a tile was saved: show what came so far
+                }
+                lastTile = status.tile || lastTile;
             }
-        });
-        tiles = answer.data.tiles || 1;
-        tile++;
-        if (tile < tiles && onTile) {
-            onTile(tile + 1, tiles);
+            setTimeout(poll, ADMIN_OSM_JOB_POLL_MS);
+
+            return;
         }
-    } while (tile < tiles);
-
-    return sum;
+        button.disabled = false;
+        button.innerHTML = idleHtml;
+        if (!seenRunning || status.tool !== tool) {
+            return;
+        }
+        var sums = status.sums || {};
+        var vars = {
+            what: status.country || '', fetched: sums.fetched || 0, inserted: sums.inserted || 0,
+            updated: sums.updated || 0, skipped: sums.skipped || 0, message: status.message || '',
+        };
+        if (status.state === 'done') {
+            showAdminToast(t('admin.osm_job.done', vars), 'success');
+        } else {
+            showAdminToast(t('admin.osm_job.failed', vars), 'error');
+        }
+        if (onFinished) {
+            onFinished(true);
+        }
+    }
+    poll();
 }
 
-/** The error text of a failed adminLoadOsmTiles(), naming the tile when the country had several. */
-function adminOsmTileError(err) {
-    var error = translateApiError(err.data) || err.message;
-
-    return err.tiles > 1 ? t('admin.osm_tiles.tile_failed', { tile: err.tile, tiles: err.tiles, error: error }) : error;
-}

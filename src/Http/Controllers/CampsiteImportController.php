@@ -10,17 +10,15 @@ use Ytan\Domain\CampsiteImport\CampsiteImportRepository;
 use Ytan\Exception\ValidationException;
 use Ytan\Service\CampsiteImportFile;
 use Ytan\Service\CampsiteImportService;
-use Ytan\Service\CampsiteOsmImportService;
 use Ytan\Service\Log\ImportLog;
-use Ytan\Service\OsmImportService;
 use Ytan\Service\Water\WaterDistanceService;
 
 /**
  * Backend of the admin tool "Campingplatz-Import" (templates/admin-campsite-import.php):
  * lists the staged campsites (paginated, filterable), returns the ids of all
- * matches, loads the campsites of one country from OpenStreetMap - their
- * distances to water are computed while loading, from the local water index -
- * imports a selection as POIs and moves the staged list between systems as a
+ * matches (loading a country from OpenStreetMap - distances to water computed
+ * while loading, from the local water index - runs in the background,
+ * OsmImportJobController), imports a selection as POIs and moves the staged list between systems as a
  * file. Every listed entry comes with its possible duplicates (`neighbours`).
  * Admin only.
  */
@@ -34,7 +32,6 @@ final class CampsiteImportController extends BaseController
     public function __construct(
         private readonly CampsiteImportRepository $staging,
         private readonly CampsiteImportService $importService,
-        private readonly ?CampsiteOsmImportService $osmImport = null,
         private readonly ?WaterDistanceService $water = null,
         private readonly ImportLog $log = new ImportLog(),
     ) {
@@ -95,39 +92,6 @@ final class CampsiteImportController extends BaseController
         )]);
     }
 
-    /** Loads the campsites of one tile of a country from OpenStreetMap: body {country, tile = 0}. */
-    public function loadOsm(Request $request, Response $response): Response
-    {
-        $authUser = $this->requireAdmin($request);
-        $body = $this->jsonBody($request);
-        $country = (string) ($body['country'] ?? '');
-        $tile = (int) ($body['tile'] ?? 0);
-
-        return $this->json($response, ['data' => $this->log->run(
-            $authUser,
-            'load OpenStreetMap',
-            ['country' => $country, 'tile' => $tile],
-            fn () => $this->loadOsmCountry($country, $tile),
-            true
-        )]);
-    }
-
-    /**
-     * One tile per request (the page asks for the next one until tile + 1 = tiles);
-     * later tiles wait for the Overpass gap instead of being refused.
-     *
-     * @return array{fetched:int, skipped:int, inserted:int, updated:int, tile:int, tiles:int}
-     */
-    private function loadOsmCountry(string $country, int $tile): array
-    {
-        if ($this->osmImport === null) {
-            throw new ValidationException('The OpenStreetMap import is not configured.');
-        }
-        // The query alone may take minutes (place/street lookups); Windows counts wall time.
-        set_time_limit(CampsiteOsmImportService::REQUEST_TIMEOUT_SECONDS + OsmImportService::MIN_SECONDS_BETWEEN_REQUESTS + 60);
-
-        return $this->osmImport->import($country, $tile > 0, $tile);
-    }
 
     public function import(Request $request, Response $response): Response
     {

@@ -50,12 +50,9 @@ use Ytan\Http\Middleware\CompressionMiddleware;
 use Ytan\Http\Middleware\ContentSecurityPolicyMiddleware;
 use Ytan\Domain\LighthouseImport\LighthouseImportRepository;
 use Ytan\Service\LighthouseImportService;
-use Ytan\Service\LighthouseList\OsmLightMapper;
 use Ytan\Service\LighthouseList\NgaMsiLightMapper;
 use Ytan\Service\NgaMsi\CurlNgaMsiClient;
 use Ytan\Service\NgaMsiImportService;
-use Ytan\Service\OsmImportService;
-use Ytan\Service\Overpass\CurlOverpassClient;
 use Ytan\Http\Middleware\CorsMiddleware;
 use Ytan\Service\GpxImportService;
 use Ytan\Service\AuthService;
@@ -199,12 +196,6 @@ final class App
         $c->set(LighthouseImportController::class, fn ($c) => new LighthouseImportController(
             $c->get(LighthouseImportRepository::class),
             new LighthouseImportService($c->get(LighthouseImportRepository::class), $c->get(PoiRepository::class)),
-            new OsmImportService(
-                CurlOverpassClient::fromSetting((string) ($_ENV['OVERPASS_ENDPOINTS'] ?? '')),
-                $c->get(LighthouseImportRepository::class),
-                new OsmLightMapper(),
-                $rootDir . '/storage/overpass-last-request'
-            ),
             new NgaMsiImportService(
                 new CurlNgaMsiClient(),
                 $c->get(LighthouseImportRepository::class),
@@ -217,24 +208,15 @@ final class App
         $c->set(\Ytan\Http\Controllers\ClubImportController::class, fn ($c) => new \Ytan\Http\Controllers\ClubImportController(
             $c->get(\Ytan\Domain\ClubImport\ClubImportRepository::class),
             new \Ytan\Service\ClubImportService($c->get(\Ytan\Domain\ClubImport\ClubImportRepository::class), $c->get(PoiRepository::class), $pdo),
-            new \Ytan\Service\ClubOsmImportService(
-                CurlOverpassClient::fromSetting((string) ($_ENV['OVERPASS_ENDPOINTS'] ?? ''), \Ytan\Service\ClubOsmImportService::REQUEST_TIMEOUT_SECONDS),
-                $c->get(\Ytan\Domain\ClubImport\ClubImportRepository::class),
-                new \Ytan\Service\ClubList\ClubOsmMapper(),
-                $rootDir . '/storage/overpass-last-request'
-            ),
             \Ytan\Service\Log\ImportLog::file($rootDir, 'club-import')
         ));
         $c->set(\Ytan\Domain\ShelterImport\ShelterImportRepository::class, fn ($c) => new \Ytan\Domain\ShelterImport\ShelterImportRepository($pdo, $c->get(\Ytan\Service\Water\WaterDistanceService::class)));
         $c->set(\Ytan\Http\Controllers\ShelterImportController::class, function ($c) use ($rootDir) {
             $staging = $c->get(\Ytan\Domain\ShelterImport\ShelterImportRepository::class);
-            $overpass = CurlOverpassClient::fromSetting((string) ($_ENV['OVERPASS_ENDPOINTS'] ?? ''), \Ytan\Service\ShelterOsmImportService::REQUEST_TIMEOUT_SECONDS);
-            $throttle = new \Ytan\Service\OverpassThrottle($rootDir . '/storage/overpass-last-request');
 
             return new \Ytan\Http\Controllers\ShelterImportController(
                 $staging,
                 new \Ytan\Service\ShelterImportService($staging, $c->get(PoiRepository::class), $c->get(\Ytan\Service\Water\PoiWaterDistanceService::class)),
-                new \Ytan\Service\ShelterOsmImportService($overpass, $staging, new \Ytan\Service\ShelterList\ShelterOsmMapper(), $throttle),
                 new \Ytan\Service\ShelterSourceImportService($staging, [
                     new \Ytan\Service\ShelterList\GeoFaShelterSource(),
                     new \Ytan\Service\ShelterList\NvvShelterSource(),
@@ -252,12 +234,6 @@ final class App
             return new \Ytan\Http\Controllers\CampsiteImportController(
                 $staging,
                 new \Ytan\Service\CampsiteImportService($staging, $c->get(PoiRepository::class), $c->get(\Ytan\Service\Water\PoiWaterDistanceService::class)),
-                new \Ytan\Service\CampsiteOsmImportService(
-                    CurlOverpassClient::fromSetting((string) ($_ENV['OVERPASS_ENDPOINTS'] ?? ''), \Ytan\Service\CampsiteOsmImportService::REQUEST_TIMEOUT_SECONDS),
-                    $staging,
-                    new \Ytan\Service\Campsite\CampsiteOsmMapper(),
-                    new \Ytan\Service\OverpassThrottle($rootDir . '/storage/overpass-last-request')
-                ),
                 $c->get(\Ytan\Service\Water\WaterDistanceService::class),
                 \Ytan\Service\Log\ImportLog::file($rootDir, 'campsite-import')
             );
@@ -269,6 +245,10 @@ final class App
                 $c->get('images.poi'),
                 $pdo
             )
+        ));
+        $c->set(\Ytan\Http\Controllers\OsmImportJobController::class, fn ($c) => new \Ytan\Http\Controllers\OsmImportJobController(
+            new \Ytan\Service\Overpass\OsmImportJob($rootDir),
+            fn (string $log) => \Ytan\Service\Log\ImportLog::file($rootDir, $log)
         ));
         $c->set(\Ytan\Http\Controllers\LogController::class, fn ($c) => new \Ytan\Http\Controllers\LogController(
             new \Ytan\Service\Log\LogFileService(
@@ -711,7 +691,6 @@ final class App
         });
         $app->get('/api/v1/admin/lighthouse-import', [LighthouseImportController::class, 'index']);
         $app->get('/api/v1/admin/lighthouse-import/ids', [LighthouseImportController::class, 'ids']);
-        $app->post('/api/v1/admin/lighthouse-import/osm', [LighthouseImportController::class, 'loadOsm']);
         $app->post('/api/v1/admin/lighthouse-import/nga', [LighthouseImportController::class, 'loadNga']);
         $app->post('/api/v1/admin/lighthouse-import', [LighthouseImportController::class, 'import']);
         $app->get('/api/v1/admin/lighthouse-import/export', [LighthouseImportController::class, 'exportFile']);
@@ -732,7 +711,6 @@ final class App
         });
         $app->get('/api/v1/admin/club-import', [\Ytan\Http\Controllers\ClubImportController::class, 'index']);
         $app->get('/api/v1/admin/club-import/ids', [\Ytan\Http\Controllers\ClubImportController::class, 'ids']);
-        $app->post('/api/v1/admin/club-import/osm', [\Ytan\Http\Controllers\ClubImportController::class, 'loadOsm']);
         $app->post('/api/v1/admin/club-import', [\Ytan\Http\Controllers\ClubImportController::class, 'import']);
         $app->get('/api/v1/admin/club-import/export', [\Ytan\Http\Controllers\ClubImportController::class, 'exportFile']);
         $app->post('/api/v1/admin/club-import/file', [\Ytan\Http\Controllers\ClubImportController::class, 'importFile']);
@@ -753,7 +731,6 @@ final class App
         });
         $app->get('/api/v1/admin/shelter-import', [\Ytan\Http\Controllers\ShelterImportController::class, 'index']);
         $app->get('/api/v1/admin/shelter-import/ids', [\Ytan\Http\Controllers\ShelterImportController::class, 'ids']);
-        $app->post('/api/v1/admin/shelter-import/osm', [\Ytan\Http\Controllers\ShelterImportController::class, 'loadOsm']);
         $app->post('/api/v1/admin/shelter-import/source', [\Ytan\Http\Controllers\ShelterImportController::class, 'loadSource']);
         $app->post('/api/v1/admin/shelter-import', [\Ytan\Http\Controllers\ShelterImportController::class, 'import']);
         $app->get('/api/v1/admin/shelter-import/export', [\Ytan\Http\Controllers\ShelterImportController::class, 'exportFile']);
@@ -775,7 +752,9 @@ final class App
         });
         $app->get('/api/v1/admin/campsite-import', [\Ytan\Http\Controllers\CampsiteImportController::class, 'index']);
         $app->get('/api/v1/admin/campsite-import/ids', [\Ytan\Http\Controllers\CampsiteImportController::class, 'ids']);
-        $app->post('/api/v1/admin/campsite-import/osm', [\Ytan\Http\Controllers\CampsiteImportController::class, 'loadOsm']);
+        // Loading from OpenStreetMap (campsites/clubs/shelters: a country, lighthouses: an area) in the background (OsmImportJobController).
+        $app->post('/api/v1/admin/osm-import', [\Ytan\Http\Controllers\OsmImportJobController::class, 'start']);
+        $app->get('/api/v1/admin/osm-import/status', [\Ytan\Http\Controllers\OsmImportJobController::class, 'status']);
         $app->post('/api/v1/admin/campsite-import', [\Ytan\Http\Controllers\CampsiteImportController::class, 'import']);
         $app->get('/api/v1/admin/campsite-import/export', [\Ytan\Http\Controllers\CampsiteImportController::class, 'exportFile']);
         $app->post('/api/v1/admin/campsite-import/file', [\Ytan\Http\Controllers\CampsiteImportController::class, 'importFile']);

@@ -190,27 +190,5 @@ final class OsmImportTest extends ControllerTestCase
         $this->assertSame('OpenStreetMap / OpenSeaMap C2541', $poi['name']);
     }
 
-    public function testControllerLoadsAnAreaAndIsAdminOnly(): void
-    {
-        $controller = new LighthouseImportController(
-            $this->staging,
-            new LighthouseImportService($this->staging, new PoiRepository($this->pdo)),
-            $this->service
-        );
-        $admin = $this->authPayload($this->createUser(['is_admin' => 1]), ['is_admin' => true]);
-        $body = ['south' => 54.95, 'west' => 14.6, 'north' => 55.35, 'east' => 15.2, 'label' => 'Bornholm'];
-
-        $result = $this->decode($controller->loadOsm($this->request('POST', '/x', $admin, $body), $this->response()));
-        $this->assertSame(9, $result['data']['inserted']);
-
-        try {
-            $controller->loadOsm($this->request('POST', '/x', $admin, ['south' => 'x'] + $body), $this->response());
-            $this->fail('Expected ValidationException for a non-numeric bound.');
-        } catch (ValidationException) {
-            $this->addToAssertionCount(1);
-        }
-
-        $this->expectException(ForbiddenException::class);
-        $controller->loadOsm($this->request('POST', '/x', $this->authPayload($this->createUser()), $body), $this->response());
-    }
+    // Starting it from the admin page (in the background): OsmImportJobTest.
 }
