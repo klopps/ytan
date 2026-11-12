@@ -9,7 +9,7 @@ import shutil
 import sys
 import tempfile
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -18,6 +18,7 @@ import ytan_jobs  # noqa: E402
 import ytan_worker  # noqa: E402
 
 NOW = datetime(2026, 11, 12, 16, 0, 5, tzinfo=timezone.utc)
+PY_JOBS = [s for s in ytan_jobs.JOBS if not s.php]  # radar, wind
 
 
 class FakeServer:
@@ -196,7 +197,7 @@ class ServerSkipTest(unittest.TestCase):
             with open(os.path.join(d, "radar", "config.json"), "w") as f:
                 json.dump({"external_jobs": ["wind"]}, f)
             ran = []
-            results = ytan_jobs.run_due(ytan_jobs.JOBS, d, NOW, runner=lambda s: ran.append(s.name) or 0,
+            results = ytan_jobs.run_due(PY_JOBS, d, NOW, runner=lambda s: ran.append(s.name) or 0,
                                         skip=ytan_jobs.external_jobs(d))
             self.assertEqual(ran, ["radar"])
             self.assertIsNone(results["wind"])
@@ -207,9 +208,49 @@ class ServerSkipTest(unittest.TestCase):
             with open(os.path.join(d, "radar", "status.json"), "w") as f:
                 json.dump({"last_run": {"outcome": "no_composite"}}, f)
             with self.assertLogs(ytan_jobs.log, level="INFO") as logs:
-                ytan_jobs.run_due(ytan_jobs.JOBS, d, NOW, runner=lambda s: 0, skip=["wind"])
+                ytan_jobs.run_due(PY_JOBS, d, NOW, runner=lambda s: 0, skip=["wind"])
             self.assertEqual(len(logs.records), 1)
             self.assertRegex(logs.output[0], r"tick: radar exit 0 in \d+\.\d s \(no_composite\); wind on the YTAN worker$")
+
+    def test_the_php_cleanups_run_once_a_day_and_keep_their_status_here(self):
+        cleanups = [s for s in ytan_jobs.JOBS if s.php]
+        self.assertEqual([s.name for s in cleanups], ["cleanup-weather", "cleanup-caches"])
+        with tempfile.TemporaryDirectory() as d:
+            ran = []
+            codes = {"cleanup-weather": 0, "cleanup-caches": 3}
+            runner = lambda s: ran.append(s.name) or codes[s.name]  # noqa: E731
+            ytan_jobs.run_due(cleanups, d, NOW, runner=runner)
+            self.assertEqual(ran, ["cleanup-weather", "cleanup-caches"])
+            with open(os.path.join(d, ytan_jobs.JOBS_STATUS)) as f:
+                status = json.load(f)
+            self.assertEqual(status["cleanup-weather"]["last_run"]["outcome"], "processed")
+            self.assertEqual((status["cleanup-caches"]["last_run"]["outcome"], status["cleanup-caches"]["last_run"]["exit_code"]), ("failed", 3))
+            self.assertEqual(status["cleanup-caches"]["last_run"]["script"], "bin/cleanup-file-caches.php")
+
+            # same UTC day: not again (the start written above is "now", i.e. 2026-11-12); next day: due
+            ran.clear()
+            today = datetime.now(timezone.utc)
+            ytan_jobs.run_due(cleanups, d, today, runner=runner)
+            self.assertEqual(ran, [])
+            ytan_jobs.run_due(cleanups, d, today + timedelta(days=1), runner=runner)
+            self.assertEqual(ran, ["cleanup-weather", "cleanup-caches"])
+
+    def test_php_jobs_run_with_the_configured_php(self):
+        spec = next(s for s in ytan_jobs.JOBS if s.name == "cleanup-weather")
+        calls = []
+        old = (os.environ.get("PHP_CLI"), ytan_jobs.subprocess.call)
+        os.environ["PHP_CLI"] = "/opt/my/php"
+        ytan_jobs.subprocess.call = lambda command, **kw: calls.append(command) or 0
+        try:
+            ytan_jobs.run_job(spec)
+        finally:
+            ytan_jobs.subprocess.call = old[1]
+            if old[0] is None:
+                del os.environ["PHP_CLI"]
+            else:
+                os.environ["PHP_CLI"] = old[0]
+        self.assertEqual(calls[0][0], "/opt/my/php")
+        self.assertTrue(calls[0][1].replace(os.sep, "/").endswith("bin/cleanup-weather-data.php"))
 
     def test_every_tick_leaves_a_heartbeat(self):
         with tempfile.TemporaryDirectory() as d:

@@ -68,7 +68,10 @@ final class AdminHealthServiceTest extends ControllerTestCase
     private function healthy(): void
     {
         $this->write('jobs-heartbeat.json', ['tick' => self::iso(self::NOW - 60)]);
-        $this->write('logs/file-cache-cleanup.log', "x\n", self::NOW - 3600);
+        $this->write('jobs-status.json', [
+            'cleanup-weather' => ['last_run' => ['start' => self::iso(self::NOW - 3600), 'outcome' => 'processed', 'exit_code' => 0]],
+            'cleanup-caches' => ['last_run' => ['start' => self::iso(self::NOW - 3600), 'outcome' => 'processed', 'exit_code' => 0]],
+        ]);
         $this->write('logs/web-error.log', '', self::NOW - 3600);
         $this->write('radar/status.json', ['last_run' => ['start' => self::iso(self::NOW - 120), 'outcome' => 'processed']]);
         $this->write('radar/manifest.json', ['latest_observation' => self::iso(self::NOW - 600)]);
@@ -143,18 +146,30 @@ final class AdminHealthServiceTest extends ControllerTestCase
         $this->assertSame(['worker.silent' => 'error', 'worker.job_failed' => 'error'], $this->issues());
     }
 
+    public function testAFailedOrOverdueDailyCleanup(): void
+    {
+        $this->write('jobs-status.json', [
+            'cleanup-weather' => ['last_run' => ['start' => self::iso(self::NOW - 3600), 'outcome' => 'failed', 'exit_code' => 255]],
+            'cleanup-caches' => ['last_run' => ['start' => self::iso(self::NOW - 3 * 86400), 'outcome' => 'processed', 'exit_code' => 0]],
+        ]);
+        $issues = $this->service()->issues(self::NOW);
+        $this->assertSame(['cleanup.failed' => 'error', 'cleanup.silent' => 'warning'], array_column($issues, 'severity', 'code'));
+        $this->assertSame(['bin/cleanup-weather-data.php', 255], [$issues[0]['vars']['script'], $issues[0]['vars']['code']]);
+    }
+
     public function testAFailedOsmImportAndOldWeatherRowsAndAMissingCleanup(): void
     {
         file_put_contents($this->root . '/storage/osm-import-status.json', json_encode(['tool' => 'campsite', 'country' => 'FR',
             'state' => 'done', 'failed_tiles' => [3], 'updated' => self::iso(time() - 60)]));
         $this->pdo->prepare('INSERT INTO weather_forecast (lat, lng, region_code, source, model, generated_at, fetched_at, payload) VALUES (1, 2, ?, ?, ?, ?, ?, ?)')
             ->execute(['de', 'x', 'x', gmdate('Y-m-d H:i:s', time() - 20 * 86400), gmdate('Y-m-d H:i:s', time() - 20 * 86400), '{}']);
-        unlink($this->root . '/storage/logs/file-cache-cleanup.log');
+        unlink($this->root . '/storage/jobs-status.json');
 
         $issues = ($this->service())->issues(time());
         $codes = array_column($issues, 'page', 'code');
         $this->assertSame('campsite-import', $codes['osm.failed_tiles']);
         $this->assertArrayHasKey('cleanup.never', $codes);
+        $this->assertCount(2, array_filter($issues, fn ($i) => $i['code'] === 'cleanup.never')); // weather and caches
         // (time() instead of NOW: the OSM status and the weather row are dated from the real clock)
         $this->assertArrayHasKey('weather.old_rows', $codes);
     }

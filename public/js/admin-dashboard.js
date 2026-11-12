@@ -78,6 +78,7 @@ function healthText(issue) {
     case 'weather.old_rows': return t('admin.health.weather.old_rows', vars);
     case 'cleanup.never': return t('admin.health.cleanup.never', vars);
     case 'cleanup.silent': return t('admin.health.cleanup.silent', vars);
+    case 'cleanup.failed': return t('admin.health.cleanup.failed', vars);
     case 'errorlog.errors': return t('admin.health.errorlog.errors', vars);
     case 'errorlog.warnings': return t('admin.health.errorlog.warnings', vars);
     case 'errorlog.none': return t('admin.health.errorlog.none', vars);

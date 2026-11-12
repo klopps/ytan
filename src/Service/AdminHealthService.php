@@ -41,7 +41,7 @@ final class AdminHealthService
     public const OSM_SHOWN_SECONDS = 7 * 86400;
     /** bin/cleanup-weather-data.php deletes rows older than 7 days - older ones mean its cron entry is missing. */
     public const WEATHER_ROW_MAX_DAYS = 8;
-    /** bin/cleanup-file-caches.php is meant to run daily. */
+    /** The PHP cleanups run once per UTC day (tools/ytan_jobs.py). */
     public const CLEANUP_SILENT_SECONDS = 2 * 86400;
     /** Error log entries younger than this are reported. */
     public const ERROR_LOG_WINDOW_SECONDS = 86400;
@@ -244,15 +244,29 @@ final class AdminHealthService
         }
     }
 
+    /** The daily PHP jobs of tools/ytan_jobs.py (JOBS, php=True) - name => script; their runs are in storage/jobs-status.json. */
+    public const CLEANUP_JOBS = [
+        'cleanup-weather' => 'bin/cleanup-weather-data.php',
+        'cleanup-caches' => 'bin/cleanup-file-caches.php',
+    ];
+
     private function checkCleanup(string $storage, int $now, array &$issues): void
     {
-        $log = $storage . '/logs/file-cache-cleanup.log';
-        clearstatcache(true, $log);
-        $modified = is_file($log) ? (int) filemtime($log) : null;
-        if ($modified === null) {
-            self::add($issues, 'warning', 'cleanup.never', ['script' => 'bin/cleanup-file-caches.php'], 'logs');
-        } elseif ($now - $modified > self::CLEANUP_SILENT_SECONDS) {
-            self::add($issues, 'warning', 'cleanup.silent', ['script' => 'bin/cleanup-file-caches.php', 'since' => self::iso($modified)], 'logs');
+        $status = self::json($storage . '/jobs-status.json') ?? [];
+        foreach (self::CLEANUP_JOBS as $job => $script) {
+            $last = $status[$job]['last_run'] ?? null;
+            $start = self::time($last['start'] ?? null);
+            if (!is_array($last) || $start === null) {
+                self::add($issues, 'warning', 'cleanup.never', ['script' => $script], 'logs');
+
+                continue;
+            }
+            if (($last['outcome'] ?? '') === 'failed') {
+                self::add($issues, 'error', 'cleanup.failed', ['script' => $script, 'time' => self::iso($start), 'code' => $last['exit_code'] ?? null], 'logs');
+            }
+            if ($now - $start > self::CLEANUP_SILENT_SECONDS) {
+                self::add($issues, 'warning', 'cleanup.silent', ['script' => $script, 'since' => self::iso($start)], 'logs');
+            }
         }
     }
 

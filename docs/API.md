@@ -224,7 +224,7 @@ The admin tool `/admin/logs` (`LogController`, `LogFileService`). Reachable file
 
 | Method | Path | Auth | Body / query | Notes |
 |---|---|---|---|---|
-| GET | `/admin/health` | admin | - | `data`: `{issues: [{severity (error/warning/info), code, vars, page}], checked_at}` - errors first; `code` e.g. `cron.silent`, `radar.failed`, `radar.stale`, `wind.stale`, `worker.silent`, `osm.failed`, `weather.old_rows`, `cleanup.never`, `errorlog.errors` (errors/warnings of the last 24 h in PHP's `error_log` or an `ADMIN_LOG_FILES` entry named `*error*`), `errorlog.none` (texts `admin.health.{code}`), `vars` its placeholders (times as ISO 8601 UTC), `page` the admin page it concerns (`/admin/{page}`) or null |
+| GET | `/admin/health` | admin | - | `data`: `{issues: [{severity (error/warning/info), code, vars, page}], checked_at}` - errors first; `code` e.g. `cron.silent`, `radar.failed`, `radar.stale`, `wind.stale`, `worker.silent`, `osm.failed`, `weather.old_rows`, `cleanup.never`/`cleanup.silent`/`cleanup.failed` (daily PHP jobs, `storage/jobs-status.json`), `errorlog.errors` (errors/warnings of the last 24 h in PHP's `error_log` or an `ADMIN_LOG_FILES` entry named `*error*`), `errorlog.none` (texts `admin.health.{code}`), `vars` its placeholders (times as ISO 8601 UTC), `page` the admin page it concerns (`/admin/{page}`) or null |
 
 ## Lighthouse duplicates (admin only)
 

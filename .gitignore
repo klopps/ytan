@@ -67,3 +67,4 @@ __pycache__/
 !/storage/water/.gitkeep
 /tools/water/.venv/
 /storage/jobs-heartbeat.json
+/storage/jobs-status.json

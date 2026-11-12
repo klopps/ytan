@@ -14,7 +14,9 @@ one starts, and a failing job does not stop the others. A job is due when
 its time slot (`slot_minutes`) differs from the slot of its last run
 (storage/{job}/status.json, last_run.start): the rain radar every tick, the
 wind job at the first tick of every quarter hour (it only fetches when a new
-model run is out, otherwise a run costs a second).
+model run is out, otherwise a run costs a second), the PHP cleanups
+(bin/cleanup-*.php) once per UTC day - their last runs are kept here in
+storage/jobs-status.json, they write no status of their own.
 
 The single jobs stay runnable by hand and from /admin/radar ("update now",
 --force); they take the same lock themselves, unless they are started from
@@ -26,6 +28,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -42,12 +45,15 @@ log = logging.getLogger("ytanjobs")
 
 @dataclass(frozen=True)
 class JobSpec:
-    name: str         # also the storage/{name} directory with status.json
-    script: str       # relative to tools/
+    name: str         # also the storage/{name} directory with status.json (Python jobs)
+    script: str       # relative to tools/ (Python job) or to the repository root (php=True)
     slot_minutes: int  # due once per slot of this many minutes
     # worker mode: what of storage/{name} NOT to upload (local caches/working files; also protected
     # from --delete on the server) besides manifest.json/status.json/.lock/run-request/*.tmp
     publish_excludes: tuple[str, ...] = ()
+    # a PHP CLI script (bin/*.php): run with php_binary(); it writes no status.json of its own,
+    # so this scheduler keeps its last run in storage/jobs-status.json (never on the YTAN worker)
+    php: bool = False
 
 
 # in this order: the rain radar first (it is the one people watch minute by minute)
@@ -55,7 +61,13 @@ JOBS = [
     JobSpec("radar", os.path.join("radar", "radar_job.py"), 5,
             ("raw/", "download/", "verify.csv", "verify.last", "reproject-*.npz", "config.json")),
     JobSpec("wind", os.path.join("wind", "wind_job.py"), 15, ("icon-global-index.npy",)),
+    # daily cleanups (until 2026-11-12 a separate crontab line, bin/cron.sh, that never ran on prod:
+    # a user crontab has PATH=/usr/bin:/bin and PHP is /usr/local/bin/php there); due once per UTC day
+    JobSpec("cleanup-weather", os.path.join("bin", "cleanup-weather-data.php"), 1440, php=True),
+    JobSpec("cleanup-caches", os.path.join("bin", "cleanup-file-caches.php"), 1440, php=True),
 ]
+
+JOBS_STATUS = "jobs-status.json"  # last runs of the jobs without a status.json of their own (php=True)
 
 
 class Lock:
@@ -96,6 +108,54 @@ def last_start(storage_root: str, name: str) -> datetime | None:
         return None
 
 
+def job_status(storage_root: str, spec: JobSpec) -> dict:
+    """The job's status: storage/{name}/status.json, or its entry in storage/jobs-status.json (php=True)."""
+    if spec.php:
+        entry = (_read_json(os.path.join(storage_root, JOBS_STATUS)) or {}).get(spec.name)
+        return entry if isinstance(entry, dict) else {}
+    return _read_json(os.path.join(storage_root, spec.name, "status.json")) or {}
+
+
+def job_last_start(storage_root: str, spec: JobSpec) -> datetime | None:
+    last = job_status(storage_root, spec).get("last_run")
+    try:
+        return datetime.strptime(last["start"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    except (ValueError, KeyError, TypeError):
+        return None
+
+
+def write_php_status(storage_root: str, spec: JobSpec, started: datetime, ended: datetime, code: int) -> None:
+    """Records a PHP job's run in storage/jobs-status.json (read by is_due() and the admin dashboard)."""
+    path = os.path.join(storage_root, JOBS_STATUS)
+    data = _read_json(path) or {}
+    data[spec.name] = {"last_run": {"start": started.strftime("%Y-%m-%dT%H:%M:%SZ"), "end": ended.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                                    "outcome": "processed" if code == 0 else "failed", "exit_code": code, "script": spec.script.replace(os.sep, "/")}}
+    try:
+        with open(path + ".tmp", "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=1)
+        os.replace(path + ".tmp", path)
+    except OSError as e:
+        log.warning("could not write %s: %s", JOBS_STATUS, e)
+
+
+def php_binary() -> str:
+    """PHP_CLI from the environment or .env, else php from the PATH - extended by /usr/local/bin,
+    since cron starts us with PATH=/usr/bin:/bin (prod's PHP is /usr/local/bin/php)."""
+    configured = os.environ.get("PHP_CLI", "").strip()
+    if not configured:
+        try:
+            with open(os.path.join(ROOT, ".env"), encoding="utf-8") as f:
+                for line in f:
+                    if line.startswith("PHP_CLI="):
+                        configured = line.split("=", 1)[1].strip().strip('"').strip("'")
+        except OSError:
+            pass
+    if configured:
+        return configured
+    path = os.environ.get("PATH", "") + os.pathsep + os.pathsep.join(("/usr/local/bin", "/opt/php/bin"))
+    return shutil.which("php", path=path) or "php"
+
+
 def is_due(spec: JobSpec, last: datetime | None, now: datetime) -> bool:
     return last is None or slot_of(last, spec.slot_minutes) != slot_of(now, spec.slot_minutes)
 
@@ -103,6 +163,8 @@ def is_due(spec: JobSpec, last: datetime | None, now: datetime) -> bool:
 def run_job(spec: JobSpec, force: bool = False) -> int:
     """The job in a process of its own; its output goes on to ours (the cron log)."""
     env = dict(os.environ, YTAN_JOBS_LOCK_HELD="1")
+    if spec.php:
+        return subprocess.call([php_binary(), os.path.join(ROOT, spec.script)], env=env, cwd=ROOT)
     command = [sys.executable, os.path.join(HERE, spec.script)] + (["--force"] if force else [])
     return subprocess.call(command, env=env, cwd=ROOT)
 
@@ -128,11 +190,12 @@ def run_due(jobs: list[JobSpec], storage_root: str, now: datetime, runner=run_jo
             results[spec.name] = None
             summary.append(f"{spec.name} on the YTAN worker")
             continue
-        if not is_due(spec, last_start(storage_root, spec.name), now):
+        if not is_due(spec, job_last_start(storage_root, spec), now):
             results[spec.name] = None
             summary.append(f"{spec.name} not due")
             continue
         started = time.monotonic()
+        started_at = datetime.now(timezone.utc)
         try:
             code = runner(spec)
         except Exception:
@@ -140,18 +203,19 @@ def run_due(jobs: list[JobSpec], storage_root: str, now: datetime, runner=run_jo
             code = -1
         results[spec.name] = code
         seconds = time.monotonic() - started
+        if spec.php:
+            write_php_status(storage_root, spec, started_at, datetime.now(timezone.utc), code)
         if code != 0:
             log.error("%s ended with exit code %s after %.1f s", spec.name, code, seconds)
-        outcome = last_outcome(storage_root, spec.name)
+        outcome = last_outcome(storage_root, spec)
         summary.append(f"{spec.name} exit {code} in {seconds:.1f} s" + (f" ({outcome})" if outcome else ""))
     log.info("tick: %s", "; ".join(summary) if summary else "no jobs")
     return results
 
 
-def last_outcome(storage_root: str, name: str) -> str | None:
-    """last_run.outcome of the job's status.json (processed, unchanged, no_composite, failed, ...)."""
-    status = _read_json(os.path.join(storage_root, name, "status.json")) or {}
-    last = status.get("last_run") if isinstance(status, dict) else None
+def last_outcome(storage_root: str, spec: JobSpec) -> str | None:
+    """last_run.outcome of the job's status (processed, unchanged, no_composite, failed, ...)."""
+    last = job_status(storage_root, spec).get("last_run")
     return str(last.get("outcome")) if isinstance(last, dict) and last.get("outcome") else None
 
 
