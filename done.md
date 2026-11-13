@@ -1,5 +1,11 @@
 # Erledigt
 
+## Routencheck: kürzere KI-Antworten
+
+~~KI-Antworten sind mit ~350 Wörtern länger als im Prompt verlangt (~250) - beobachten, ggf. Prompt nachschärfen (`PROMPT_VERSION` erhöhen).~~ (offener Unterpunkt von "Routencheck: KI-Einschätzung einer Route für einen Tag")
+
+Gelöst (2026-11-13): Die Ausgabe-Tokens sind der größte Kostenblock einer Abfrage (~60 %); Prompt Caching hilft dagegen kaum - es ist für den System-Prompt schon aktiv (`AnthropicAiClient`, `cacheControl` ephemeral, ~700 Tokens), der Routenkontext (~2.400 Tokens) ist je Anfrage anders, ein Treffer spart also nur ~6 % und nur bei Abfragen innerhalb von 5 Minuten. Der System-Prompt (`RouteBriefingService::systemPrompt()`, `PROMPT_VERSION` 2, alte zwischengespeicherte Texte werden damit nicht mehr verwendet) sagt jetzt, dass die App Abschnittsliste, Startzeiten-Leiste und Ortsliste neben dem Text zeigt und der Text sie nicht wiederholen soll, setzt höchstens 180 Wörter und begrenzt jeden Teil (Startzeiten 1-2 Sätze, Abschnitte höchstens 3 einzeilige Punkte und nur gelbe/rote/graue, Ausweichstellen höchstens 3, Hinweise höchstens 2). Gemessen an derselben Route (101, Flensburger Förde, Sonnet 5.5): 186 statt ~350 Wörter, 770 statt ~1.050 Ausgabe-Tokens (−27 %), also rund 0,3 Cent weniger je Abfrage.
+
 ## Infobereich für Routencheck vergrößerbar
 
 ~~Der Infobereich mit dem Routencheck ragt auf Mobilgeräten von unten zu 35% in den Bildschirm. Der Infobereich soll am oberen Anfasser auch weiter nach oben gezogen werden können, so dass man mehr Text auf einmal sehen kann.~~

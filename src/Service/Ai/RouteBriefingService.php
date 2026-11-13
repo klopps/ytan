@@ -22,7 +22,7 @@ use Ytan\Service\Log\LogWriter;
 final class RouteBriefingService
 {
     /** Bump when the prompt changes, so cached texts of the old prompt are not reused. */
-    public const PROMPT_VERSION = 1;
+    public const PROMPT_VERSION = 2;
     private const MAX_TOKENS = 3000;
 
     public function __construct(
@@ -148,12 +148,18 @@ Rules:
 - Mention when parts have no data (grey) and what that means.
 - The assessment is a planning aid, not a safety guarantee; the paddler decides on the water.
 
-Answer in Markdown with exactly these parts, short and concrete (at most about 250 words in total):
+The app shows your text next to the full section list, the start hour bar and the list of places, so do not repeat
+those lists: pick out what matters and say why. Keep the whole answer under 180 words - it is read on a phone.
+
+Answer in Markdown with exactly these parts:
 1. One sentence with the overall verdict.
-2. "### " heading for the best start times (from the start hour ratings).
-3. "### " heading for the sections that need attention (km and time, why).
-4. "### " heading for bail-out and landing options (only from the given places; say so if there are none).
-5. "### " heading for further notes (daylight, cold water, data gaps) - leave this part out if there is nothing to say.
+2. "### " heading for the best start times: one or two sentences (from the start hour ratings).
+3. "### " heading for the sections that need attention: at most 3 bullets of one line each (km, time, why);
+   only yellow, red or grey sections - if all are green, one sentence saying so.
+4. "### " heading for bail-out and landing options: at most 3 bullets of one line each (only from the given places;
+   say so in one sentence if there are none).
+5. "### " heading for further notes (daylight, cold water, data gaps): at most 2 bullets - leave this part out if there is
+   nothing to say.
 Write the headings in the requested language.
 PROMPT;
     }

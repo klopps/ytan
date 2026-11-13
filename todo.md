@@ -22,7 +22,6 @@ Offen:
 - Erfahrungsstufe zusätzlich im Profil einstellbar machen (bisher nur über die Chips im Routencheck, gespeichert per `PUT /auth/paddle-level`).
 - Anleitung (`docs/user/de/`) um ein Kapitel Routencheck mit Screenshot ergänzen.
 - e2e-Spec für den Routencheck (nur Ampel mit `text: false`, damit keine echten KI-Kosten entstehen).
-- KI-Antworten sind mit ~350 Wörtern länger als im Prompt verlangt (~250) - beobachten, ggf. Prompt nachschärfen (`PROMPT_VERSION` erhöhen).
 - Später: Tourcheck (ganze Tour), Restguthaben-Anzeige (s. o.).
 
 
