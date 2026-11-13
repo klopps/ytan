@@ -1,4 +1,0 @@
-2026-11-11 12:48:12 admin-test: load OpenStreetMap country=XX - started
-2026-11-11 12:48:12 ERROR admin-test: load OpenStreetMap country=XX - FAILED (HTTP 422): country must be the ISO 3166-1 code of a European country. (0.0 s)
-2026-11-11 12:48:12 admin-test: load OpenStreetMap country=LU - started
-2026-11-11 12:48:48 admin-test: load OpenStreetMap country=LU - result fetched=94 skipped=0 inserted=0 updated=94 (36.4 s)

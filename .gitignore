@@ -68,3 +68,7 @@ __pycache__/
 /tools/water/.venv/
 /storage/jobs-heartbeat.json
 /storage/jobs-status.json
+
+# logs are written at runtime (LogWriter / ytanlog), never versioned
+/storage/logs/*
+!/storage/logs/.gitkeep
