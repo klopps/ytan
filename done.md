@@ -1,5 +1,11 @@
 # Erledigt
 
+## Regenradar ohne neue Daten seit 11.11.
+
+~~Das Problem mit den fehlenden Daten für das Niederschlagsradar besteht weiterhin.~~
+
+Gelöst (2026-11-13): Die Ursache lag nicht bei YTAN. Der Open-Radar-Data-Cache auf CloudFerro (`s3.waw3-1.cloudferro.com/openradar-24h`), aus dem `tools/radar/ytanradar/opera.py` die OPERA-Composites holt, war seit dem 11.11. leer: jeder Frame 404, die Liste für November leer. Die EUMETSAT-Statusseite (UNS) meldet das nicht, sie betrifft nur Satellitendienste. EUMETNET hat am 12.11. in `EUMETNET/openradardata-documentation` einen Backup-Speicher dokumentiert („issue with our cloud provider“): `object-store.os-api.cci1.ecmwf.int/openradar-24h-backup`, mit gleichem Pfadschema und aktuellen Dateien. `opera.BASE_URLS` enthält jetzt beide Quellen. `opera.fetch_frame()` fragt für jeden Frame zuerst die Hauptquelle und nur bei 404/403 das Backup. Ohne Zustand schaltet der Job dadurch von selbst zurück, wenn die Hauptquelle wieder liefert, und wieder aufs Backup, wenn sie erneut ausfällt. Backup-Frames zählt `status.json` unter `last_processing.download.backup`, einmal pro Lauf mit Warnung im `radar.log`. Tests: `FetchFrameTest` und `StatusTest.test_frames_missing_in_the_primary_cache_come_from_the_backup`.
+
 ## Informationen über Probleme im Admin-Dashboard
 
 ~~Auf der Admin-Dashboard sollen Ereignisse, wie Fehler bei Job-Runs oder veraltete Daten für Wetter, Wind und Niederschlagsradar dargestellt werdeb.~~

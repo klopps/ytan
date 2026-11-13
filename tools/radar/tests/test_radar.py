@@ -297,6 +297,39 @@ def fake_composite(path: str, dbz: float = 35.0, nodes: list | None = None, gap_
             what.attrs[k] = v
 
 
+class FetchFrameTest(unittest.TestCase):
+    """Primary ORD cache first, EUMETNET's backup only for a frame it lacks."""
+
+    def setUp(self):
+        self._orig = opera.download
+        self.asked = []
+        self.t = datetime(2026, 11, 13, 8, 30, tzinfo=timezone.utc)
+
+    def tearDown(self):
+        opera.download = self._orig
+
+    def fake(self, available):
+        def download(url, dest, timeout=60):
+            self.asked.append(url)
+            return any(url.startswith(base + "/") for base in available)
+        opera.download = download
+
+    def test_the_primary_is_used_when_it_has_the_frame(self):
+        self.fake([opera.BASE_URLS[0], opera.BASE_URLS[1]])
+        self.assertEqual(opera.fetch_frame(self.t, "x.h5"), opera.BASE_URLS[0])
+        self.assertEqual(self.asked, [opera.BASE_URLS[0] + "/2026/11/13/OPERA/COMP/OPERA@20261113T0830@0@DBZH.h5"])
+
+    def test_the_backup_is_used_when_the_primary_lacks_it(self):
+        self.fake([opera.BASE_URLS[1]])
+        self.assertEqual(opera.fetch_frame(self.t, "x.h5"), opera.BASE_URLS[1])
+        self.assertEqual(len(self.asked), 2)
+        self.assertTrue(self.asked[1].endswith("/OPERA@20261113T0830@0@DBZH.h5"))
+
+    def test_no_source_means_the_frame_is_missing(self):
+        self.fake([])
+        self.assertIsNone(opera.fetch_frame(self.t, "x.h5"))
+
+
 class FillMissingRadarsTest(unittest.TestCase):
     def test_the_missing_area_and_its_margin_take_the_previous_values(self):
         previous = np.full((200, 200), 40.0, np.float32)
@@ -370,6 +403,22 @@ class StatusTest(unittest.TestCase):
         self.assertGreaterEqual(st["storage_bytes"], p["processing"]["bytes"])
         self.assertEqual(len(manifest["frames"]), 5)
         self.assertEqual(manifest["history_minutes"], 10)
+
+    def test_frames_missing_in_the_primary_cache_come_from_the_backup(self):
+        primary, backup = jobmod.opera.BASE_URLS
+
+        def backup_only(url, dest, timeout=60):
+            if url.startswith(primary + "/"):
+                return False
+            self.downloads += 1
+            fake_composite(dest, nodes=["a", "b", "c"])
+            return True
+        jobmod.opera.download = backup_only
+        self.job().run()
+        p = self.status()["last_processing"]
+        self.assertEqual(self.status()["last_run"]["outcome"], "processed")
+        self.assertEqual(p["download"]["files"], 4)
+        self.assertEqual(p["download"]["backup"], {backup: 4})
 
     def test_fetch_interval_skips_runs_in_between(self):
         self.job().run()

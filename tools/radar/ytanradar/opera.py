@@ -23,7 +23,15 @@ import h5py
 import numpy as np
 import pyproj
 
-BASE_URL = "https://s3.waw3-1.cloudferro.com/openradar-24h"
+# Where the composites are, tried in this order for EVERY frame: the ORD cache,
+# then EUMETNET's backup on ECMWF's object store (same layout; announced
+# 2026-11-12 in EUMETNET/openradardata-documentation after the cloud provider
+# failed - the primary cache stayed empty from 2026-11-11). No state: when the
+# primary delivers again it is used again, when it fails again the backup is.
+BASE_URLS = (
+    "https://s3.waw3-1.cloudferro.com/openradar-24h",
+    "https://object-store.os-api.cci1.ecmwf.int/openradar-24h-backup",
+)
 USER_AGENT = "YTAN-radar/1.0 (https://ytan.pesr.org)"
 
 # Stand-in dBZ for "radar sees no echo" (ODIM undetect). Missing coverage
@@ -32,8 +40,17 @@ USER_AGENT = "YTAN-radar/1.0 (https://ytan.pesr.org)"
 UNDETECT_DBZ = -32.0
 
 
-def frame_url(t: datetime, product: str = "DBZH") -> str:
-    return f"{BASE_URL}/{t:%Y/%m/%d}/OPERA/COMP/OPERA@{t:%Y%m%dT%H%M}@0@{product}.h5"
+def frame_url(t: datetime, product: str = "DBZH", base: str = BASE_URLS[0]) -> str:
+    return f"{base}/{t:%Y/%m/%d}/OPERA/COMP/OPERA@{t:%Y%m%dT%H%M}@0@{product}.h5"
+
+
+def fetch_frame(t: datetime, dest: str, product: str = "DBZH") -> str | None:
+    """Download the composite for t from the first source of BASE_URLS that
+    has it. The base URL that delivered, or None if no source has it (yet)."""
+    for base in BASE_URLS:
+        if download(frame_url(t, product, base), dest):
+            return base
+    return None
 
 
 def download(url: str, dest: str, timeout: int = 60) -> bool:

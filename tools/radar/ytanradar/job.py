@@ -239,11 +239,17 @@ class Job:
                 return True
             os.remove(self.raw_path(t))  # cut for another area: fetch again
         h5 = os.path.join(self.dl_dir, f"{t:%Y%m%d%H%M}.h5")
-        found = opera.download(opera.frame_url(t), h5)
-        if not found:
+        base = opera.fetch_frame(t, h5)
+        if base is None:
             return False
         self.download["bytes"] += os.path.getsize(h5)
         self.download["files"] += 1
+        if base != opera.BASE_URLS[0]:
+            # from the backup: counted per source in status.json, warned once per run
+            backup = self.download.setdefault("backup", {})
+            if not backup:
+                log.warning("OPERA primary cache has no %s, using the backup %s", t.strftime("%Y-%m-%d %H:%M"), base)
+            backup[base] = backup.get(base, 0) + 1
         try:
             geom = opera.read_geometry(h5)
             rp = self.reprojector(geom)
