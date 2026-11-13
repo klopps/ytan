@@ -15,8 +15,8 @@ Nur der Worker verbindet sich – per SSH/rsync zum Server. Der Server verbindet
 
 ## Einrichtung
 
-1. Add-on starten. Das Protokoll zeigt beim Start eine Zeile, die mit `command="/usr/bin/rrsync ...` beginnt.
-2. Diese Zeile auf dem Server in `~/.ssh/authorized_keys` des SSH-Benutzers eintragen (Verzeichnis `.ssh` mit Rechten 700, Datei 600). Der Schlüssel kann damit **nur** rsync unterhalb des YTAN-Ordners `storage/` – keine Shell, kein Zugriff auf andere Websites.
+1. Add-on starten. Das Protokoll zeigt beim Start eine Zeile, in der nach Zeit und `[addon]` der Text `command="/usr/bin/rrsync ...` folgt.
+2. Diese Zeile ab `command=` auf dem Server in `~/.ssh/authorized_keys` des SSH-Benutzers eintragen (Verzeichnis `.ssh` mit Rechten 700, Datei 600). Der Schlüssel kann damit **nur** rsync unterhalb des YTAN-Ordners `storage/` – keine Shell, kein Zugriff auf andere Websites.
 3. Auf dem Server in `/admin/wind` den Schalter „Extern berechnen“ einschalten. Ab dem nächsten Takt rechnet der Worker.
 
 ## Optionen
@@ -28,6 +28,16 @@ Nur der Worker verbindet sich – per SSH/rsync zum Server. Der Server verbindet
 | `workers` | Threads/Prozesse je Job (Standard 2, schont Home Assistant) |
 | `tick_minutes` | Abstand der Takte (Standard 5) |
 | `host_name` | Name, den die Admin-Seiten anzeigen |
+
+## Protokoll
+
+Jede Zeile beginnt mit Datum und Uhrzeit (Ortszeit), danach steht in eckigen Klammern, woher sie kommt:
+
+- `[addon]` – das Add-on selbst (Start, SSH-Schlüssel, Absturzmeldungen)
+- `[worker]` – der Takt: Konfiguration holen, welche Jobs laufen, Upload
+- `[wind]`, `[radar]` – der jeweilige Job
+
+Beispiel: `2026-11-13 09:18:26 [worker] INFO wind: exit 0 in 3.3 s, upload ok`. Dieselben Zeilen (ohne die Klammer) liegen in `/data/storage/logs/{worker,wind,radar}.log` und auf dem Server unter `/admin/logs` (Quelle „YTAN-Worker“).
 
 ## Sensoren
 
