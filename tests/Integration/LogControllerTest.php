@@ -69,6 +69,27 @@ final class LogControllerTest extends ControllerTestCase
         $this->assertNotNull($result['data'][0]['modified']);
     }
 
+    public function testPhpErrorLogInsideStorageLogsIsListedOnlyOnce(): void
+    {
+        file_put_contents($this->dir . '/logs/error.log', "PHP Warning: x\n");
+        $controller = new LogController(new LogFileService($this->dir . '/logs', $this->dir . '/logs/error.log'));
+
+        $result = $this->decode($controller->index($this->request('GET', '/api/v1/admin/logs', $this->admin()), $this->response()));
+
+        $this->assertSame(['s:error.log', 's:radar.log', 's:wind.log'], array_column($result['data'], 'id'));
+    }
+
+    public function testPhpErrorLogOutsideStorageLogsIsListedAsPhp(): void
+    {
+        $phpLog = $this->dir . '/php-error.log';
+        file_put_contents($phpLog, "PHP Warning: x\n");
+        $controller = new LogController(new LogFileService($this->dir . '/logs', $phpLog));
+
+        $result = $this->decode($controller->index($this->request('GET', '/api/v1/admin/logs', $this->admin()), $this->response()));
+
+        $this->assertSame(['s:radar.log', 's:wind.log', 'php'], array_column($result['data'], 'id'));
+    }
+
     public function testTheWorkersUploadedLogsAreListedSeparately(): void
     {
         mkdir($this->dir . '/logs/worker');

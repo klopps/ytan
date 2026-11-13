@@ -184,7 +184,12 @@ final class LogFileService
             }
         }
         if ($this->phpErrorLog !== null && $this->phpErrorLog !== '' && is_file($this->phpErrorLog) && is_readable($this->phpErrorLog)) {
-            $paths['php'] = [$this->phpErrorLog, 'php'];
+            // error_log may point into storage/logs itself (prod: public/.user.ini ->
+            // storage/logs/error.log) - then it is listed there already, not twice.
+            $listed = array_map(fn ($entry) => realpath($entry[0]), $paths);
+            if (!in_array(realpath($this->phpErrorLog), $listed, true)) {
+                $paths['php'] = [$this->phpErrorLog, 'php'];
+            }
         }
         foreach ($this->extraFiles as $i => $file) {
             if (is_file($file) && is_readable($file)) {
