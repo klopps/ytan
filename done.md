@@ -1,5 +1,29 @@
 # Erledigt
 
+## Kontolöschung
+
+~~Es muss mölglich sein ein Benutzerkonto mit eigenen Inhalten zu löschen. Dabei werden private POIs etc. des Benutzers mitentfernt. Öffentliche Daten des Benutzers werden an einen Benutzer mit Admin-Rechten übertragen. Dabei gilt folgende Reihenfolge: 1. ein Admin mit dem Benutzernamen "ytan" (Groß-Kleinschreibung ist egal) 2. der Admin mit der kleinsten user_id. Jeder Benutzer muss sein eigenes Konto löschen dürfen. Er muss entsprechende Hinweise erhalten, was mit seinen Daten passiert und das die Löschung nicht rückgängig gemacht werden kann. Der Benutzer muss die Löschung mit seinem Kennwort und durch Klick auf einen Link in einer E-Mail bestätigen. Der Benutzer muss die Möglichkeit haben die Löschungabsicht zu widerrufen, solange er nicht auf den Link in der E-Mail geklickt hat. Der Link behält seine Gültigkeit für max. 60 Minuten.~~
+
+Gelöst (2026-11-13): Bisher scheiterte jede Löschung eines Benutzers mit Inhalten an den Fremdschlüsseln (`poi/route/area/tour.user_id` `RESTRICT`). Neu `AccountDeletionService` (eine Transaktion): private POIs, Routen, Gebiete und Touren werden gelöscht (Fotodateien erst nach dem Commit), öffentliche gehen an den Nachfolger - Admin `ytan` in beliebiger Schreibweise, sonst der Admin mit der kleinsten id, nie der Benutzer selbst. Übertragene Routen verlieren `recorded_at`/Aufzeichnungsdauer (wann jemand wie lange gepaddelt ist, betrifft die Person; sonst stünde dort "aufgezeichnet von ytan"); Touren anderer Besitzer, denen eine gelöschte private Route fehlt, bekommen ihre `total_length` neu berechnet; `serviceuser`-Zeilen (API-Schlüssel) gehen mit, `user_token`/`watch_link` per CASCADE, `ai_usage` behält den Namens-Snapshot. Das letzte Admin-Konto ist nicht löschbar (`account.last_admin`). Selbstbedienung: Profil > "Konto löschen" (`user.js` `showAccountDeletion()`) zeigt, wie viele private/öffentliche Inhalte betroffen sind, und fragt das Passwort ab (falsches Passwort zählt wie ein Fehl-Login, `RequestThrottle`); `POST /auth/account-deletion` (`AccountDeletionController`) legt einen `user_token` mit Zweck `account_delete` (Migration 072, 60 Minuten) an und mailt den Link. Scheitert die Mail, wird der Token wieder entfernt (502 `account.mail_failed`). Solange der Link nicht eingelöst ist, kann der Antrag widerrufen werden (`DELETE`, Hinweis + Knopf auch oben im Profil, `/auth/me` liefert `pending_account_deletion_expires_at`). Der Link öffnet `templates/confirm-account-deletion.php` mit einem letzten Knopf - bewusst kein Löschen schon beim Aufruf, weil Mail-Scanner Links vorab abrufen. Danach geht eine Abschlussmail raus (Fehler dabei egal). Die Admin-Löschung (`DELETE /users/{id}`) nutzt denselben Service, ihr Bestätigungstext sagt jetzt, was passiert (neuer Schlüssel `admin_user.confirm_delete_user_content`, weil der Deploy-Merge geänderte Werte bestehender Schlüssel nicht übernimmt). Tests: `AccountDeletionTest` (10). Browser mobil: Profil-Ansicht, offener Antrag, Bestätigungsseite mit ungültigem Token; der echte Ablauf mit Mail ist nicht im Browser geprüft (lokal kein SMTP).
+
+## Löschung von EXIF-Daten
+
+~~Beim Upload von Bildern müssen die EXIF-Daten aus den Bilder gelöscht werden.~~
+
+Gelöst (2026-11-13): Nur zu große Fotos wurden bisher im Browser neu kodiert (`photo-upload.js`, Canvas verwirft EXIF); alle anderen landeten unverändert mit GPS-Position, Zeit und Gerät auf dem Server und waren für jeden abrufbar, der den Inhalt sehen darf. Neu `ImageMetadataStripper`, aufgerufen in `ImageStorageService::store()` für alle vier Bildarten: verlustfrei, ohne Neukodierung. JPEG: Segmente durchgehen, nur Dekodier-Nötiges behalten (Tabellen, Frame/Scan, JFIF-APP0, ICC-Profil in APP2, Adobe-APP14), alle übrigen APPn und COM sowie alles nach dem EOI (Multi-Picture-Dateien hängen dort weitere Bilder mit eigenem EXIF an) fallen weg; die EXIF-Ausrichtung kommt als minimales Exif-Segment mit nur diesem Tag zurück, sonst läge ein Hochkant-Foto auf der Seite. PNG: tEXt/zTXt/iTXt/eXIf/tIME-Chunks weg. WebP: EXIF-/XMP-Chunks weg, VP8X-Flags gelöscht. Eine Datei, deren Struktur nicht lesbar ist, wird abgelehnt statt mit Metadaten gespeichert. Migration 071 (PHP) bereinigt die schon gespeicherten Fotos und passt `size_bytes` an. Tests: `ImageMetadataStripperTest` (7, u. a. progressives JPEG, Ausrichtung per `exif_read_data` geprüft) und ein Store-Test; zusätzlich an vier echten JPEGs mit EXIF geprüft (Bildgröße gleich, dekodierbar, keine EXIF-Felder mehr).
+
+## Standardgeschwindigkeit
+
+~~Der Hinweistext unter Profile/Standardgeschwindigkeit weißt nicht auf den Routencheck hin und verweist nur auf die Garmin-Uhr.~~
+
+Gelöst (2026-11-13): Zweiter Hinweis `user.default_speed_hint_route_check` ("Der Routencheck plant mit diesem Wert ..., leer: 6 km/h"), nur sichtbar, wenn der Benutzer den Routencheck nutzen darf (`canRouteCheck()`). Neuer Schlüssel statt geändertem Text, weil der Deploy-Merge (`TranslationMerger`) bestehende Werte auf dem Server behält.
+
+## Datenschutzerklärung
+
+~~Passe die Datenschutzerklärung an die letzten Veränderungen an.~~
+
+Gelöst (2026-11-13): `templates/privacy.php` § 6 beschreibt jetzt die Kontolöschung (Selbstbedienung mit Passwort + 60-Minuten-Link, widerrufbar; private Inhalte gelöscht, öffentliche an ein Admin-Konto ohne Personenbezug, Aufzeichnungsdaten entfernt; Routencheck-Verbrauch bleibt mit Namens-Snapshot), die Löschmails und den Bestätigungscode; § 7 sagt, dass Metadaten beim Hochladen entfernt werden (nur die Ausrichtung bleibt); § 15 Speicherdauer angeglichen. Davor am selben Tag komplett auf den Stand von YTAN gebracht (Routencheck § 10, Cookies, App, Garmin, Drittländer).
+
 ## Regenradar ohne neue Daten seit 11.11.
 
 ~~Das Problem mit den fehlenden Daten für das Niederschlagsradar besteht weiterhin.~~

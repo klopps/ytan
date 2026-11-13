@@ -19,6 +19,7 @@ declare(strict_types=1);
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 
+use Ytan\Service\Log\LogRotation;
 use Ytan\Service\Log\LogWriter;
 use Ytan\Service\FileCacheCleanupService;
 use Ytan\Service\GeocodingService;
@@ -31,6 +32,7 @@ $cleaner = new FileCacheCleanupService();
 $caches = [
     'geocoding-cache' => GeocodingService::CACHE_TTL_SECONDS,
     'static-maps-cache' => StaticMapImageService::CACHE_MAX_AGE_SECONDS,
+    'ai-cache' => \Ytan\Service\Ai\AiTextCache::MAX_AGE_SECONDS,
 ];
 
 $total = 0;
@@ -41,3 +43,16 @@ foreach ($caches as $dirName => $maxAgeSeconds) {
 }
 
 $log->line("Total: $total file(s) deleted.");
+
+// PHP's own error log: on prod public/.user.ini points error_log at
+// storage/logs/error.log. PHP only appends to it, so it gets the same rotation
+// as the logs YTAN writes itself (LogRotation: > 2000 lines -> error.N.log,
+// > 20 archives -> ZIP). Fixed path, not ini_get('error_log') - the CLI does
+// not read .user.ini.
+$errorLog = $root . '/storage/logs/error.log';
+if (is_file($errorLog)) {
+    $archives = LogRotation::rotate($errorLog);
+    $log->line($archives === []
+        ? 'storage/logs/error.log: nothing to rotate.'
+        : 'storage/logs/error.log: rotated into ' . implode(', ', array_map('basename', $archives)) . '.');
+}

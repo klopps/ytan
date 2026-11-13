@@ -33,6 +33,11 @@ function showUserWindow() {
         var pendingEmailNotice = user.pending_email
             ? '<div class="nav-form-message" style="color: var(--color-warning);">' + t('user.pending_email_notice', { email: escapeHTML(user.pending_email) }) + ' <span class="nav-link-small" data-on-click="cancelPendingEmailChange();">' + t('common.cancel') + '</span></div>'
             : '';
+        if (user.pending_account_deletion_expires_at) {
+            pendingEmailNotice += '<div class="nav-form-message" style="color: var(--color-danger);">' +
+                t('account_deletion.pending_notice', { time: accountDeletionTime(user.pending_account_deletion_expires_at) }) +
+                ' <span class="nav-link-small" data-on-click="cancelAccountDeletion();">' + t('account_deletion.cancel_button') + '</span></div>';
+        }
 
         document.getElementById('userWindow').innerHTML =
             '<div class="nav-account-head">' +
@@ -48,6 +53,7 @@ function showUserWindow() {
                 profileSubRowHtml('userChangePasswordBtn', 'showChangePasswordForm();', 'lock', t('user.change_password_button')) +
                 profileSubRowHtml('userDefaultSpeedBtn', 'showDefaultSpeedForm();', 'speed', t('user.default_speed_button')) +
                 profileSubRowHtml('userWatchBtn', 'showWatchSection();', 'watch', t('watch.title')) +
+                profileSubRowHtml('userDeleteAccountBtn', 'showAccountDeletion();', 'delete_forever', t('account_deletion.button')) +
             '</ul>' +
             '<button id="userLogoutBtn" class="nav-btn-secondary nav-btn-danger" type="button" data-on-click="logoutUser()"><i class="material-icons-round">logout</i>&nbsp;' + t('user.logout_button') + '</button>' +
             '<button id="userLogoutAllBtn" class="nav-btn-secondary" type="button" data-on-click="logoutEverywhere()"><i class="material-icons-round">devices</i>&nbsp;' + t('user.logout_all_button') + '</button>'
@@ -188,6 +194,8 @@ function showDefaultSpeedForm() {
             '<div class="nav-field"><label for="userDefaultSpeed">' + t('user.default_speed_label', { unit: knots ? 'kn' : 'km/h' }) + '</label>' +
             '<input id="userDefaultSpeed" type="number" inputmode="decimal" min="0" step="0.1" value="' + shown + '"></div>' +
             '<div class="nav-form-message">' + t('user.default_speed_hint') + '</div>' +
+            (typeof canRouteCheck === 'function' && canRouteCheck()
+                ? '<div class="nav-form-message">' + t('user.default_speed_hint_route_check') + '</div>' : '') +
             '<button id="userDefaultSpeedSaveBtn" class="nav-btn-primary" type="button" data-on-click="submitDefaultSpeed();"><i class="material-icons-round">check</i>&nbsp;' + t('common.save') + '</button>' +
             navCancelButtonHtml());
     }).catch(err => {
@@ -279,6 +287,89 @@ function cancelPendingEmailChange() {
         sessionStorage.setItem('user', JSON.stringify(user));
         showToast(t('user.pending_email_change_canceled'), 'info');
         showUserWindow();
+    }).catch(err => {
+        showToast(apiErrorMessage(err), 'error');
+    });
+}
+
+/**
+ * Self-service account deletion (AccountDeletionController): explains what
+ * happens to the user's content, asks for the password and mails a link
+ * valid for 60 minutes - only that link deletes the account. While a request
+ * is pending this screen (and a notice in the profile) offers to withdraw it.
+ */
+function showAccountDeletion() {
+    var title = t('account_deletion.button');
+    openProfileSub(title, '<div class="nav-form-message">' + t('watch.loading') + '</div>' + navCancelButtonHtml());
+
+    Ytan.get('/auth/account-deletion').then(answer => {
+        var data = answer.data;
+        user.pending_account_deletion_expires_at = data.pending_expires_at;
+        sessionStorage.setItem('user', JSON.stringify(user));
+        var html;
+
+        if (data.pending_expires_at) {
+            html = '<div class="nav-form-message">' + t('account_deletion.pending_explained', {
+                email: escapeHTML(user.email),
+                time: accountDeletionTime(data.pending_expires_at)
+            }) + '</div>' +
+                '<button id="userAccountDeletionCancelBtn" class="nav-btn-primary" type="button" data-on-click="cancelAccountDeletion();"><i class="material-icons-round">undo</i>&nbsp;' + t('account_deletion.cancel_button') + '</button>';
+        } else if (data.blocked) {
+            html = '<div class="nav-form-message" style="color: var(--color-danger);">' + t('error.' + data.blocked) + '</div>';
+        } else {
+            var p = data.preview;
+            html = '<div class="nav-form-message">' + t('account_deletion.intro') + '</div>' +
+                '<ul class="account-deletion-list">' +
+                    '<li>' + t('account_deletion.private_part', accountDeletionCounts(p.private)) + '</li>' +
+                    '<li>' + t('account_deletion.public_part', accountDeletionCounts(p.public)) + '</li>' +
+                    '<li>' + t('account_deletion.rest_part') + '</li>' +
+                '</ul>' +
+                '<div class="nav-form-message" style="color: var(--color-danger);"><strong>' + t('account_deletion.irreversible') + '</strong></div>' +
+                '<div class="nav-field"><label for="userAccountDeletionPassword">' + t('user.current_password_label') + '</label><div class="password-input-wrapper"><input id="userAccountDeletionPassword" type="password" autocomplete="current-password" data-on-keypress="clickOnEnter(event, \'userAccountDeletionBtn\');">' + passwordToggleButtonHtml('userAccountDeletionPassword') + '</div></div>' +
+                '<div class="nav-form-message" id="userAccountDeletionMessage"></div>' +
+                '<button id="userAccountDeletionBtn" class="nav-btn-secondary nav-btn-danger" type="button" data-on-click="requestAccountDeletion();"><i class="material-icons-round">delete_forever</i>&nbsp;' + t('account_deletion.request_button') + '</button>';
+        }
+        openProfileSub(title, html + navCancelButtonHtml());
+    }).catch(err => {
+        openProfileSub(title, '<div class="nav-form-message">' + apiErrorMessage(err) + '</div>' + navCancelButtonHtml());
+    });
+}
+
+/** Counts of a preview block as t() vars. */
+function accountDeletionCounts(counts) {
+    return { poi: counts.poi || 0, route: counts.route || 0, area: counts.area || 0, tour: counts.tour || 0 };
+}
+
+/** "2026-11-13 15:42:10" (server time) -> "15:42". */
+function accountDeletionTime(expiresAt) {
+    return String(expiresAt).substring(11, 16);
+}
+
+function requestAccountDeletion() {
+    var password = document.getElementById('userAccountDeletionPassword').value;
+    var message = document.getElementById('userAccountDeletionMessage');
+    var button = document.getElementById('userAccountDeletionBtn');
+    button.disabled = true;
+
+    Ytan.post('/auth/account-deletion', { password: password }).then(() => {
+        showToast(t('account_deletion.mail_sent', { email: user.email }), 'success');
+        showAccountDeletion();
+    }).catch(err => {
+        message.style.color = 'var(--color-danger)';
+        message.textContent = apiErrorMessage(err);
+        button.disabled = false;
+    });
+}
+
+function cancelAccountDeletion() {
+    Ytan.del('/auth/account-deletion').then(() => {
+        user.pending_account_deletion_expires_at = null;
+        sessionStorage.setItem('user', JSON.stringify(user));
+        showToast(t('account_deletion.canceled'), 'info');
+        showUserWindow();
+        if (navMenuStack[navMenuStack.length - 1] === 'profile-sub') {
+            navMenuBack();
+        }
     }).catch(err => {
         showToast(apiErrorMessage(err), 'error');
     });
@@ -414,6 +505,7 @@ function loginUser() {
         user.route_view_recording = !!answer.user.route_view_recording;
         user.export_routes_own = !!answer.user.export_routes_own;
         user.export_routes_public = !!answer.user.export_routes_public;
+        user.ai_use = !!answer.user.ai_use;
 
         sessionStorage.setItem('user', JSON.stringify(user));
         closeUserWindow();

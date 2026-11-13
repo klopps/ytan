@@ -78,11 +78,12 @@ abstract class TestCase extends BaseTestCase
             'route_view_recording' => 0,
             'export_routes_own' => 0,
             'export_routes_public' => 0,
+            'ai_use' => 0,
         ], $overrides);
 
         $stmt = $this->pdo->prepare(
-            'INSERT INTO user (username, email, firstname, lastname, is_admin, tour_create, tour_publish, tour_manage, tour_copy, route_view_recording, export_routes_own, export_routes_public, password)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)'
+            'INSERT INTO user (username, email, firstname, lastname, is_admin, tour_create, tour_publish, tour_manage, tour_copy, route_view_recording, export_routes_own, export_routes_public, ai_use, password)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)'
         );
         $stmt->execute([
             $data['username'],
@@ -97,6 +98,7 @@ abstract class TestCase extends BaseTestCase
             $data['route_view_recording'],
             $data['export_routes_own'],
             $data['export_routes_public'],
+            $data['ai_use'],
         ]);
 
         return (int) $this->pdo->lastInsertId();
@@ -158,6 +160,7 @@ abstract class TestCase extends BaseTestCase
             'route_view_recording' => false,
             'export_routes_own' => false,
             'export_routes_public' => false,
+            'ai_use' => false,
         ], $overrides);
     }
 }

@@ -118,6 +118,35 @@ final class PoiRepository
         return $poi;
     }
 
+    /**
+     * POIs of the given types inside a box that $userId may see (public ones
+     * plus the user's own) - the Routencheck's landing sites/danger spots near
+     * a route. Only the fields it needs.
+     *
+     * @param list<int> $types
+     * @return list<array{id: int, poitype_id: int, name: string, latitude: float, longitude: float}>
+     */
+    public function findInBox(float $south, float $north, float $west, float $east, array $types, ?int $userId): array
+    {
+        if ($types === []) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($types), '?'));
+        $sql = "SELECT id, poitype_id, name, latitude, longitude FROM poi
+                WHERE latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ?
+                  AND poitype_id IN ($placeholders)
+                  AND (public = 1" . ($userId !== null ? ' OR user_id = ?' : '') . ')
+                ORDER BY id';
+        $params = array_merge([$south, $north, $west, $east], array_map('intval', $types));
+        if ($userId !== null) {
+            $params[] = $userId;
+        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll();
+    }
+
     public function bounds(): array
     {
         $stmt = $this->db->query(

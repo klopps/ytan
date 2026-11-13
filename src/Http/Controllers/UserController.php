@@ -9,6 +9,7 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 use Ytan\Domain\User\UserRepository;
 use Ytan\Exception\NotFoundException;
 use Ytan\Exception\ValidationException;
+use Ytan\Service\AccountDeletionService;
 use Ytan\Service\AuthService;
 use Ytan\Service\MailService;
 
@@ -19,10 +20,11 @@ final class UserController extends BaseController
         private readonly MailService $mail,
         private readonly AuthService $authService,
         private readonly string $appUrl,
+        private readonly ?AccountDeletionService $deletion = null,
     ) {
     }
 
-    private const RIGHT_FIELDS = ['is_admin', 'tour_create', 'tour_publish', 'tour_manage', 'tour_copy', 'route_view_recording', 'export_routes_own', 'export_routes_public'];
+    private const RIGHT_FIELDS = ['is_admin', 'tour_create', 'tour_publish', 'tour_manage', 'tour_copy', 'route_view_recording', 'export_routes_own', 'export_routes_public', 'ai_use'];
 
     public function index(Request $request, Response $response): Response
     {
@@ -102,9 +104,13 @@ final class UserController extends BaseController
         }
 
         $this->findOrFail($id);
-        $this->users->delete($id);
+        // Same rule as the self-service deletion: private content goes, public content moves to an admin.
+        $result = $this->deletion !== null ? $this->deletion->delete($id) : null;
+        if ($this->deletion === null) {
+            $this->users->delete($id);
+        }
 
-        return $this->json($response, ['data' => ['id' => $id]]);
+        return $this->json($response, ['data' => ['id' => $id] + ($result ?? [])]);
     }
 
     /**

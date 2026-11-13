@@ -16,7 +16,13 @@ Stateless JWT bearer tokens (no server-side session). Include
 | POST | `/auth/logout-all` | required | - | "Sign out on all devices": every token issued so far becomes invalid; returns `{token, expires_at, user}` for the calling device |
 | GET | `/auth/me` | required | - | Returns the user's current data from the database (same fields as the token claims, plus `pending_email*`), not the stale token payload |
 | GET | `/auth/default-speed` | required | - | `{data: {default_speed_kmh: number\|null}}` |
-| PUT | `/auth/default-speed` | required | `{default_speed_kmh}` | Usual paddling speed in km/h (0.5-30, one decimal) for the watch's initial ETA; empty/0/null clears it |
+| PUT | `/auth/default-speed` | required | `{default_speed_kmh}` | Usual paddling speed in km/h (0.5-30, one decimal) for the watch's initial ETA and the route check; empty/0/null clears it |
+| GET | `/auth/account-deletion` | required | - | `{data: {preview: {private: {tour, route, area, poi}, public: {...}, successor}, blocked: null\|"account.last_admin"\|"account.no_successor", pending_expires_at: string\|null}}` |
+| POST | `/auth/account-deletion` | required | `{password}` | Asks for the account's deletion: mails a link valid 60 minutes (`/confirm-account-deletion?token=...`); returns `{data: {pending_expires_at}}`. 401 wrong password (counts as a failed login), 422 `account.*`, 502 `account.mail_failed` (nothing stays pending) |
+| DELETE | `/auth/account-deletion` | required | - | Withdraws a pending request; the mailed link stops working |
+| POST | `/auth/confirm-account-deletion` | - | `{token}` | Deletes the account (the token is the proof): private POIs/routes/areas/tours with their photos are deleted, public ones move to the successor admin (`ytan` in any casing, else the smallest admin id; recorded routes lose `recorded_at`/duration). Returns `{data: {deleted, transferred, successor}}`; 422 `auth.link_expired` |
+
+`/auth/me` also carries `pending_account_deletion_expires_at`.
 
 There is no `/auth/logout` endpoint: "logging out" on one device just means
 the client discards the token it's holding. Every token carries the user's
@@ -86,6 +92,53 @@ route is public, or has
 (`GpxExportController`).
 Area body: `name, description, public, points (JSON-encoded array of {lat,lng}), color, opacity, zindex`.
 
+## Routencheck (route check, AI)
+
+`POST /routes/{id}/briefing` (signed in; 403 `route_check.disabled` while
+switched off on /admin/ai, 403 `route_check.forbidden` without the right
+`ai_use` - admins always may; 404 for someone else's private route) -
+traffic light + AI assessment of the route for one day (`routencheck.md`).
+Body (all optional): `date` (`YYYY-MM-DD`, today .. +7 days, default
+today), `start_hour` (0-23, default 9), `reverse` (bool), `speed_kmh`
+(0.5-30, default the user's default speed, else 6), `level`
+(`beginner|experienced|expert`, default the stored one), `text` (`false` =
+traffic light only, no model request - the page asks for that first). 422
+codes: `route_check.date_invalid|start_invalid|speed_invalid|level_invalid|too_short`.
+
+Answer `data`: `date, start_hour, reverse, speed_kmh, level, length_m, start,
+end, end_date, duration_min`, `rating` (0 green, 1 yellow, 2 red, null =
+no data), `partial` (some sections without data), `reasons`
+(`[{criterion, value, threshold, level}]`, worst first; criteria `wind,
+gust, wave, thunder, dark, dusk, cold_water, offshore, beam_sea`),
+`sections` (`[{index, from_m, to_m, entry, exit, hours, rating, partial,
+reasons, values: {wind, gust, direction, relative, wave, fetch_m, lee,
+exposed, offshore}, points: [[lat, lng], ...], bearing}]`), `windows`
+(`[{hour, rating, reason, end}]` - the rating for every start hour of the
+rules' window), `pois` (`[{id, name, type, type_label, role
+(landing|danger|portage), lat, lng, distance_m, at_m}]`, max 30 within
+2 km), `sun {sunrise, sunset}`, `weather {source, model, generated_at}`,
+`thresholds` (wind/gust/wave for this level), `limit {per_day,
+used_today}`, `text` (Markdown or null), `text_status`
+(`ok|skipped|limit|error|not_configured|no_data`), `text_error` (with
+`error`: `auth|credit|rate_limit|timeout|refusal|other`), `text_cached`,
+`text_created_at`. The AI never fails the request: without text the
+traffic light still comes.
+
+`GET /auth/paddle-level` / `PUT /auth/paddle-level` `{paddle_level}` - the
+user's experience level (422 `route_check.level_invalid`).
+
+Admin only: `PUT /settings/ai` `{enabled, daily_limit (0-1000),
+cache_hours (0-24)}`; `POST /settings/ai/test` (tiny model request, 502
+`route_check.test_{kind}` on failure); `PUT /settings/briefing-rules`
+`{rules}` (normalized by `BriefingRules::normalize()`) or `{reset: true}`;
+`GET /admin/ai/usage?month=YYYY-MM` -> `{month, months, summary_month,
+summary_all, users}` (summary: `requests` = answered by the model, `cache_hits,
+errors, limited, input_tokens` (incl. prompt-cache reads/writes),
+`output_tokens, total_tokens, avg_input, avg_output, avg_total`; users: one row
+per eligible user (`ai_use` or admin, 0 when idle) plus anybody with usage
+that month: `user_id` (null = deleted), `username, name, eligible, deleted,
+requests, input_tokens, output_tokens, total_tokens, avg_total, last_used`).
+
 ## GPX import
 
 Both take `{"gpx": "<file content>"}` (max. 5 MB) and require a logged-in
@@ -142,8 +195,13 @@ configured or a Static Maps request fails.
 
 `GET /users` - optional exact-match filters `is_admin`/`tour_create`/
 `tour_publish`/`tour_manage`/`tour_copy`/`route_view_recording`/
-`export_routes_own`/`export_routes_public` (each `0`
+`export_routes_own`/`export_routes_public`/`ai_use` (each `0`
 or `1`), plus the shared `limit`/`offset` from Pagination above.
+
+`DELETE /users/{id}` follows the account deletion rules of
+`/auth/confirm-account-deletion` (private content deleted, public content
+handed to the successor admin) and answers `{data: {id, deleted,
+transferred, successor}}`; 422 `account.last_admin`/`account.no_successor`.
 
 ## Lighthouse import (admin only)
 

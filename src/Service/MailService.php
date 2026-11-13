@@ -56,6 +56,32 @@ final class MailService
         );
     }
 
+    public function sendAccountDeletionConfirmation(string $toEmail, string $username, string $link): void
+    {
+        $this->send(
+            $toEmail,
+            $this->appName . ' - Confirm the deletion of your account',
+            "You asked to delete your " . $this->appName . " account \"$username\".\n" .
+            "Use the link below to delete it for good:\n\n" .
+            "$link\n\n" .
+            "Your private POIs, routes, areas and tours will be deleted together with their photos; " .
+            "public ones stay visible and are handed over to the " . $this->appName . " administrators. " .
+            "This cannot be undone.\n\n" .
+            "This link is valid for 1 hour. Until you open it you can withdraw the request in your profile. " .
+            "If you did not ask for this, change your password."
+        );
+    }
+
+    public function sendAccountDeleted(string $toEmail, string $username): void
+    {
+        $this->send(
+            $toEmail,
+            $this->appName . ' - Your account has been deleted',
+            "Your " . $this->appName . " account \"$username\" has been deleted.\n" .
+            "Your private content was deleted; public content now belongs to the " . $this->appName . " administrators."
+        );
+    }
+
     public function sendTourRouteChanged(string $toEmail, string $tourName, string $routeName, string $link): void
     {
         $this->send(

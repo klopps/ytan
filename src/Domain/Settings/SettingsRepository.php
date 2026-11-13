@@ -244,6 +244,50 @@ final class SettingsRepository
             ->execute([json_encode(\Ytan\Service\JobPlacement::normalize($jobs))]);
     }
 
+    /**
+     * Routencheck (migration 070, /admin/ai): the whole feature on/off, model
+     * requests per user and day, how many hours a generated text is reused.
+     *
+     * @return array{enabled: bool, daily_limit: int, cache_hours: int}
+     */
+    public function aiSettings(): array
+    {
+        $row = $this->db->query('SELECT ai_enabled, ai_daily_limit, ai_cache_hours FROM app_settings WHERE id = 1')->fetch();
+        if ($row === false) {
+            return ['enabled' => false, 'daily_limit' => 20, 'cache_hours' => 3];
+        }
+
+        return ['enabled' => (bool) $row['ai_enabled'], 'daily_limit' => (int) $row['ai_daily_limit'], 'cache_hours' => (int) $row['ai_cache_hours']];
+    }
+
+    public function setAiSettings(bool $enabled, int $dailyLimit, int $cacheHours): void
+    {
+        $this->db->prepare('UPDATE app_settings SET ai_enabled = ?, ai_daily_limit = ?, ai_cache_hours = ? WHERE id = 1')
+            ->execute([(int) $enabled, $dailyLimit, $cacheHours]);
+    }
+
+    /**
+     * The Routencheck's traffic-light thresholds, normalized (NULL in the
+     * database = BriefingRules::defaults()).
+     *
+     * @return array<string, mixed>
+     */
+    public function briefingRules(): array
+    {
+        $value = $this->db->query('SELECT briefing_rules FROM app_settings WHERE id = 1')->fetchColumn();
+        $rules = is_string($value) ? json_decode($value, true) : null;
+
+        return \Ytan\Service\Ai\BriefingRules::normalize(is_array($rules) ? $rules : null);
+    }
+
+    /** @param array<string, mixed>|null $rules null = back to the defaults */
+    public function setBriefingRules(?array $rules): void
+    {
+        $this->db->prepare('UPDATE app_settings SET briefing_rules = ? WHERE id = 1')->execute([
+            $rules === null ? null : json_encode(\Ytan\Service\Ai\BriefingRules::normalize($rules)),
+        ]);
+    }
+
     /** @param array<string, mixed> $config normalized by WindConfig::normalize() */
     public function setWindSettings(array $config): void
     {

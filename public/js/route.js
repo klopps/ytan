@@ -1187,6 +1187,10 @@ function showRouteContextMenu(event, i) {
 
     content += '<div class="contextMenuItem" data-on-click="routeContextMenuAnimate(' + i + ');"><i class="material-icons-round">play_circle_outline</i>' + t('route.context.animate') + '</div>';
 
+    if (canRouteCheck()) {
+        content += '<div class="contextMenuItem" data-on-click="routeContextMenuRouteCheck(' + i + ');"><i class="material-icons-round">traffic</i>' + t('route_check.button') + '</div>';
+    }
+
     if (canWatch) {
         content += '<div class="contextMenuItem" data-on-click="routeContextMenuSendToWatch(' + i + ');"><i class="material-icons-round">watch</i>' + t('route.context.send_to_watch') + '</div>';
     }
@@ -1376,6 +1380,8 @@ function showRouteInfoWindow(event, i) {
     }
 
     content += '<div class="infoWindowElement">' + renderMarkdown(routes[i]['description']) + '<div>';
+
+    content += routeCheckButtonHtml(i);
 
     if (user.id !== null) {
         if (routes[i].user_id == user.id) {

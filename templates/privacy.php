@@ -12,69 +12,153 @@
     <h1>Datenschutzerklärung</h1>
 
     <h2>§ 1 Allgemeine Informationen</h2>
-    <p>In dieser Datenschutzerklärung finden Sie detaillierte Informationen darüber, was mit Ihren personenbezogenen Daten geschieht, wenn Sie unsere Website ytan.pesr.org besuchen. Alle Daten, die eine persönliche Identifizierung Ihrerseits ermöglichen, sind personenbezogene Daten. Bei der Verarbeitung Ihrer Daten halten wir uns strikt an die gesetzlichen Vorgaben, insbesondere die Datenschutzgrundverordnung („DSGVO"). Uns ist es sehr wichtig, dass Ihr Besuch auf unserer Website vollkommen sicher ist.</p>
+    <p>Diese Datenschutzerklärung beschreibt, welche personenbezogenen Daten verarbeitet werden, wenn Sie die Website ytan.pesr.org, die dazugehörige Android-App oder das YTAN-Datenfeld für Garmin-Uhren (zusammen „YTAN“) nutzen. Personenbezogene Daten sind alle Daten, mit denen Sie persönlich identifiziert werden können. Wir verarbeiten Ihre Daten nach den gesetzlichen Vorgaben, insbesondere der Datenschutz-Grundverordnung („DSGVO“).</p>
+    <p>YTAN ist ein nicht kommerzielles Angebot zur Planung von Kajaktouren. Es gibt keine Werbung, keine Reichweitenmessung, keine Analyse Ihres Nutzungsverhaltens und keine Zahlungsfunktionen.</p>
 
     <h2>§ 2 Verantwortliche Stelle</h2>
-    <p>Die Verantwortung für die Erhebung und Verarbeitung personenbezogener Daten auf dieser Website liegt datenschutzrechtlich bei:</p>
+    <p>Die Verantwortung für die Erhebung und Verarbeitung personenbezogener Daten liegt datenschutzrechtlich bei:</p>
     <p>Christoph Steindorff<br>
         Ohnhorster Weg 14, 38527 Meine<br>
         Deutschland<br>
         <a href="mailto:info@pesr.org">info@pesr.org</a>
-        <!--<li><strong>Tel.:</strong> _________</li>-->
     </p>
 
-    <h2>§ 3 Zugriffsdaten (Server-Logfiles)</h2>
-    <p>Wenn Sie unsere Website aufrufen, erheben wir automatisch Zugriffsdaten, die Ihr Browser uns übermittelt, und speichern sie in sogenannten Server-Logfiles. Folgende Punkte sind dies:</p>
+    <h2>§ 3 Hosting, Zugriffsdaten und Protokolle</h2>
+    <p>YTAN wird auf Servern eines Hosting-Dienstleisters betrieben, der die Daten in unserem Auftrag verarbeitet. Wenn Sie YTAN aufrufen, übermittelt Ihr Browser oder die App automatisch Zugriffsdaten, die in Server-Logfiles gespeichert werden:</p>
     <ul>
-        <li>Browsertyp und Browserversion Ihres PC</li>
-        <li>von Ihrem PC verwendetes Betriebssystem</li>
-        <li>Referrer URL (Quelle/Verweis, von welchem Sie auf unsere Website gelangten)</li>
-        <li>Datum und Uhrzeit der Serveranfrage</li>
-        <li>die aktuell von Ihrem PC verwendete IP-Adresse (ggf. in anonymisierter Form)</li>
+        <li>Browsertyp und Browserversion</li>
+        <li>verwendetes Betriebssystem</li>
+        <li>Referrer-URL (die Seite, von der aus Sie zu uns gelangt sind)</li>
+        <li>Datum und Uhrzeit der Anfrage sowie die aufgerufene Adresse</li>
+        <li>die IP-Adresse Ihres Geräts</li>
     </ul>
-    <p>In der Regel ist es uns nicht möglich und auch nicht unsere Absicht, diese Daten einer bestimmten Person zuzuordnen. Die Verarbeitung dieser Daten erfolgt gemäß Art. 6 Abs. 1 lit. f DSGVO, um unser berechtigtes Interesse an der Verbesserung der Stabilität und Funktionalität unserer Website zu wahren.</p>
+    <p>Zusätzlich führt YTAN eigene Protokolle:</p>
+    <ul>
+        <li><strong>Schutz vor Missbrauch:</strong> Anmeldeversuche, Anfragen zum Zurücksetzen eines Passworts sowie Abrufe von Wetterdaten und Ortsnamen werden mit IP-Adresse und Zeitpunkt gezählt, um automatisierte Angriffe und Überlastung zu begrenzen. Diese Einträge werden nach 24 Stunden gelöscht.</li>
+        <li><strong>Fehlerprotokolle:</strong> Technische Fehler werden mit Zeitpunkt und Fehlermeldung protokolliert. Meldet Ihr Browser einen Verstoß gegen die Sicherheitsrichtlinie der Seite (Content Security Policy), wird die betroffene Adresse protokolliert.</li>
+        <li><strong>Protokolle einzelner Funktionen:</strong> Bei Verwaltungsfunktionen und beim Routencheck (§ 10) wird der Benutzername zusammen mit Zeitpunkt und Vorgang protokolliert.</li>
+    </ul>
+    <p>Die Verarbeitung erfolgt gemäß Art. 6 Abs. 1 lit. f DSGVO. Unser berechtigtes Interesse liegt im sicheren und stabilen Betrieb von YTAN und in der Aufklärung von Störungen.</p>
 
-    <h2>§ 4 Cookies</h2>
-    <p>Wir setzen sogenannte Cookies ein, um den Besuch unserer Website attraktiv zu gestalten und die Nutzung bestimmter Funktionen zu ermöglichen. Dies sind kleine Textdateien, die auf Ihrem Endgerät gespeichert werden. Cookies sind nicht in der Lage, Programme auszuführen oder Viren auf Ihr Computersystem zu übertragen.</p>
-    <p>Notwendige Cookies, die für die elektronische Kommunikation oder die Bereitstellung gewünschter Funktionen erforderlich sind, werden gemäß Art. 6 Abs. 1 lit. f DSGVO gespeichert. Unser berechtigtes Interesse an der Speicherung dient der technisch einwandfreien und optimierten Bereitstellung unserer Dienste. Andere Cookies (z.B. zur Analyse Ihres Surfverhaltens) werden in dieser Datenschutzerklärung gesondert behandelt.</p>
-    <p>Wir verwenden hauptsächlich sogenannte „Session-Cookies", welche nach Beendigung Ihres Besuchs automatisch gelöscht werden. Darüber hinaus setzen wir Cookies ein, die auf Ihrem Endgerät gespeichert bleiben, bis Sie diese selbst entfernen. Diese ermöglichen uns, Ihren Browser bei Ihrem nächsten Besuch wiederzuerkennen.</p>
-    <p>Sie können Ihren Browser so einstellen, dass Sie benachrichtigt werden, wenn Cookies gesetzt werden sollen. Sie können dann entscheiden, ob Sie Cookies im Einzelfall erlauben, ob Sie Cookies für bestimmte Fälle zulassen oder ob Sie Cookies generell ablehnen möchten. Sie können auch einstellen, dass Cookies automatisch gelöscht werden, wenn Sie den Browser schließen. Bitte beachten Sie, dass die Funktionalität dieser Website eingeschränkt sein kann, wenn Sie Cookies deaktivieren.</p>
+    <h2>§ 4 Cookies und lokaler Speicher</h2>
+    <p>YTAN setzt nur technisch notwendige Cookies und Einträge im lokalen Speicher Ihres Browsers. Es gibt keine Cookies zur Werbung oder zur Analyse Ihres Nutzungsverhaltens.</p>
+    <ul>
+        <li><strong>Cookie „gdpr_accepted“</strong> (12 Monate): merkt sich, dass Sie der Nutzung von Google Maps zugestimmt haben (§ 5).</li>
+        <li><strong>Cookie „ytan_settings“</strong> (12 Monate): speichert Ihre Einstellungen, zum Beispiel Kartentyp, Einheiten, Sprache, helles oder dunkles Design und die eingeblendeten Kartenebenen.</li>
+        <li><strong>Lokaler Speicher „ytan_token“</strong>: hält Sie nach der Anmeldung angemeldet. Der Eintrag wird beim Abmelden gelöscht.</li>
+        <li><strong>Weitere Einträge im lokalen Speicher und im Sitzungsspeicher</strong>: Ihre Bestätigung des Hinweises zum Routencheck (§ 10), der Zeitpunkt Ihrer letzten Nutzung (für den Startbildschirm), die Angaben zu Ihrem Benutzerkonto während der Sitzung und die Parameter eines geöffneten geteilten Links.</li>
+    </ul>
+    <p>Damit YTAN auch bei schlechter Verbindung schnell startet, speichert Ihr Browser Programmdateien und Bilder der Website zwischen (Service Worker). Personenbezogene Daten werden dabei nicht erhoben.</p>
+    <p>Die Speicherung erfolgt gemäß § 25 Abs. 2 TDDDG und Art. 6 Abs. 1 lit. f DSGVO, weil sie für die von Ihnen gewünschten Funktionen erforderlich ist. Sie können Cookies und den lokalen Speicher jederzeit in Ihrem Browser löschen. Ihre Zustimmung zu Google Maps können Sie außerdem in YTAN selbst über den Menüpunkt „Cookies“ zurücknehmen.</p>
 
     <h2>§ 5 Google Maps</h2>
-    <p>Unsere Website verwendet den Kartendienst Google Maps, der über eine Programmierschnittstelle (API) eingebunden ist.</p>
-    <p>Um Ihre Daten beim Besuch unserer Website zu schützen, ist Google Maps standardmäßig deaktiviert. Die Verbindung zu den Google-Servern wird erst aufgebaut, wenn Sie Google Maps aktiv nutzen (Einwilligung nach Art. 6 Abs. 1 lit. a DSGVO). Dies verhindert, dass Ihre Daten bereits beim ersten Aufruf unserer Website an Google übertragen werden.</p>
-    <p>Nach der Aktivierung von Google Maps wird Ihre IP-Adresse von Google erfasst und üblicherweise an einen Server in den USA übertragen und dort gespeichert. Der Betreiber dieser Website hat nach der Aktivierung von Google Maps keine Möglichkeit, diese Datenübertragung zu beeinflussen.</p>
-    <p>Detaillierte Informationen zur Verarbeitung von Nutzerdaten finden Sie in der Datenschutzerklärung von Google: <a href="https://www.google.de/intl/de/policies/privacy/" target="_blank" rel="nofollow noopener">https://www.google.de/intl/de/policies/privacy/</a>.</p>
+    <p>YTAN verwendet den Kartendienst Google Maps der Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Irland. Über Google Maps werden die Karte, die Ortssuche und die dafür nötigen Schriften geladen.</p>
+    <p>Google Maps ist zunächst deaktiviert. Die Verbindung zu den Servern von Google wird erst aufgebaut, wenn Sie beim ersten Aufruf ausdrücklich zustimmen (Einwilligung nach Art. 6 Abs. 1 lit. a DSGVO, § 25 Abs. 1 TDDDG). Ohne diese Zustimmung kann YTAN nicht genutzt werden, da die Karte der Kern der Anwendung ist.</p>
+    <p>Nach der Aktivierung erhält Google Ihre IP-Adresse, Angaben zu Ihrem Browser, den betrachteten Kartenausschnitt und Ihre Eingaben in der Ortssuche. Diese Daten können auch an Server von Google in den USA übertragen werden. Auf diese Verarbeitung haben wir keinen Einfluss.</p>
+    <p>Sie können Ihre Einwilligung jederzeit mit Wirkung für die Zukunft widerrufen, indem Sie in YTAN den Menüpunkt „Cookies“ aufrufen und die Zustimmung zurücknehmen.</p>
+    <p>Erstellen Sie zu einer Tour ein Dokument (PDF), ruft unser Server die Kartenbilder dafür bei Google ab. Dabei werden der Kartenausschnitt und der Verlauf der Routen übertragen, nicht aber Ihre IP-Adresse oder Angaben zu Ihrer Person.</p>
+    <p>Weitere Informationen finden Sie in der Datenschutzerklärung von Google: <a href="https://policies.google.com/privacy?hl=de" target="_blank" rel="nofollow noopener">https://policies.google.com/privacy?hl=de</a>.</p>
 
-    <h2>§ 6 Kontaktaufnahme</h2>
-    <p>Wenn Sie mit uns Kontakt aufnehmen, einschließlich per E-Mail, werden die dabei übermittelten Daten, einschließlich Ihrer Kontaktdaten, gespeichert, um Ihre Anfrage zu bearbeiten und für eventuelle Rückfragen zur Verfügung zu stehen. Eine Weitergabe dieser Daten an Dritte erfolgt ohne Ihre ausdrückliche Einwilligung nicht.</p>
-    <p>Die Verarbeitung der Sie betreffenden personenbezogenen Daten erfolgt ausschließlich auf der Grundlage Ihrer gemäß Art. 6 Abs. 1 lit. a DSGVO erteilten Einwilligung. Sie haben das Recht, diese Einwilligung jederzeit und ohne Angabe von Gründen zu widerrufen. Eine formlose Mitteilung per E-Mail an uns genügt für den Widerruf. Die Rechtmäßigkeit der vor dem Widerruf durchgeführten Datenverarbeitungen wird durch den Widerruf nicht berührt.</p>
-    <p>Die übermittelten Daten werden bei uns gespeichert, bis Sie uns zur Löschung auffordern, Ihre Einwilligung zur Speicherung widerrufen oder die Notwendigkeit zur Datenspeicherung entfällt. Gesetzliche Aufbewahrungsfristen bleiben hiervon unberührt.</p>
+    <h2>§ 6 Nutzerkonto</h2>
+    <p>Die Karte und alle öffentlichen Inhalte können Sie ohne Nutzerkonto ansehen. Ein Nutzerkonto ist nötig, um eigene Inhalte anzulegen. Nutzerkonten werden nicht selbst registriert, sondern auf Einladung durch einen Administrator angelegt.</p>
+    <p>Zu einem Nutzerkonto speichern wir:</p>
+    <ul>
+        <li>Benutzername, Vorname, Nachname und E-Mail-Adresse</li>
+        <li>das Passwort, ausschließlich als nicht umkehrbarer Hashwert</li>
+        <li>die Ihnen eingeräumten Berechtigungen</li>
+        <li>Ihre Einstellungen, zum Beispiel Standardgeschwindigkeit und Erfahrungsstufe</li>
+        <li>bei Einladung, Passwort-Zurücksetzung, Änderung der E-Mail-Adresse und Löschung des Kontos: einen zeitlich begrenzt gültigen Bestätigungscode, als Hashwert</li>
+    </ul>
+    <p>Vorname, Nachname und E-Mail-Adresse sind nur für Sie selbst und für Administratoren sichtbar. Ihr Benutzername wird anderen Nutzern angezeigt, wenn Sie Inhalte veröffentlichen (§ 7).</p>
+    <p>An Ihre E-Mail-Adresse senden wir ausschließlich Nachrichten, die für die Nutzung nötig sind: die Einladung, Links zum Setzen oder Zurücksetzen des Passworts, die Bestätigung einer geänderten E-Mail-Adresse, die Bestätigung und Mitteilung einer Kontolöschung sowie Hinweise, wenn eine Route geändert, gelöscht oder nicht mehr öffentlich ist, die Teil einer Ihrer Touren ist. Wir versenden keinen Newsletter und keine Werbung.</p>
+    <p>Die Verarbeitung erfolgt gemäß Art. 6 Abs. 1 lit. b DSGVO, um Ihnen die Nutzung von YTAN mit einem Nutzerkonto zu ermöglichen.</p>
+    <p><strong>Löschung des Nutzerkontos:</strong> Sie können Ihr Nutzerkonto jederzeit selbst löschen (Profil &gt; Konto löschen). Dazu geben Sie Ihr Passwort ein und bestätigen die Löschung über einen Link, den wir Ihnen per E-Mail senden; er ist 60 Minuten gültig. Bis Sie den Link geöffnet haben, können Sie den Antrag widerrufen. Bei der Löschung gilt:</p>
+    <ul>
+        <li>Ihre Kontodaten, Einstellungen, Bestätigungscodes und der Schlüssel für die Garmin-Uhr werden gelöscht.</li>
+        <li>Ihre privaten Orte, Routen, Gebiete und Touren werden mit ihren Fotos gelöscht.</li>
+        <li>Ihre öffentlichen Inhalte bleiben für alle sichtbar. Sie werden einem Administratorkonto von YTAN zugeordnet und sind danach nicht mehr mit Ihrem Benutzernamen verbunden. Bei aufgezeichneten Routen werden Zeitpunkt und Dauer der Aufzeichnung entfernt. Möchten Sie, dass auch öffentliche Inhalte verschwinden, löschen Sie diese vorher selbst oder stellen Sie sie auf privat.</li>
+        <li>Die Aufzeichnung Ihrer Routenchecks (§ 10) bleibt für die Kostenkontrolle mit dem Benutzernamen zum Zeitpunkt der Anfrage erhalten.</li>
+    </ul>
+    <p>Die Löschung kann nicht rückgängig gemacht werden. Ein Administrator kann Ihr Nutzerkonto nach denselben Regeln löschen, auch auf Ihren Wunsch per E-Mail.</p>
 
-    <h2>§ 7 Speicherdauer von Beiträgen</h2>
-    <p>Die auf unserer Website veröffentlichten Inhalte sowie die damit verbundenen Daten, wie beispielsweise die IP-Adresse des Nutzers, werden bis zur vollständigen Löschung oder bis zum Eintritt einer rechtlichen Notwendigkeit zur Löschung gespeichert.</p>
-    <p>Die Speicherung Ihrer Beiträge und Kommentare basiert auf Ihrer Einwilligung gemäß Art. 6 Abs. 1 lit. a der DSGVO. Sie können Ihre Einwilligung ohne Angabe von Gründen jederzeit widerrufen. Eine einfache E-Mail an uns genügt, um Ihren Widerruf zu erklären. Bereits erfolgte Datenverarbeitungen werden durch Ihren Widerruf nicht rückwirkend ungültig.</p>
+    <h2>§ 7 Von Ihnen erstellte Inhalte</h2>
+    <p>Mit einem Nutzerkonto können Sie Orte (POIs), Routen, Gebiete und Touren anlegen, beschreiben, mit Fotos versehen und GPX-Dateien importieren. Diese Inhalte werden zusammen mit der Zuordnung zu Ihrem Nutzerkonto gespeichert.</p>
+    <ul>
+        <li><strong>Privat oder öffentlich:</strong> Sie legen für jeden Inhalt fest, ob er privat oder öffentlich ist. Private Inhalte sind nur für Sie sowie für Administratoren und Nutzer mit Verwaltungsrechten sichtbar. Veröffentlichen Sie einen Inhalt, kann ihn jeder Besucher sehen, auch ohne Nutzerkonto. Bei öffentlichen Touren wird Ihr Benutzername als Ersteller angezeigt.</li>
+        <li><strong>Aufgezeichnete Routen:</strong> Zeichnen Sie eine Route per GPS auf oder importieren Sie eine GPX-Datei mit Zeitangaben, werden Zeitpunkt und Dauer der Aufzeichnung sowie Ihr Benutzername gespeichert. Diese Angaben sehen nur Nutzer, denen ein Administrator die entsprechende Berechtigung erteilt hat.</li>
+        <li><strong>Fotos:</strong> Beim Hochladen entfernen wir die in der Datei enthaltenen Zusatzangaben (Metadaten wie EXIF, XMP und IPTC, etwa Aufnahmeort, Aufnahmezeit, Kameramodell oder Kommentare). Erhalten bleibt nur die Angabe, wie das Bild gedreht anzuzeigen ist. Fotos sind für jeden abrufbar, der den zugehörigen Inhalt sehen darf. Laden Sie keine Fotos hoch, auf denen andere Personen ohne deren Einverständnis erkennbar sind.</li>
+        <li><strong>Texte:</strong> Bitte tragen Sie in Namen und Beschreibungen keine personenbezogenen Daten Dritter ein.</li>
+    </ul>
+    <p>Die Verarbeitung erfolgt gemäß Art. 6 Abs. 1 lit. b DSGVO. Sie können Ihre Inhalte jederzeit selbst ändern, wieder auf privat stellen oder löschen. Gelöschte Inhalte und ihre Fotos werden von unserem Server entfernt.</p>
 
-    <h2>§ 8 Nutzerkonto</h2>
-    <p>Die Erstellung eines Nutzerkontos setzt Ihre Zustimmung zur Speicherung Ihrer Stammdaten (Name, Adresse, E-Mail-Adresse) und Ihrer Zugangsdaten (Benutzername, Passwort) voraus. Diese Daten ermöglichen es Ihnen, sich auf unserer Website mit Ihrer E-Mail-Adresse und Ihrem Passwort einzuloggen.</p>
+    <h2>§ 8 Standortdaten</h2>
+    <p>YTAN greift nur auf den Standort Ihres Geräts zu, wenn Sie das veranlassen und Ihr Browser oder Ihr Gerät es erlaubt, etwa um Ihre Position auf der Karte zu zeigen oder eine Route aufzuzeichnen. Um die Karte an Ihrer Position zu zeigen, werden passende Kartenausschnitte bei Google geladen (§ 5).</p>
+    <p>Während einer Aufzeichnung bleibt der zurückgelegte Weg auf Ihrem Gerät. Erst wenn Sie die Aufzeichnung als Route speichern, wird sie an unseren Server übertragen und Ihrem Nutzerkonto zugeordnet (§ 7). Ein laufender Standortverlauf wird auf dem Server nicht geführt.</p>
 
-    <h2>§ 9 Verwendung und Weitergabe von Daten</h2>
-    <p>Wir versichern Ihnen, dass personenbezogene Daten, die Sie uns z.B. per E-Mail mitteilen (wie Ihr Name, Ihre Adresse oder Ihre E-Mail-Adresse), nicht an Dritte verkauft oder anderweitig kommerziell genutzt werden. Die Verarbeitung Ihrer Daten erfolgt ausschließlich zum Zwecke der Korrespondenz mit Ihnen und zur Erfüllung des Zwecks, für den Sie uns die Daten zur Verfügung gestellt haben. Im Rahmen der Zahlungsabwicklung werden Ihre Zahlungsdaten an das beauftragte Kreditinstitut weitergeleitet.</p>
-    <p>Die bei Ihrem Besuch unserer Website automatisch erhobenen Daten werden ausschließlich für die oben genannten Zwecke verwendet. Eine anderweitige Nutzung der Daten erfolgt nicht.</p>
-    <p>Der Schutz Ihrer personenbezogenen Daten ist uns wichtig. Wir geben Ihre Daten daher grundsätzlich nicht an Dritte weiter, es sei denn, eine gesetzliche Verpflichtung zur Weitergabe besteht oder Sie uns Ihre ausdrückliche Einwilligung erteilt haben.</p>
+    <h2>§ 9 Wetter, Ortsnamen und weitere Datenquellen</h2>
+    <p>Rufen Sie für eine Stelle der Karte Wetterdaten oder einen Ortsnamen ab, fragt unser Server diese Daten bei externen Diensten an: Open-Meteo (Wetter, Wellen, Gezeiten), dem schwedischen Wetterdienst SMHI und Nominatim der OpenStreetMap Foundation (Ortsnamen). Übertragen werden nur die Koordinaten der gewählten Stelle. Ihre IP-Adresse und Angaben zu Ihrer Person erhalten diese Dienste nicht.</p>
+    <p>Regenradar, Windkarte, Leuchtfeuer, Rastplätze und weitere Kartendaten bezieht unser Server unabhängig von einzelnen Nutzern aus öffentlichen Quellen. Dabei werden keine Daten von Nutzern übertragen. Die Quellen sind unter dem Menüpunkt „Über“ aufgeführt.</p>
+    <p>Einige Stellen in YTAN verlinken auf fremde Websites, zum Beispiel auf das Regenradar von Windy. Erst wenn Sie einen solchen Link öffnen, erhält der jeweilige Anbieter Daten von Ihnen. Für dessen Datenverarbeitung ist er selbst verantwortlich.</p>
 
-    <h2>§ 10 Verschlüsselung (SSL/TLS)</h2>
-    <p>Unsere Website verwendet eine SSL- bzw. TLS-Verschlüsselung, um die Sicherheit und den Schutz der Übertragung von vertraulichen Inhalten zu gewährleisten. Dies betrifft insbesondere Anfragen, die Sie als Seitenbesucher an uns als Betreiber der Website senden. Eine verschlüsselte Verbindung ist durch das „https://" in der Adresszeile Ihres Browsers sowie das Schloss-Symbol in Ihrer Browserzeile erkennbar.</p>
-    <p>Die Aktivierung der SSL- bzw. TLS-Verschlüsselung bewirkt, dass die von Ihnen an uns gesendeten Daten nicht von unbefugten Dritten mitgelesen werden können.</p>
+    <h2>§ 10 Routencheck (KI-Einschätzung einer Route)</h2>
+    <p>Angemeldete Nutzer mit der entsprechenden Berechtigung können eine Route für einen Tag einschätzen lassen (Routencheck). Die Bewertung selbst (Ampel) errechnet unser Server. Den erläuternden Text erzeugt ein KI-Dienst der Anthropic, PBC, San Francisco, USA (Sprachmodell „Claude“).</p>
+    <p>An Anthropic übertragen wird je Anfrage:</p>
+    <ul>
+        <li>Datum, Start- und Endzeit, Länge der Route, angenommene Geschwindigkeit, gewählte Erfahrungsstufe und Fahrtrichtung</li>
+        <li>je Abschnitt der Route: Kilometerbereich, Uhrzeit, Kurs als Himmelsrichtung, Wind, Böen, Wellenhöhe, freie Wasserstrecke und die errechnete Bewertung mit ihren Gründen</li>
+        <li>Zeiten von Sonnenauf- und -untergang und die angewendeten Schwellenwerte</li>
+        <li>Name, Art und Lage (Kilometer entlang der Route, Abstand) von Orten in der Nähe der Route. Dazu gehören öffentliche Orte und Ihre eigenen, auch privaten Orte.</li>
+    </ul>
+    <p>Nicht übertragen werden Ihr Name, Ihr Benutzername, Ihre E-Mail-Adresse, Ihre IP-Adresse, der Name und die Beschreibung der Route sowie Koordinaten. Die Anfrage stellt unser Server, nicht Ihr Gerät. Namen Ihrer privaten Orte werden jedoch mitgesendet. Geben Sie Orten deshalb keine Namen, die Rückschlüsse auf Personen zulassen, wenn Sie den Routencheck nutzen.</p>
+    <p>Anthropic verarbeitet die Daten auf Servern in den USA. Weitere Informationen: <a href="https://www.anthropic.com/legal/privacy" target="_blank" rel="nofollow noopener">https://www.anthropic.com/legal/privacy</a>.</p>
+    <p>Auf unserem Server speichern wir zu jeder Anfrage Zeitpunkt, Benutzerkonto, Route und die Zahl der verbrauchten Recheneinheiten (Tokens), um die Kosten zu kontrollieren und ein Tageslimit je Nutzer einzuhalten. Der erzeugte Text wird ohne Bezug zu Ihrer Person für höchstens 24 Stunden zwischengespeichert und kann in dieser Zeit für eine inhaltlich gleiche Anfrage wiederverwendet werden. Ihre Erfahrungsstufe speichern wir in Ihrem Nutzerkonto.</p>
+    <p>Vor der ersten Nutzung weisen wir Sie auf die Übertragung hin. Die Verarbeitung erfolgt gemäß Art. 6 Abs. 1 lit. b DSGVO, um Ihnen die von Ihnen angeforderte Funktion bereitzustellen, die Verbrauchsaufzeichnung gemäß Art. 6 Abs. 1 lit. f DSGVO. Der Routencheck ist eine Planungshilfe. Er trifft keine Entscheidung mit rechtlicher Wirkung im Sinne von Art. 22 DSGVO.</p>
 
-    <h2>§ 11 Speicherdauer</h2>
-    <p>Die Speicherung Ihrer personenbezogenen Daten, die Sie uns über unsere Website übermitteln, erfolgt nur für die Dauer, die zur Erreichung des jeweiligen Zwecks der Datenverarbeitung notwendig ist. In Übereinstimmung mit handels- und steuerrechtlichen Aufbewahrungspflichten kann die Speicherung bestimmter Daten jedoch bis zu 10 Jahre dauern.</p>
+    <h2>§ 11 Android-App und Garmin-Uhr</h2>
+    <p><strong>Android-App:</strong> Die App zeigt YTAN in einer eigenen Oberfläche. Für sie gilt diese Datenschutzerklärung entsprechend. Die App verwendet folgende Berechtigungen:</p>
+    <ul>
+        <li>Standort, auch im Hintergrund: nur während Sie eine Route aufzeichnen, damit die Aufzeichnung bei ausgeschaltetem Bildschirm weiterläuft (§ 8)</li>
+        <li>Benachrichtigungen: für die Anzeige der laufenden Aufzeichnung</li>
+        <li>Installieren von Apps: um eine neue Version der App zu installieren, die Sie von unserem Server laden</li>
+    </ul>
+    <p>Die App wird nicht über einen App-Store verteilt, sondern von unserem Server geladen. Beim Start fragt sie dort die aktuelle Versionsnummer ab.</p>
+    <p><strong>Garmin-Uhr:</strong> Wenn Sie das YTAN-Datenfeld nutzen, speichern wir zu Ihrem Nutzerkonto einen Schlüssel für die Uhr, die gewählte Route und Ihre Anzeigeeinstellungen. Die Uhr ruft die Route mit diesem Schlüssel von unserem Server ab. Senden Sie die Route aus der Android-App, läuft die Übertragung über die App Garmin Connect auf Ihrem Telefon. Für die Verarbeitung durch Garmin gilt deren Datenschutzerklärung.</p>
 
-    <h2>§ 12 Ihre Datenschutzrechte</h2>
+    <h2>§ 12 Kontaktaufnahme</h2>
+    <p>Wenn Sie uns per E-Mail kontaktieren, speichern wir Ihre Nachricht und Ihre Kontaktdaten, um Ihre Anfrage zu bearbeiten und Rückfragen zu beantworten. Die Verarbeitung erfolgt gemäß Art. 6 Abs. 1 lit. f DSGVO, bei Anfragen zu Ihrem Nutzerkonto gemäß Art. 6 Abs. 1 lit. b DSGVO. Wir löschen die Daten, sobald Ihre Anfrage erledigt ist und keine gesetzlichen Aufbewahrungspflichten entgegenstehen.</p>
+
+    <h2>§ 13 Empfänger und Übermittlung in Drittländer</h2>
+    <p>Wir verkaufen Ihre Daten nicht und nutzen sie nicht für Werbung. Personenbezogene Daten erhalten nur:</p>
+    <ul>
+        <li>unser Hosting-Dienstleister, auf dessen Servern YTAN betrieben wird (§ 3)</li>
+        <li>unser E-Mail-Dienstleister, über den die in § 6 genannten Nachrichten versendet werden</li>
+        <li>Google, wenn Sie Google Maps aktiviert haben (§ 5)</li>
+        <li>Anthropic, wenn Sie den Routencheck nutzen, im dort beschriebenen Umfang (§ 10)</li>
+    </ul>
+    <p>Google und Anthropic verarbeiten Daten auch in den USA. Die Übermittlung stützt sich auf den Angemessenheitsbeschluss der Europäischen Kommission für die USA (EU-U.S. Data Privacy Framework), soweit der Anbieter danach zertifiziert ist, andernfalls auf Standardvertragsklauseln nach Art. 46 Abs. 2 lit. c DSGVO.</p>
+    <p>Darüber hinaus geben wir Daten nur weiter, wenn wir gesetzlich dazu verpflichtet sind oder Sie ausdrücklich eingewilligt haben.</p>
+
+    <h2>§ 14 Verschlüsselung (SSL/TLS)</h2>
+    <p>YTAN verwendet eine SSL- bzw. TLS-Verschlüsselung. Eine verschlüsselte Verbindung erkennen Sie am „https://“ in der Adresszeile Ihres Browsers und am Schloss-Symbol. Die Daten, die Sie an uns senden, können so nicht von Dritten mitgelesen werden.</p>
+
+    <h2>§ 15 Speicherdauer</h2>
+    <p>Wir speichern personenbezogene Daten nur so lange, wie es für den jeweiligen Zweck nötig ist:</p>
+    <ul>
+        <li>Nutzerkonto und Ihre Inhalte: bis Sie sie löschen oder das Nutzerkonto gelöscht wird. Öffentliche Inhalte bleiben danach ohne Bezug zu Ihrer Person erhalten (§ 6).</li>
+        <li>Zähler zum Schutz vor Missbrauch (IP-Adresse): 24 Stunden</li>
+        <li>Bestätigungscodes aus E-Mails: bis zu ihrem Ablauf oder ihrer Verwendung</li>
+        <li>Verbrauchsaufzeichnung des Routenchecks: bis zur Löschung des Nutzerkontos, danach nur noch mit dem Benutzernamen zum Zeitpunkt der Anfrage</li>
+        <li>Zwischengespeicherte Texte des Routenchecks: höchstens 24 Stunden</li>
+        <li>Protokolldateien von YTAN: ohne feste Frist. Ältere Einträge werden archiviert und von uns gelöscht, sobald sie zur Aufklärung von Störungen nicht mehr gebraucht werden.</li>
+        <li>Server-Logfiles des Hosting-Dienstleisters: nach dessen Vorgaben</li>
+        <li>Cookies: 12 Monate, sofern Sie sie nicht vorher löschen</li>
+    </ul>
+
+    <h2>§ 16 Ihre Datenschutzrechte</h2>
     <p>Als betroffene Person der Datenverarbeitung haben Sie, in Übereinstimmung mit den gesetzlichen Bestimmungen, die folgenden Rechte gegenüber dem Verantwortlichen bezüglich Ihrer personenbezogenen Daten:</p>
 
     <h3>A. Widerrufsrecht</h3>
-    <p>Viele Datenverarbeitungen sind nur mit Ihrer ausdrücklichen Zustimmung möglich. Wenn die Verarbeitung Ihrer Daten auf Ihrer Einwilligung basiert, haben Sie das Recht, diese Einwilligung gemäß Art. 7 Abs. 3 DSGVO jederzeit mit Wirkung für die Zukunft zu widerrufen. Die Rechtmäßigkeit der Datenverarbeitung, die bis zum Widerruf auf der Grundlage Ihrer Einwilligung erfolgt ist, bleibt davon unberührt. Die Speicherung der Daten für Abrechnungs- und Buchhaltungszwecke wird von einem Widerruf nicht beeinflusst.</p>
+    <p>Viele Datenverarbeitungen sind nur mit Ihrer ausdrücklichen Zustimmung möglich. Wenn die Verarbeitung Ihrer Daten auf Ihrer Einwilligung basiert, haben Sie das Recht, diese Einwilligung gemäß Art. 7 Abs. 3 DSGVO jederzeit mit Wirkung für die Zukunft zu widerrufen. Die Rechtmäßigkeit der Datenverarbeitung, die bis zum Widerruf auf der Grundlage Ihrer Einwilligung erfolgt ist, bleibt davon unberührt.</p>
 
     <h3>B. Auskunftsrecht</h3>
     <p>Gemäß Art. 15 DSGVO haben Sie das Recht, von uns eine Bestätigung darüber zu verlangen, ob wir Ihre personenbezogenen Daten verarbeiten. Ist dies der Fall, so haben Sie Anspruch auf Auskunft über diese Daten, einschließlich der Verarbeitungszwecke, der Kategorien der verarbeiteten Daten, der Empfänger oder Kategorien von Empfängern, gegenüber denen die Daten offengelegt wurden oder werden, die geplante Speicherdauer bzw. die Kriterien für deren Festlegung, das Bestehen eines Rechts auf Berichtigung, Löschung, Einschränkung der Verarbeitung, Widerspruch gegen die Verarbeitung, Beschwerde bei einer Aufsichtsbehörde, die Herkunft der Daten, sofern diese nicht bei Ihnen erhoben wurden, das Bestehen einer automatisierten Entscheidungsfindung einschließlich Profiling und ggf. aussagekräftige Informationen über die involvierte Logik sowie die Sie betreffende Tragweite und die angestrebten Auswirkungen einer solchen Verarbeitung, sowie Ihr Recht auf Unterrichtung, welche Garantien gemäß Art. 46 DSGVO bei Weiterleitung Ihrer Daten in Drittländer bestehen.</p>
@@ -103,7 +187,7 @@
     <p>Sollten wir Ihre personenbezogenen Daten öffentlich gemacht haben und gemäß den vorherigen Bestimmungen zu deren Löschung verpflichtet sein, so ergreifen wir unter Berücksichtigung der verfügbaren Technologie und der Implementierungskosten angemessene Maßnahmen, auch technischer Art, um die für die Datenverarbeitung Verantwortlichen, die diese Daten verarbeiten, darüber in Kenntnis zu setzen, dass Sie als betroffene Person die Löschung aller Links zu Ihren personenbezogenen Daten oder von Kopien oder Replikationen dieser Daten verlangt haben.</p>
 
     <h3>E. Recht auf Einschränkung der Verarbeitung</h3>
-    <p>Gemäß Art. 18 DSGVO haben Sie das Recht, die Einschränkung der Verarbeitung (Sperrung) Ihrer personenbezogenen Daten zu verlangen. Um dieses Recht auszuüben, können Sie sich jederzeit an uns wenden. Die Kontaktdaten finden Sie im Impressum. Eine Einschränkung der Verarbeitung kann in folgenden Fällen verlangt werden:</p>
+    <p>Gemäß Art. 18 DSGVO haben Sie das Recht, die Einschränkung der Verarbeitung (Sperrung) Ihrer personenbezogenen Daten zu verlangen. Um dieses Recht auszuüben, können Sie sich jederzeit an uns wenden. Die Kontaktdaten finden Sie in § 2. Eine Einschränkung der Verarbeitung kann in folgenden Fällen verlangt werden:</p>
     <ol type="a">
         <li>Wenn Sie die Richtigkeit Ihrer bei uns gespeicherten personenbezogenen Daten bestreiten, benötigen wir in der Regel Zeit, um dies zu überprüfen. Für die Dauer der Prüfung haben Sie das Recht, die Einschränkung der Verarbeitung Ihrer personenbezogenen Daten zu verlangen.</li>
         <li>Wenn die Verarbeitung Ihrer personenbezogenen Daten unrechtmäßig geschah / geschieht, können Sie statt der Löschung die Einschränkung der Datenverarbeitung verlangen.</li>
@@ -146,8 +230,8 @@
         <br>Internet: <a href="https://lfd.niedersachsen.de/" target="_blank" rel="nofollow noopener">https://lfd.niedersachsen.de/</a>
     </p>
 
-    <h2>§ 13 Gültigkeit und Änderung dieser Datenschutzerklärung</h2>
-    <p>Diese Datenschutzerklärung tritt am 01.09.2026 in Kraft. Wir behalten uns vor, diese Erklärung bei Bedarf und unter Einhaltung der geltenden Datenschutzgesetze zu ändern. Dies kann beispielsweise erforderlich sein, um neuen rechtlichen Anforderungen gerecht zu werden oder um Änderungen an unserer Website oder neuen, über unsere Website angebotenen Diensten zu berücksichtigen. Die jeweils aktuelle Version der Datenschutzerklärung, die zum Zeitpunkt Ihres Besuchs auf unserer Website abrufbar ist, ist bindend.</p>
+    <h2>§ 17 Gültigkeit und Änderung dieser Datenschutzerklärung</h2>
+    <p>Diese Datenschutzerklärung tritt am 13.11.2026 in Kraft. Wir behalten uns vor, diese Erklärung bei Bedarf und unter Einhaltung der geltenden Datenschutzgesetze zu ändern. Dies kann beispielsweise erforderlich sein, um neuen rechtlichen Anforderungen gerecht zu werden oder um Änderungen an unserer Website oder neuen, über unsere Website angebotenen Diensten zu berücksichtigen. Die jeweils aktuelle Version der Datenschutzerklärung, die zum Zeitpunkt Ihres Besuchs auf unserer Website abrufbar ist, ist bindend.</p>
     <p>Im Falle von Änderungen an dieser Datenschutzerklärung werden wir diese auf dieser Seite veröffentlichen, um Sie umfassend darüber zu informieren, welche personenbezogenen Daten wir erfassen, wie wir sie verarbeiten und unter welchen Bedingungen wir sie gegebenenfalls weitergeben.</p>
 </body>
 </html>

@@ -18,3 +18,11 @@
     width: 100%;
     max-width: 360px;
 }
+
+/* /admin/ai usage table: the user column stays visible while the table scrolls sideways */
+.ai-usage-table .ai-sticky {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background-color: var(--bs-body-bg);
+}

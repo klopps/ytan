@@ -44,6 +44,7 @@ $adminNavItems = [
     ['key' => 'settings', 'icon' => 'bi-gear', 'label' => $t('admin.nav.settings'), 'href' => $baseUrl . '/admin/settings'],
     ['key' => 'radar', 'icon' => 'bi-cloud-rain', 'label' => $t('admin.nav.radar'), 'href' => $baseUrl . '/admin/radar'],
     ['key' => 'wind', 'icon' => 'bi-wind', 'label' => $t('admin.nav.wind'), 'href' => $baseUrl . '/admin/wind'],
+    ['key' => 'ai', 'icon' => 'bi-stars', 'label' => $t('admin.nav.ai'), 'href' => $baseUrl . '/admin/ai'],
     ['key' => 'logs', 'icon' => 'bi-journal-text', 'label' => $t('admin.nav.logs'), 'href' => $baseUrl . '/admin/logs'],
     // Own page (templates/admin-styleguide.php), NOT part of this AdminLTE
     // shell - clicking this link navigates away from it entirely. See that

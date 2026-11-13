@@ -42,6 +42,11 @@
   --font-condensed: 'Barlow Condensed', sans-serif;
   --color-location: #ff0000;
   --color-location-pulse: #ffffff;
+  /* Routencheck traffic light (route-briefing.js also reads them for the map lines) */
+  --rc-green: #2e8b3e;
+  --rc-yellow: #d99a00;
+  --rc-red: #c62828;
+  --rc-grey: #8a8a96;
 
   /* 0px until #appUpdateBanner is shown - ui.js's setAppUpdateRequired()
      then sets this to the banner's own live-measured rendered height, the
@@ -87,6 +92,10 @@ a:focus-visible {
   --shadow-soft: 0 2px 10px rgba(0,0,0,0.45);
   --color-overlay: rgba(0,0,0,0.4);
   --color-overlay-strong: rgba(0,0,0,0.55);
+  --rc-green: #5cbf6a;
+  --rc-yellow: #f0b72f;
+  --rc-red: #ef6a5f;
+  --rc-grey: #8b87a3;
 }
 
 html,
@@ -5301,6 +5310,18 @@ input[type="color"] {
   font-size: 12.5px;
 }
 
+/* Profile > Delete account: what happens to the content (user.js) */
+.account-deletion-list {
+  margin: 0 16px 12px 16px;
+  padding-left: 18px;
+  font-size: 12.5px;
+  color: var(--color-text);
+}
+
+.account-deletion-list li {
+  margin-bottom: 6px;
+}
+
 .nav-example-card {
   display: flex;
   align-items: center;
@@ -5496,4 +5517,226 @@ input[type="color"] {
   min-height: 0;
   border: 0;
   background-color: var(--color-bg-page);
+}
+
+/* ROUTENCHECK (route-briefing.js, templates/app.php #routeCheckSheet):
+   bottom sheet on phones, side panel from 768px. z-index 6: above the map
+   badges (5), below the full-screen panels (10) and the drawer (11). */
+.route-check-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 45vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background-color: var(--color-bg-panel);
+  color: var(--color-text);
+  box-shadow: var(--shadow-panel);
+  border-radius: 16px 16px 0 0;
+  z-index: 6;
+  transition: max-height 0.25s ease;
+}
+.route-check-sheet[hidden] { display: none; }
+.route-check-sheet.expanded { max-height: 85vh; }
+.rc-head {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 8px 8px 16px;
+  background-color: var(--color-bg-panel);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+.rc-handle {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 44px;
+  height: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.rc-handle::before {
+  content: '';
+  display: block;
+  width: 40px;
+  height: 4px;
+  margin: 3px auto;
+  border-radius: 2px;
+  background-color: var(--color-border);
+}
+.rc-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+.rc-title .material-icons-round { color: var(--color-accent); }
+.rc-route-name {
+  font-family: var(--font-body);
+  font-weight: 400;
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rc-close {
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.rc-body { padding: 12px 16px 16px; }
+.rc-verdict {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+.rc-light {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  margin-top: 2px;
+  background-color: var(--rc-grey);
+}
+.rc-green .rc-light, .rc-dot.rc-green, .rc-window.rc-green { background-color: var(--rc-green); }
+.rc-yellow .rc-light, .rc-dot.rc-yellow, .rc-window.rc-yellow { background-color: var(--rc-yellow); }
+.rc-red .rc-light, .rc-dot.rc-red, .rc-window.rc-red { background-color: var(--rc-red); }
+.rc-grey .rc-light, .rc-dot.rc-grey, .rc-window.rc-grey { background-color: var(--rc-grey); }
+.rc-verdict-label { font-weight: 700; font-size: 1.05em; }
+.rc-verdict-reason { margin: 2px 0; }
+.rc-muted { color: var(--color-text-secondary); }
+.rc-small { font-size: 0.85em; }
+.rc-note {
+  margin: 6px 0 10px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background-color: var(--color-bg-subtle);
+  font-size: 0.9em;
+}
+.rc-label {
+  margin: 14px 0 6px;
+  font-size: 0.8em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+.rc-windows {
+  display: flex;
+  gap: 3px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.rc-window {
+  flex: 1 0 28px;
+  min-height: 34px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  color: var(--color-on-accent);
+  font-size: 0.8em;
+  font-weight: 700;
+  cursor: pointer;
+}
+.rc-window.active { border-color: var(--color-text); }
+.rc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.rc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 18px;
+  background-color: var(--color-bg-panel);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.9em;
+  cursor: pointer;
+}
+.rc-chip .material-icons-round { font-size: 18px; }
+.rc-chip.active {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-on-accent);
+}
+.rc-chip.rc-static { cursor: default; background-color: var(--color-bg-subtle); }
+.rc-text { margin-top: 14px; line-height: 1.45; }
+.rc-text h3 { font-size: 1em; margin: 12px 0 4px; }
+.rc-text p, .rc-text ul { margin: 4px 0; }
+.rc-list { list-style: none; margin: 0; padding: 0; }
+.rc-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 0;
+  border: 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.rc-row > span:last-child { display: flex; flex-direction: column; gap: 2px; }
+.rc-row-title { font-weight: 600; }
+.rc-dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin-top: 4px;
+  border-radius: 50%;
+}
+.rc-place-icon { font-size: 20px; color: var(--color-accent); }
+.rc-footer { margin-top: 14px; }
+.rc-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
+  vertical-align: -2px;
+  border: 2px solid var(--color-border-subtle);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: rc-spin 0.8s linear infinite;
+}
+@keyframes rc-spin { to { transform: rotate(360deg); } }
+.routeCheckButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+}
+@media (min-width: 768px) {
+  .route-check-sheet {
+    left: auto;
+    right: 16px;
+    top: calc(76px + var(--top-banner-offset));
+    bottom: 16px;
+    width: 380px;
+    max-height: none;
+    border-radius: 15px;
+  }
+  .route-check-sheet.expanded { max-height: none; }
+  .rc-handle { display: none; }
 }

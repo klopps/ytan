@@ -77,6 +77,10 @@ final class AuthController extends BaseController
         $pending = $this->users->findActivePendingEmailChange((int) $user['id']);
         $data['pending_email'] = $pending['payload'] ?? null;
         $data['pending_email_expires_at'] = $pending['expires_at'] ?? null;
+        $data['pending_account_deletion_expires_at'] = $this->users->findActivePendingToken(
+            (int) $user['id'],
+            AccountDeletionController::TOKEN_PURPOSE
+        )['expires_at'] ?? null;
 
         return $this->json($response, ['data' => $data]);
     }

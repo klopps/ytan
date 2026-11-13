@@ -111,6 +111,97 @@ final class WaterDistanceService
         return $result;
     }
 
+    /**
+     * Open water along a straight line: metres from the position in the
+     * direction $bearing (degrees, 0 = north, 90 = east) to the first sea
+     * coastline or lake shore (islands included - their rings are coastline
+     * too), at most $maxMeters. Looking towards where the wind comes from this
+     * is the fetch (Routencheck: shelter in the lee of land, waves); looking
+     * downwind it tells whether the wind blows out to open water.
+     *
+     * Rivers are left out (the index has only their centre line). null = no
+     * index or the position is outside its countries; $maxMeters = nothing
+     * within reach. Flat geometry around the position - good enough within a
+     * few tens of kilometres.
+     */
+    public function openWaterAlong(float $lat, float $lng, float $bearing, int $maxMeters = 30000): ?int
+    {
+        $index = $this->index();
+        if ($index === null || !$this->covers($lat, $lng)) {
+            return null;
+        }
+        $cell = $index->cellDegrees();
+        $scaleX = self::METERS_PER_DEGREE * cos(deg2rad($lat));
+        $dirX = sin(deg2rad($bearing));
+        $dirY = cos(deg2rad($bearing));
+        $endX = $dirX * $maxMeters;
+        $endY = $dirY * $maxMeters;
+
+        // Walk the line in quarter-cell steps and test the segments of the
+        // cells around each step (3 x 3, so a cell the line only clips at a
+        // corner is not skipped); stop once the best hit lies behind the
+        // cells still to come.
+        $cellMeters = $cell * self::METERS_PER_DEGREE * min(1.0, cos(deg2rad(min(89.0, abs($lat) + $cell))));
+        $step = max(200.0, $cellMeters / 4);
+        $seen = [];
+        $best = INF;
+        $kinds = [array_search('sea', WaterIndex::KINDS, true), array_search('lake', WaterIndex::KINDS, true)];
+        for ($s = 0.0; $s <= $maxMeters + $step; $s += $step) {
+            if ($best < $s - 2 * $cellMeters) {
+                break;
+            }
+            $pLat = $lat + ($dirY * min($s, $maxMeters)) / self::METERS_PER_DEGREE;
+            $pLng = $lng + ($dirX * min($s, $maxMeters)) / $scaleX;
+            $row = (int) floor($pLat / $cell + 1e-9);
+            $column = (int) floor($pLng / $cell + 1e-9);
+            for ($r = $row - 1; $r <= $row + 1; $r++) {
+                for ($c = $column - 1; $c <= $column + 1; $c++) {
+                    if (isset($seen["$r:$c"])) {
+                        continue;
+                    }
+                    $seen["$r:$c"] = true;
+                    foreach ($kinds as $kind) {
+                        foreach ($index->segments((int) $kind, $r, $c, $c) as [$lat1, $lng1, $lat2, $lng2]) {
+                            $hit = self::rayHit(
+                                $endX, $endY,
+                                ($lng1 - $lng) * $scaleX, ($lat1 - $lat) * self::METERS_PER_DEGREE,
+                                ($lng2 - $lng) * $scaleX, ($lat2 - $lat) * self::METERS_PER_DEGREE
+                            );
+                            if ($hit !== null && $hit < $best) {
+                                $best = $hit;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return is_finite($best) ? (int) round($best) : $maxMeters;
+    }
+
+    /**
+     * Where the line from (0,0) to (endX,endY) crosses the segment A-B: the
+     * distance from (0,0) in metres, null when they don't cross. Hits closer
+     * than 1 m count as the starting point lying on the shore and are ignored.
+     */
+    private static function rayHit(float $endX, float $endY, float $ax, float $ay, float $bx, float $by): ?float
+    {
+        $sx = $bx - $ax;
+        $sy = $by - $ay;
+        $denominator = $endX * $sy - $endY * $sx;
+        if (abs($denominator) < 1e-9) {
+            return null;
+        }
+        $t = ($ax * $sy - $ay * $sx) / $denominator;
+        $u = ($ax * $endY - $ay * $endX) / $denominator;
+        if ($t < 0.0 || $t > 1.0 || $u < 0.0 || $u > 1.0) {
+            return null;
+        }
+        $distance = $t * hypot($endX, $endY);
+
+        return $distance < 1.0 ? null : $distance;
+    }
+
     private function index(): ?WaterIndex
     {
         if (!$this->opened) {

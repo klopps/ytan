@@ -6,8 +6,10 @@
     "license": "MIT",
     "require": {
         "php": ">=8.1",
+        "anthropic-ai/sdk": "^1.8",
         "dompdf/dompdf": "^3.1",
         "firebase/php-jwt": "^7.2",
+        "guzzlehttp/guzzle": "^7.9",
         "league/commonmark": "^2.4",
         "meyfa/php-svg": "^0.13",
         "phpmailer/phpmailer": "^7.1",
@@ -30,7 +32,13 @@
         }
     },
     "config": {
-        "sort-packages": true
+        "sort-packages": true,
+        "platform": {
+            "php": "8.3.0"
+        },
+        "allow-plugins": {
+            "php-http/discovery": false
+        }
     },
     "scripts": {
         "test": "phpunit",

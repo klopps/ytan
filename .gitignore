@@ -46,6 +46,8 @@ Thumbs.db
 
 # Kartenbilder für Touren-Dokumente
 storage/static-maps-cache/*
+# Routencheck: generated AI texts (AiTextCache, cleaned daily)
+/storage/ai-cache/
 /storage/overpass-last-request
 /storage/nga-msi-last-request
 # heartbeat of the YTAN worker (Home Assistant add-on, tools/ytan_worker.py)
@@ -72,3 +74,6 @@ __pycache__/
 # logs are written at runtime (LogWriter / ytanlog), never versioned
 /storage/logs/*
 !/storage/logs/.gitkeep
+
+# Per-host PHP settings (error_log path etc.), created by hand on each server
+/public/.user.ini

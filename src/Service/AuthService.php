@@ -247,6 +247,7 @@ final class AuthService
             'route_view_recording' => (bool) ($user['route_view_recording'] ?? false),
             'export_routes_own' => (bool) ($user['export_routes_own'] ?? false),
             'export_routes_public' => (bool) ($user['export_routes_public'] ?? false),
+            'ai_use' => (bool) ($user['ai_use'] ?? false),
         ];
     }
 

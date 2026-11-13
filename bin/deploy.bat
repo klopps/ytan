@@ -96,6 +96,7 @@ tar -C "%ROOT_DIR%" ^
     --exclude="package-lock.json" ^
     --exclude="public/images/wsi/*.svg" ^
     --exclude="public/app" ^
+    --exclude="public/.user.ini" ^
     --exclude="tools/radar/.venv" ^
     --exclude="tools/water" ^
     --exclude="__pycache__" ^

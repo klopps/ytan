@@ -80,6 +80,7 @@ function initAdminAuth(options) {
                 route_view_recording: !!answer.user.route_view_recording,
                 export_routes_own: !!answer.user.export_routes_own,
                 export_routes_public: !!answer.user.export_routes_public,
+                ai_use: !!answer.user.ai_use,
                 pending_email: null,
                 pending_email_expires_at: null,
             });
@@ -115,6 +116,7 @@ function initAdminAuth(options) {
                 route_view_recording: !!me.data.route_view_recording,
                 export_routes_own: !!me.data.export_routes_own,
                 export_routes_public: !!me.data.export_routes_public,
+                ai_use: !!me.data.ai_use,
                 pending_email: me.data.pending_email,
                 pending_email_expires_at: me.data.pending_email_expires_at,
             });

@@ -277,7 +277,20 @@ final class App
             $c->get(UserRepository::class),
         ));
         $c->set(AuthController::class, fn ($c) => new AuthController($authService, $userRepository, $mailService, $appUrl, $c->get(RequestThrottle::class)));
-        $c->set(UserController::class, fn () => new UserController($userRepository, $mailService, $authService, $appUrl));
+        $c->set(\Ytan\Service\AccountDeletionService::class, fn ($c) => new \Ytan\Service\AccountDeletionService($pdo, $c->get(TourRepository::class), [
+            'tour' => $c->get('images.tour'),
+            'route' => $c->get('images.route'),
+            'area' => $c->get('images.area'),
+            'poi' => $c->get('images.poi'),
+        ]));
+        $c->set(UserController::class, fn ($c) => new UserController($userRepository, $mailService, $authService, $appUrl, $c->get(\Ytan\Service\AccountDeletionService::class)));
+        $c->set(\Ytan\Http\Controllers\AccountDeletionController::class, fn ($c) => new \Ytan\Http\Controllers\AccountDeletionController(
+            $userRepository,
+            $c->get(\Ytan\Service\AccountDeletionService::class),
+            $mailService,
+            $appUrl,
+            $c->get(RequestThrottle::class),
+        ));
         $c->set(RadarController::class, fn () => new RadarController(new RadarTileService($rootDir . '/storage/radar')));
         $c->set(WindSettingsController::class, fn ($c) => new WindSettingsController($c->get(SettingsRepository::class), $rootDir . '/storage/radar', $rootDir . '/storage/wind', new RadarJobRunner($rootDir, 'wind')));
         $c->set(WindController::class, fn () => new WindController(new WindDataService($rootDir . '/storage/wind')));
@@ -291,14 +304,53 @@ final class App
             new TranslationRepository($rootDir . '/resources/i18n'),
             new TranslationUsageScanner($rootDir)
         ));
+        $c->set(WeatherService::class, fn ($c) => new WeatherService(
+            new WeatherForecastRepository($pdo),
+            new WeatherRegionResolver($c->get(GeocodingService::class)),
+            new OpenMeteoWeatherProvider($c->get(CurlJsonHttpClient::class)),
+            new SmhiWeatherProvider($c->get(CurlJsonHttpClient::class)),
+        ));
         $c->set(WeatherController::class, fn ($c) => new WeatherController(
-            new WeatherService(
-                new WeatherForecastRepository($pdo),
-                new WeatherRegionResolver($c->get(GeocodingService::class)),
-                new OpenMeteoWeatherProvider($c->get(CurlJsonHttpClient::class)),
-                new SmhiWeatherProvider($c->get(CurlJsonHttpClient::class)),
-            ),
+            $c->get(WeatherService::class),
             $c->get(RequestThrottle::class)
+        ));
+
+        // Routencheck (routencheck.md): traffic light + AI text for a route and day.
+        $c->set(\Ytan\Service\Ai\AiClient::class, fn () => \Ytan\Service\Ai\AnthropicAiClient::fromEnv());
+        $c->set(\Ytan\Domain\Ai\AiUsageRepository::class, fn () => new \Ytan\Domain\Ai\AiUsageRepository($pdo));
+        $c->set(\Ytan\Service\Ai\RouteBriefingService::class, function ($c) use ($rootDir, $translator) {
+            $water = $c->get(\Ytan\Service\Water\WaterDistanceService::class);
+            $pois = $c->get(PoiRepository::class);
+            $weather = $c->get(WeatherService::class);
+            $typeLabel = fn (int $type) => $translator->t('app.poitype.' . $type);
+
+            return new \Ytan\Service\Ai\RouteBriefingService(
+                new \Ytan\Service\Ai\RouteBriefingBuilder(
+                    fn (float $lat, float $lng) => $weather->getForecast($lat, $lng),
+                    fn (array $position, float $bearing) => $water->openWaterAlong($position[0], $position[1], $bearing),
+                    fn (float $south, float $north, float $west, float $east, array $types, ?int $userId) => array_map(
+                        fn (array $poi) => $poi + ['type_label' => $typeLabel((int) $poi['poitype_id'])],
+                        $pois->findInBox($south, $north, $west, $east, $types, $userId)
+                    ),
+                ),
+                $c->get(\Ytan\Service\Ai\AiClient::class),
+                new \Ytan\Service\Ai\AiTextCache($rootDir . '/storage/ai-cache'),
+                $c->get(\Ytan\Domain\Ai\AiUsageRepository::class),
+                $c->get(SettingsRepository::class),
+                new \Ytan\Service\Log\LogWriter($rootDir . '/storage/logs/ai.log'),
+            );
+        });
+        $c->set(\Ytan\Http\Controllers\AiBriefingController::class, fn ($c) => new \Ytan\Http\Controllers\AiBriefingController(
+            $c->get(RouteRepository::class),
+            $c->get(UserRepository::class),
+            $c->get(SettingsRepository::class),
+            $c->get(\Ytan\Service\Ai\RouteBriefingService::class),
+            $translator->locale(),
+        ));
+        $c->set(\Ytan\Http\Controllers\AiAdminController::class, fn ($c) => new \Ytan\Http\Controllers\AiAdminController(
+            $c->get(SettingsRepository::class),
+            $c->get(\Ytan\Domain\Ai\AiUsageRepository::class),
+            $c->get(\Ytan\Service\Ai\AiClient::class),
         ));
         $c->set(GeocodingController::class, fn ($c) => new GeocodingController($c->get(GeocodingService::class), $c->get(RequestThrottle::class)));
         $c->set(WatchController::class, fn ($c) => new WatchController(new WatchLinkRepository($pdo), $c->get(RouteRepository::class), $c->get(TourRepository::class), new WatchKeyVault((string) $_ENV['JWT_SECRET'])));
@@ -383,6 +435,8 @@ final class App
         $app->get('/api/v1/auth/me', [AuthController::class, 'me']);
         $app->get('/api/v1/auth/default-speed', [AuthController::class, 'defaultSpeed']);
         $app->put('/api/v1/auth/default-speed', [AuthController::class, 'setDefaultSpeed']);
+        $app->get('/api/v1/auth/paddle-level', [\Ytan\Http\Controllers\AiBriefingController::class, 'paddleLevel']);
+        $app->put('/api/v1/auth/paddle-level', [\Ytan\Http\Controllers\AiBriefingController::class, 'setPaddleLevel']);
         $app->post('/api/v1/auth/forgot-password', [AuthController::class, 'forgotPassword']);
         $app->post('/api/v1/auth/set-password', [AuthController::class, 'setPassword']);
         $app->put('/api/v1/auth/password', [AuthController::class, 'changePassword']);
@@ -390,6 +444,10 @@ final class App
         $app->put('/api/v1/auth/profile', [AuthController::class, 'updateProfile']);
         $app->delete('/api/v1/auth/email-change', [AuthController::class, 'cancelEmailChange']);
         $app->post('/api/v1/auth/confirm-email-change', [AuthController::class, 'confirmEmailChange']);
+        $app->get('/api/v1/auth/account-deletion', [\Ytan\Http\Controllers\AccountDeletionController::class, 'status']);
+        $app->post('/api/v1/auth/account-deletion', [\Ytan\Http\Controllers\AccountDeletionController::class, 'requestDeletion']);
+        $app->delete('/api/v1/auth/account-deletion', [\Ytan\Http\Controllers\AccountDeletionController::class, 'cancelDeletion']);
+        $app->post('/api/v1/auth/confirm-account-deletion', [\Ytan\Http\Controllers\AccountDeletionController::class, 'confirmDeletion']);
 
         $app->get('/api/v1/pois', [PoiController::class, 'index']);
         $app->get('/api/v1/pois/bounds', [PoiController::class, 'bounds']);
@@ -410,6 +468,7 @@ final class App
         $app->post('/api/v1/routes/{id}/images', [RouteController::class, 'uploadImage']);
         $app->get('/api/v1/routes/{id}/images', [RouteController::class, 'listImages']);
         $app->get('/api/v1/routes/{id}/gpx', [GpxExportController::class, 'routeGpx']);
+        $app->post('/api/v1/routes/{id}/briefing', [\Ytan\Http\Controllers\AiBriefingController::class, 'briefing']);
         $app->post('/api/v1/routes/{id}/split', [RouteSplitController::class, 'split']);
         $app->get('/api/v1/routes/{id}/images/{imageId}', [RouteController::class, 'showImage']);
         $app->delete('/api/v1/routes/{id}/images/{imageId}', [RouteController::class, 'deleteImage']);
@@ -489,6 +548,10 @@ final class App
         $app->put('/api/v1/settings/wind', [WindSettingsController::class, 'update']);
         $app->post('/api/v1/settings/wind/run', [WindSettingsController::class, 'run']);
         $app->put('/api/v1/settings/wind/placement', [WindSettingsController::class, 'placement']);
+        $app->put('/api/v1/settings/ai', [\Ytan\Http\Controllers\AiAdminController::class, 'updateSettings']);
+        $app->post('/api/v1/settings/ai/test', [\Ytan\Http\Controllers\AiAdminController::class, 'test']);
+        $app->put('/api/v1/settings/briefing-rules', [\Ytan\Http\Controllers\AiAdminController::class, 'updateRules']);
+        $app->get('/api/v1/admin/ai/usage', [\Ytan\Http\Controllers\AiAdminController::class, 'usage']);
 
         $app->get('/', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $c, $translator) {
             ob_start();
@@ -500,6 +563,7 @@ final class App
             $trackDistanceFilterPresets = $c->get(SettingsRepository::class)->trackDistanceFilterPresets();
             $routeLabelFontSizeRange = $c->get(SettingsRepository::class)->routeLabelFontSizeRange();
             $routeAnimation = $c->get(SettingsRepository::class)->routeAnimationSettings();
+            $routeCheckEnabled = $c->get(SettingsRepository::class)->aiSettings()['enabled'];
             $appVersion = 'dev';
             $versionFile = $rootDir . '/VERSION';
             if (is_file($versionFile)) {
@@ -585,6 +649,15 @@ final class App
             ob_start();
             $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
             require $rootDir . '/templates/forgot-password.php';
+            $res->getBody()->write(ob_get_clean());
+
+            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
+        });
+
+        $app->get('/confirm-account-deletion', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
+            ob_start();
+            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
+            require $rootDir . '/templates/confirm-account-deletion.php';
             $res->getBody()->write(ob_get_clean());
 
             return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
@@ -843,6 +916,21 @@ final class App
             $externalJobs = $c->get(SettingsRepository::class)->externalJobs();
             $mapsApiKey = $_ENV['MAPS_API_KEY'] ?? '';
             require $rootDir . '/templates/admin-wind.php';
+            $res->getBody()->write(ob_get_clean());
+
+            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
+        });
+
+        // Routencheck: switch, limit, connection test, token usage, traffic-light rules (AiAdminController).
+        $app->get('/admin/ai', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator, $c) {
+            ob_start();
+            $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
+            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
+            $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
+            $aiSettings = $c->get(SettingsRepository::class)->aiSettings();
+            $briefingRules = $c->get(SettingsRepository::class)->briefingRules();
+            $aiClient = $c->get(\Ytan\Service\Ai\AiClient::class);
+            require $rootDir . '/templates/admin-ai.php';
             $res->getBody()->write(ob_get_clean());
 
             return $res->withHeader('Content-Type', 'text/html; charset=utf-8');

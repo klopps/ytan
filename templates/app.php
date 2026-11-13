@@ -39,6 +39,7 @@
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_TRACK_DISTANCE_FILTER_PRESETS = <?= json_encode($trackDistanceFilterPresets) ?>;</script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_ROUTE_LABEL_FONT_SIZE_RANGE = <?= json_encode($routeLabelFontSizeRange) ?>;</script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_ROUTE_ANIMATION = <?= json_encode($routeAnimation) ?>;</script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_ROUTE_CHECK_ENABLED = <?= !empty($routeCheckEnabled) ? 'true' : 'false' ?>;</script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_LOCALE = "<?= htmlspecialchars($translator->locale(), ENT_QUOTES) ?>";</script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_TRANSLATIONS = <?= json_encode($translator->all(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;</script>
     <!-- Must be declared before applyStoredTheme() runs below (right after
@@ -84,6 +85,7 @@
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/wind.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/wind.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/poi.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/poi.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/route.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/route.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/route-briefing.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/route-briefing.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/track-recorder.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/track-recorder.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/area.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/area.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/tour.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/tour.js') ?>"></script>
@@ -584,6 +586,11 @@
       <button type="button" class="route-animation-stop" data-on-click="stopRouteAnimation();"><i class="material-icons-round">close</i><?= $t('animation.stop') ?></button>
     </div>
 
+    <!-- ROUTENCHECK (route-briefing.js): bottom sheet / side panel with the
+         traffic light and the AI text; filled by routeCheckRender(). Below
+         the drawer and the full-screen panels, the map stays usable. -->
+    <section id="routeCheckSheet" class="route-check-sheet" hidden aria-live="polite" aria-label="<?= htmlspecialchars($t('route_check.title'), ENT_QUOTES) ?>"></section>
+
     <div id="tourModeBadge" class="tour-mode-badge" style="display:none;">
       <i class="material-icons-round tour-mode-badge-icon">explore</i>
       <div class="tour-mode-badge-text">
@@ -734,8 +741,10 @@
           user.route_view_recording = !!answer.data.route_view_recording;
           user.export_routes_own = !!answer.data.export_routes_own;
           user.export_routes_public = !!answer.data.export_routes_public;
+          user.ai_use = !!answer.data.ai_use;
           user.pending_email = answer.data.pending_email;
           user.pending_email_expires_at = answer.data.pending_email_expires_at;
+          user.pending_account_deletion_expires_at = answer.data.pending_account_deletion_expires_at || null;
 
           sessionStorage.setItem('user', JSON.stringify(user));
           updateProfileRowLabel();

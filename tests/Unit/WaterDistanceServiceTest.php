@@ -96,4 +96,35 @@ final class WaterDistanceServiceTest extends TestCase
             unlink($meta);
         }
     }
+
+    public function testOpenWaterAlongALineEndsAtTheFirstShore(): void
+    {
+        $service = $this->service();
+        // The coast line runs east-west 100 m north of 56.0 N / 9.0 E.
+        $this->assertEqualsWithDelta(100, $service->openWaterAlong(56.0, 9.0, 0.0), 1);
+        // Towards the south there is nothing within reach; the river (centre line only) doesn't count.
+        $this->assertSame(30000, $service->openWaterAlong(56.0, 9.0, 180.0));
+        $this->assertSame(30000, $service->openWaterAlong(56.0, 9.0, 90.0));
+        // A shorter reach caps the result.
+        $this->assertSame(50, $service->openWaterAlong(56.0, 9.0, 0.0, 50));
+    }
+
+    public function testOpenWaterInsideALakeEndsAtItsShore(): void
+    {
+        $service = $this->service();
+        $this->assertEqualsWithDelta(0.01 * 111320 * cos(deg2rad(56.3)), $service->openWaterAlong(56.3, 9.0, 90.0), 10);
+        $this->assertEqualsWithDelta(0.01 * 111320, $service->openWaterAlong(56.3, 9.0, 0.0), 10);
+    }
+
+    public function testOpenWaterWithoutAnIndexIsNull(): void
+    {
+        $service = new WaterDistanceService(sys_get_temp_dir() . '/no-such-water-index.bin');
+        $log = ini_set('error_log', (string) tempnam(sys_get_temp_dir(), 'log'));
+        try {
+            $this->assertNull($service->openWaterAlong(56.0, 9.0, 0.0));
+        } finally {
+            @unlink((string) ini_get('error_log'));
+            ini_set('error_log', (string) $log);
+        }
+    }
 }

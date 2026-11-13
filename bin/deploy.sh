@@ -50,8 +50,10 @@ tar -C "$ROOT_DIR" \
     --exclude='watch' \
     --exclude='public/images/wsi/*.svg' \
     --exclude='public/app' \
+    --exclude='public/.user.ini' \
     --exclude='storage/radar' \
     --exclude='storage/wind' \
+    --exclude='storage/ai-cache' \
     --exclude='storage/water' \
     --exclude='tools/radar/.venv' \
     --exclude='tools/water' \

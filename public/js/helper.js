@@ -591,8 +591,10 @@ function initUser() {
         route_view_recording: false,
         export_routes_own: false,
         export_routes_public: false,
+        ai_use: false,
         pending_email: null,
-        pending_email_expires_at: null
+        pending_email_expires_at: null,
+        pending_account_deletion_expires_at: null
     }
 }
 

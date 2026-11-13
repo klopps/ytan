@@ -1,5 +1,38 @@
 # Offene Punkte
 
+## Standardstartzeit für Routencheck
+
+Bei einem Routencheck soll als Standardstartzeit 10 Uhr, statt 9 Uhr angenommen werden.
+
+## Info-Fenster für Routencheck vergrößerbar
+
+Der Infobereich mit dem Routencheck ragt auf Mobilgeräten von unten zu 35% in den Bildschirm. Der Infobereich soll am oberen Anfasser auch weiter nach oben gezogen werden können, so dass man mehr Text auf einmal sehen kann.
+
+## Routencheck: KI-Einschätzung einer Route für einen Tag
+
+Erste KI-Funktion (entschieden 2026-11-13). Auf eine Route tippen → "Routencheck" (EN "Route check", später für Touren "Tourcheck"): PHP bewertet die Route für Tag/Startzeit/Richtung/Tempo/Erfahrungsstufe mit einer Ampel (grün/gelb/rot, grau = keine Daten) je Abschnitt und je möglicher Startstunde, Claude (Anthropic API, `claude-sonnet-5-5`) formuliert daraus eine Einschätzung mit Zeitfenstern, Abschnitten, Ausweich-Anlandestellen und Hinweisen. Grundsatz: Zahlen rechnet PHP, die KI erklärt nur. Ergebnis als Bottom-Sheet, Karte bleibt sichtbar und färbt die Route abschnittsweise.
+
+Entschieden:
+- Zugang über neues Benutzerrecht `ai_use`; ein Admin-Schalter schaltet die komplette Funktion (Ampel + Text) systemweit an/aus; Tageslimit je Benutzer.
+- Ampel-Kriterien: Mittelwind, Böen, Welle (Open-Meteo, gedeckelt durch Fetch-Schätzung), Gewitter, Dunkelheit, Wassertemperatur; Modifikatoren ablandiger Wind, Seitenwind + Welle, Lee/Exponiert über die freie Wasserstrecke gegen den Wind (Fetch aus dem lokalen Wasserindex, Inseln eingeschlossen). Schwellen auf /admin/ai einstellbar; Benutzer wählen nur ihre Erfahrungsstufe (Einsteiger/Erfahren/Experte = Faktor auf die Schwellen).
+- API-Key nur in `.env` (`ANTHROPIC_API_KEY`, je Umgebung ein Workspace mit Spend Limit in der Anthropic Console; lokaler Key am 2026-11-13 erfolgreich getestet).
+- KI-Text wird zwischengespeichert (Schlüssel = gesendeter Kontext, gerundete Wetterwerte, Gültigkeit einstellbar, Default 3 h); Treffer zählen nicht ins Limit.
+- Admin-Seite /admin/ai: Schalter, Tageslimit, Verbindungstest, Verbrauch (Ø Tokens je Abfrage; Tabelle je berechtigtem Benutzer und Monat, sortierbar nach Benutzer/Abfragen/Tokens), Ampel-Regeln.
+- Zurückgestellt: Restguthaben-Anzeige (Anthropic hat keine Balance-API; Idee: Aufladungen von Hand eintragen, Kosten aus protokollierten Tokens schätzen).
+
+Plan mit allen Details: routencheck.md.
+
+Stand 2026-11-13: gebaut und lokal getestet (PHPUnit 907 grün, davon neu `RouteRatingTest`, `BriefingRulesTest`, `RouteCheckTest`, Fetch-Tests in `WaterDistanceServiceTest`; e2e context-menu/route grün; Browser mobil 390×650 und Desktop). Erste echte Abfrage (Avernakø - Drejø, 18,6 km, Sonnet 5.5): ~2.700 Tokens Eingabe + ~1.100 Ausgabe, ~13 s, ≈ 1,7 Cent. Backend: Migration 070, `src/Service/Ai/*`, `AiUsageRepository`, `AiBriefingController`, `AiAdminController`, `WaterDistanceService::openWaterAlong()`, `PoiRepository::findInBox()`, Composer `anthropic-ai/sdk` + Guzzle (Plattform auf PHP 8.3 gepinnt). Frontend: `route-briefing.js`, Button im Routen-InfoWindow + Kontextmenü, `/admin/ai` (`admin-ai.js`), Recht im Benutzerformular.
+
+Offen:
+- Datenschutzerklärung: 2026-11-13 komplett auf den Stand von YTAN gebracht (`templates/privacy.php`, § 10 Routencheck; Hinweistext `route_check.consent` angeglichen - er behauptete "Wegpunkte" und "keine persönlichen Daten", gesendet werden aber keine Koordinaten, dafür die Namen eigener privater POIs). Vom Betreiber noch zu prüfen/freizugeben: Auftragsverarbeitung Hoster + Mail, Rechtsgrundlage der Übermittlung an Anthropic (DPF-Zertifizierung oder Standardvertragsklauseln, Vertragspartner), Löschfrist für `storage/logs` (derzeit keine) und Fotos mit EXIF-Daten (werden unverändert gespeichert).
+- Deploy: Migration 070 läuft über `bin/migrate.php`; auf Test und Prod je einen eigenen Anthropic-Workspace-Key in die `.env` (`ANTHROPIC_API_KEY`), dann auf /admin/ai einschalten und Benutzern das Recht „Routencheck (KI)“ geben.
+- Erfahrungsstufe zusätzlich im Profil einstellbar machen (bisher nur über die Chips im Routencheck, gespeichert per `PUT /auth/paddle-level`).
+- Anleitung (`docs/user/de/`) um ein Kapitel Routencheck mit Screenshot ergänzen.
+- e2e-Spec für den Routencheck (nur Ampel mit `text: false`, damit keine echten KI-Kosten entstehen).
+- KI-Antworten sind mit ~350 Wörtern länger als im Prompt verlangt (~250) - beobachten, ggf. Prompt nachschärfen (`PROMPT_VERSION` erhöhen).
+- Später: Tourcheck (ganze Tour), Restguthaben-Anzeige (s. o.).
+
 
 
 ## Regenradar mit Kurzfristvorhersage als Kartenebene

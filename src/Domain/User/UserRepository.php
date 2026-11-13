@@ -41,7 +41,7 @@ final class UserRepository
         return $user === false ? null : $user;
     }
 
-    private const RIGHT_COLUMNS = ['is_admin', 'tour_create', 'tour_publish', 'tour_manage', 'tour_copy', 'route_view_recording', 'export_routes_own', 'export_routes_public'];
+    private const RIGHT_COLUMNS = ['is_admin', 'tour_create', 'tour_publish', 'tour_manage', 'tour_copy', 'route_view_recording', 'export_routes_own', 'export_routes_public', 'ai_use'];
 
     /**
      * @param array<string,mixed> $filters optional exact-match filters, one
@@ -53,7 +53,7 @@ final class UserRepository
     {
         [$where, $params] = $this->buildRightFilterWhere($filters);
 
-        $sql = 'SELECT id, username, email, firstname, lastname, is_admin, tour_create, tour_publish, tour_manage, tour_copy, route_view_recording, export_routes_own, export_routes_public FROM user';
+        $sql = 'SELECT id, username, email, firstname, lastname, is_admin, tour_create, tour_publish, tour_manage, tour_copy, route_view_recording, export_routes_own, export_routes_public, ai_use FROM user';
         if ($where !== []) {
             $sql .= ' WHERE ' . implode(' AND ', $where);
         }
@@ -108,8 +108,8 @@ final class UserRepository
     public function create(array $data): array
     {
         $stmt = $this->db->prepare(
-            'INSERT INTO user (username, email, firstname, lastname, is_admin, tour_create, tour_publish, tour_manage, tour_copy, route_view_recording, export_routes_own, export_routes_public, password)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)'
+            'INSERT INTO user (username, email, firstname, lastname, is_admin, tour_create, tour_publish, tour_manage, tour_copy, route_view_recording, export_routes_own, export_routes_public, ai_use, password)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)'
         );
 
         try {
@@ -126,6 +126,7 @@ final class UserRepository
                 (int) ($data['route_view_recording'] ?? 0),
                 (int) ($data['export_routes_own'] ?? 0),
                 (int) ($data['export_routes_public'] ?? 0),
+                (int) ($data['ai_use'] ?? 0),
             ]);
         } catch (PDOException $e) {
             if ($e->getCode() === '23000') {
@@ -149,7 +150,7 @@ final class UserRepository
         $merged = array_merge($existing, $data);
 
         $stmt = $this->db->prepare(
-            'UPDATE user SET username=?, email=?, firstname=?, lastname=?, is_admin=?, tour_create=?, tour_publish=?, tour_manage=?, tour_copy=?, route_view_recording=?, export_routes_own=?, export_routes_public=? WHERE id=?'
+            'UPDATE user SET username=?, email=?, firstname=?, lastname=?, is_admin=?, tour_create=?, tour_publish=?, tour_manage=?, tour_copy=?, route_view_recording=?, export_routes_own=?, export_routes_public=?, ai_use=? WHERE id=?'
         );
 
         try {
@@ -166,6 +167,7 @@ final class UserRepository
                 (int) ($merged['route_view_recording'] ?? 0),
                 (int) ($merged['export_routes_own'] ?? 0),
                 (int) ($merged['export_routes_public'] ?? 0),
+                (int) ($merged['ai_use'] ?? 0),
                 $id,
             ]);
         } catch (PDOException $e) {
@@ -195,6 +197,21 @@ final class UserRepository
     public function setDefaultSpeed(int $id, ?float $kmh): void
     {
         $this->db->prepare('UPDATE user SET default_speed_kmh = ? WHERE id = ?')->execute([$kmh, $id]);
+    }
+
+    /** The Routencheck experience level (BriefingRules::LEVELS); 'experienced' when unknown. */
+    public function getPaddleLevel(int $id): string
+    {
+        $stmt = $this->db->prepare('SELECT paddle_level FROM user WHERE id = ?');
+        $stmt->execute([$id]);
+        $value = $stmt->fetchColumn();
+
+        return is_string($value) && $value !== '' ? $value : 'experienced';
+    }
+
+    public function setPaddleLevel(int $id, string $level): void
+    {
+        $this->db->prepare('UPDATE user SET paddle_level = ? WHERE id = ?')->execute([$level, $id]);
     }
 
     public function updatePassword(int $id, string $passwordHash): void
@@ -301,6 +318,19 @@ final class UserRepository
              AND used_at IS NULL AND expires_at > NOW() LIMIT 1"
         );
         $stmt->execute([$userId]);
+        $row = $stmt->fetch();
+
+        return $row === false ? null : $row;
+    }
+
+    /** The user's unused, unexpired token of a purpose (e.g. a pending account deletion), if any. */
+    public function findActivePendingToken(int $userId, string $purpose): ?array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT * FROM user_token WHERE user_id = ? AND purpose = ?
+             AND used_at IS NULL AND expires_at > NOW() LIMIT 1'
+        );
+        $stmt->execute([$userId, $purpose]);
         $row = $stmt->fetch();
 
         return $row === false ? null : $row;
