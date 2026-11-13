@@ -59,6 +59,9 @@ final class ImageStorageService
             throw new ValidationException('Only JPEG, PNG or WebP images are allowed.');
         }
 
+        // No EXIF/GPS/XMP in a stored photo - it's served to everybody who may see the entity.
+        $contents = ImageMetadataStripper::strip($contents, $mime);
+
         $filename = bin2hex(random_bytes(16)) . '.' . self::ALLOWED_MIME[$mime];
         $dir = $this->entityDir($entityId);
         if (!is_dir($dir)) {

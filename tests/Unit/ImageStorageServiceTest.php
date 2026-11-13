@@ -91,4 +91,23 @@ final class ImageStorageServiceTest extends TestCase
 
         $this->assertSame([], $this->images->listStoredFiles());
     }
+
+    public function testStoreRemovesExifBeforeWriting(): void
+    {
+        ob_start();
+        imagejpeg(imagecreatetruecolor(8, 8));
+        $jpeg = (string) ob_get_clean();
+        $exif = "Exif\0\0II\x2A\x00" . pack('V', 8) . pack('v', 0) . pack('V', 0) . 'GPS secret';
+        $dirty = substr($jpeg, 0, 2) . "\xFF\xE1" . pack('n', strlen($exif) + 2) . $exif . substr($jpeg, 2);
+        $tmp = tempnam(sys_get_temp_dir(), 'ytan-upload');
+        file_put_contents($tmp, $dirty);
+        $upload = new \Slim\Psr7\UploadedFile($tmp, 'photo.jpg', 'image/jpeg', strlen($dirty), UPLOAD_ERR_OK);
+
+        $stored = $this->images->store(4, $upload);
+        $contents = $this->images->read(4, $stored['filename'])['contents'];
+
+        $this->assertStringNotContainsString('secret', $contents);
+        $this->assertSame(strlen($contents), $stored['size_bytes']);
+        @unlink($tmp);
+    }
 }
