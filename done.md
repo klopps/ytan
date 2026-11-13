@@ -1,5 +1,17 @@
 # Erledigt
 
+## Infobereich für Routencheck vergrößerbar
+
+~~Der Infobereich mit dem Routencheck ragt auf Mobilgeräten von unten zu 35% in den Bildschirm. Der Infobereich soll am oberen Anfasser auch weiter nach oben gezogen werden können, so dass man mehr Text auf einmal sehen kann.~~
+
+Gelöst (2026-11-13): Auf Mobilgeräten (unter 768 px) lässt sich der Kopf des Routencheck-Sheets (Anfasser + Titelzeile, außer dem Schließen-x) mit dem Finger frei nach oben und unten ziehen, zwischen 120 px und 92 % der Bildschirmhöhe (`route-briefing.js`: `routeCheckDragStart()` per `data-on-pointerdown` auf `.rc-head`, `routeCheckDragMove()`/`routeCheckDragEnd()` als Dokument-Listener). Die gezogene Höhe wird als Inline-`max-height` gesetzt, ein kurzer Inhalt hinterlässt also keine leere Fläche; während des Ziehens schaltet die Klasse `.dragging` die Höhen-Transition ab, `.rc-head` hat `touch-action: none`, damit der Browser nicht stattdessen scrollt. Ein Tipp auf den Anfasser schaltet wie bisher zwischen Standard- (45vh) und ausgeklappter Höhe (85vh) um, nach einem Ziehen geht er zurück auf die Standardhöhe; der Klick, den der Browser direkt nach einem Ziehen auslöst, wird ignoriert. Beim Öffnen eines neuen Routenchecks gilt wieder die Standardhöhe. Stolperstein beim Bauen: ohne `preventDefault()` im `pointerdown` startete der Browser beim Ziehen über den Titeltext ein natives Drag (`dragstart`) und brach den Pointer mit `pointercancel` ab - das Sheet wuchs nur um den ersten Bewegungsschritt. Desktop (Seitenleiste ab 768 px) unverändert, dort kein Ziehen. Getestet im Browser bei 390×650 (Ziehen hoch/runter, Grenzen, Tipp danach, Schließen).
+
+## Standardstartzeit für Routencheck
+
+~~Bei einem Routencheck soll als Standardstartzeit 10 Uhr, statt 9 Uhr angenommen werden.~~
+
+Gelöst (2026-11-13): Der Routencheck nimmt als Standardstartzeit jetzt 10 Uhr: im Frontend für den Fall „morgen“ (`route-briefing.js` `openRouteCheck()`, wird ab 10 Uhr für den Folgetag gewählt; vor 10 Uhr bleibt es heute ab der nächsten vollen Stunde) und auf dem Server, wenn eine Anfrage keine `start_hour` mitschickt (`AiBriefingController::DEFAULT_START_HOUR` = 10). `docs/API.md` und `routencheck.md` angepasst.
+
 ## Kontolöschung
 
 ~~Es muss mölglich sein ein Benutzerkonto mit eigenen Inhalten zu löschen. Dabei werden private POIs etc. des Benutzers mitentfernt. Öffentliche Daten des Benutzers werden an einen Benutzer mit Admin-Rechten übertragen. Dabei gilt folgende Reihenfolge: 1. ein Admin mit dem Benutzernamen "ytan" (Groß-Kleinschreibung ist egal) 2. der Admin mit der kleinsten user_id. Jeder Benutzer muss sein eigenes Konto löschen dürfen. Er muss entsprechende Hinweise erhalten, was mit seinen Daten passiert und das die Löschung nicht rückgängig gemacht werden kann. Der Benutzer muss die Löschung mit seinem Kennwort und durch Klick auf einen Link in einer E-Mail bestätigen. Der Benutzer muss die Möglichkeit haben die Löschungabsicht zu widerrufen, solange er nicht auf den Link in der E-Mail geklickt hat. Der Link behält seine Gültigkeit für max. 60 Minuten.~~

@@ -99,7 +99,7 @@ switched off on /admin/ai, 403 `route_check.forbidden` without the right
 `ai_use` - admins always may; 404 for someone else's private route) -
 traffic light + AI assessment of the route for one day (`routencheck.md`).
 Body (all optional): `date` (`YYYY-MM-DD`, today .. +7 days, default
-today), `start_hour` (0-23, default 9), `reverse` (bool), `speed_kmh`
+today), `start_hour` (0-23, default 10), `reverse` (bool), `speed_kmh`
 (0.5-30, default the user's default speed, else 6), `level`
 (`beginner|experienced|expert`, default the stored one), `text` (`false` =
 traffic light only, no model request - the page asks for that first). 422

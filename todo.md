@@ -1,13 +1,5 @@
 # Offene Punkte
 
-## Standardstartzeit für Routencheck
-
-Bei einem Routencheck soll als Standardstartzeit 10 Uhr, statt 9 Uhr angenommen werden.
-
-## Info-Fenster für Routencheck vergrößerbar
-
-Der Infobereich mit dem Routencheck ragt auf Mobilgeräten von unten zu 35% in den Bildschirm. Der Infobereich soll am oberen Anfasser auch weiter nach oben gezogen werden können, so dass man mehr Text auf einmal sehen kann.
-
 ## Routencheck: KI-Einschätzung einer Route für einen Tag
 
 Erste KI-Funktion (entschieden 2026-11-13). Auf eine Route tippen → "Routencheck" (EN "Route check", später für Touren "Tourcheck"): PHP bewertet die Route für Tag/Startzeit/Richtung/Tempo/Erfahrungsstufe mit einer Ampel (grün/gelb/rot, grau = keine Daten) je Abschnitt und je möglicher Startstunde, Claude (Anthropic API, `claude-sonnet-5-5`) formuliert daraus eine Einschätzung mit Zeitfenstern, Abschnitten, Ausweich-Anlandestellen und Hinweisen. Grundsatz: Zahlen rechnet PHP, die KI erklärt nur. Ergebnis als Bottom-Sheet, Karte bleibt sichtbar und färbt die Route abschnittsweise.

@@ -29,7 +29,7 @@ use Ytan\Service\Ai\RouteGeometry;
 final class AiBriefingController extends BaseController
 {
     public const DEFAULT_SPEED_KMH = 6.0;
-    public const DEFAULT_START_HOUR = 9;
+    public const DEFAULT_START_HOUR = 10;
 
     public function __construct(
         private readonly RouteRepository $routes,

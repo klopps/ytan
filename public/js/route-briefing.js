@@ -93,7 +93,7 @@ async function openRouteCheck(i) {
     routeCheck.routeIndex = i;
     routeCheck.routeId = routes[i].id;
     routeCheck.date = routeCheckIsoDate(day);
-    routeCheck.startHour = useToday ? Math.min(23, Math.max(6, now.getHours() + 1)) : 9;
+    routeCheck.startHour = useToday ? Math.min(23, Math.max(6, now.getHours() + 1)) : 10;
     routeCheck.reverse = false;
     routeCheck.level = null; // the server takes the stored level
     routeCheck.result = null;
@@ -102,6 +102,7 @@ async function openRouteCheck(i) {
     var sheet = document.getElementById('routeCheckSheet');
     sheet.hidden = false;
     sheet.classList.remove('expanded');
+    sheet.style.maxHeight = '';
     document.addEventListener('keydown', routeCheckKeydown);
     routeCheckRender();
     routeCheckLoad();
@@ -124,7 +125,72 @@ function routeCheckKeydown(event) {
 }
 
 function routeCheckToggleExpanded() {
-    document.getElementById('routeCheckSheet').classList.toggle('expanded');
+    var sheet = document.getElementById('routeCheckSheet');
+    if (routeCheckDragEndedAt && Date.now() - routeCheckDragEndedAt < 400) {
+        return; // the click that follows a drag on the handle
+    }
+    if (sheet.style.maxHeight) {
+        // after a drag a tap goes back to the default height
+        sheet.style.maxHeight = '';
+        sheet.classList.remove('expanded');
+        return;
+    }
+    sheet.classList.toggle('expanded');
+}
+
+/*
+ * Phones: the sheet's head (handle + title) can be dragged up and down to
+ * show more or less of the text; a tap on the handle still toggles between
+ * the default and the expanded height. The dragged height is an inline
+ * max-height, so short content never leaves an empty area below it.
+ */
+var routeCheckDrag = null;
+var routeCheckDragEndedAt = 0;
+var ROUTE_CHECK_MIN_HEIGHT_PX = 120;
+var ROUTE_CHECK_MAX_HEIGHT_RATIO = 0.92;
+
+function routeCheckDragStart(event) {
+    var sheet = document.getElementById('routeCheckSheet');
+    if (!sheet || window.innerWidth >= 768 || event.button > 0 || (event.target.closest && event.target.closest('.rc-close'))) {
+        return;
+    }
+    // no text selection / native drag of the title (that cancels the pointer)
+    event.preventDefault();
+    routeCheckDrag = { y: event.clientY, height: sheet.getBoundingClientRect().height, moved: false };
+    document.addEventListener('pointermove', routeCheckDragMove, { passive: false });
+    document.addEventListener('pointerup', routeCheckDragEnd);
+    document.addEventListener('pointercancel', routeCheckDragEnd);
+}
+
+function routeCheckDragMove(event) {
+    if (!routeCheckDrag) {
+        return;
+    }
+    var dy = routeCheckDrag.y - event.clientY;
+    if (!routeCheckDrag.moved && Math.abs(dy) < 6) {
+        return;
+    }
+    var sheet = document.getElementById('routeCheckSheet');
+    routeCheckDrag.moved = true;
+    sheet.classList.add('dragging');
+    var max = window.innerHeight * ROUTE_CHECK_MAX_HEIGHT_RATIO;
+    var height = Math.max(ROUTE_CHECK_MIN_HEIGHT_PX, Math.min(max, routeCheckDrag.height + dy));
+    sheet.style.maxHeight = Math.round(height) + 'px';
+    event.preventDefault();
+}
+
+function routeCheckDragEnd() {
+    document.removeEventListener('pointermove', routeCheckDragMove);
+    document.removeEventListener('pointerup', routeCheckDragEnd);
+    document.removeEventListener('pointercancel', routeCheckDragEnd);
+    var sheet = document.getElementById('routeCheckSheet');
+    if (sheet) {
+        sheet.classList.remove('dragging');
+    }
+    if (routeCheckDrag && routeCheckDrag.moved) {
+        routeCheckDragEndedAt = Date.now();
+    }
+    routeCheckDrag = null;
 }
 
 /** Traffic light first, then the text; a newer request makes older answers obsolete. */
@@ -313,7 +379,7 @@ function routeCheckRender() {
     var route = routes[routeCheck.routeIndex] || {};
     var result = routeCheck.result;
     var loading = !result;
-    var html = '<div class="rc-head">' +
+    var html = '<div class="rc-head" data-on-pointerdown="routeCheckDragStart(event);">' +
         '<button type="button" class="rc-handle" aria-label="' + escapeHTML(t('route_check.expand')) + '" data-on-click="routeCheckToggleExpanded();"></button>' +
         '<div class="rc-title"><i class="material-icons-round">traffic</i><span>' + t('route_check.title') + '</span>' +
         '<span class="rc-route-name">' + escapeText(route.name || '') + '</span></div>' +

@@ -80,7 +80,7 @@ Grundsatz: **Zahlen rechnet PHP, das LLM nur Synthese + Sprache.** Pflichthinwei
 - Icon `auto_awesome`: Ligatur im vendored Font prüfen, sonst inline SVG (Muster `#editToolbar`).
 
 ### Ablauf ohne Eingabe
-- Tipp → sofort Anfrage mit Defaults: Tag = heute (vor 10 Uhr) sonst morgen, Startzeit = nächste volle Stunde bzw. 9 Uhr,
+- Tipp → sofort Anfrage mit Defaults: Tag = heute (vor 10 Uhr) sonst morgen, Startzeit = nächste volle Stunde bzw. 10 Uhr,
   Tempo = Profil-Standardgeschwindigkeit (gibt es schon, `Profile > Default speed`), Richtung = wie gezeichnet.
 - Kein Prompt-Textfeld. Anpassung danach über Chips im Ergebnis: Tag (Heute/Morgen/+2…+6), Startzeit (−/+ 1 h),
   "Richtung umkehren" (Wind macht Hin/Rück entscheidend). Jede Änderung = neue Anfrage (Cache macht Rücksprünge gratis).
