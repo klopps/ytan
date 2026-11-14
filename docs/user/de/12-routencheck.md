@@ -1,6 +1,6 @@
 ---
 title: Routencheck
-keywords: Routencheck, KI, Einschätzung, Ampel, Startzeit, Wind, Böen, Welle, Gewitter, Dunkelheit, Strömung, Fluss, Lee, ablandig, Erfahrungsstufe, Einsteiger, Experte, Claude, Anthropic, Tageslimit
+keywords: Routencheck, KI, Einschätzung, Ampel, Startzeit, Wind, Böen, Welle, Gewitter, Dunkelheit, Strömung, Fluss, Tide, Tidefluss, Gezeiten, Tidenstrom, Flut, Ebbe, Hochwasser, Niedrigwasser, BSH, Lee, ablandig, Erfahrungsstufe, Einsteiger, Experte, Claude, Anthropic, Tageslimit
 ---
 
 Der **Routencheck** prüft eine Route für einen Tag deiner Wahl: Er sagt, ob die Fahrt mit dem vorhergesagten Wetter **gut fahrbar**, **nur mit Vorsicht** oder **nicht empfohlen** ist, welche Startzeiten sich eignen und welche Abschnitte kritisch werden. Dazu schreibt eine **KI** eine kurze Einschätzung in Worten.
@@ -34,7 +34,7 @@ Von oben nach unten:
 2. **Startzeit:** Eine Leiste mit den Stunden des Tages, jede in der Ampelfarbe, die die Fahrt bei Start zu dieser Stunde hätte. So siehst du auf einen Blick, wann sich der Aufbruch lohnt. Ein Tipp auf eine Stunde wählt sie als Startzeit.
 3. **Tag:** **Heute**, **Morgen** und die fünf Tage danach.
 4. **−1 h / +1 h** verschieben die Startzeit, **Umkehren** fährt die Route in der Gegenrichtung. Das lohnt sich oft: Gegenwind auf dem Hinweg ist etwas anderes als auf dem Rückweg.
-5. **Strömung** (nur bei Routen auf einem Fluss, siehe unten).
+5. **Strömung** (nur bei Routen auf einem Fluss, siehe unten), auf Tideflüssen die **Gezeiten** des nächsten Pegels und der **Tidenstrom** (siehe [Tideflüsse](#routencheck-tidefluesse)).
 6. **Erfahrungsstufe:** **Einsteiger**, **Erfahren** oder **Experte**. Einsteiger bekommen strengere Grenzen, Experten großzügigere. YTAN merkt sich deine Wahl für das nächste Mal.
 7. **KI-Einschätzung:** Ein kurzer Text mit Fazit, guten Startzeiten, den kritischen Abschnitten und Ausweichmöglichkeiten. Er erscheint ein paar Sekunden nach der Ampel. Darunter steht, von wann die Einschätzung stammt.
 8. **Abschnitte:** Die Route in Stücken von etwa 3 km, jedes mit Ampelfarbe, Kilometern, Uhrzeit und Gründen. Ein Tipp zoomt die Karte auf diesen Abschnitt.
@@ -57,7 +57,7 @@ Die Farben **rechnet YTAN selbst nach festen Regeln**, nicht die KI. Die KI erkl
 | **Kaltes Wasser** | das Wasser kälter als 10 °C ist (gelb). |
 | **Ablandiger Wind** | der Wind vom nahen Land aufs offene Wasser weht. Wer dann kentert oder müde wird, treibt hinaus (mindestens gelb). |
 | **Wind und Welle von der Seite** | Wellen quer zur Fahrtrichtung laufen (eine Stufe höher). |
-| **Strömung** | ein Fluss dir entgegenkommt (siehe unten). |
+| **Strömung** | ein Fluss oder der Tidenstrom dir entgegenkommt (siehe unten). |
 
 Dazu berücksichtigt YTAN, wie viel **offenes Wasser** in Windrichtung liegt: Im **Lee** einer Küste oder Insel gelten großzügigere Grenzen, über eine weite freie Wasserfläche strengere. Gegenwind macht dich langsamer, das verschiebt die Ankunftszeit. Fehlen für eine Stunde Wetterdaten, bleibt der Abschnitt **grau**; ein Hinweis nennt das.
 
@@ -69,7 +69,21 @@ Liegt eine Route auf einem Fluss, rechnet der Routencheck mit seiner **Strömung
 
 Wie schnell der Fluss tatsächlich fließt, weiß YTAN nicht. Es nimmt einen Wert an, den die Administratoren festlegen (meist 2 km/h). Mit **−** und **+** neben **Strömung** änderst du ihn in Schritten von 0,5 km/h, zum Beispiel bei Hochwasser. Die echte Strömung hängt vom Wasserstand ab und ist in Kurven und Engstellen stärker.
 
-> **Hinweis:** Tidegewässer (zum Beispiel die Elbe unterhalb von Hamburg) kennt der Routencheck noch nicht als solche. Dort kehrt sich die Strömung mit den Gezeiten um, der Routencheck rechnet aber mit der normalen Flussströmung.
+## Tideflüsse
+
+Nahe der Mündung in ein Meer mit Gezeiten kehrt sich die Strömung mit der Tide um, zum Beispiel auf der Elbe bis Geesthacht, auf der Weser bis Bremen oder auf der Ems. Dort rechnet der Routencheck mit dem **Tidenstrom** statt mit der Flussströmung:
+
+- **Flut** (vom Niedrig- zum Hochwasser): Das Wasser läuft flussauf.
+- **Ebbe** (vom Hoch- zum Niedrigwasser): Das Wasser läuft flussab.
+- Am stärksten ist der Strom etwa bei halber Tide, beim **Strömungswechsel** (Stillwasser) steht er fast.
+
+Der Infobereich zeigt die Hoch- (HW) und Niedrigwasserzeiten (NW) des Tages am nächsten Gezeitenpegel. Sie stammen von den nationalen Diensten: in Deutschland vom Bundesamt für Seeschifffahrt und Hydrographie (©BSH), in Dänemark vom DMI, in den Niederlanden von Rijkswaterstaat, in Irland vom Marine Institute, in Großbritannien und Nordirland vom UK Hydrographic Office und in Norwegen von Kartverket. Anderswo (zum Beispiel in Frankreich und Spanien) leitet YTAN sie aus dem Meeresspiegel von Open-Meteo ab. Die Startzeiten-Leiste zeigt dann, wann du mit dem Strom fährst: Ein Start gegen die Ebbe wird gelb oder rot.
+
+Wie stark der Tidenstrom ist, weiß YTAN nicht. Es nimmt bei halber Tide einen Höchstwert an (meist 3 km/h). Mit **−** und **+** neben **Tidenstrom** änderst du ihn. Auf der Unterelbe ist der Strom oft stärker.
+
+Ein Fluss gilt als Tidefluss, wenn er nahe an der Küste liegt (bis 50 km) und der mittlere Tidenhub dort mindestens 0,5 m beträgt. Flüsse an der Ostsee, am Mittelmeer und am Schwarzen Meer zählen deshalb nicht dazu. Gibt es für einen Tidefluss keine Gezeitenzeiten (in manchen Flussmündungen ohne nationalen Dienst), rechnet der Routencheck dort **ohne Strömung** und weist im Infobereich darauf hin.
+
+> **Hinweis:** Die Werte legen die Administratoren fest, auch wie lange nach Hoch- oder Niedrigwasser am Pegel die Strömung wechselt.
 
 ## Wenn die KI-Einschätzung fehlt
 

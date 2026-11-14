@@ -164,6 +164,30 @@ final class WaterDistanceService
         ];
     }
 
+    /**
+     * The nearest point of the sea coastline within $maxMeters (Routencheck:
+     * whether a river section is near a river mouth, where the tide may turn
+     * the current; OpenStreetMap's coastline runs up the estuaries, e.g. the
+     * Weser into Bremen, the Elbe to below Hamburg).
+     *
+     * null = none within reach, no index, outside its countries.
+     *
+     * @return array{distance: int, lat: float, lng: float}|null
+     */
+    public function nearestSea(float $lat, float $lng, int $maxMeters = self::MAX_METERS): ?array
+    {
+        $index = $this->index();
+        if ($index === null || !$this->covers($lat, $lng)) {
+            return null;
+        }
+        $found = $this->nearest($index, (int) array_search('sea', WaterIndex::KINDS, true), $lat, $lng, $maxMeters);
+        if ($found['meters'] === null || $found['meters'] > $maxMeters) {
+            return null;
+        }
+
+        return ['distance' => $found['meters'], 'lat' => $found['point'][0], 'lng' => $found['point'][1]];
+    }
+
     /** Initial course from point 1 to point 2 in degrees (0 = north, 90 = east). */
     private static function bearing(float $lat1, float $lng1, float $lat2, float $lng2): float
     {
@@ -284,8 +308,9 @@ final class WaterDistanceService
      * Nearest segment of one kind: its distance in metres (null = none within
      * MAX_METERS or $limit) and the segment itself [lat1, lng1, lat2, lng2].
      * A $limit stops the ring search early once nothing nearer can come.
+     * 'point' is the nearest point on that segment [lat, lng].
      *
-     * @return array{meters: ?int, segment: ?array{0: float, 1: float, 2: float, 3: float}}
+     * @return array{meters: ?int, segment: ?array{0: float, 1: float, 2: float, 3: float}, point: ?array{0: float, 1: float}}
      */
     private function nearest(WaterIndex $index, int $kind, float $lat, float $lng, int $limit = self::MAX_METERS): array
     {
@@ -334,13 +359,13 @@ final class WaterDistanceService
         }
 
         if ($bestPoint === null) {
-            return ['meters' => null, 'segment' => null];
+            return ['meters' => null, 'segment' => null, 'point' => null];
         }
         $meters = self::haversine($lat, $lng, $bestPoint[0], $bestPoint[1]);
 
         return $meters > self::MAX_METERS
-            ? ['meters' => null, 'segment' => null]
-            : ['meters' => (int) round($meters), 'segment' => $bestSegment];
+            ? ['meters' => null, 'segment' => null, 'point' => null]
+            : ['meters' => (int) round($meters), 'segment' => $bestSegment, 'point' => $bestPoint];
     }
 
     private static function haversine(float $lat1, float $lng1, float $lat2, float $lng2): float

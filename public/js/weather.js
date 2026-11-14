@@ -475,7 +475,8 @@ function renderWeatherTimeline(data, preserveScroll) {
     }
 
     document.getElementById('weatherTimelineFetchedAt').textContent =
-        weatherFormatFetchedAt(data.fetched_at, data.utc_offset_seconds, data.source, data.model);
+        weatherFormatFetchedAt(data.fetched_at, data.utc_offset_seconds, data.source, data.model) +
+        (data.tide_source ? ' ' + t('weather.timeline.tide_from', { station: data.tide_source.station, attribution: data.tide_source.attribution }) : '');
 
     startWeatherNowLineRefresh();
 }
@@ -725,10 +726,14 @@ function buildWeatherHourColumn(hour, hourDate, hasMarineData) {
     }
     col.appendChild(dirRow);
 
-    if (hasMarineData && hour.wave_height !== null) {
+    if (hasMarineData) {
+        // Always present (empty without a value): the tide curve's row is
+        // placed by the sum of the row heights above it, and a tide curve
+        // from a national gauge (data.tide_source) can come without any
+        // Open-Meteo wave data, e.g. in Hamburg.
         const waveRow = document.createElement('div');
         waveRow.className = 'r-wave';
-        waveRow.textContent = hour.wave_height.toFixed(2);
+        waveRow.textContent = hour.wave_height !== null && hour.wave_height !== undefined ? hour.wave_height.toFixed(2) : '';
         col.appendChild(waveRow);
     }
 

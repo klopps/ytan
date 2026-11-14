@@ -50,5 +50,15 @@
     <p><?= $t('about.wind_text', [
         'source_link' => '<a href="https://www.dwd.de/DE/leistungen/opendata/opendata.html" target="_blank" rel="noopener">' . htmlspecialchars($t('about.wind_source_name')) . '</a>',
     ]) ?></p>
+    <h2><?= $t('about.tide_title') ?></h2>
+    <p><?= $t('about.tide_text', [
+        'bsh_link' => '<a href="https://gezeiten.bsh.de/" target="_blank" rel="noopener">' . htmlspecialchars($t('about.tide_bsh_name')) . '</a>',
+        'dmi_link' => '<a href="https://www.dmi.dk/friedata/" target="_blank" rel="noopener">DMI</a>',
+        'rws_link' => '<a href="https://rijkswaterstaatdata.nl/" target="_blank" rel="noopener">Rijkswaterstaat</a>',
+        'imi_link' => '<a href="https://www.marine.ie/" target="_blank" rel="noopener">Marine Institute</a>',
+        'ukho_link' => '<a href="https://www.admiralty.co.uk/" target="_blank" rel="noopener">UK Hydrographic Office (ADMIRALTY)</a>',
+        'kartverket_link' => '<a href="https://www.kartverket.no/til-sjos/se-havniva" target="_blank" rel="noopener">Kartverket</a>',
+        'openmeteo_link' => '<a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>',
+    ]) ?></p>
 </body>
 </html>

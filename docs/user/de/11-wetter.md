@@ -65,13 +65,16 @@ Die Winddaten stammen vom **Deutschen Wetterdienst** (Modelle ICON-D2, ICON-EU u
 | **Niederlande** | KNMI |
 | **Schweden** und die **Ostsee** außerhalb der Küstenstaaten | SMHI |
 | alle anderen Orte | Open-Meteo (internationale Modelle) |
-| **Wellen und Gezeiten** | Open-Meteo Marine |
+| **Wellen** | Open-Meteo Marine |
+| **Gezeiten** | der nächste Gezeitenpegel eines nationalen Dienstes bis 15 km entfernt (BSH, DMI, Rijkswaterstaat, Marine Institute, UK Hydrographic Office, Kartverket), sonst Open-Meteo Marine |
 | Sonnenauf- und -untergang | Open-Meteo |
 | **Ortsname** in der Überschrift | OpenStreetMap / Nominatim |
 
 YTAN wählt die Quelle automatisch nach dem Ort. Welche Quelle gerade verwendet wurde, steht unter der Überschrift: **Wetterdaten: DWD - 09.10.2026 / 18:47**. Mit dem **Kreispfeil** daneben lädst du die Vorhersage neu. Fehlen einzelne Stunden bei einer Quelle, ergänzt YTAN sie aus einer zweiten.
 
 > **Hinweis:** Wellen- und Gezeitendaten gibt es nur auf dem Meer und in Küstennähe. An Binnengewässern steht dort „Hier keine Seegang-Daten verfügbar".
+
+Kommen die Gezeiten von einem Pegel, steht das hinter der Datenquelle, zum Beispiel **Gezeiten: Pegel Hamburg, St. Pauli, Elbe (©BSH)**. So gibt es auch in Flussmündungen und Häfen eine Gezeitenkurve, wo Open-Meteo keine Werte hat, etwa auf der Elbe in Hamburg. Die Kurve zeigt Hub und Zeiten, bezogen auf den mittleren Wasserstand, nicht den absoluten Pegelstand. An der Ostsee bleibt die Kurve von Open-Meteo: Die astronomische Tide ist dort kaum spürbar, Open-Meteos Wasserstand zeigt dagegen auch den Windstau.
 
 ## Die Darstellung
 

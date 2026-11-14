@@ -22,6 +22,7 @@ var routeCheck = {
     reverse: false,
     level: null,
     currentKmh: null, // river current; null = the admin's default
+    tidalKmh: null, // tidal current at half tide; null = the admin's default
     result: null,
     textState: null,
     seq: 0,
@@ -99,6 +100,7 @@ async function openRouteCheck(i) {
     routeCheck.reverse = false;
     routeCheck.level = null; // the server takes the stored level
     routeCheck.currentKmh = null;
+    routeCheck.tidalKmh = null;
     routeCheck.result = null;
     routeCheck.textState = 'loading';
 
@@ -206,6 +208,9 @@ async function routeCheckLoad() {
     if (routeCheck.currentKmh !== null) {
         body.current_kmh = routeCheck.currentKmh;
     }
+    if (routeCheck.tidalKmh !== null) {
+        body.tidal_current_kmh = routeCheck.tidalKmh;
+    }
     routeCheck.textState = 'loading';
     try {
         var answer = await Ytan.post('/routes/' + routeCheck.routeId + '/briefing', body);
@@ -281,6 +286,52 @@ function routeCheckCurrentChipsHtml(result) {
         '<span class="rc-chip rc-static"><i class="material-icons-round">waves</i>' + t('route_check.current_at', { value: routeCheckNumber(result.current.river_kmh) }) + '</span>' +
         '<button type="button" class="rc-chip" aria-label="' + escapeHTML(t('route_check.current_more')) + '" data-on-click="routeCheckShiftCurrent(0.5);">+</button>' +
         '</div>';
+}
+
+/** Tidal current at half tide -/+ 0.5 km/h (only offered when the route runs on a tidal river with tide times). */
+function routeCheckShiftTidal(delta) {
+    var current = routeCheck.result && routeCheck.result.current;
+    var base = routeCheck.tidalKmh !== null ? routeCheck.tidalKmh : (current && current.tidal_kmh !== null ? current.tidal_kmh : 0);
+    var next = Math.round(Math.max(0, Math.min(ROUTE_CHECK_MAX_CURRENT_KMH, base + delta)) * 10) / 10;
+    if (next === base) {
+        return;
+    }
+    routeCheck.tidalKmh = next;
+    routeCheckLoad();
+}
+
+/** Literal keys (the translation tool finds usages by scanning). */
+function routeCheckTideType(type) {
+    return type === "HW" ? t("route_check.tide_hw") : t("route_check.tide_nw");
+}
+
+/**
+ * Tidal river: the high/low waters of the day per gauge with its source
+ * (©BSH / Open-Meteo) and the tidal current chips - or, without tide times,
+ * only the hint that the current turns with the tide there.
+ */
+function routeCheckTideHtml(result) {
+    var current = result.current;
+    if (!current || !current.on_tidal) {
+        return "";
+    }
+    if (!current.tides || current.tides.length === 0) {
+        return "<div class=\"rc-note\">" + t("route_check.tidal") + "</div>";
+    }
+    var html = "";
+    current.tides.forEach(function (tide) {
+        var events = tide.events.map(function (e) {
+            return routeCheckTideType(e.type) + " " + escapeHTML(e.time);
+        }).join(" · ") || t("route_check.tide_none_today");
+        html += "<div class=\"rc-note\"><i class=\"material-icons-round\">waves</i> " +
+            t("route_check.tide_line", { station: escapeText(tide.station), events: events }) +
+            " <span class=\"rc-muted rc-small\">" + escapeHTML(tide.attribution) + "</span></div>";
+    });
+    return html + "<div class=\"rc-chips\">" +
+        "<button type=\"button\" class=\"rc-chip\" aria-label=\"" + escapeHTML(t("route_check.tidal_less")) + "\" data-on-click=\"routeCheckShiftTidal(-0.5);\">&minus;</button>" +
+        "<span class=\"rc-chip rc-static\"><i class=\"material-icons-round\">swap_vert</i>" + t("route_check.tidal_at", { value: routeCheckNumber(current.tidal_kmh) }) + "</span>" +
+        "<button type=\"button\" class=\"rc-chip\" aria-label=\"" + escapeHTML(t("route_check.tidal_more")) + "\" data-on-click=\"routeCheckShiftTidal(0.5);\">+</button>" +
+        "</div>";
 }
 
 function routeCheckToggleReverse() {
@@ -442,6 +493,7 @@ function routeCheckRender() {
             '<button type="button" class="rc-chip' + (routeCheck.reverse ? ' active' : '') + '" data-on-click="routeCheckToggleReverse();"><i class="material-icons-round">swap_horiz</i>' + t('route_check.reverse') + '</button>' +
         '</div>' +
         routeCheckCurrentChipsHtml(result) +
+        routeCheckTideHtml(result) +
         '<div class="rc-chips">' + ROUTE_CHECK_LEVELS.map(function (level) {
             return '<button type="button" class="rc-chip' + (level === routeCheck.level ? ' active' : '') + '" data-on-click="routeCheckSetLevel(\'' + level + '\');">' + routeCheckLevelLabel(level) + '</button>';
         }).join('') + '</div>' +

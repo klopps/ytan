@@ -312,9 +312,28 @@ final class App
             new OpenMeteoWeatherProvider($c->get(CurlJsonHttpClient::class)),
             new SmhiWeatherProvider($c->get(CurlJsonHttpClient::class)),
         ));
+        // tide times of the national services (DE, DK, NL, IE, UK, NO) - the
+        // Routencheck adds Open-Meteo as the last source, the weather
+        // timeline keeps Open-Meteo's own curve when none of them has a gauge
+        $c->set('tides.national.sources', function ($c) use ($rootDir) {
+            $tideCache = new \Ytan\Service\Tide\TideCache($rootDir . '/storage/tide-cache');
+            $tideHttp = new \Ytan\Service\Tide\CurlTideHttp();
+
+            return [
+                new \Ytan\Service\Tide\BshTideSource($rootDir . '/storage/tide-cache', $c->get(CurlJsonHttpClient::class)),
+                new \Ytan\Service\Tide\DmiTideSource($tideCache, $tideHttp),
+                new \Ytan\Service\Tide\RwsTideSource($tideCache, $tideHttp),
+                new \Ytan\Service\Tide\MarineInstituteTideSource($tideCache, $tideHttp),
+                // UK: free Discovery tier, key in .env, no caching allowed
+                new \Ytan\Service\Tide\UkhoTideSource((string) ($_ENV['UKHO_API_KEY'] ?? ''), $tideHttp),
+                new \Ytan\Service\Tide\KartverketTideSource($tideCache, $tideHttp),
+            ];
+        });
         $c->set(WeatherController::class, fn ($c) => new WeatherController(
             $c->get(WeatherService::class),
-            $c->get(RequestThrottle::class)
+            $c->get(RequestThrottle::class),
+            new \Ytan\Service\Tide\WeatherTideOverlay(new \Ytan\Service\Tide\TideService($c->get('tides.national.sources'))),
+            $c->get(SettingsRepository::class),
         ));
 
         // Routencheck (routencheck.md): traffic light + AI text for a route and day.
@@ -325,6 +344,11 @@ final class App
             $pois = $c->get(PoiRepository::class);
             $weather = $c->get(WeatherService::class);
             $typeLabel = fn (int $type) => $translator->t('app.poitype.' . $type);
+            // tide times: national sources first, Open-Meteo everywhere else
+            $tides = new \Ytan\Service\Tide\TideService([
+                ...$c->get('tides.national.sources'),
+                new \Ytan\Service\Tide\OpenMeteoTideSource(fn (float $lat, float $lng) => $weather->getForecast($lat, $lng)),
+            ]);
 
             return new \Ytan\Service\Ai\RouteBriefingService(
                 new \Ytan\Service\Ai\RouteBriefingBuilder(
@@ -335,6 +359,8 @@ final class App
                         $pois->findInBox($south, $north, $west, $east, $types, $userId)
                     ),
                     fn (float $lat, float $lng, int $maxMeters) => $water->flowAt($lat, $lng, $maxMeters),
+                    fn (float $lat, float $lng, int $maxMeters) => $water->nearestSea($lat, $lng, $maxMeters),
+                    fn (float $lat, float $lng, ?array $coast, int $from, int $to, int $maxStation) => $tides->tide($lat, $lng, $coast, $from, $to, $maxStation),
                 ),
                 $c->get(\Ytan\Service\Ai\AiClient::class),
                 new \Ytan\Service\Ai\AiTextCache($rootDir . '/storage/ai-cache'),

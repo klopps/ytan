@@ -6,6 +6,7 @@ namespace Ytan\Service\Ai;
 
 use DateTimeImmutable;
 use DateTimeZone;
+use Ytan\Service\Tide\TideService;
 
 /**
  * The Routencheck's traffic light, computed without any AI (routencheck.md,
@@ -44,29 +45,52 @@ final class RouteRating
         private readonly float $levelFactor,
         private readonly DateTimeZone $timezone,
         private readonly float $riverCurrentKmh = 0.0,
+        private readonly array $tides = [],
+        private readonly float $tidalCurrentKmh = 0.0,
+        private readonly int $tidalLagSeconds = 0,
     ) {
     }
 
     /**
-     * The river current along a section in km/h: + with the course, - against
-     * it. 'along' is the mean of cos(course vs. flow) over the section's
-     * samples (off-river samples count 0), so the speed over ground follows
-     * the share of the section that is on the river; 'local' is the same for
-     * the river part only (the current where the paddler actually meets it).
-     * Canals have no current.
+     * The current along a section in km/h at a moment: + with the course, -
+     * against it. 'along' is the mean of cos(course vs. flow) over the
+     * section's samples (off-river samples count 0), so the speed over ground
+     * follows the share of the section that is on the river; 'local' is the
+     * same for the river part only (the current where the paddler actually
+     * meets it). Canals have no current.
      *
-     * @return array{along: float, local: float}
+     * On a tidal river with tide times (flow['tide']) it is the tidal
+     * current instead (TideService::phase()): ebb runs downstream like the
+     * river, flood upstream, its strength a half sine between the turns,
+     * at most tidalCurrentKmh. 'phase' = flood/ebb/slack (null elsewhere).
+     *
+     * @return array{along: float, local: float, phase: ?string}
      */
-    private function current(array $section): array
+    private function current(array $section, DateTimeImmutable $time): array
     {
         $flow = $section['flow'] ?? null;
+        if ($flow !== null && ($flow['tidal_share'] ?? 0.0) > 0.0) {
+            $tide = isset($flow['tide']) ? ($this->tides[$flow['tide']] ?? null) : null;
+            $phase = $tide !== null ? TideService::phase($tide['events'], $time->getTimestamp(), $this->tidalLagSeconds) : null;
+            if ($phase === null) {
+                return ['along' => 0.0, 'local' => 0.0, 'phase' => null];
+            }
+            $speed = ($phase['phase'] === 'ebb' ? 1.0 : -1.0) * $phase['strength'] * $this->tidalCurrentKmh;
+
+            return [
+                'along' => $flow['tidal_along'] * $speed,
+                'local' => $flow['tidal_along'] / $flow['tidal_share'] * $speed,
+                'phase' => $phase['slack'] ? 'slack' : $phase['phase'],
+            ];
+        }
         if ($flow === null || $flow['river_share'] <= 0.0 || $this->riverCurrentKmh <= 0.0) {
-            return ['along' => 0.0, 'local' => 0.0];
+            return ['along' => 0.0, 'local' => 0.0, 'phase' => null];
         }
 
         return [
             'along' => $flow['river_along'] * $this->riverCurrentKmh,
             'local' => $flow['river_along'] / $flow['river_share'] * $this->riverCurrentKmh,
+            'phase' => null,
         ];
     }
 
@@ -85,7 +109,7 @@ final class RouteRating
             $entry = $time;
             $hour = $this->hourData($section['weather'], $entry);
             // speed over ground: wind-slowed paddling speed plus the river current
-            $speed = max(0.5, $this->effectiveSpeed($speedKmh, $section['bearing'], $hour) + $this->current($section)['along']);
+            $speed = max(0.5, $this->effectiveSpeed($speedKmh, $section['bearing'], $hour) + $this->current($section, $entry)['along']);
             $seconds = (int) round($section['length'] / 1000 / $speed * 3600);
             $exit = $entry->modify('+' . $seconds . ' seconds');
             $time = $exit;
@@ -184,7 +208,8 @@ final class RouteRating
         // up to 30 km "exposed" and a fetch-built wave on a narrow river. There
         // the open-water rules (lee/exposed/offshore, wave estimate) stay out.
         $flow = $section['flow'] ?? null;
-        $onRiverWater = $flow !== null && $flow['river_share'] + $flow['canal_share'] > 0.5;
+        $riverShare = $flow === null ? 0.0 : $flow['river_share'] + ($flow['tidal_share'] ?? 0.0);
+        $onRiverWater = $flow !== null && $riverShare + $flow['canal_share'] > 0.5;
         $upwind = $direction !== null && !$onRiverWater ? $this->water($index, $section['mid'], $direction) : null;
         $downwind = $direction !== null && !$onRiverWater ? $this->water($index, $section['mid'], fmod($direction + 180.0, 360.0)) : null;
         $lee = $upwind !== null && $upwind < $this->rules['lee_fetch_m'];
@@ -245,7 +270,7 @@ final class RouteRating
             $reasons[] = ['criterion' => 'beam_sea', 'value' => (int) round($relative), 'threshold' => null, 'level' => $beamLevel];
             $level = max($level, $beamLevel);
         }
-        $current = $this->current($section);
+        $current = $this->current($section, $instants[0]);
         if ($current['local'] < 0.0) {
             $against = -$current['local'];
             $currentLevel = self::threshold($against, $this->rules['current'], $this->levelFactor);
@@ -270,7 +295,10 @@ final class RouteRating
                 'exposed' => $exposed,
                 'offshore' => $offshore,
                 // river/canal = more than half of the section's samples on it
-                'water' => $flow === null ? null : ($flow['river_share'] > 0.5 ? 'river' : ($flow['canal_share'] > 0.5 ? 'canal' : null)),
+                'water' => $flow === null ? null : ($riverShare > 0.5 ? 'river' : ($flow['canal_share'] > 0.5 ? 'canal' : null)),
+                // tidal: (part of) the section is a river the tide turns - no current computed
+                'tidal' => ($flow['tidal_share'] ?? 0.0) > 0.0,
+                'tide_phase' => $current['phase'],
                 'current' => $current['local'] != 0.0 ? round($current['local'], 1) : null,
             ],
         ];

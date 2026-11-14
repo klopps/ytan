@@ -100,6 +100,7 @@ tar -C "%ROOT_DIR%" ^
     --exclude="storage/radar" ^
     --exclude="storage/wind" ^
     --exclude="storage/ai-cache" ^
+    --exclude="storage/tide-cache" ^
     --exclude="storage/water" ^
     --exclude="tools/radar/.venv" ^
     --exclude="tools/water" ^

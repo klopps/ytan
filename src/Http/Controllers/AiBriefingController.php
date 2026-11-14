@@ -92,7 +92,7 @@ final class AiBriefingController extends BaseController
 
     /**
      * @param array<string, mixed> $body
-     * @return array{date: string, start_hour: int, reverse: bool, speed_kmh: float, level: string, current_kmh: ?float, with_text: bool}
+     * @return array{date: string, start_hour: int, reverse: bool, speed_kmh: float, level: string, current_kmh: ?float, tidal_current_kmh: ?float, with_text: bool}
      */
     private function options(array $body, int $userId): array
     {
@@ -133,6 +133,14 @@ final class AiBriefingController extends BaseController
         if ($current !== null && (!is_numeric($current) || $current < 0 || $current > self::MAX_CURRENT_KMH)) {
             throw new ValidationException('The current must be between 0 and 10 km/h.', 'route_check.current_invalid');
         }
+        // tidal current at half tide in km/h; null = the admin's default (BriefingRules tidal_current_kmh)
+        $tidal = $body['tidal_current_kmh'] ?? null;
+        if ($tidal === '') {
+            $tidal = null;
+        }
+        if ($tidal !== null && (!is_numeric($tidal) || $tidal < 0 || $tidal > self::MAX_CURRENT_KMH)) {
+            throw new ValidationException('The current must be between 0 and 10 km/h.', 'route_check.current_invalid');
+        }
 
         return [
             'date' => $date,
@@ -141,6 +149,7 @@ final class AiBriefingController extends BaseController
             'speed_kmh' => round((float) $speed, 1),
             'level' => $level,
             'current_kmh' => $current === null ? null : round((float) $current, 1),
+            'tidal_current_kmh' => $tidal === null ? null : round((float) $tidal, 1),
             // false = traffic light only (the page asks for the text in a second request)
             'with_text' => ($body['text'] ?? true) !== false,
         ];

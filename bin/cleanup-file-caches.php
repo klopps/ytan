@@ -33,6 +33,7 @@ $caches = [
     'geocoding-cache' => GeocodingService::CACHE_TTL_SECONDS,
     'static-maps-cache' => StaticMapImageService::CACHE_MAX_AGE_SECONDS,
     'ai-cache' => \Ytan\Service\Ai\AiTextCache::MAX_AGE_SECONDS,
+    'tide-cache' => \Ytan\Service\Tide\BshTideSource::CACHE_MAX_AGE_SECONDS,
 ];
 
 $total = 0;

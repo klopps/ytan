@@ -22,7 +22,7 @@ use Ytan\Service\Log\LogWriter;
 final class RouteBriefingService
 {
     /** Bump when the prompt changes, so cached texts of the old prompt are not reused. */
-    public const PROMPT_VERSION = 3;
+    public const PROMPT_VERSION = 5;
     private const MAX_TOKENS = 3000;
 
     public function __construct(
@@ -148,6 +148,11 @@ Rules:
   current (km/h against the course on a river). water: river/canal. current_kmh: river current along the course
   (+ with it, - against it); it is computed from an ASSUMED river current (route.assumed_river_current_kmh, a
   rough default the paddler can change) - say that the real current depends on the water level. Canals: no current.
+  tidal_river (route.partly_on_tidal_river): a river near the mouth where the tide turns the current. With tide times
+  (tides: gauge, high_low_water HW/NW in local time) the current there is the tidal current: tide_phase flood (runs
+  up the river), ebb (down the river) or slack, current_kmh from an ASSUMED maximum
+  (route.assumed_max_tidal_current_kmh) - recommend paddling with it and say that it is an estimate. Without tide
+  times no current was computed; tell the paddler to plan with the tide times.
 - Mention when parts have no data (grey) and what that means.
 - The assessment is a planning aid, not a safety guarantee; the paddler decides on the water.
 

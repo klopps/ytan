@@ -141,6 +141,18 @@ final class WaterDistanceServiceTest extends TestCase
         $this->assertNull($service->flowAt(56.0012, 9.0040), 'river 51 m, coast 34 m: at the mouth = sea');
     }
 
+    public function testTheNearestSeaPointWithinReach(): void
+    {
+        $service = $this->service();
+        $coast = $service->nearestSea(56.0, 9.0, 1000);
+
+        $this->assertEqualsWithDelta(100, $coast['distance'], 1);
+        $this->assertEqualsWithDelta(56.0, $coast['lat'], 0.002, 'the coast line runs 100 m north');
+        $this->assertEqualsWithDelta(9.0, $coast['lng'], 0.0001, 'straight north of the position');
+        $this->assertNull($service->nearestSea(56.0, 9.0, 50), 'farther than the reach');
+        $this->assertNull($service->nearestSea(57.7, 9.0), 'nothing within 100 km');
+    }
+
     public function testAnIndexWithoutTheCanalKindGivesNoFlowButTheSameDistances(): void
     {
         $service = new WaterDistanceService(dirname(__DIR__) . '/testdata/water-index-sample-v3kinds.bin');

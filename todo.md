@@ -3,7 +3,12 @@
 ## Routencheck: Tidegewässer und Strömung aus Messdaten
 
 Folgepunkt zur Flussströmung im Routencheck (done.md, 2026-11-14). Offen:
-- Tidebeeinflusste Flussabschnitte (Elbe unterhalb Hamburg, Weser, Ems, Eider ...): dort kehrt sich die Strömung mit der Tide um, die Fließrichtung aus OSM stimmt nur zeitweise. Bisher bekommen sie die normale Flussströmung. Idee: Flussabschnitte nahe einer Mündung ins Meer (z. B. < 30 km Flusslänge) als "tidebeeinflusst" markieren und keine Richtung rechnen, nur einen Hinweis; später Tidezeiten (Open-Meteo `tide_height`) für die Richtung nutzen.
+- Tidequellen für die übrigen Länder. Eingebaut sind DE, DK, NL, IE, UK und NO (done.md, „Routencheck: Tidequellen weiterer Länder“ und „Routencheck: Tidequelle UK“), sonst gilt Open-Meteo. Geprüft am 2026-11-14 und nicht eingebaut:
+  - SHOM (FR): Die Vorhersagen sind kostenpflichtig lizenziert, offen sind nur die Messwerte.
+  - Puertos del Estado (ES): keine öffentliche API gefunden, nur Website, App „Imar“ und Widgets.
+  - Portugal und Belgien: nicht gesucht. Die Schelde bis Antwerpen-Prosperpolder deckt Rijkswaterstaat ab.
+
+  Verworfen: Tidemodell lokal rechnen (EOT20/FES2022/TPXO mit pyTMD) und kommerzielle Anbieter (WorldTides, Stormglass).
 - Strömung aus Messdaten statt pauschal: Pegelonline (WSV) liefert für Bundeswasserstraßen Wasserstand und teils Abfluss, aber keine Fließgeschwindigkeit (Querschnitt fehlt) - höchstens als "Hochwasser/Niedrigwasser"-Hinweis nutzbar.
 - Bäche (`waterway=stream`) sind nicht im Wasserindex.
 

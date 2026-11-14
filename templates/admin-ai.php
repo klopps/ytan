@@ -13,6 +13,7 @@ $ruleRows = [
     ['dusk_minutes', 'min'], ['cold_water_c', '°C'], ['lee_fetch_m', 'm'], ['lee_factor', '×'],
     ['exposed_fetch_km', 'km'], ['exposed_factor', '×'], ['offshore_land_km', 'km'], ['offshore_open_km', 'km'],
     ['beam_min_deg', '°'], ['beam_max_deg', '°'], ['headwind_slowdown', 'km/h'], ['river_current_kmh', 'km/h'], ['river_max_m', 'm'],
+    ['tidal_sea_km', 'km'], ['tidal_station_km', 'km'], ['tidal_min_range_m', 'm'], ['tidal_current_kmh', 'km/h'], ['tidal_lag_min', 'min'],
     ['window_from', 'h'], ['window_to', 'h'],
 ];
 ?>

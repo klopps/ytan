@@ -7,6 +7,7 @@ namespace Ytan\Service\Ai;
 use DateTimeImmutable;
 use DateTimeZone;
 use Throwable;
+use Ytan\Service\Water\TidelessSeas;
 
 /**
  * Gathers everything the Routencheck needs for one route and day: the route
@@ -33,14 +34,21 @@ final class RouteBriefingBuilder
      * @param \Closure(array{0: float, 1: float}, float): ?int $openWater WaterDistanceService::openWaterAlong()
      * @param \Closure(float, float, float, float, list<int>, ?int): list<array<string, mixed>> $pois POIs in a box the user may see (south, north, west, east, types, user id)
      * @param (\Closure(float, float, int): ?array{kind: string, bearing: float})|null $flow river/canal at a position within a distance (WaterDistanceService::flowAt()); null = no current
+     * @param (\Closure(float, float, int): ?array{distance: int, lat: float, lng: float})|null $sea nearest sea coastline point within a distance (WaterDistanceService::nearestSea()); null = no tide check
+     * @param (\Closure(float, float, ?array, int, int, int): ?array)|null $tide tide data for a position (TideService::tide(): lat, lng, coast, from, to, max station metres); null = only the coastline rule
      */
     public function __construct(
         private readonly \Closure $forecast,
         private readonly \Closure $openWater,
         private readonly \Closure $pois,
         private readonly ?\Closure $flow = null,
+        private readonly ?\Closure $sea = null,
+        private readonly ?\Closure $tide = null,
     ) {
     }
+
+    /** @var list<array<string, mixed>> tide data of the current build(), referenced by the sections' flow['tide'] */
+    private array $tides = [];
 
     /**
      * Where each section runs on a river or canal: samples every ~200 m (at
@@ -49,9 +57,18 @@ final class RouteBriefingBuilder
      * river_along = mean cos(course vs. flow) over all samples (off-river = 0),
      * river_share / canal_share = share of the samples on a river / canal.
      *
-     * @return array{river_along: float, river_share: float, canal_share: float}|null null = no flow lookup
+     * Tidal rivers: when the section's first river sample is tidal (see
+     * tidal()), the tide turns the current there - the river samples then
+     * count as tidal_share instead (no river current), tidal_along keeps the
+     * mean cos(course vs. downstream) for the tidal current (RouteRating), and
+     * 'tide' is the index of the tide data in $this->tides (null = tidal but
+     * no tide times known: no current, only a hint). One lookup per river
+     * section; a section is ~3 km, fine enough for a tidal limit.
+     *
+     * @param array<string, mixed> $rules
+     * @return array{river_along: float, river_share: float, canal_share: float, tidal_share: float, tidal_along: float, tide: ?int}|null null = no flow lookup
      */
-    private function sectionFlow(RouteGeometry $geometry, array $section, int $maxMeters): ?array
+    private function sectionFlow(RouteGeometry $geometry, array $section, array $rules, int $from, int $to): ?array
     {
         if ($this->flow === null || $section['length'] <= 0) {
             return null;
@@ -60,10 +77,11 @@ final class RouteBriefingBuilder
         $along = 0.0;
         $river = 0;
         $canal = 0;
+        $firstRiver = null;
         for ($i = 0; $i < $count; $i++) {
             $at = $section['from'] + $section['length'] * ($i + 0.5) / $count;
             [$lat, $lng] = $geometry->at($at);
-            $found = ($this->flow)($lat, $lng, $maxMeters);
+            $found = ($this->flow)($lat, $lng, (int) $rules['river_max_m']);
             if ($found === null) {
                 continue;
             }
@@ -78,10 +96,62 @@ final class RouteBriefingBuilder
             }
             $course = RouteGeometry::bearing($before, $after);
             $river++;
+            $firstRiver ??= [$lat, $lng];
             $along += cos(deg2rad(RouteGeometry::angleBetween($course, (float) $found['bearing'])));
         }
+        $tidal = $firstRiver !== null ? $this->tidal($firstRiver[0], $firstRiver[1], $rules, $from, $to) : null;
+        if ($tidal !== null) {
+            return ['river_along' => 0.0, 'river_share' => 0.0, 'canal_share' => $canal / $count,
+                'tidal_share' => $river / $count, 'tidal_along' => $along / $count, 'tide' => $tidal['tide']];
+        }
 
-        return ['river_along' => $along / $count, 'river_share' => $river / $count, 'canal_share' => $canal / $count];
+        return ['river_along' => $along / $count, 'river_share' => $river / $count, 'canal_share' => $canal / $count,
+            'tidal_share' => 0.0, 'tidal_along' => 0.0, 'tide' => null];
+    }
+
+    /**
+     * Whether a river position is tidal, null = not. Only within the rules'
+     * tidal_sea_km of a sea coastline (cheap, local; nothing is asked for
+     * rivers far inland). There the tide sources decide by the mean tidal
+     * range (>= tidal_min_range_m) - a BSH gauge within tidal_station_km,
+     * else Open-Meteo at the coast point; without a range from them the rough
+     * TidelessSeas polygons decide. 'tide' = index into $this->tides when the
+     * source has high/low water times.
+     *
+     * @param array<string, mixed> $rules
+     * @return array{tide: ?int}|null
+     */
+    private function tidal(float $lat, float $lng, array $rules, int $from, int $to): ?array
+    {
+        $seaMeters = (int) round((float) ($rules['tidal_sea_km'] ?? 0) * 1000);
+        if ($this->sea === null || $seaMeters <= 0) {
+            return null;
+        }
+        $coast = ($this->sea)($lat, $lng, $seaMeters);
+        if ($coast === null) {
+            return null;
+        }
+        $tide = $this->tide !== null
+            ? ($this->tide)($lat, $lng, ['lat' => (float) $coast['lat'], 'lng' => (float) $coast['lng']], $from, $to, (int) round((float) $rules['tidal_station_km'] * 1000))
+            : null;
+        if ($tide !== null && $tide['mean_range_m'] !== null) {
+            if ($tide['mean_range_m'] < (float) $rules['tidal_min_range_m']) {
+                return null;
+            }
+        } elseif (TidelessSeas::contains((float) $coast['lat'], (float) $coast['lng'])) {
+            return null;
+        }
+        if ($tide === null || $tide['events'] === []) {
+            return ['tide' => null];
+        }
+        foreach ($this->tides as $index => $known) {
+            if ($known['source'] === $tide['source'] && $known['station'] === $tide['station'] && $known['lat'] === $tide['lat']) {
+                return ['tide' => $index];
+            }
+        }
+        $this->tides[] = $tide;
+
+        return ['tide' => count($this->tides) - 1];
     }
 
     /**
@@ -128,15 +198,25 @@ final class RouteBriefingBuilder
 
         $onRiver = false;
         $onCanal = false;
+        $onTidal = false;
+        $this->tides = [];
+        // tide times for the whole day and the next one (late starts end after midnight)
+        $dayStart = new DateTimeImmutable($options['date'] . ' 00:00:00', $timezone);
+        $tideFrom = $dayStart->getTimestamp();
+        $tideTo = $dayStart->modify('+2 days')->getTimestamp();
         foreach ($sections as $i => $section) {
-            $sections[$i]['flow'] = $this->sectionFlow($geometry, $section, (int) $rules['river_max_m']);
+            $sections[$i]['flow'] = $this->sectionFlow($geometry, $section, $rules, $tideFrom, $tideTo);
             $onRiver = $onRiver || ($sections[$i]['flow']['river_share'] ?? 0) > 0;
             $onCanal = $onCanal || ($sections[$i]['flow']['canal_share'] ?? 0) > 0;
+            $onTidal = $onTidal || ($sections[$i]['flow']['tidal_share'] ?? 0) > 0;
         }
         $currentKmh = (float) ($options['current_kmh'] ?? $rules['river_current_kmh']);
+        $tidalKmh = (float) ($options['tidal_current_kmh'] ?? $rules['tidal_current_kmh']);
+        $onTidalWithTimes = $this->tides !== [];
 
         $levelFactor = (float) ($rules['levels'][$options['level']] ?? 1.0);
-        $rating = new RouteRating($sections, $forecasts, $this->openWater, $rules, $levelFactor, $timezone, $currentKmh);
+        $rating = new RouteRating($sections, $forecasts, $this->openWater, $rules, $levelFactor, $timezone, $currentKmh,
+            $this->tides, $tidalKmh, (int) round((float) $rules['tidal_lag_min'] * 60));
         $start = new DateTimeImmutable(sprintf('%s %02d:00:00', $options['date'], $options['start_hour']), $timezone);
         $assessment = $rating->assess($start, $options['speed_kmh']);
         foreach ($assessment['sections'] as $i => $section) {
@@ -176,13 +256,46 @@ final class RouteBriefingBuilder
                 'wave' => self::scaled($rules['wave'], $levelFactor),
                 'current' => self::scaled($rules['current'], $levelFactor),
             ],
-            // on_river: the sheet offers the current speed chips only then
+            // on_river: the sheet offers the current speed chips only then;
+            // on_tidal: tidal river - with tide times ('tides') a tidal
+            // current and its chips, without only a hint
             'current' => [
                 'on_river' => $onRiver,
                 'on_canal' => $onCanal,
+                'on_tidal' => $onTidal,
                 'river_kmh' => round($currentKmh, 1),
                 'default_kmh' => (float) $rules['river_current_kmh'],
+                'tidal_kmh' => $onTidalWithTimes ? round($tidalKmh, 1) : null,
+                'tidal_default_kmh' => (float) $rules['tidal_current_kmh'],
+                'tides' => array_map(fn (array $tide) => self::tideSummary($tide, $options['date'], $timezone), $this->tides),
             ],
+        ];
+    }
+
+    /**
+     * A tide source's data for the page and the AI: station, source, and the
+     * high/low waters of the day in local time.
+     *
+     * @param array<string, mixed> $tide
+     * @return array{station: string, source: string, attribution: string, distance_m: int, mean_range_m: ?float, events: list<array{time: string, type: string, height_m: ?float}>}
+     */
+    private static function tideSummary(array $tide, string $date, DateTimeZone $timezone): array
+    {
+        $events = [];
+        foreach ($tide['events'] as $event) {
+            $time = (new DateTimeImmutable('@' . $event['time']))->setTimezone($timezone);
+            if ($time->format('Y-m-d') === $date) {
+                $events[] = ['time' => $time->format('H:i'), 'type' => $event['type'], 'height_m' => $event['height_m']];
+            }
+        }
+
+        return [
+            'station' => (string) $tide['station'],
+            'source' => (string) $tide['source'],
+            'attribution' => (string) $tide['attribution'],
+            'distance_m' => (int) $tide['distance_m'],
+            'mean_range_m' => $tide['mean_range_m'],
+            'events' => $events,
         ];
     }
 
@@ -223,6 +336,8 @@ final class RouteBriefingBuilder
                 'exposed' => !empty($v['exposed']) ? true : null,
                 'offshore_wind' => !empty($v['offshore']) ? true : null,
                 'water' => $v['water'] ?? null,
+                'tidal_river' => !empty($v['tidal']) ? true : null,
+                'tide_phase' => $v['tide_phase'] ?? null,
                 'current_kmh' => isset($v['current']) ? round($v['current'] * 2) / 2 : null,
                 'reasons' => $reasons($s['reasons']) ?: null,
             ], static fn ($value) => $value !== null);
@@ -248,7 +363,15 @@ final class RouteBriefingBuilder
                 'paddler_level' => $result['level'],
                 'reversed' => $result['reverse'],
             ] + (!empty($result['current']['on_river']) ? ['assumed_river_current_kmh' => $result['current']['river_kmh']] : [])
-              + (!empty($result['current']['on_canal']) ? ['partly_on_canal' => true] : []),
+              + (!empty($result['current']['on_canal']) ? ['partly_on_canal' => true] : [])
+              + (!empty($result['current']['on_tidal']) ? ['partly_on_tidal_river' => true] : [])
+              + (isset($result['current']['tidal_kmh']) ? ['assumed_max_tidal_current_kmh' => $result['current']['tidal_kmh']] : []),
+            'tides' => array_map(static fn (array $t) => [
+                'gauge' => $t['station'],
+                'distance_km' => round($t['distance_m'] / 1000, 1),
+                'mean_range_m' => $t['mean_range_m'],
+                'high_low_water' => array_map(static fn (array $e) => $e['type'] . ' ' . $e['time'], $t['events']),
+            ], $result['current']['tides'] ?? []) ?: null,
             'overall_rating' => $rating($result['rating']),
             'partly_without_data' => $result['partial'],
             'reasons' => $reasons($result['reasons']),

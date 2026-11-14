@@ -35,6 +35,10 @@ final class RouteCheckTest extends ControllerTestCase
     private int $weatherCalls = 0;
     /** @var (\Closure(float, float, int): ?array)|null river/canal lookup handed to the builder */
     private ?\Closure $flow = null;
+    /** @var (\Closure(float, float, int): ?array)|null nearest sea coastline lookup handed to the builder */
+    private ?\Closure $sea = null;
+    /** @var (\Closure(float, float, ?array, int, int, int): ?array)|null tide source handed to the builder */
+    private ?\Closure $tide = null;
 
     protected function setUp(): void
     {
@@ -72,6 +76,8 @@ final class RouteCheckTest extends ControllerTestCase
                 (new PoiRepository($this->pdo))->findInBox($south, $north, $west, $east, $types, $userId)
             ),
             $this->flow,
+            $this->sea,
+            $this->tide,
         );
         $service = new RouteBriefingService($builder, $this->ai, new AiTextCache($this->cacheDir), $this->usage, $this->settings);
 
@@ -269,6 +275,129 @@ final class RouteCheckTest extends ControllerTestCase
         $this->assertNotContains('current', array_column($none['reasons'], 'criterion'));
         $this->assertGreaterThan($none['end'], $default['end'], 'against the current takes longer');
         $this->assertEquals(2.0, RouteBriefingBuilder::aiContext($default)['route']['assumed_river_current_kmh']);
+    }
+
+    public function testNearTheCoastOfATidalSeaTheRiverGetsNoCurrentButAHint(): void
+    {
+        $userId = $this->createUser(['ai_use' => 1]);
+        $routeId = $this->route($userId);
+        $this->flow = fn (float $lat, float $lng, int $maxMeters) => ['kind' => 'river', 'bearing' => 180.0, 'distance' => 10];
+        $asked = [];
+        // the Elbe estuary at Wedel: North Sea, tidal
+        $this->sea = function (float $lat, float $lng, int $maxMeters) use (&$asked) {
+            $asked[] = $maxMeters;
+
+            return ['distance' => 21000, 'lat' => 53.581, 'lng' => 9.658];
+        };
+
+        $result = $this->check($userId, $routeId, ['ai_use' => true], ['text' => false, 'speed_kmh' => 6])['data'];
+
+        $this->assertSame(50000, $asked[0], 'BriefingRules default tidal_sea_km = 50');
+        $this->assertTrue($result['current']['on_tidal']);
+        $this->assertFalse($result['current']['on_river'], 'no current chips on a tidal river');
+        $this->assertNotContains('current', array_column($result['reasons'], 'criterion'), 'no current against the course');
+        $this->assertSame('river', $result['sections'][0]['values']['water']);
+        $this->assertTrue($result['sections'][0]['values']['tidal']);
+        $this->assertNull($result['sections'][0]['values']['current']);
+        $context = RouteBriefingBuilder::aiContext($result);
+        $this->assertTrue($context['route']['partly_on_tidal_river']);
+        $this->assertTrue($context['sections'][0]['tidal_river']);
+        $this->assertArrayNotHasKey('assumed_river_current_kmh', $context['route']);
+    }
+
+    /** Tidal river with tide times: low water 07:00, high water 13:00, low water 19:00 tomorrow (UTC = local). */
+    private function tidalRiverWithTimes(float $meanRange = 3.8): void
+    {
+        $date = gmdate('Y-m-d', strtotime('+1 day'));
+        $this->flow = fn (float $lat, float $lng, int $maxMeters) => ['kind' => 'river', 'bearing' => 180.0, 'distance' => 10];
+        $this->sea = fn (float $lat, float $lng, int $maxMeters) => ['distance' => 21000, 'lat' => 53.581, 'lng' => 9.658];
+        $this->tide = fn (float $lat, float $lng, ?array $coast, int $from, int $to, int $maxStation) => [
+            'station' => 'Hamburg, St. Pauli, Elbe', 'source' => 'bsh', 'attribution' => '©BSH',
+            'lat' => 53.54556, 'lng' => 9.97, 'distance_m' => 300, 'mean_range_m' => $meanRange,
+            'events' => [
+                ['time' => strtotime("$date 07:00:00 UTC"), 'type' => 'NW', 'height_m' => 3.5],
+                ['time' => strtotime("$date 13:00:00 UTC"), 'type' => 'HW', 'height_m' => 7.2],
+                ['time' => strtotime("$date 19:00:00 UTC"), 'type' => 'NW', 'height_m' => 3.5],
+            ],
+        ];
+    }
+
+    public function testWithTideTimesTheTidalCurrentDependsOnTheHour(): void
+    {
+        $userId = $this->createUser(['ai_use' => 1]);
+        $routeId = $this->route($userId); // heading north = up the river (it flows south)
+        $this->tidalRiverWithTimes();
+
+        // 10:00 = half flood: the water runs up the river, with the course
+        $flood = $this->check($userId, $routeId, ['ai_use' => true], ['text' => false, 'speed_kmh' => 6])['data'];
+        $this->assertTrue($flood['current']['on_tidal']);
+        $this->assertEquals(3.0, $flood['current']['tidal_kmh'], 'BriefingRules default');
+        $this->assertSame('Hamburg, St. Pauli, Elbe', $flood['current']['tides'][0]['station']);
+        $this->assertSame(['07:00', '13:00', '19:00'], array_column($flood['current']['tides'][0]['events'], 'time'));
+        $this->assertSame('flood', $flood['sections'][0]['values']['tide_phase']);
+        $this->assertGreaterThan(2.5, $flood['sections'][0]['values']['current']);
+        $this->assertNotContains('current', array_column($flood['reasons'], 'criterion'));
+
+        // 16:00 = half ebb: against the course, 3 km/h = yellow
+        $ebb = $this->check($userId, $routeId, ['ai_use' => true], ['text' => false, 'speed_kmh' => 6, 'start_hour' => 16])['data'];
+        $this->assertSame('ebb', $ebb['sections'][0]['values']['tide_phase']);
+        $this->assertSame('current', $ebb['reasons'][0]['criterion']);
+        $this->assertSame(1, $ebb['rating']);
+
+        // the start hour bar sees it too
+        $windows = array_column($flood['windows'], 'reason', 'hour');
+        $this->assertSame('current', $windows[16]);
+        $this->assertNotSame('current', $windows[10]);
+
+        $context = RouteBriefingBuilder::aiContext($ebb);
+        $this->assertEquals(3.0, $context['route']['assumed_max_tidal_current_kmh']);
+        $this->assertSame(['NW 07:00', 'HW 13:00', 'NW 19:00'], $context['tides'][0]['high_low_water']);
+        $this->assertSame('ebb', $context['sections'][0]['tide_phase']);
+    }
+
+    public function testThePaddlerCanChangeTheTidalCurrent(): void
+    {
+        $userId = $this->createUser(['ai_use' => 1]);
+        $routeId = $this->route($userId);
+        $this->tidalRiverWithTimes();
+
+        $strong = $this->check($userId, $routeId, ['ai_use' => true], ['text' => false, 'speed_kmh' => 6, 'start_hour' => 16, 'tidal_current_kmh' => 5])['data'];
+
+        $this->assertEquals(5.0, $strong['current']['tidal_kmh']);
+        $this->assertSame(2, $strong['rating'], '5 km/h against the course = red');
+    }
+
+    public function testASmallMeanRangeIsNoTidalRiver(): void
+    {
+        $userId = $this->createUser(['ai_use' => 1]);
+        $routeId = $this->route($userId);
+        $this->tidalRiverWithTimes(0.3);
+
+        $result = $this->check($userId, $routeId, ['ai_use' => true], ['text' => false, 'speed_kmh' => 6])['data'];
+
+        $this->assertFalse($result['current']['on_tidal']);
+        $this->assertTrue($result['current']['on_river'], 'the normal river current again');
+        $this->assertSame([], $result['current']['tides']);
+    }
+
+    public function testNearATidelessSeaOrWithTheCheckOffTheRiverKeepsItsCurrent(): void
+    {
+        $userId = $this->createUser(['ai_use' => 1]);
+        $routeId = $this->route($userId);
+        $this->flow = fn (float $lat, float $lng, int $maxMeters) => ['kind' => 'river', 'bearing' => 180.0, 'distance' => 10];
+        // the Warnow at Rostock: Baltic, no tide
+        $this->sea = fn (float $lat, float $lng, int $maxMeters) => ['distance' => 9990, 'lat' => 54.178, 'lng' => 12.107];
+
+        $baltic = $this->check($userId, $routeId, ['ai_use' => true], ['text' => false, 'speed_kmh' => 6])['data'];
+        $this->assertFalse($baltic['current']['on_tidal']);
+        $this->assertTrue($baltic['current']['on_river']);
+        $this->assertSame('current', $baltic['reasons'][0]['criterion']);
+
+        $this->settings->setBriefingRules(['tidal_sea_km' => 0]);
+        $this->sea = fn () => $this->fail('no coastline lookup with the check switched off');
+        $off = $this->check($userId, $routeId, ['ai_use' => true], ['text' => false, 'speed_kmh' => 6])['data'];
+        $this->assertFalse($off['current']['on_tidal']);
+        $this->assertTrue($off['current']['on_river']);
     }
 
     public function testWithoutARiverThereIsNoCurrent(): void

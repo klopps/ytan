@@ -15,7 +15,15 @@ namespace Ytan\Service\Ai;
  * m / km, slowdown km/h per m/s of headwind, current km/h (the 'current'
  * pair rates the current AGAINST the course; river_current_kmh is the assumed
  * river current, which the paddler can change in the sheet; river_max_m = how
- * far from a river's centre line a position still counts as on it). A level
+ * far from a river's centre line a position still counts as on it;
+ * tidal_sea_km = a river within this distance of a coast of a tidal sea counts
+ * as tidal - the current turns with the tide, the tidal current replaces the
+ * river current there (none without tide times), 0 = off; within it tide
+ * data decide when they have a mean range (else TidelessSeas):
+ * tidal_min_range_m, from a BSH gauge within tidal_station_km or Open-Meteo;
+ * tidal_current_kmh = the tidal current at half tide, which the paddler can
+ * change; tidal_lag_min = how long after high/low water at the gauge the
+ * current turns). A level
  * factor multiplies the wind, gust, wave and current thresholds (beginners
  * get lower ones).
  */
@@ -42,6 +50,11 @@ final class BriefingRules
         'headwind_slowdown' => [0.0, 1.0],
         'river_current_kmh' => [0.0, 10.0],
         'river_max_m' => [20, 1000],
+        'tidal_sea_km' => [0.0, 150.0],
+        'tidal_station_km' => [1.0, 50.0],
+        'tidal_min_range_m' => [0.1, 3.0],
+        'tidal_current_kmh' => [0.0, 10.0],
+        'tidal_lag_min' => [-120, 180],
         'level_factor' => [0.3, 2.0],
         'window_from' => [0, 23],
         'window_to' => [0, 23],
@@ -68,6 +81,11 @@ final class BriefingRules
             'headwind_slowdown' => 0.3,
             'river_current_kmh' => 2.0,
             'river_max_m' => 150,
+            'tidal_sea_km' => 50.0,
+            'tidal_station_km' => 15.0,
+            'tidal_min_range_m' => 0.5,
+            'tidal_current_kmh' => 3.0,
+            'tidal_lag_min' => 0,
             'levels' => ['beginner' => 0.75, 'experienced' => 1.0, 'expert' => 1.25],
             'window_from' => 6,
             'window_to' => 20,
@@ -95,10 +113,10 @@ final class BriefingRules
             $rules[$key] = ['yellow' => round($yellow, 2), 'red' => round($red, 2)];
         }
 
-        $integers = ['dusk_minutes', 'lee_fetch_m', 'beam_min_deg', 'beam_max_deg', 'window_from', 'window_to', 'river_max_m'];
+        $integers = ['dusk_minutes', 'lee_fetch_m', 'beam_min_deg', 'beam_max_deg', 'window_from', 'window_to', 'river_max_m', 'tidal_lag_min'];
         foreach (['dusk_minutes', 'cold_water_c', 'lee_fetch_m', 'lee_factor', 'exposed_fetch_km', 'exposed_factor',
             'offshore_land_km', 'offshore_open_km', 'beam_min_deg', 'beam_max_deg', 'headwind_slowdown', 'river_current_kmh', 'river_max_m',
-            'window_from', 'window_to'] as $key) {
+            'tidal_sea_km', 'tidal_station_km', 'tidal_min_range_m', 'tidal_current_kmh', 'tidal_lag_min', 'window_from', 'window_to'] as $key) {
             [$min, $max] = self::RANGES[$key];
             $value = self::clamp($input[$key] ?? null, $defaults[$key], $min, $max);
             $rules[$key] = in_array($key, $integers, true) ? (int) round($value) : round($value, 2);

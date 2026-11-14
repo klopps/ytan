@@ -119,7 +119,8 @@ Body (all optional): `date` (`YYYY-MM-DD`, today .. +7 days, default
 today), `start_hour` (0-23, default 10), `reverse` (bool), `speed_kmh`
 (0.5-30, default the user's default speed, else 6), `level`
 (`beginner|experienced|expert`, default the stored one), `current_kmh` (river
-current 0-10, default the rules' `river_current_kmh`), `text` (`false` =
+current 0-10, default the rules' `river_current_kmh`), `tidal_current_kmh`
+(tidal current at half tide 0-10, default the rules' `tidal_current_kmh`), `text` (`false` =
 traffic light only, no model request - the page asks for that first). 422
 codes: `route_check.date_invalid|start_invalid|speed_invalid|level_invalid|current_invalid|too_short`.
 
@@ -130,7 +131,9 @@ no data), `partial` (some sections without data), `reasons`
 gust, wave, thunder, dark, dusk, cold_water, offshore, beam_sea, current`),
 `sections` (`[{index, from_m, to_m, entry, exit, hours, rating, partial,
 reasons, values: {wind, gust, direction, relative, wave, fetch_m, lee,
-exposed, offshore, water (river|canal|null), current (km/h along the course on
+exposed, offshore, water (river|canal|null), tidal (bool: a river the tide
+turns), tide_phase (flood|ebb|slack|null - a tidal river
+with tide times), current (km/h along the course on
 the river part, + with / - against it, null = none)}, points: [[lat, lng], ...],
 bearing}]`), `windows`
 (`[{hour, rating, reason, end}]` - the rating for every start hour of the
@@ -138,8 +141,13 @@ rules' window), `pois` (`[{id, name, type, type_label, role
 (landing|danger|portage), lat, lng, distance_m, at_m}]`, max 30 within
 2 km), `sun {sunrise, sunset}`, `weather {source, model, generated_at}`,
 `thresholds` (wind/gust/wave/current for this level), `current {on_river,
-on_canal, river_kmh, default_kmh}` (the river current used and the admin's
-default; the page offers its -/+ chips only when `on_river`), `limit {per_day,
+on_canal, on_tidal, river_kmh, default_kmh, tidal_kmh, tidal_default_kmh,
+tides: [{station, source (bsh|open-meteo), attribution, distance_m,
+mean_range_m, events: [{time HH:MM local, type HW|NW, height_m}]}]}` (the
+river current used and the admin's default; the page offers its -/+ chips
+only when `on_river` - a tidal river does not count -; `tides` = the gauges
+whose high/low waters of the day drive the tidal current, `tidal_kmh` null
+without them; `on_tidal` without `tides` = only a hint), `limit {per_day,
 used_today}`, `text` (Markdown or null), `text_status`
 (`ok|skipped|limit|error|not_configured|no_data`), `text_error` (with
 `error`: `auth|credit|rate_limit|timeout|refusal|other`), `text_cached`,
