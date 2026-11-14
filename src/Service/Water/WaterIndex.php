@@ -12,7 +12,12 @@ namespace Ytan\Service\Water;
  */
 final class WaterIndex
 {
-    public const KINDS = ['sea', 'river', 'lake'];
+    /**
+     * In file order. Files written before 2026-11-14 have only the first three
+     * (canals were stored as river then) - hasKind('canal') tells them apart.
+     */
+    public const KINDS = ['sea', 'river', 'lake', 'canal'];
+    private const MIN_KINDS = 3;
 
     private const MAGIC = 'YTANWATR';
     private const FORMAT_VERSION = 1;
@@ -27,6 +32,7 @@ final class WaterIndex
     private int $column0;
     private int $cell;
     private int $segmentsOffset;
+    private int $kinds;
 
     /** @var array<string, list<array{float,float,float,float}>> cells read so far (batch runs read neighbours again) */
     private array $cache = [];
@@ -42,7 +48,16 @@ final class WaterIndex
         $this->column0 = $header['col0'];
         $this->rows = $header['rows'];
         $this->columns = $header['cols'];
-        $this->segmentsOffset = self::HEADER_BYTES + count(self::KINDS) * $this->rows * $this->columns * 8;
+        $this->kinds = $header['kinds'];
+        $this->segmentsOffset = self::HEADER_BYTES + $this->kinds * $this->rows * $this->columns * 8;
+    }
+
+    /** Whether the file holds this kind (an older file has no 'canal'). */
+    public function hasKind(string $name): bool
+    {
+        $kind = array_search($name, self::KINDS, true);
+
+        return $kind !== false && $kind < $this->kinds;
     }
 
     /** null when the file is missing or not an index of this format. */
@@ -62,7 +77,7 @@ final class WaterIndex
             return null;
         }
         $header = unpack('Vversion/Vcell/lrow0/lcol0/Vrows/Vcols/Vkinds/Vtotal', substr($raw, 8, 32));
-        if ($header['version'] !== self::FORMAT_VERSION || $header['kinds'] !== count(self::KINDS) || $header['cell'] <= 0) {
+        if ($header['version'] !== self::FORMAT_VERSION || $header['kinds'] < self::MIN_KINDS || $header['kinds'] > count(self::KINDS) || $header['cell'] <= 0) {
             fclose($file);
 
             return null;
@@ -86,7 +101,7 @@ final class WaterIndex
     public function segments(int $kind, int $row, int $column0, int $column1): array
     {
         $r = $row - $this->row0;
-        if ($r < 0 || $r >= $this->rows) {
+        if ($r < 0 || $r >= $this->rows || $kind >= $this->kinds) {
             return [];
         }
         $c0 = max(0, $column0 - $this->column0);

@@ -17,11 +17,18 @@ milliseconds, on the servers too, without any external request.
 | kind  | OpenStreetMap                                   | measured to |
 |-------|-------------------------------------------------|-------------|
 | sea   | ways `natural=coastline` (fjords and bays included) | the coastline |
-| river | ways `waterway=river` and `waterway=canal`      | the centre line (wide rivers: up to half their width too far) |
+| river | ways `waterway=river`                         | the centre line (wide rivers: up to half their width too far); segments keep the way's point order = flow direction (OpenStreetMap draws rivers downstream) |
+| canal | ways `waterway=canal` (own kind since 2026-11-14, before: stored as river) | the centre line; no current, its direction means nothing |
 | lake  | areas `natural=water` of at least 10 km², not `water=pond/basin/wastewater/river/canal/stream/...` | the shore, every ring (an island in a lake measures to its own shore) |
 
 Lines are simplified by 5 m (EPSG:3035) before they are written. Distances
 farther than 100 km (`WaterDistanceService::MAX_METERS`) are `null`.
+`distances()`'s `river` is the nearer of river and canal (as before the
+split). `flowAt(lat, lng, maxMeters)` (Routencheck: current) gives the river
+or canal a position lies on - the nearest centre line within `maxMeters`,
+unless coast or lake shore is nearer - with the direction of that segment
+(downstream for a river); with an index without the canal kind it always
+answers null, since canals would be taken for rivers there.
 
 **Covered area**: `water-index.json` carries the countries' borders (Geofabrik
 `.poly`, outer rings as `[[lat, lng], ...]`) as `coverage`. Outside them
@@ -45,7 +52,7 @@ Little-endian throughout.
 | 20 | 4 | int32 first cell column = floor(lng µ° / cell) |
 | 24 | 4 | uint32 rows |
 | 28 | 4 | uint32 columns |
-| 32 | 4 | uint32 kinds (3: sea, river, lake - in this order) |
+| 32 | 4 | uint32 kinds (4: sea, river, lake, canal - in this order; files built before 2026-11-14 have 3, canals stored as river) |
 | 36 | 4 | uint32 segments stored |
 | 40 | 24 | reserved (zero) |
 | 64 | kinds × rows × columns × 8 | directory: per cell uint32 start, uint32 count (in segments); entry = (kind × rows + row) × columns + column |

@@ -9,7 +9,9 @@ OpenStreetMap country extracts (Geofabrik .osm.pbf).
 
 Water, by kind:
     sea    ways natural=coastline (fjords and bays included - the coastline follows them)
-    river  ways waterway=river|canal (centre lines)
+    river  ways waterway=river (centre lines, drawn in flow direction - the
+           segments keep it: lat1/lng1 is upstream of lat2/lng2)
+    canal  ways waterway=canal (centre lines; no current, direction arbitrary)
     lake   areas natural=water of at least LAKE_MIN_KM2, without ponds, basins,
            river/canal surfaces etc. (NOT_LAKES); every ring is shore, so a
            position on an island measures to the island's shore
@@ -222,8 +224,10 @@ def extract(path: str) -> dict[str, list[np.ndarray]]:
         if obj.is_way():
             if tags.get("natural") == "coastline":
                 kind = "sea"
-            elif tags.get("waterway") in ("river", "canal"):
+            elif tags.get("waterway") == "river":
                 kind = "river"
+            elif tags.get("waterway") == "canal":
+                kind = "canal"  # own kind: no current, OSM direction arbitrary
             else:
                 continue
             coords = [(n.lon, n.lat) for n in obj.nodes if n.location.valid()]

@@ -25,22 +25,68 @@ final class RouteBriefingBuilder
     private const POI_MAX_COUNT = 30;
     private const WEATHER_SAMPLE_SPACING_M = 8000;
     private const WEATHER_MAX_SAMPLES = 5;
+    private const FLOW_SAMPLE_SPACING_M = 200;
+    private const FLOW_MAX_SAMPLES = 40;
 
     /**
      * @param \Closure(float, float): array $forecast WeatherService::getForecast()
      * @param \Closure(array{0: float, 1: float}, float): ?int $openWater WaterDistanceService::openWaterAlong()
      * @param \Closure(float, float, float, float, list<int>, ?int): list<array<string, mixed>> $pois POIs in a box the user may see (south, north, west, east, types, user id)
+     * @param (\Closure(float, float, int): ?array{kind: string, bearing: float})|null $flow river/canal at a position within a distance (WaterDistanceService::flowAt()); null = no current
      */
     public function __construct(
         private readonly \Closure $forecast,
         private readonly \Closure $openWater,
         private readonly \Closure $pois,
+        private readonly ?\Closure $flow = null,
     ) {
     }
 
     /**
+     * Where each section runs on a river or canal: samples every ~200 m (at
+     * most FLOW_MAX_SAMPLES per section), each compared with the direction of
+     * the river's centre line there (drawn downstream in OpenStreetMap).
+     * river_along = mean cos(course vs. flow) over all samples (off-river = 0),
+     * river_share / canal_share = share of the samples on a river / canal.
+     *
+     * @return array{river_along: float, river_share: float, canal_share: float}|null null = no flow lookup
+     */
+    private function sectionFlow(RouteGeometry $geometry, array $section, int $maxMeters): ?array
+    {
+        if ($this->flow === null || $section['length'] <= 0) {
+            return null;
+        }
+        $count = max(1, min(self::FLOW_MAX_SAMPLES, (int) round($section['length'] / self::FLOW_SAMPLE_SPACING_M)));
+        $along = 0.0;
+        $river = 0;
+        $canal = 0;
+        for ($i = 0; $i < $count; $i++) {
+            $at = $section['from'] + $section['length'] * ($i + 0.5) / $count;
+            [$lat, $lng] = $geometry->at($at);
+            $found = ($this->flow)($lat, $lng, $maxMeters);
+            if ($found === null) {
+                continue;
+            }
+            if ($found['kind'] === 'canal') {
+                $canal++;
+                continue;
+            }
+            $before = $geometry->at(max(0.0, $at - 50));
+            $after = $geometry->at(min($geometry->length, $at + 50));
+            if (RouteGeometry::distance($before, $after) < 1.0) {
+                continue;
+            }
+            $course = RouteGeometry::bearing($before, $after);
+            $river++;
+            $along += cos(deg2rad(RouteGeometry::angleBetween($course, (float) $found['bearing'])));
+        }
+
+        return ['river_along' => $along / $count, 'river_share' => $river / $count, 'canal_share' => $canal / $count];
+    }
+
+    /**
      * @param list<array{0: float, 1: float}> $points the route's waypoints
-     * @param array{date: string, start_hour: int, reverse: bool, speed_kmh: float, level: string, user_id?: ?int} $options
+     * @param array{date: string, start_hour: int, reverse: bool, speed_kmh: float, level: string, current_kmh?: ?float, user_id?: ?int} $options current_kmh null = the rules' river_current_kmh
      * @param array<string, mixed> $rules BriefingRules::normalize()d
      * @return array<string, mixed>
      */
@@ -80,8 +126,17 @@ final class RouteBriefingBuilder
             $sections[$i]['weather'] = $segmentLength > 0 ? min($samples - 1, (int) floor($mid / $segmentLength)) : 0;
         }
 
+        $onRiver = false;
+        $onCanal = false;
+        foreach ($sections as $i => $section) {
+            $sections[$i]['flow'] = $this->sectionFlow($geometry, $section, (int) $rules['river_max_m']);
+            $onRiver = $onRiver || ($sections[$i]['flow']['river_share'] ?? 0) > 0;
+            $onCanal = $onCanal || ($sections[$i]['flow']['canal_share'] ?? 0) > 0;
+        }
+        $currentKmh = (float) ($options['current_kmh'] ?? $rules['river_current_kmh']);
+
         $levelFactor = (float) ($rules['levels'][$options['level']] ?? 1.0);
-        $rating = new RouteRating($sections, $forecasts, $this->openWater, $rules, $levelFactor, $timezone);
+        $rating = new RouteRating($sections, $forecasts, $this->openWater, $rules, $levelFactor, $timezone, $currentKmh);
         $start = new DateTimeImmutable(sprintf('%s %02d:00:00', $options['date'], $options['start_hour']), $timezone);
         $assessment = $rating->assess($start, $options['speed_kmh']);
         foreach ($assessment['sections'] as $i => $section) {
@@ -119,6 +174,14 @@ final class RouteBriefingBuilder
                 'wind' => self::scaled($rules['wind'], $levelFactor),
                 'gust' => self::scaled($rules['gust'], $levelFactor),
                 'wave' => self::scaled($rules['wave'], $levelFactor),
+                'current' => self::scaled($rules['current'], $levelFactor),
+            ],
+            // on_river: the sheet offers the current speed chips only then
+            'current' => [
+                'on_river' => $onRiver,
+                'on_canal' => $onCanal,
+                'river_kmh' => round($currentKmh, 1),
+                'default_kmh' => (float) $rules['river_current_kmh'],
             ],
         ];
     }
@@ -159,6 +222,8 @@ final class RouteBriefingBuilder
                 'lee' => !empty($v['lee']) ? true : null,
                 'exposed' => !empty($v['exposed']) ? true : null,
                 'offshore_wind' => !empty($v['offshore']) ? true : null,
+                'water' => $v['water'] ?? null,
+                'current_kmh' => isset($v['current']) ? round($v['current'] * 2) / 2 : null,
                 'reasons' => $reasons($s['reasons']) ?: null,
             ], static fn ($value) => $value !== null);
         }
@@ -182,7 +247,8 @@ final class RouteBriefingBuilder
                 'speed_kmh' => $result['speed_kmh'],
                 'paddler_level' => $result['level'],
                 'reversed' => $result['reverse'],
-            ],
+            ] + (!empty($result['current']['on_river']) ? ['assumed_river_current_kmh' => $result['current']['river_kmh']] : [])
+              + (!empty($result['current']['on_canal']) ? ['partly_on_canal' => true] : []),
             'overall_rating' => $rating($result['rating']),
             'partly_without_data' => $result['partial'],
             'reasons' => $reasons($result['reasons']),

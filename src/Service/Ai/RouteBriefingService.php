@@ -22,7 +22,7 @@ use Ytan\Service\Log\LogWriter;
 final class RouteBriefingService
 {
     /** Bump when the prompt changes, so cached texts of the old prompt are not reused. */
-    public const PROMPT_VERSION = 2;
+    public const PROMPT_VERSION = 3;
     private const MAX_TOKENS = 3000;
 
     public function __construct(
@@ -39,7 +39,7 @@ final class RouteBriefingService
      * @param array<string, mixed> $authUser JWT payload
      * @param array<string, mixed> $route route row
      * @param list<array{0: float, 1: float}> $points
-     * @param array{date: string, start_hour: int, reverse: bool, speed_kmh: float, level: string} $options
+     * @param array{date: string, start_hour: int, reverse: bool, speed_kmh: float, level: string, current_kmh?: ?float} $options
      * @return array<string, mixed>
      */
     public function briefing(array $authUser, array $route, array $points, array $options, string $locale): array
@@ -145,6 +145,9 @@ Rules:
   offshore (wind blowing from land out to open water - drift risk), beam_sea (waves from the side).
   lee = land close upwind (sheltered), exposed = long open water upwind.
   wind_relative: head/beam/tail relative to the course.
+  current (km/h against the course on a river). water: river/canal. current_kmh: river current along the course
+  (+ with it, - against it); it is computed from an ASSUMED river current (route.assumed_river_current_kmh, a
+  rough default the paddler can change) - say that the real current depends on the water level. Canals: no current.
 - Mention when parts have no data (grey) and what that means.
 - The assessment is a planning aid, not a safety guarantee; the paddler decides on the water.
 

@@ -30,6 +30,7 @@ final class AiBriefingController extends BaseController
 {
     public const DEFAULT_SPEED_KMH = 6.0;
     public const DEFAULT_START_HOUR = 10;
+    public const MAX_CURRENT_KMH = 10;
 
     public function __construct(
         private readonly RouteRepository $routes,
@@ -91,7 +92,7 @@ final class AiBriefingController extends BaseController
 
     /**
      * @param array<string, mixed> $body
-     * @return array{date: string, start_hour: int, reverse: bool, speed_kmh: float, level: string, with_text: bool}
+     * @return array{date: string, start_hour: int, reverse: bool, speed_kmh: float, level: string, current_kmh: ?float, with_text: bool}
      */
     private function options(array $body, int $userId): array
     {
@@ -124,12 +125,22 @@ final class AiBriefingController extends BaseController
             throw new ValidationException('Unknown experience level.', 'route_check.level_invalid');
         }
 
+        // river current in km/h; null = the admin's default (BriefingRules river_current_kmh)
+        $current = $body['current_kmh'] ?? null;
+        if ($current === '') {
+            $current = null;
+        }
+        if ($current !== null && (!is_numeric($current) || $current < 0 || $current > self::MAX_CURRENT_KMH)) {
+            throw new ValidationException('The current must be between 0 and 10 km/h.', 'route_check.current_invalid');
+        }
+
         return [
             'date' => $date,
             'start_hour' => (int) $hour,
             'reverse' => (bool) ($body['reverse'] ?? false),
             'speed_kmh' => round((float) $speed, 1),
             'level' => $level,
+            'current_kmh' => $current === null ? null : round((float) $current, 1),
             // false = traffic light only (the page asks for the text in a second request)
             'with_text' => ($body['text'] ?? true) !== false,
         ];

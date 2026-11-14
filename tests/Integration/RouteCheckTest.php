@@ -33,6 +33,8 @@ final class RouteCheckTest extends ControllerTestCase
     private SettingsRepository $settings;
     private AiUsageRepository $usage;
     private int $weatherCalls = 0;
+    /** @var (\Closure(float, float, int): ?array)|null river/canal lookup handed to the builder */
+    private ?\Closure $flow = null;
 
     protected function setUp(): void
     {
@@ -69,6 +71,7 @@ final class RouteCheckTest extends ControllerTestCase
                 fn (array $poi) => $poi + ['type_label' => 'Typ ' . $poi['poitype_id']],
                 (new PoiRepository($this->pdo))->findInBox($south, $north, $west, $east, $types, $userId)
             ),
+            $this->flow,
         );
         $service = new RouteBriefingService($builder, $this->ai, new AiTextCache($this->cacheDir), $this->usage, $this->settings);
 
@@ -249,11 +252,41 @@ final class RouteCheckTest extends ControllerTestCase
         $this->check($userId, $this->route($owner, 0), ['ai_use' => true]);
     }
 
+    public function testOnARiverTheCurrentIsTheAdminsDefaultOrThePaddlersOwn(): void
+    {
+        $userId = $this->createUser(['ai_use' => 1]);
+        $routeId = $this->route($userId); // 5.6 km heading north
+        $this->flow = fn (float $lat, float $lng, int $maxMeters) => ['kind' => 'river', 'bearing' => 180.0, 'distance' => 10];
+
+        $default = $this->check($userId, $routeId, ['ai_use' => true], ['text' => false, 'speed_kmh' => 6])['data'];
+        $this->assertTrue($default['current']['on_river']);
+        $this->assertEquals(2.0, $default['current']['river_kmh'], 'BriefingRules default');
+        $this->assertSame('current', $default['reasons'][0]['criterion'], '2 km/h against the course = yellow');
+        $this->assertSame('river', $default['sections'][0]['values']['water']);
+
+        $none = $this->check($userId, $routeId, ['ai_use' => true], ['text' => false, 'speed_kmh' => 6, 'current_kmh' => 0])['data'];
+        $this->assertEquals(0.0, $none['current']['river_kmh']);
+        $this->assertNotContains('current', array_column($none['reasons'], 'criterion'));
+        $this->assertGreaterThan($none['end'], $default['end'], 'against the current takes longer');
+        $this->assertEquals(2.0, RouteBriefingBuilder::aiContext($default)['route']['assumed_river_current_kmh']);
+    }
+
+    public function testWithoutARiverThereIsNoCurrent(): void
+    {
+        $userId = $this->createUser(['ai_use' => 1]);
+        $this->flow = fn () => null;
+
+        $result = $this->check($userId, $this->route($userId), ['ai_use' => true], ['text' => false])['data'];
+
+        $this->assertFalse($result['current']['on_river']);
+        $this->assertArrayNotHasKey('assumed_river_current_kmh', RouteBriefingBuilder::aiContext($result)['route']);
+    }
+
     public function testInvalidOptions(): void
     {
         $userId = $this->createUser(['ai_use' => 1]);
         $routeId = $this->route($userId);
-        foreach ([['date' => '2020-01-01'], ['date' => 'morgen'], ['start_hour' => 24], ['speed_kmh' => 50], ['level' => 'pro']] as $body) {
+        foreach ([['date' => '2020-01-01'], ['date' => 'morgen'], ['start_hour' => 24], ['speed_kmh' => 50], ['level' => 'pro'], ['current_kmh' => 11], ['current_kmh' => -1]] as $body) {
             try {
                 $this->check($userId, $routeId, ['ai_use' => true], $body);
                 $this->fail('expected a validation error for ' . json_encode($body));

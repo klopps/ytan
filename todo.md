@@ -1,5 +1,12 @@
 # Offene Punkte
 
+## Routencheck: Tidegewässer und Strömung aus Messdaten
+
+Folgepunkt zur Flussströmung im Routencheck (done.md, 2026-11-14). Offen:
+- Tidebeeinflusste Flussabschnitte (Elbe unterhalb Hamburg, Weser, Ems, Eider ...): dort kehrt sich die Strömung mit der Tide um, die Fließrichtung aus OSM stimmt nur zeitweise. Bisher bekommen sie die normale Flussströmung. Idee: Flussabschnitte nahe einer Mündung ins Meer (z. B. < 30 km Flusslänge) als "tidebeeinflusst" markieren und keine Richtung rechnen, nur einen Hinweis; später Tidezeiten (Open-Meteo `tide_height`) für die Richtung nutzen.
+- Strömung aus Messdaten statt pauschal: Pegelonline (WSV) liefert für Bundeswasserstraßen Wasserstand und teils Abfluss, aber keine Fließgeschwindigkeit (Querschnitt fehlt) - höchstens als "Hochwasser/Niedrigwasser"-Hinweis nutzbar.
+- Bäche (`waterway=stream`) sind nicht im Wasserindex.
+
 ## Routencheck: KI-Einschätzung einer Route für einen Tag
 
 Erste KI-Funktion (entschieden 2026-11-13). Auf eine Route tippen → "Routencheck" (EN "Route check", später für Touren "Tourcheck"): PHP bewertet die Route für Tag/Startzeit/Richtung/Tempo/Erfahrungsstufe mit einer Ampel (grün/gelb/rot, grau = keine Daten) je Abschnitt und je möglicher Startstunde, Claude (Anthropic API, `claude-sonnet-5-5`) formuliert daraus eine Einschätzung mit Zeitfenstern, Abschnitten, Ausweich-Anlandestellen und Hinweisen. Grundsatz: Zahlen rechnet PHP, die KI erklärt nur. Ergebnis als Bottom-Sheet, Karte bleibt sichtbar und färbt die Route abschnittsweise.

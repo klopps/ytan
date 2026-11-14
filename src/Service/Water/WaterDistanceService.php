@@ -104,11 +104,76 @@ final class WaterDistanceService
         if ($index === null || !$this->covers($lat, $lng)) {
             return $result;
         }
-        foreach (WaterIndex::KINDS as $kind => $name) {
-            $result[$name] = $this->nearest($index, $kind, $lat, $lng);
+        foreach (['sea', 'river', 'lake'] as $name) {
+            $result[$name] = $this->nearest($index, (int) array_search($name, WaterIndex::KINDS, true), $lat, $lng)['meters'];
+        }
+        // "river" has always meant river or canal (POI distances, shelter filter)
+        if ($index->hasKind('canal')) {
+            $canal = $this->nearest($index, (int) array_search('canal', WaterIndex::KINDS, true), $lat, $lng)['meters'];
+            if ($canal !== null && ($result['river'] === null || $canal < $result['river'])) {
+                $result['river'] = $canal;
+            }
         }
 
         return $result;
+    }
+
+    /**
+     * The river or canal a position lies on (Routencheck: current): the
+     * nearest centre line within $maxMeters, unless a sea coastline or lake
+     * shore is nearer (then the position is on the sea/lake, e.g. at a river
+     * mouth). 'bearing' is the direction of that centre line segment in
+     * degrees (0 = north) - downstream for a river, since OpenStreetMap draws
+     * rivers in flow direction and the index keeps the order of the points;
+     * meaningless for a canal (no current).
+     *
+     * null = on neither, no index, outside its countries - or an index built
+     * before canals had a kind of their own (canals there are stored as river
+     * and would get a current), so nothing changes until the new index is in.
+     *
+     * @return array{kind: 'river'|'canal', bearing: float, distance: int}|null
+     */
+    public function flowAt(float $lat, float $lng, int $maxMeters = 150): ?array
+    {
+        $index = $this->index();
+        if ($index === null || !$index->hasKind('canal') || !$this->covers($lat, $lng)) {
+            return null;
+        }
+        $best = null;
+        foreach (['river', 'canal'] as $name) {
+            $found = $this->nearest($index, (int) array_search($name, WaterIndex::KINDS, true), $lat, $lng, $maxMeters);
+            if ($found['meters'] !== null && $found['meters'] <= $maxMeters && ($best === null || $found['meters'] < $best['meters'])) {
+                $best = $found + ['kind' => $name];
+            }
+        }
+        if ($best === null) {
+            return null;
+        }
+        foreach (['sea', 'lake'] as $name) {
+            $other = $this->nearest($index, (int) array_search($name, WaterIndex::KINDS, true), $lat, $lng, $best['meters'])['meters'];
+            if ($other !== null && $other < $best['meters']) {
+                return null;
+            }
+        }
+        [$lat1, $lng1, $lat2, $lng2] = $best['segment'];
+
+        return [
+            'kind' => $best['kind'],
+            'bearing' => self::bearing($lat1, $lng1, $lat2, $lng2),
+            'distance' => $best['meters'],
+        ];
+    }
+
+    /** Initial course from point 1 to point 2 in degrees (0 = north, 90 = east). */
+    private static function bearing(float $lat1, float $lng1, float $lat2, float $lng2): float
+    {
+        $p1 = deg2rad($lat1);
+        $p2 = deg2rad($lat2);
+        $dl = deg2rad($lng2 - $lng1);
+        $y = sin($dl) * cos($p2);
+        $x = cos($p1) * sin($p2) - sin($p1) * cos($p2) * cos($dl);
+
+        return fmod(rad2deg(atan2($y, $x)) + 360.0, 360.0);
     }
 
     /**
@@ -215,7 +280,14 @@ final class WaterDistanceService
         return $this->index;
     }
 
-    private function nearest(WaterIndex $index, int $kind, float $lat, float $lng): ?int
+    /**
+     * Nearest segment of one kind: its distance in metres (null = none within
+     * MAX_METERS or $limit) and the segment itself [lat1, lng1, lat2, lng2].
+     * A $limit stops the ring search early once nothing nearer can come.
+     *
+     * @return array{meters: ?int, segment: ?array{0: float, 1: float, 2: float, 3: float}}
+     */
+    private function nearest(WaterIndex $index, int $kind, float $lat, float $lng, int $limit = self::MAX_METERS): array
     {
         $cell = $index->cellDegrees();
         $row = (int) floor($lat / $cell + 1e-9);
@@ -224,6 +296,7 @@ final class WaterDistanceService
 
         $best = INF;
         $bestPoint = null;
+        $bestSegment = null;
         for ($ring = 0; ; $ring++) {
             // Nothing in ring N is nearer than N-1 whole cells; a cell is
             // narrowest at the ring's latitude farthest from the equator.
@@ -231,7 +304,7 @@ final class WaterDistanceService
                 $poleward = min(89.0, abs($lat) + ($ring + 1) * $cell);
                 $cellMeters = $cell * self::METERS_PER_DEGREE * min(1.0, cos(deg2rad($poleward)));
                 $bound = ($ring - 1) * $cellMeters;
-                if ($bound >= $best || $bound > self::MAX_METERS) {
+                if ($bound >= $best || $bound > $limit) {
                     break;
                 }
             }
@@ -255,16 +328,19 @@ final class WaterDistanceService
                 if ($d < $best) {
                     $best = $d;
                     $bestPoint = [$lat1 + $t * ($lat2 - $lat1), $lng1 + $t * ($lng2 - $lng1)];
+                    $bestSegment = [$lat1, $lng1, $lat2, $lng2];
                 }
             }
         }
 
         if ($bestPoint === null) {
-            return null;
+            return ['meters' => null, 'segment' => null];
         }
         $meters = self::haversine($lat, $lng, $bestPoint[0], $bestPoint[1]);
 
-        return $meters > self::MAX_METERS ? null : (int) round($meters);
+        return $meters > self::MAX_METERS
+            ? ['meters' => null, 'segment' => null]
+            : ['meters' => (int) round($meters), 'segment' => $bestSegment];
     }
 
     private static function haversine(float $lat1, float $lng1, float $lat2, float $lng2): float

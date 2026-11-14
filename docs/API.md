@@ -101,23 +101,28 @@ traffic light + AI assessment of the route for one day (`routencheck.md`).
 Body (all optional): `date` (`YYYY-MM-DD`, today .. +7 days, default
 today), `start_hour` (0-23, default 10), `reverse` (bool), `speed_kmh`
 (0.5-30, default the user's default speed, else 6), `level`
-(`beginner|experienced|expert`, default the stored one), `text` (`false` =
+(`beginner|experienced|expert`, default the stored one), `current_kmh` (river
+current 0-10, default the rules' `river_current_kmh`), `text` (`false` =
 traffic light only, no model request - the page asks for that first). 422
-codes: `route_check.date_invalid|start_invalid|speed_invalid|level_invalid|too_short`.
+codes: `route_check.date_invalid|start_invalid|speed_invalid|level_invalid|current_invalid|too_short`.
 
 Answer `data`: `date, start_hour, reverse, speed_kmh, level, length_m, start,
 end, end_date, duration_min`, `rating` (0 green, 1 yellow, 2 red, null =
 no data), `partial` (some sections without data), `reasons`
 (`[{criterion, value, threshold, level}]`, worst first; criteria `wind,
-gust, wave, thunder, dark, dusk, cold_water, offshore, beam_sea`),
+gust, wave, thunder, dark, dusk, cold_water, offshore, beam_sea, current`),
 `sections` (`[{index, from_m, to_m, entry, exit, hours, rating, partial,
 reasons, values: {wind, gust, direction, relative, wave, fetch_m, lee,
-exposed, offshore}, points: [[lat, lng], ...], bearing}]`), `windows`
+exposed, offshore, water (river|canal|null), current (km/h along the course on
+the river part, + with / - against it, null = none)}, points: [[lat, lng], ...],
+bearing}]`), `windows`
 (`[{hour, rating, reason, end}]` - the rating for every start hour of the
 rules' window), `pois` (`[{id, name, type, type_label, role
 (landing|danger|portage), lat, lng, distance_m, at_m}]`, max 30 within
 2 km), `sun {sunrise, sunset}`, `weather {source, model, generated_at}`,
-`thresholds` (wind/gust/wave for this level), `limit {per_day,
+`thresholds` (wind/gust/wave/current for this level), `current {on_river,
+on_canal, river_kmh, default_kmh}` (the river current used and the admin's
+default; the page offers its -/+ chips only when `on_river`), `limit {per_day,
 used_today}`, `text` (Markdown or null), `text_status`
 (`ok|skipped|limit|error|not_configured|no_data`), `text_error` (with
 `error`: `auth|credit|rate_limit|timeout|refusal|other`), `text_cached`,

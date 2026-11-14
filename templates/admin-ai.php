@@ -12,7 +12,8 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
 $ruleRows = [
     ['dusk_minutes', 'min'], ['cold_water_c', '°C'], ['lee_fetch_m', 'm'], ['lee_factor', '×'],
     ['exposed_fetch_km', 'km'], ['exposed_factor', '×'], ['offshore_land_km', 'km'], ['offshore_open_km', 'km'],
-    ['beam_min_deg', '°'], ['beam_max_deg', '°'], ['headwind_slowdown', 'km/h'], ['window_from', 'h'], ['window_to', 'h'],
+    ['beam_min_deg', '°'], ['beam_max_deg', '°'], ['headwind_slowdown', 'km/h'], ['river_current_kmh', 'km/h'], ['river_max_m', 'm'],
+    ['window_from', 'h'], ['window_to', 'h'],
 ];
 ?>
 <div class="card mb-3" id="aiStatusCard">
@@ -86,7 +87,7 @@ $ruleRows = [
             <table class="table table-sm align-middle">
                 <thead><tr><th scope="col"></th><th scope="col"><?= $t('admin.ai.yellow') ?></th><th scope="col"><?= $t('admin.ai.red') ?></th></tr></thead>
                 <tbody>
-                <?php foreach (['wind' => 'm/s', 'gust' => 'm/s', 'wave' => 'm'] as $key => $unit): ?>
+                <?php foreach (['wind' => 'm/s', 'gust' => 'm/s', 'wave' => 'm', 'current' => 'km/h'] as $key => $unit): ?>
                     <tr>
                         <th scope="row" class="fw-normal"><?= $t('admin.ai.rule.' . $key) ?> <span class="text-secondary">(<?= $unit ?>)</span></th>
                         <td><input type="number" step="0.1" class="form-control form-control-sm ai-rule" data-rule="<?= $key ?>.yellow" aria-label="<?= htmlspecialchars($t('admin.ai.rule.' . $key) . ' ' . $t('admin.ai.yellow'), ENT_QUOTES) ?>"></td>

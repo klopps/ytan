@@ -11,7 +11,8 @@ One binary file, little-endian, read by PHP's Ytan\\Service\\Water\\WaterIndex
         i    first cell column (floor(lng_microdeg / cell))
         I    rows
         I    columns
-        I    kinds (3: sea, river, lake - in this order)
+        I    kinds (4: sea, river, lake, canal - in this order; older
+             files have 3, without canal: canals were stored as river)
         I    total segments
         24x  reserved (64 bytes in all)
     directory  kinds * rows * columns entries of (I start, I count)
@@ -32,7 +33,7 @@ import numpy as np
 MAGIC = b"YTANWATR"
 FORMAT_VERSION = 1
 HEADER = struct.Struct("<8sIIiiIIII24x")  # 64 bytes
-KINDS = ("sea", "river", "lake")
+KINDS = ("sea", "river", "lake", "canal")
 MICRO = 1_000_000
 
 

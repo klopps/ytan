@@ -21,12 +21,15 @@ final class RouteRatingTest extends TestCase
 {
     private const DATE = '2026-11-14';
 
-    /** @param array<string, mixed> $hour values for every hour (km/h like the weather payload) */
-    private function rating(array $hour, ?\Closure $openWater = null, float $levelFactor = 1.0, bool $withHours = true): RouteRating
+    /**
+     * @param array<string, mixed> $hour values for every hour (km/h like the weather payload)
+     * @param array{river_along: float, river_share: float, canal_share: float}|null $flow the same for every section
+     */
+    private function rating(array $hour, ?\Closure $openWater = null, float $levelFactor = 1.0, bool $withHours = true, ?array $flow = null, float $riverKmh = 0.0): RouteRating
     {
         $zone = new DateTimeZone('+01:00');
         $geometry = new RouteGeometry([[56.0, 10.0], [56.09, 10.0]]);
-        $sections = array_map(fn (array $s) => $s + ['weather' => 0], $geometry->sections());
+        $sections = array_map(fn (array $s) => $s + ['weather' => 0, 'flow' => $flow], $geometry->sections());
         $hourly = [];
         if ($withHours) {
             for ($h = 0; $h < 24; $h++) {
@@ -42,7 +45,7 @@ final class RouteRatingTest extends TestCase
             ]],
         ]];
 
-        return new RouteRating($sections, $forecasts, $openWater ?? fn () => null, BriefingRules::defaults(), $levelFactor, $zone);
+        return new RouteRating($sections, $forecasts, $openWater ?? fn () => null, BriefingRules::defaults(), $levelFactor, $zone, $riverKmh);
     }
 
     private function at(string $time): DateTimeImmutable
@@ -167,6 +170,61 @@ final class RouteRatingTest extends TestCase
         $this->assertSame('11:40', $calm['end']->format('H:i'));
         $this->assertGreaterThan($calm['end'], $headwind['end']);
         $this->assertSame('12:33', $headwind['end']->format('H:i'));
+    }
+
+    public function testARiverCurrentChangesTheSpeedOverGround(): void
+    {
+        // 10 km at 6 km/h, wind from the side (no headwind): 10:00-11:40 without current
+        $down = $this->rating([], null, 1.0, true, ['river_along' => 1.0, 'river_share' => 1.0, 'canal_share' => 0.0], 2.0)->assess($this->at('10:00'), 6.0);
+        $up = $this->rating([], null, 1.0, true, ['river_along' => -1.0, 'river_share' => 1.0, 'canal_share' => 0.0], 2.0)->assess($this->at('10:00'), 6.0);
+
+        $this->assertSame('11:15', $down['end']->format('H:i'), '8 km/h downstream');
+        $this->assertSame(0, $down['rating']);
+        $this->assertSame('river', $down['sections'][0]['values']['water']);
+        $this->assertEquals(2.0, $down['sections'][0]['values']['current']);
+
+        $this->assertSame('12:30', $up['end']->format('H:i'), '4 km/h upstream');
+        $this->assertSame(1, $up['rating']);
+        $this->assertSame('current', $up['reasons'][0]['criterion']);
+        $this->assertEquals(2.0, $up['reasons'][0]['threshold']);
+    }
+
+    public function testAStrongCurrentAgainstTheCourseIsRedAndOnlyItsRiverPartCounts(): void
+    {
+        $strong = $this->rating([], null, 1.0, true, ['river_along' => -1.0, 'river_share' => 1.0, 'canal_share' => 0.0], 5.0)->assess($this->at('10:00'), 6.0);
+        $this->assertSame(2, $strong['rating']);
+        $this->assertSame('20:00', $strong['end']->format('H:i'), '1 km/h over ground');
+
+        // half the section on the river: the time changes by half, the rating uses the river part
+        $half = $this->rating([], null, 1.0, true, ['river_along' => -0.5, 'river_share' => 0.5, 'canal_share' => 0.0], 2.0)->assess($this->at('10:00'), 6.0);
+        $this->assertSame('12:00', $half['end']->format('H:i'), '5 km/h over ground');
+        $this->assertSame('current', $half['reasons'][0]['criterion']);
+        $this->assertNull($half['sections'][0]['values']['water'], 'not more than half on the river');
+    }
+
+    public function testOnARiverTheOpenWaterRulesStayOut(): void
+    {
+        // 30 km of "open water" upwind would make the section exposed (thresholds x 0.8: wind yellow from 4 m/s)
+        $openWater = fn () => 30000;
+        $sea = $this->rating(['wind_speed' => 4.5 * 3.6], $openWater)->assess($this->at('10:00'), 6.0);
+        $river = $this->rating(['wind_speed' => 4.5 * 3.6], $openWater, 1.0, true, ['river_along' => 0.0, 'river_share' => 1.0, 'canal_share' => 0.0], 2.0)->assess($this->at('10:00'), 6.0);
+
+        $this->assertSame(1, $sea['rating']);
+        $this->assertTrue($sea['sections'][0]['values']['exposed']);
+        $this->assertSame(0, $river['rating']);
+        $this->assertFalse($river['sections'][0]['values']['exposed']);
+        $this->assertNull($river['sections'][0]['values']['fetch_m']);
+        $this->assertNull($river['sections'][0]['values']['wave'], 'no fetch-built wave on a river');
+    }
+
+    public function testCanalsHaveNoCurrent(): void
+    {
+        $result = $this->rating([], null, 1.0, true, ['river_along' => 0.0, 'river_share' => 0.0, 'canal_share' => 1.0], 3.0)->assess($this->at('10:00'), 6.0);
+
+        $this->assertSame('11:40', $result['end']->format('H:i'));
+        $this->assertSame(0, $result['rating']);
+        $this->assertSame('canal', $result['sections'][0]['values']['water']);
+        $this->assertNull($result['sections'][0]['values']['current']);
     }
 
     public function testStartWindowsCoverTheDay(): void

@@ -11,7 +11,8 @@ use Ytan\Service\Water\WaterDistanceService;
  * Reads tests/testdata/water-index-sample.bin - written by the real Python
  * writer (tools/water/make_test_fixture.py), so this also pins that PHP and
  * Python agree on the index format. Around 56.0 N / 9.0 E: a coast line 100 m
- * north, a river 300 m east, a square lake shore around 56.3 N / 9.0 E.
+ * north, a river 300 m east (drawn south to north), a square lake shore around
+ * 56.3 N / 9.0 E, a canal at 56.15 N.
  */
 final class WaterDistanceServiceTest extends TestCase
 {
@@ -114,6 +115,39 @@ final class WaterDistanceServiceTest extends TestCase
         $service = $this->service();
         $this->assertEqualsWithDelta(0.01 * 111320 * cos(deg2rad(56.3)), $service->openWaterAlong(56.3, 9.0, 90.0), 10);
         $this->assertEqualsWithDelta(0.01 * 111320, $service->openWaterAlong(56.3, 9.0, 0.0), 10);
+    }
+
+    public function testOnARiverTheFlowFollowsTheDirectionTheLineWasDrawnIn(): void
+    {
+        $flow = $this->service()->flowAt(56.005, 9.0045);
+
+        $this->assertSame('river', $flow['kind']);
+        $this->assertEqualsWithDelta(0.0, $flow['bearing'], 0.5, 'drawn south to north = flows north');
+        $this->assertEqualsWithDelta(20, $flow['distance'], 3);
+    }
+
+    public function testACanalIsItsOwnKindAndStillCountsAsRiverDistance(): void
+    {
+        $service = $this->service();
+        $this->assertSame('canal', $service->flowAt(56.1505, 9.01)['kind']);
+        $this->assertEqualsWithDelta(56, $service->distances(56.1505, 9.01)['river'], 2);
+    }
+
+    public function testNoFlowAwayFromRiversOrWhereTheSeaIsNearer(): void
+    {
+        $service = $this->service();
+        $this->assertNull($service->flowAt(56.0, 9.02), 'river ~950 m away');
+        $this->assertNull($service->flowAt(56.0009, 8.995), 'on the coast, river 600 m away');
+        $this->assertNull($service->flowAt(56.0012, 9.0040), 'river 51 m, coast 34 m: at the mouth = sea');
+    }
+
+    public function testAnIndexWithoutTheCanalKindGivesNoFlowButTheSameDistances(): void
+    {
+        $service = new WaterDistanceService(dirname(__DIR__) . '/testdata/water-index-sample-v3kinds.bin');
+
+        $this->assertTrue($service->available());
+        $this->assertNull($service->flowAt(56.005, 9.0045), 'canals would be taken for rivers there');
+        $this->assertEqualsWithDelta(300, $service->distances(56.0, 9.0)['river'], 2);
     }
 
     public function testOpenWaterWithoutAnIndexIsNull(): void

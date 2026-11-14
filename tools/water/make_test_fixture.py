@@ -6,8 +6,13 @@ both sides agree on the format. Re-run after changing water_index.py:
 
 Around 56.0 N / 9.0 E:
     sea    an east-west line 100 m north of it (lat 56.000898, lng 8.99-9.01)
-    river  a north-south line 300 m east of it (lng 9.004820, lat 55.99-56.01)
+    river  a north-south line 300 m east of it (lng 9.004820, lat 55.99-56.01),
+           drawn south to north = flows north
     lake   a square shore around 56.3 N / 9.0 E (+-0.01 degrees), ~32 km north
+    canal  an east-west line at lat 56.15, lng 9.0-9.02
+
+tests/testdata/water-index-sample-v3kinds.bin is the same without the canal kind
+in the older three-kind layout (kept by hand, the writer only writes four kinds).
 """
 
 import os
@@ -29,8 +34,11 @@ def square(lat: float, lng: float, d: float) -> np.ndarray:
 def fixture() -> dict:
     return {
         "sea": np.array([[56.000898, 8.99, 56.000898, 9.01]]),
+        # drawn south to north = flows north (OSM draws rivers in flow direction)
         "river": np.array([[55.99, 9.004820, 56.01, 9.004820]]),
         "lake": square(56.3, 9.0, 0.01),
+        # drawn west to east; a canal has no current, the direction means nothing
+        "canal": np.array([[56.15, 9.0, 56.15, 9.02]]),
     }
 
 

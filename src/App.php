@@ -332,6 +332,7 @@ final class App
                         fn (array $poi) => $poi + ['type_label' => $typeLabel((int) $poi['poitype_id'])],
                         $pois->findInBox($south, $north, $west, $east, $types, $userId)
                     ),
+                    fn (float $lat, float $lng, int $maxMeters) => $water->flowAt($lat, $lng, $maxMeters),
                 ),
                 $c->get(\Ytan\Service\Ai\AiClient::class),
                 new \Ytan\Service\Ai\AiTextCache($rootDir . '/storage/ai-cache'),

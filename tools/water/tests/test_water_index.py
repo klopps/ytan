@@ -43,6 +43,22 @@ class WaterIndexTest(unittest.TestCase):
         np.testing.assert_allclose(water_index.read_cell(self.path, "lake", 1200, 400), [[60.01, 20.01, 60.02, 20.02]])
         self.assertEqual(0, len(water_index.read_cell(self.path, "lake", 5000, 400)), "outside the grid")
 
+    def test_canals_are_a_kind_of_their_own_and_segments_keep_their_direction(self):
+        # river drawn south to north (= flows north in OpenStreetMap): the order must survive
+        water_index.write(self.path, {
+            "river": np.array([[56.11, 9.01, 56.12, 9.01]]),
+            "canal": np.array([[56.13, 9.02, 56.13, 9.01]]),
+        })
+        np.testing.assert_allclose(water_index.read_cell(self.path, "river", 1122, 180), [[56.11, 9.01, 56.12, 9.01]])
+        np.testing.assert_allclose(water_index.read_cell(self.path, "canal", 1122, 180), [[56.13, 9.02, 56.13, 9.01]])
+        with open(self.path, "rb") as f:
+            self.assertEqual(4, water_index.HEADER.unpack(f.read(64))[7], "kinds in the header")
+
+    def test_simplifying_keeps_the_direction(self):
+        line = np.array([[9.0, 56.0], [9.0, 56.01], [9.0, 56.02]])  # lng, lat - northwards
+        segments = build_index.to_segments([line])
+        self.assertLess(segments[0][0], segments[-1][2], "first point south of the last")
+
     def test_negative_coordinates(self):
         water_index.write(self.path, {"sea": np.array([[-33.91, -18.41, -33.92, -18.42]])})
         self.assertEqual(1, len(water_index.read_cell(self.path, "sea", -679, -369)))

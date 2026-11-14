@@ -14,8 +14,10 @@ use DateTimeZone;
  * from mean wind, gusts, waves, thunderstorms, darkness and water temperature,
  * tightened or relaxed by where the wind comes from (open water upwind =
  * exposed, land close upwind = lee, land upwind + open water downwind =
- * offshore wind, wind from the side + waves). The route gets the worst rating
- * of its sections; windows() repeats that for every start hour of the day.
+ * offshore wind, wind from the side + waves) and from a river current against
+ * the course (it also changes the speed over ground, so the times). The route
+ * gets the worst rating of its sections; windows() repeats that for every
+ * start hour of the day.
  *
  * Every rating carries its reasons ({criterion, value, threshold, level}), so
  * the page and the AI text can say WHY - the AI never decides a colour.
@@ -41,7 +43,31 @@ final class RouteRating
         private readonly array $rules,
         private readonly float $levelFactor,
         private readonly DateTimeZone $timezone,
+        private readonly float $riverCurrentKmh = 0.0,
     ) {
+    }
+
+    /**
+     * The river current along a section in km/h: + with the course, - against
+     * it. 'along' is the mean of cos(course vs. flow) over the section's
+     * samples (off-river samples count 0), so the speed over ground follows
+     * the share of the section that is on the river; 'local' is the same for
+     * the river part only (the current where the paddler actually meets it).
+     * Canals have no current.
+     *
+     * @return array{along: float, local: float}
+     */
+    private function current(array $section): array
+    {
+        $flow = $section['flow'] ?? null;
+        if ($flow === null || $flow['river_share'] <= 0.0 || $this->riverCurrentKmh <= 0.0) {
+            return ['along' => 0.0, 'local' => 0.0];
+        }
+
+        return [
+            'along' => $flow['river_along'] * $this->riverCurrentKmh,
+            'local' => $flow['river_along'] / $flow['river_share'] * $this->riverCurrentKmh,
+        ];
     }
 
     /**
@@ -58,7 +84,8 @@ final class RouteRating
         foreach ($this->sections as $index => $section) {
             $entry = $time;
             $hour = $this->hourData($section['weather'], $entry);
-            $speed = $this->effectiveSpeed($speedKmh, $section['bearing'], $hour);
+            // speed over ground: wind-slowed paddling speed plus the river current
+            $speed = max(0.5, $this->effectiveSpeed($speedKmh, $section['bearing'], $hour) + $this->current($section)['along']);
             $seconds = (int) round($section['length'] / 1000 / $speed * 3600);
             $exit = $entry->modify('+' . $seconds . ' seconds');
             $time = $exit;
@@ -152,8 +179,14 @@ final class RouteRating
         $gust = self::kmhToMs($hour['wind_gusts'] ?? null);
         $direction = is_numeric($hour['wind_direction'] ?? null) ? (float) $hour['wind_direction'] : null;
 
-        $upwind = $direction !== null ? $this->water($index, $section['mid'], $direction) : null;
-        $downwind = $direction !== null ? $this->water($index, $section['mid'], fmod($direction + 180.0, 360.0)) : null;
+        // On a river or canal the index knows no banks (centre line only), so the
+        // open water along the wind would run to the next coast or lake shore -
+        // up to 30 km "exposed" and a fetch-built wave on a narrow river. There
+        // the open-water rules (lee/exposed/offshore, wave estimate) stay out.
+        $flow = $section['flow'] ?? null;
+        $onRiverWater = $flow !== null && $flow['river_share'] + $flow['canal_share'] > 0.5;
+        $upwind = $direction !== null && !$onRiverWater ? $this->water($index, $section['mid'], $direction) : null;
+        $downwind = $direction !== null && !$onRiverWater ? $this->water($index, $section['mid'], fmod($direction + 180.0, 360.0)) : null;
         $lee = $upwind !== null && $upwind < $this->rules['lee_fetch_m'];
         $exposed = $upwind !== null && $upwind >= $this->rules['exposed_fetch_km'] * 1000;
         $offshore = $upwind !== null && $downwind !== null
@@ -212,6 +245,15 @@ final class RouteRating
             $reasons[] = ['criterion' => 'beam_sea', 'value' => (int) round($relative), 'threshold' => null, 'level' => $beamLevel];
             $level = max($level, $beamLevel);
         }
+        $current = $this->current($section);
+        if ($current['local'] < 0.0) {
+            $against = -$current['local'];
+            $currentLevel = self::threshold($against, $this->rules['current'], $this->levelFactor);
+            if ($currentLevel > 0) {
+                $reasons[] = self::reason('current', $against, $this->rules['current'], $this->levelFactor, $currentLevel);
+            }
+            $level = max($level, $currentLevel);
+        }
         usort($reasons, static fn ($a, $b) => $b['level'] <=> $a['level']);
 
         return [
@@ -227,6 +269,9 @@ final class RouteRating
                 'lee' => $lee,
                 'exposed' => $exposed,
                 'offshore' => $offshore,
+                // river/canal = more than half of the section's samples on it
+                'water' => $flow === null ? null : ($flow['river_share'] > 0.5 ? 'river' : ($flow['canal_share'] > 0.5 ? 'canal' : null)),
+                'current' => $current['local'] != 0.0 ? round($current['local'], 1) : null,
             ],
         ];
     }

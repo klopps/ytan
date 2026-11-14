@@ -13,6 +13,7 @@
 
 var ROUTE_CHECK_CONSENT_KEY = 'ytan_route_check_consent';
 var ROUTE_CHECK_LEVELS = ['beginner', 'experienced', 'expert'];
+var ROUTE_CHECK_MAX_CURRENT_KMH = 10; // = AiBriefingController::MAX_CURRENT_KMH
 var routeCheck = {
     routeIndex: null,
     routeId: null,
@@ -20,6 +21,7 @@ var routeCheck = {
     startHour: null,
     reverse: false,
     level: null,
+    currentKmh: null, // river current; null = the admin's default
     result: null,
     textState: null,
     seq: 0,
@@ -96,6 +98,7 @@ async function openRouteCheck(i) {
     routeCheck.startHour = useToday ? Math.min(23, Math.max(6, now.getHours() + 1)) : 10;
     routeCheck.reverse = false;
     routeCheck.level = null; // the server takes the stored level
+    routeCheck.currentKmh = null;
     routeCheck.result = null;
     routeCheck.textState = 'loading';
 
@@ -200,6 +203,9 @@ async function routeCheckLoad() {
     if (routeCheck.level) {
         body.level = routeCheck.level;
     }
+    if (routeCheck.currentKmh !== null) {
+        body.current_kmh = routeCheck.currentKmh;
+    }
     routeCheck.textState = 'loading';
     try {
         var answer = await Ytan.post('/routes/' + routeCheck.routeId + '/briefing', body);
@@ -252,6 +258,29 @@ function routeCheckSetStart(hour) {
 
 function routeCheckShiftStart(delta) {
     routeCheckSetStart(routeCheck.startHour + delta);
+}
+
+/** River current -/+ 0.5 km/h (only offered when the route runs on a river). */
+function routeCheckShiftCurrent(delta) {
+    var current = routeCheck.result && routeCheck.result.current;
+    var base = routeCheck.currentKmh !== null ? routeCheck.currentKmh : (current ? current.river_kmh : 0);
+    var next = Math.round(Math.max(0, Math.min(ROUTE_CHECK_MAX_CURRENT_KMH, base + delta)) * 10) / 10;
+    if (next === base) {
+        return;
+    }
+    routeCheck.currentKmh = next;
+    routeCheckLoad();
+}
+
+function routeCheckCurrentChipsHtml(result) {
+    if (!result.current || !result.current.on_river) {
+        return '';
+    }
+    return '<div class="rc-chips">' +
+        '<button type="button" class="rc-chip" aria-label="' + escapeHTML(t('route_check.current_less')) + '" data-on-click="routeCheckShiftCurrent(-0.5);">&minus;</button>' +
+        '<span class="rc-chip rc-static"><i class="material-icons-round">waves</i>' + t('route_check.current_at', { value: routeCheckNumber(result.current.river_kmh) }) + '</span>' +
+        '<button type="button" class="rc-chip" aria-label="' + escapeHTML(t('route_check.current_more')) + '" data-on-click="routeCheckShiftCurrent(0.5);">+</button>' +
+        '</div>';
 }
 
 function routeCheckToggleReverse() {
@@ -315,6 +344,7 @@ function routeCheckReasonText(reason) {
     case 'cold_water': return t('route_check.reason.cold_water', vars);
     case 'offshore': return t('route_check.reason.offshore', vars);
     case 'beam_sea': return t('route_check.reason.beam_sea', vars);
+    case 'current': return t('route_check.reason.current', vars);
     default: return escapeHTML(String(reason.criterion));
     }
 }
@@ -411,6 +441,7 @@ function routeCheckRender() {
             '<button type="button" class="rc-chip" aria-label="' + escapeHTML(t('route_check.later')) + '" data-on-click="routeCheckShiftStart(1);">+1 h</button>' +
             '<button type="button" class="rc-chip' + (routeCheck.reverse ? ' active' : '') + '" data-on-click="routeCheckToggleReverse();"><i class="material-icons-round">swap_horiz</i>' + t('route_check.reverse') + '</button>' +
         '</div>' +
+        routeCheckCurrentChipsHtml(result) +
         '<div class="rc-chips">' + ROUTE_CHECK_LEVELS.map(function (level) {
             return '<button type="button" class="rc-chip' + (level === routeCheck.level ? ' active' : '') + '" data-on-click="routeCheckSetLevel(\'' + level + '\');">' + routeCheckLevelLabel(level) + '</button>';
         }).join('') + '</div>' +
