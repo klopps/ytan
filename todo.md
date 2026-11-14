@@ -27,7 +27,6 @@ Offen:
 - Datenschutzerklärung: 2026-11-13 komplett auf den Stand von YTAN gebracht (`templates/privacy.php`, § 10 Routencheck; Hinweistext `route_check.consent` angeglichen - er behauptete "Wegpunkte" und "keine persönlichen Daten", gesendet werden aber keine Koordinaten, dafür die Namen eigener privater POIs). Vom Betreiber noch zu prüfen/freizugeben: Auftragsverarbeitung Hoster + Mail, Rechtsgrundlage der Übermittlung an Anthropic (DPF-Zertifizierung oder Standardvertragsklauseln, Vertragspartner), Löschfrist für `storage/logs` (derzeit keine) und Fotos mit EXIF-Daten (werden unverändert gespeichert).
 - Deploy: Migration 070 läuft über `bin/migrate.php`; auf Test und Prod je einen eigenen Anthropic-Workspace-Key in die `.env` (`ANTHROPIC_API_KEY`), dann auf /admin/ai einschalten und Benutzern das Recht „Routencheck (KI)“ geben.
 - Erfahrungsstufe zusätzlich im Profil einstellbar machen (bisher nur über die Chips im Routencheck, gespeichert per `PUT /auth/paddle-level`).
-- Anleitung (`docs/user/de/`) um ein Kapitel Routencheck mit Screenshot ergänzen.
 - e2e-Spec für den Routencheck (nur Ampel mit `text: false`, damit keine echten KI-Kosten entstehen).
 - Später: Tourcheck (ganze Tour), Restguthaben-Anzeige (s. o.).
 

@@ -28,6 +28,7 @@ use Ytan\Http\Controllers\GpxExportController;
 use Ytan\Http\Controllers\GpxImportController;
 use Ytan\Http\Controllers\PoiController;
 use Ytan\Http\Controllers\RouteController;
+use Ytan\Http\Controllers\RouteMergeController;
 use Ytan\Http\Controllers\RouteSplitController;
 use Ytan\Http\Controllers\SettingsController;
 use Ytan\Http\Controllers\TourController;
@@ -299,6 +300,7 @@ final class App
         $c->set(RadarSettingsController::class, fn ($c) => new RadarSettingsController($c->get(SettingsRepository::class), $rootDir . '/storage/radar', new RadarJobRunner($rootDir)));
         $c->set(GpxExportController::class, fn ($c) => new GpxExportController($c->get(RouteRepository::class), $c->get(TourRepository::class), $c->get(SettingsRepository::class), $appName));
         $c->set(RouteSplitController::class, fn ($c) => new RouteSplitController($c->get(RouteRepository::class), $c->get(TourRepository::class), $c->get('images.route'), $pdo));
+        $c->set(RouteMergeController::class, fn ($c) => new RouteMergeController($c->get(RouteRepository::class), $c->get(TourRepository::class), $c->get('images.route'), $c->get(SettingsRepository::class), $c->get(TourNotificationService::class), $pdo));
         $c->set(GpxImportController::class, fn ($c) => new GpxImportController($c->get(RouteRepository::class), $c->get(TourRepository::class), $c->get(PoiRepository::class), new GpxImportService(), $pdo, \Ytan\Service\Log\ImportLog::file($rootDir, 'gpx-import')));
         $c->set(TranslationController::class, fn () => new TranslationController(
             new TranslationRepository($rootDir . '/resources/i18n'),
@@ -471,6 +473,7 @@ final class App
         $app->get('/api/v1/routes/{id}/gpx', [GpxExportController::class, 'routeGpx']);
         $app->post('/api/v1/routes/{id}/briefing', [\Ytan\Http\Controllers\AiBriefingController::class, 'briefing']);
         $app->post('/api/v1/routes/{id}/split', [RouteSplitController::class, 'split']);
+        $app->post('/api/v1/routes/{id}/merge', [RouteMergeController::class, 'merge']);
         $app->get('/api/v1/routes/{id}/images/{imageId}', [RouteController::class, 'showImage']);
         $app->delete('/api/v1/routes/{id}/images/{imageId}', [RouteController::class, 'deleteImage']);
 
@@ -539,6 +542,7 @@ final class App
         $app->put('/api/v1/settings/track-distance-filter', [SettingsController::class, 'updateTrackDistanceFilterPresets']);
         $app->put('/api/v1/settings/route-label-font-size-range', [SettingsController::class, 'updateRouteLabelFontSizeRange']);
         $app->put('/api/v1/settings/route-animation', [SettingsController::class, 'updateRouteAnimation']);
+        $app->put('/api/v1/settings/route-merge', [SettingsController::class, 'updateRouteMerge']);
         $app->get('/api/v1/settings/radar', [RadarSettingsController::class, 'show']);
         $app->put('/api/v1/settings/radar', [RadarSettingsController::class, 'update']);
         $app->post('/api/v1/settings/radar/run', [RadarSettingsController::class, 'run']);
@@ -870,6 +874,7 @@ final class App
             $trackDistanceFilterPresets = $c->get(SettingsRepository::class)->trackDistanceFilterPresets();
             $routeLabelFontSizeRange = $c->get(SettingsRepository::class)->routeLabelFontSizeRange();
             $routeAnimation = $c->get(SettingsRepository::class)->routeAnimationSettings();
+            $routeMergeMidpointMeters = $c->get(SettingsRepository::class)->routeMergeMidpointMeters();
             $waterDistancePoiTypes = $c->get(SettingsRepository::class)->waterDistancePoiTypes();
             require $rootDir . '/templates/admin-settings.php';
             $res->getBody()->write(ob_get_clean());

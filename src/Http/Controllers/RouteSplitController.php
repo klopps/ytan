@@ -168,12 +168,7 @@ final class RouteSplitController extends BaseController
 
     private function length(array $points): int
     {
-        $length = 0.0;
-        for ($i = 1, $n = count($points); $i < $n; $i++) {
-            $length += GeometryService::haversineDistanceMeters($points[$i - 1], $points[$i]);
-        }
-
-        return (int) round($length);
+        return GeometryService::polylineLengthMeters($points);
     }
 
     private function summary(array $route): array

@@ -63,7 +63,7 @@ test.describe('Context menus', () => {
 
     const items = page.locator('.contextMenuItem');
     await expect(items.first()).toBeVisible({ timeout: 10_000 });
-    // weather + edit + delete + cancel, since this POI is owned by the
+    // weather + edit + move + delete, since this POI is owned by the
     // logged-in e2e user - see poi.js's showPoiContextMenu().
     expect(await items.count()).toBeGreaterThanOrEqual(4);
     const icons = await page.locator('.contextMenuItem .material-icons-round').allTextContents();

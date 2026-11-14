@@ -14,6 +14,9 @@ final class SettingsController extends BaseController
     /** The highest POI type id (app.poitype.N in the translations, detail0-detail16 in the drawer). */
     public const MAX_POI_TYPE = 16;
 
+    /** Upper limit of the route-merge midpoint distance (meters). */
+    public const MAX_ROUTE_MERGE_MIDPOINT_M = 1000;
+
     public function __construct(private readonly SettingsRepository $settings)
     {
     }
@@ -71,6 +74,20 @@ final class SettingsController extends BaseController
         $this->settings->setTrackDistanceFilterPresets($precise, $balanced, $battery);
 
         return $this->json($response, ['data' => ['precise' => $precise, 'balanced' => $balanced, 'battery' => $battery]]);
+    }
+
+    /** Body {midpoint_m} - see SettingsRepository::routeMergeMidpointMeters(). */
+    public function updateRouteMerge(Request $request, Response $response): Response
+    {
+        $this->requireAdmin($request);
+        $meters = filter_var($this->jsonBody($request)['midpoint_m'] ?? null, FILTER_VALIDATE_INT);
+        if ($meters === false || $meters < 0 || $meters > self::MAX_ROUTE_MERGE_MIDPOINT_M) {
+            throw new ValidationException('midpoint_m must be a whole number of meters from 0 to ' . self::MAX_ROUTE_MERGE_MIDPOINT_M . '.');
+        }
+
+        $this->settings->setRouteMergeMidpointMeters($meters);
+
+        return $this->json($response, ['data' => ['midpoint_m' => $meters]]);
     }
 
     public function updateRouteLabelFontSizeRange(Request $request, Response $response): Response

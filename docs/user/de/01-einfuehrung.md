@@ -10,6 +10,7 @@ YTAN ist ein Planungswerkzeug für Kajaktouren. Du siehst auf einer Karte, wo es
 - **Orientieren:** Die Karte zeigt Orte, die für Kajakfahrer wichtig sind - gesammelt und gepflegt von Paddlern.
 - **Planen:** Du legst Routen an, misst Entfernungen, fasst Etappen zu Touren zusammen und exportierst sie als GPX-Datei oder PDF.
 - **Wetter prüfen:** Ein Tipp auf einen beliebigen Kartenpunkt zeigt Wind, Böen, Regen, Welle und Gezeiten für die nächsten sieben Tage.
+- **Route prüfen lassen:** Der [Routencheck](#chapter-routencheck) bewertet eine Route für einen Tag mit einer Ampel, nennt gute Startzeiten und erklärt kritische Abschnitte (wenn die Administratoren ihn für dich freigeschaltet haben).
 - **Unterwegs navigieren:** Die Android-App zeichnet deinen Track auf und arbeitet auch ohne Netz weiter; die Garmin-Uhr zeigt dir Richtung und Entfernung zum nächsten Wegpunkt.
 - **Teilen und vorstellen:** Karte, Route oder Tour lassen sich als Link weitergeben; Routen und Touren spielt YTAN auf Wunsch als Kameraflug ab.
 

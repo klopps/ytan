@@ -44,6 +44,24 @@ final class SettingsRepository
     }
 
     /**
+     * Merging two routes (RouteMergeController, RouteMerger): joined end
+     * points closer than this are replaced by their midpoint, farther ones
+     * get a connecting segment. 0 = only identical points are combined.
+     */
+    public function routeMergeMidpointMeters(): int
+    {
+        $stmt = $this->db->query('SELECT route_merge_midpoint_m FROM app_settings WHERE id = 1');
+
+        return (int) $stmt->fetchColumn();
+    }
+
+    public function setRouteMergeMidpointMeters(int $meters): void
+    {
+        $stmt = $this->db->prepare('UPDATE app_settings SET route_merge_midpoint_m = ? WHERE id = 1');
+        $stmt->execute([$meters]);
+    }
+
+    /**
      * The three distance-filter presets track-recorder.js offers when
      * starting a GPS recording (Capacitor background-geolocation's only
      * tunable lever for update frequency/battery use) - previously a

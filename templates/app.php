@@ -601,6 +601,14 @@
       <div class="tour-mode-badge-close" data-on-click="exitTourMode();"><i class="material-icons-round">close</i></div>
     </div>
 
+    <!-- ROUTE MERGE PICK MODE (route.js: routeContextMenuMergeRoute()) - shown
+         while the user has to tap the second route; x / Escape cancels. -->
+    <div id="routeMergeBanner" class="route-merge-banner" hidden role="status">
+      <i class="material-icons-round route-merge-banner-icon">call_merge</i>
+      <span id="routeMergeBannerText" class="route-merge-banner-text"></span>
+      <button type="button" class="route-merge-banner-close" title="<?= htmlspecialchars($t('common.cancel'), ENT_QUOTES) ?>" aria-label="<?= htmlspecialchars($t('common.cancel'), ENT_QUOTES) ?>" data-on-click="cancelRouteMerge();"><i class="material-icons-round">close</i></button>
+    </div>
+
     <!-- TRACK RECORDING BADGE - native Capacitor shell only, shown while a
          GPS route recording is active/paused (track-recorder.js). Same
          default top offset as #tourModeBadge (only one of the two normally

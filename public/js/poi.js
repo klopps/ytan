@@ -885,8 +885,7 @@ function showPoiContextMenu(event, i) {
     }
 
     if (content != '') {
-        content = contextMenuHeading(pois[i].name) + content +
-            '<div class="contextMenuItem" data-on-click="closeContextMenu();"><i class="material-icons-round">close</i>' + t('common.cancel') + '</div>';
+        content = contextMenuHeading(pois[i].name) + content;
 
         contextMenu.setPosition(event.latLng);
         contextMenu.setContent(content);

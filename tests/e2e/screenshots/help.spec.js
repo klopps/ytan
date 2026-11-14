@@ -239,6 +239,38 @@ test('user guide screenshots', async ({ loggedInPage: page, request, credentials
   await page.waitForTimeout(5000);
   await shot(page, 'wetter', { settle: 800 });
 
+  // ---- Routencheck ----
+  // Switched on for the e2e database only for this picture. The traffic light
+  // uses the real forecast; the AI text is a fixed example (no paid request,
+  // and the picture doesn't change with whatever the model writes).
+  const aiSettings = (enabled) => request.put('/api/v1/settings/ai', {
+    headers: { Authorization: 'Bearer ' + token }, data: { enabled, daily_limit: 20, cache_hours: 0 },
+  });
+  expect((await aiSettings(true)).ok()).toBeTruthy();
+  await page.route('**/briefing', async (route) => {
+    const body = JSON.parse(route.request().postData() || '{}');
+    if (!body.text) {
+      return route.continue();
+    }
+    const response = await route.fetch({ postData: JSON.stringify({ ...body, text: false }) });
+    const json = await response.json();
+    json.data.text_status = 'ok';
+    json.data.text_created_at = new Date().toISOString();
+    json.data.text = '**Fazit:** Entscheidend ist der Wind - starte in einer Stunde, die in der Leiste gelb oder grün ist.\n\n' +
+      '- **Friedrichsort:** Hier ist die Förde am engsten - auf Fähren und Berufsschifffahrt achten.\n' +
+      '- **Ausweichen:** Am Anleger Laboe kannst du jederzeit anlanden.';
+    return route.fulfill({ response, json });
+  });
+  // The checked route (Kiel - Laboe) in the part of the map above the sheet.
+  await freshMap(54.335, 10.185, 11);
+  await page.evaluate(() => { try { localStorage.setItem('ytan_route_check_consent', '1'); } catch (e) { /* ignore */ } });
+  await page.evaluate((id) => openRouteCheck(routes.findIndex((r) => r && Number(r.id) === id)), demo.route.id);
+  await page.waitForSelector('#routeCheckSheet .rc-text:not(.rc-muted)', { timeout: 30_000 });
+  await shot(page, 'routencheck', { settle: 1200 });
+  await page.evaluate(() => closeRouteCheck());
+  await page.unroute('**/briefing');
+  expect((await aiSettings(false)).ok()).toBeTruthy();
+
   // ---- profile ----
   await freshMap();
   await page.evaluate(() => { openMenu && openMenu(); });

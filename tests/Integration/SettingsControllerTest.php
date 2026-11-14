@@ -212,4 +212,43 @@ final class SettingsControllerTest extends ControllerTestCase
             $this->response()
         );
     }
+
+    public function testRouteMergeMidpointDefaultsToTenAndPersists(): void
+    {
+        $repo = new SettingsRepository($this->pdo);
+        $this->assertSame(10, $repo->routeMergeMidpointMeters(), 'column default');
+
+        $decoded = $this->decode($this->controller->updateRouteMerge(
+            $this->request('PUT', '/api/v1/settings/route-merge', $this->authPayload($this->createUser(), ['is_admin' => true]), ['midpoint_m' => 25]),
+            $this->response()
+        ));
+
+        $this->assertSame(['midpoint_m' => 25], $decoded['data']);
+        $this->assertSame(25, $repo->routeMergeMidpointMeters());
+    }
+
+    public function testRouteMergeMidpointRejectsOutOfRangeValues(): void
+    {
+        foreach ([-1, 1001, 'abc', null, 2.5] as $value) {
+            try {
+                $this->controller->updateRouteMerge(
+                    $this->request('PUT', '/api/v1/settings/route-merge', $this->authPayload($this->createUser(), ['is_admin' => true]), ['midpoint_m' => $value]),
+                    $this->response()
+                );
+                $this->fail('Accepted ' . var_export($value, true));
+            } catch (ValidationException) {
+                $this->addToAssertionCount(1);
+            }
+        }
+    }
+
+    public function testRouteMergeMidpointRejectsANonAdmin(): void
+    {
+        $this->expectException(ForbiddenException::class);
+
+        $this->controller->updateRouteMerge(
+            $this->request('PUT', '/api/v1/settings/route-merge', $this->authPayload(1, ['is_admin' => false]), ['midpoint_m' => 5]),
+            $this->response()
+        );
+    }
 }

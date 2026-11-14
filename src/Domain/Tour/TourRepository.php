@@ -299,6 +299,26 @@ final class TourRepository
         $this->recalculateTotalLength($tourId);
     }
 
+    /**
+     * Puts $newRouteId in the tour where $oldRouteId was (same place in the
+     * order) - a route merged into another (RouteMergeController). If the
+     * tour already holds $newRouteId, $oldRouteId is just removed. Does NOT
+     * recalculate total_length (the caller does once all changes are made).
+     */
+    public function replaceRoute(int $tourId, int $oldRouteId, int $newRouteId): void
+    {
+        $stmt = $this->db->prepare('SELECT COUNT(*) FROM tour_route WHERE tour_id = ? AND route_id = ?');
+        $stmt->execute([$tourId, $newRouteId]);
+        if ((int) $stmt->fetchColumn() > 0) {
+            $this->db->prepare('DELETE FROM tour_route WHERE tour_id = ? AND route_id = ?')
+                ->execute([$tourId, $oldRouteId]);
+            return;
+        }
+
+        $this->db->prepare('UPDATE tour_route SET route_id = ? WHERE tour_id = ? AND route_id = ?')
+            ->execute([$newRouteId, $tourId, $oldRouteId]);
+    }
+
     public function removeRoute(int $tourId, int $routeId): array
     {
         $this->findById($tourId); // 404s if missing

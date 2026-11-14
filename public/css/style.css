@@ -1960,6 +1960,101 @@ img.wsi {
   font-size: 19px;
 }
 
+/* Route merge pick mode (route.js: routeContextMenuMergeRoute()) - centred
+   near the bottom, above the toasts and clear of the top bar and its badges. */
+.route-merge-banner {
+  position: absolute;
+  left: 50%;
+  bottom: 130px; /* above the my-location button and Street View's pegman */
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  box-sizing: border-box;
+  background-color: var(--color-bg-panel);
+  color: var(--color-text);
+  box-shadow: var(--shadow-panel);
+  border-radius: 15px;
+  padding: 6px 6px 6px 12px;
+  z-index: 5;
+}
+
+.route-merge-banner[hidden] {
+  display: none;
+}
+
+.route-merge-banner-icon {
+  color: var(--color-accent);
+  font-size: 20px;
+}
+
+.route-merge-banner-text {
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.route-merge-banner-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 40px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+/* Merge dialog (confirm-dialog.js: showRouteMergeDialog()) */
+.route-merge-dialog {
+  text-align: left;
+}
+
+.route-merge-dialog .confirm-dialog-icon,
+.route-merge-dialog .confirm-dialog-message {
+  width: 100%;
+  text-align: center;
+}
+
+.route-merge-choice {
+  margin-bottom: 16px;
+}
+
+.route-merge-choice-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.route-merge-choice-row label {
+  overflow-wrap: anywhere;
+}
+
+.route-merge-name-label {
+  display: block;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-bottom: 4px;
+}
+
+.route-merge-dialog .route-merge-name {
+  text-align: left;
+  margin-bottom: 10px;
+}
+
+.route-merge-hint {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+  margin-bottom: 20px;
+}
+
 /* The radar frames are drawn into this canvas (radar.js, OverlayView in the map pane) */
 .radar-canvas {
   position: absolute;

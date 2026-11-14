@@ -40,4 +40,4 @@ Ein Passwort muss mindestens **8 Zeichen** lang sein und mindestens **drei der v
 
 ## Standard-Geschwindigkeit
 
-Trage hier deine **durchschnittliche Geschwindigkeit** ein (in km/h oder Knoten, je nach Einheit). Die Garmin-Uhr rechnet die voraussichtliche Ankunftszeit (**ETA**) anfangs mit diesem Wert, bis sie nach etwa fünf Minuten Paddeln deine tatsächliche Geschwindigkeit gemessen hat. Lässt du das Feld leer oder auf 0, erscheint die ETA erst nach der ersten Messung.
+Trage hier deine **durchschnittliche Geschwindigkeit** ein (in km/h oder Knoten, je nach Einheit). Die Garmin-Uhr rechnet die voraussichtliche Ankunftszeit (**ETA**) anfangs mit diesem Wert, bis sie nach etwa fünf Minuten Paddeln deine tatsächliche Geschwindigkeit gemessen hat. Lässt du das Feld leer oder auf 0, erscheint die ETA erst nach der ersten Messung. Auch der [Routencheck](#chapter-routencheck) rechnet Ankunftszeiten mit diesem Wert (ohne Eintrag mit 6 km/h).

@@ -109,6 +109,22 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
 </div>
 <div class="card mt-3">
     <div class="card-body">
+        <h2 class="h6"><?= $t('admin.settings.route_merge_title') ?></h2>
+        <p class="text-muted small"><?= $t('admin.settings.route_merge_hint') ?></p>
+        <div class="row g-3">
+            <div class="col-sm-4">
+                <label for="settingRouteMergeMidpoint" class="form-label"><?= $t('admin.settings.route_merge_midpoint') ?></label>
+                <div class="input-group">
+                    <input type="number" min="0" max="<?= \Ytan\Http\Controllers\SettingsController::MAX_ROUTE_MERGE_MIDPOINT_M ?>" step="1" class="form-control" id="settingRouteMergeMidpoint" value="<?= (int) $routeMergeMidpointMeters ?>">
+                    <span class="input-group-text">m</span>
+                </div>
+            </div>
+        </div>
+        <button type="button" class="btn btn-primary mt-3" id="settingRouteMergeSaveBtn" data-on-click="saveRouteMergeSettings();"><?= $t('common.save') ?></button>
+    </div>
+</div>
+<div class="card mt-3">
+    <div class="card-body">
         <h2 class="h6"><?= $t('admin.settings.water_distance_title') ?></h2>
         <p class="text-muted small"><?= $t('admin.settings.water_distance_hint') ?></p>
         <div class="row g-1" id="settingWaterDistanceTypes">

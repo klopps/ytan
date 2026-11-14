@@ -81,6 +81,23 @@ every tour. Lengths are computed server-side. 201 with
 `{routes: [{id, name, updated_at}, {id, name, updated_at}]}`
 (`RouteSplitController`).
 
+`POST /routes/{id}/merge` - owner or admin of BOTH routes; `{other_id,
+name (1-150 characters), expected_updated_at?, other_expected_updated_at?}`.
+Route `{id}` stays: it gets the joined line, the new length and `name`, and
+keeps description, public, color and recording data. Only end points are
+joined (`RouteMerger`): of the four start/end pairs an identical one wins,
+else the closest; route `{id}` keeps its direction, the other one is
+reversed when needed. Identical points are kept once (`join: "shared"`),
+points closer than `app_settings.route_merge_midpoint_m` (default 10 m)
+become their midpoint (`"midpoint"`), otherwise a connecting segment is
+added (`"segment"`). The other route is deleted; its photos are copied up
+to the 5-photo limit, and in its tours route `{id}` takes its place (or it
+is just removed when the tour already holds route `{id}`). 200 with
+`{route: {id, name, updated_at}, deleted_id, join, gap_m (whole meters
+between the joined points), other_first (the other route now forms the
+start), images_skipped}`; 403 if either route isn't the caller's, 422 for
+the same id twice or a missing/too long name (`RouteMergeController`).
+
 `GET /routes/{id}/gpx` - the route as a GPX 1.1 file (`application/gpx+xml`,
 as an attachment): one `<trk>` with the route's name/description and one
 `<trkpt lat lon>` per point (no times/elevations - a route has none).
@@ -269,6 +286,7 @@ Read by the SPA as `window.YTAN_ROUTE_ANIMATION` (`{color, line_width, zoom, end
 
 | Method | Path | Auth | Body / query | Notes |
 |---|---|---|---|---|
+| PUT | `/settings/route-merge` | admin | `midpoint_m` (whole meters 0-1000): merging two routes, joined end points closer than this become their midpoint; 0 = only identical points | `data`: `{midpoint_m}`; 422 for anything else |
 | PUT | `/settings/route-animation` | admin | `color` (`#RRGGBB`), `line_width` (whole px 1-30), `zoom` (3-21, rounded to 0.1), `end_delay_s` (seconds 0-600, rounded to 0.01), `speed` (default playback speed, whole screen px per second at that zoom, 10-2000) | `data`: the stored values (colour upper-case); 422 for anything else |
 
 ## Log files (admin only)

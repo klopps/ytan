@@ -60,6 +60,20 @@ function saveRouteLabelFontSizeRange() {
     });
 }
 
+/** Merging two routes: end points closer than this many meters become their midpoint (RouteMerger). */
+function saveRouteMergeSettings() {
+    var btn = document.getElementById('settingRouteMergeSaveBtn');
+    var body = { midpoint_m: parseInt(document.getElementById('settingRouteMergeMidpoint').value, 10) };
+    btn.disabled = true;
+    Ytan.put('/settings/route-merge', body).then(function () {
+        showAdminToast(t('common.saved'), 'success');
+    }).catch(function (err) {
+        showAdminToast(t('common.save_failed', { error: err.message }), 'error');
+    }).finally(function () {
+        btn.disabled = false;
+    });
+}
+
 /** Colour, line width, zoom level, end pause and default speed of the route/tour animation (route-animation.js). */
 function saveRouteAnimationSettings() {
     var btn = document.getElementById('settingRouteAnimationSaveBtn');

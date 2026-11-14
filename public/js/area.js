@@ -633,9 +633,7 @@ function showAreaContextMenu(event, i) {
                 contextMenuHeading(areas[i].name) +
                 '<div class="contextMenuItem" data-on-click="areaContextMenuEditArea(' + i + ', null, null);"><i class="material-icons-round">edit</i>' + t('area.context.edit_area') + '</div>' +
                 '<div class="contextMenuItem" data-on-click="areaContextMenuEditInfo(' + i + ');"><i class="material-icons-round">description</i>' + t('common.edit_info') + '</div>' +
-                '<div class="contextMenuItem" data-on-click="areaContextMenuRemoveArea(' + i + ');"><i class="material-icons-round">delete</i>' + t('area.context.delete_area') + '</div>' +
-                '<div class="contextMenuItem" data-on-click="closeContextMenu();"><i class="material-icons-round">close</i>' + t('common.cancel') + '</div>'
-                ;
+                '<div class="contextMenuItem" data-on-click="areaContextMenuRemoveArea(' + i + ');"><i class="material-icons-round">delete</i>' + t('area.context.delete_area') + '</div>';
 
             contextMenu.setPosition(event.latLng);
             contextMenu.setContent(content);

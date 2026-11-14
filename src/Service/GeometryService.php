@@ -35,6 +35,22 @@ final class GeometryService
     }
 
     /**
+     * Length of a polyline along its vertices (haversine), in whole meters -
+     * what route.length holds for a route drawn/split/merged on the server.
+     *
+     * @param list<array{lat: float, lng: float}> $points
+     */
+    public static function polylineLengthMeters(array $points): int
+    {
+        $length = 0.0;
+        for ($i = 1, $n = count($points); $i < $n; $i++) {
+            $length += self::haversineDistanceMeters($points[$i - 1], $points[$i]);
+        }
+
+        return (int) round($length);
+    }
+
+    /**
      * Shortest distance from $point to the segment $segStart-$segEnd, in
      * meters. Projects $point onto the (locally flat) segment, clamped to
      * the segment's own extent, then measures the haversine distance to

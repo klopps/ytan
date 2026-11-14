@@ -1063,6 +1063,9 @@ function createRoute(i) {
                 if (shouldSuppressClick()) {
                     return;
                 }
+                if (routeMergePick(i)) { // picking the second route to merge with
+                    return;
+                }
                 showRouteLabels.call(this, i);
             }
         );
@@ -1070,6 +1073,9 @@ function createRoute(i) {
         google.maps.event.addListener(routePathBackground, 'click',
             function(event) {
                 if (shouldSuppressClick()) {
+                    return;
+                }
+                if (routeMergePick(i)) {
                     return;
                 }
                 showRouteLabels.call(this, i);
@@ -1174,6 +1180,10 @@ function showRouteContextMenu(event, i) {
             content += '<div class="contextMenuItem" data-on-click="routeContextMenuAddToTour(' + i + ');"><i class="material-icons-round">playlist_add</i>' + t('route.context.add_to_tour') + '</div>';
         }
 
+        if (routes[i].id > 0) {
+            content += '<div class="contextMenuItem" data-on-click="routeContextMenuMergeRoute(' + i + ');"><i class="material-icons-round">call_merge</i>' + t('route.context.merge_route') + '</div>';
+        }
+
         // Same gating as tour-admin.js's "Share" button on the tour
         // detail screen (tour.public == 1) - a private route's data is
         // technically still fetchable by a direct GET /routes/{id} (no
@@ -1202,8 +1212,6 @@ function showRouteContextMenu(event, i) {
     if (canEdit) {
         content += '<div class="contextMenuItem" data-on-click="routeContextMenuRemoveRoute(' + i + ');"><i class="material-icons-round">delete</i>' + t('route.context.delete_route') + '</div>';
     }
-
-    content += '<div class="contextMenuItem" data-on-click="closeContextMenu();"><i class="material-icons-round">close</i>' + t('common.cancel') + '</div>';
 
     contextMenu.setPosition(event.latLng);
     contextMenu.setContent(content);
@@ -1809,12 +1817,18 @@ function showRouteSplitMenu(index) {
     contextMenu.setContent(
         '<div class="contextMenuTitle">' + t('route.split.question') + '</div>' +
         '<div class="contextMenuItem" data-on-click="confirmRouteSplit();"><i class="material-icons-round">call_split</i>' + t('route.split.confirm') + '</div>' +
-        '<div class="contextMenuItem" data-on-click="closeContextMenu();"><i class="material-icons-round">close</i>' + t('common.cancel') + '</div>'
+        '<div class="contextMenuItem" data-on-click="declineRouteSplit();"><i class="material-icons-round">close</i>' + t('route.split.decline') + '</div>'
     );
     contextMenu.open(map);
 }
 
 let routeSplitPending = null;
+
+// "Nein" in the split question: close it without splitting (a question always offers a no).
+function declineRouteSplit() {
+    routeSplitPending = null;
+    closeContextMenu();
+}
 
 async function confirmRouteSplit() {
     closeContextMenu();
@@ -1860,3 +1874,151 @@ async function confirmRouteSplit() {
     }
 }
 
+
+/* ---------------------------------------------------- Merging two routes
+ *
+ * Route context menu "Mit anderer Route zusammenfügen" -> pick mode (banner
+ * "Tippe auf die zweite Route", a tap on a route line picks it, Escape or
+ * the banner's x cancels) -> showRouteMergeDialog() (confirm-dialog.js:
+ * which route stays, name) -> POST /routes/{keptId}/merge
+ * (RouteMergeController). The server joins the lines (RouteMerger), deletes
+ * the other route and moves its photos/tour places to the kept one.
+ */
+
+let routeMergePending = null; // {index} of the first route while picking the second
+
+function canEditRouteIndex(i) {
+    return user.id !== null && !!routes[i] && (routes[i].user_id == user.id || user.is_admin === true);
+}
+
+function routeContextMenuMergeRoute(i) {
+    closeContextMenu();
+    if (!(routes[i].id > 0)) {
+        // Created offline and not synced yet - the server doesn't know it.
+        showToast(t('route.merge.not_synced'), 'warning');
+        return;
+    }
+    routeMergePending = { index: i };
+    var banner = document.getElementById('routeMergeBanner');
+    document.getElementById('routeMergeBannerText').textContent = t('route.merge.pick', { name: decodeHtmlEntities(routes[i].name || '') });
+    banner.hidden = false;
+    document.addEventListener('keydown', routeMergeKeydown);
+}
+
+function routeMergeKeydown(event) {
+    if (event.key === 'Escape') {
+        cancelRouteMerge();
+    }
+}
+
+function cancelRouteMerge() {
+    routeMergePending = null;
+    document.getElementById('routeMergeBanner').hidden = true;
+    document.removeEventListener('keydown', routeMergeKeydown);
+}
+
+/**
+ * Called by the route lines' click listeners while routeMergePending is set
+ * (instead of showing the route labels). Returns true when the tap was used.
+ */
+function routeMergePick(j) {
+    if (!routeMergePending) {
+        return false;
+    }
+    var i = routeMergePending.index;
+    if (j === i) {
+        showToast(t('route.merge.same_route'), 'warning');
+        return true;
+    }
+    if (!canEditRouteIndex(j)) {
+        showToast(t('route.merge.not_allowed'), 'warning');
+        return true;
+    }
+    if (!(routes[j].id > 0)) {
+        showToast(t('route.merge.not_synced'), 'warning');
+        return true;
+    }
+    cancelRouteMerge();
+    confirmRouteMerge(i, j);
+    return true;
+}
+
+/**
+ * Whether the other route ends up IN FRONT of the kept one - mirrors
+ * RouteMerger::closestEnds() (src/Service/RouteMerger.php): only end
+ * points, an identical pair wins, else the closest; candidates in the same
+ * order (kept end + other start, kept end + other end, kept start + other
+ * end, kept start + other start). Only the pair matters here, not the
+ * midpoint threshold.
+ */
+function routeMergeOtherFirst(keptPoints, otherPoints) {
+    var keptEnds = { end: keptPoints[keptPoints.length - 1], start: keptPoints[0] };
+    var otherEnds = { end: otherPoints[otherPoints.length - 1], start: otherPoints[0] };
+    var candidates = [['end', 'start'], ['end', 'end'], ['start', 'end'], ['start', 'start']];
+    var same = function (p, q) {
+        return Number(p.lat).toFixed(6) === Number(q.lat).toFixed(6) && Number(p.lng).toFixed(6) === Number(q.lng).toFixed(6);
+    };
+    var best = null;
+    candidates.forEach(function (c) {
+        var p = keptEnds[c[0]];
+        var q = otherEnds[c[1]];
+        var identical = same(p, q);
+        var distance = identical ? 0 : getDistance(p, q);
+        if (best === null || (identical && !best.identical) || (identical === best.identical && distance < best.distance)) {
+            best = { keptEnd: c[0] === 'end', identical: identical, distance: distance };
+        }
+    });
+    return !best.keptEnd;
+}
+
+async function confirmRouteMerge(i, j) {
+    var routeA = routes[i];
+    var routeB = routes[j];
+    var nameA = decodeHtmlEntities(routeA.name || '');
+    var nameB = decodeHtmlEntities(routeB.name || '');
+
+    var answer = await showRouteMergeDialog({
+        nameA: nameA,
+        nameB: nameB,
+        // The route that supplies the start point comes first in the name.
+        suggestName: function (keptIsA) {
+            var kept = keptIsA ? routeA : routeB;
+            var other = keptIsA ? routeB : routeA;
+            var otherFirst = routeMergeOtherFirst(kept.points, other.points);
+            var keptName = keptIsA ? nameA : nameB;
+            var otherName = keptIsA ? nameB : nameA;
+            return otherFirst ? otherName + ' + ' + keptName : keptName + ' + ' + otherName;
+        },
+    });
+    if (answer === null) {
+        return;
+    }
+
+    var kept = answer.keptIsA ? routeA : routeB;
+    var other = answer.keptIsA ? routeB : routeA;
+    try {
+        var result = await Ytan.post('/routes/' + kept.id + '/merge', {
+            other_id: other.id,
+            name: answer.name,
+            expected_updated_at: kept.updated_at,
+            other_expected_updated_at: other.updated_at,
+        });
+        var data = result.data;
+
+        if (routeInfoWindow) {
+            routeInfoWindow.close();
+        }
+        getRoutesByUserId(user.id);
+        getToursByUserId(user.id);
+
+        var message = data.join === 'segment'
+            ? t('route.merge.done_segment', { name: decodeHtmlEntities(data.route.name), gap: formatDistance(data.gap_m, settings.unit) })
+            : t('route.merge.done', { name: decodeHtmlEntities(data.route.name) });
+        showToast(message, 'success');
+        if (data.images_skipped > 0) {
+            showToast(t('route.merge.images_skipped', { count: data.images_skipped }), 'warning');
+        }
+    } catch (err) {
+        showToast(translateApiError(err.data) || err.message, 'error');
+    }
+}

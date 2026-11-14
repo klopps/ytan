@@ -1,6 +1,6 @@
 ---
 title: Anlegen und Bearbeiten
-keywords: Werkzeugleiste, Route anlegen, Wegpunkt, Route teilen, Split, POI anlegen, POI verschieben, Sektor-Kennung, Windschatten-Indikator, WSI, Leuchtfeuer, Gebiet anlegen, Löschen, Fotos, öffentlich, privat
+keywords: Werkzeugleiste, Route anlegen, Wegpunkt, Route teilen, Split, Routen zusammenfügen, Zusammenfügen, Verbinden, POI anlegen, POI verschieben, Sektor-Kennung, Windschatten-Indikator, WSI, Leuchtfeuer, Gebiet anlegen, Löschen, Fotos, öffentlich, privat
 ---
 
 Mit der Werkzeugleiste legst du Routen, POIs und Gebiete an. Dazu musst du angemeldet sein. Alles Neue ist zunächst **privat**.
@@ -51,11 +51,30 @@ Eine Route lässt sich an einem Wegpunkt in **zwei Routen** zerlegen, zum Beispi
 
 1. Öffne die Route zum Bearbeiten (Kontextmenü > **Route bearbeiten**).
 2. Drücke auf einen **inneren** Wegpunkt lange (am Rechner: Rechtsklick).
-3. Bestätige die Frage „Route an diesem Wegpunkt in zwei Routen teilen?" mit **Ja, Route hier teilen**.
+3. Bestätige die Frage „Route an diesem Wegpunkt in zwei Routen teilen?" mit **Ja, Route hier teilen** (**Nein** schließt die Frage, ohne zu teilen).
 
 Die erste Route behält den Anfang bis zu diesem Punkt und heißt „… (Teil 1)", die zweite bekommt den Rest als „… (Teil 2)". Beschreibung, Farbe, Fotos und Sichtbarkeit werden kopiert; in Touren steht die neue Route direkt hinter der ursprünglichen.
 
 Die Route muss dazu bereits gespeichert sein.
+
+### Zwei Routen zusammenfügen
+
+Das Gegenstück zum Teilen: aus zwei Routen wird eine, zum Beispiel wenn du eine Strecke in zwei Etappen gezeichnet hast.
+
+1. Öffne das Kontextmenü der ersten Route (lange drücken, am Rechner Rechtsklick) und wähle **Mit anderer Route zusammenfügen**.
+2. Tippe auf die zweite Route. Mit dem **x** im Hinweis unten (oder Escape) brichst du ab.
+3. Wähle im Dialog, welche Route **erhalten bleibt**, und passe den **Namen** an. Vorgeschlagen wird „Name 1 + Name 2" - zuerst die Route, mit der die zusammengefügte Strecke beginnt.
+4. Tippe auf **Zusammenfügen**.
+
+So werden die beiden verbunden:
+
+- Verbunden werden immer die beiden **Endpunkte** (Anfang oder Ende), die am nächsten beieinander liegen.
+- Liegen sie genau aufeinander, wird daraus **ein** gemeinsamer Wegpunkt.
+- Liegen sie sehr dicht beieinander (bis 10 m, der Wert ist im Admin-Bereich einstellbar), ersetzt sie **ein Punkt auf halber Strecke**.
+- Liegen sie weiter auseinander, kommt eine **Verbindungsstrecke** dazu.
+- Die erhaltene Route behält ihre **Richtung**; läuft die andere Route andersherum, wird sie umgedreht.
+
+Die erhaltene Route behält Beschreibung, Farbe und Sichtbarkeit. Die andere Route wird **gelöscht**: ihre Fotos werden übernommen (zusammen höchstens 5), und in ihren Touren tritt die erhaltene Route an ihre Stelle. Du musst beide Routen bearbeiten dürfen, und beide müssen bereits gespeichert sein.
 
 ## POIs
 

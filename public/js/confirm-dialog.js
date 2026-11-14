@@ -162,3 +162,140 @@ function showCaptchaDialog(question) {
         input.focus();
     });
 }
+
+/**
+ * "Merge routes" dialog (route.js: confirmRouteMerge()) - same overlay shell
+ * as above. Two radio buttons pick the route that stays (A preselected =
+ * the route whose context menu started it), a name field starts with
+ * opts.suggestName(keptIsA) and follows the radio choice until the user
+ * types in it, a hint names the route that will be deleted.
+ * Resolves {keptIsA, name}, or null if cancelled.
+ *
+ * @param {{nameA: string, nameB: string, suggestName: function(boolean): string}} opts
+ */
+function showRouteMergeDialog(opts) {
+    return new Promise(function (resolve) {
+        var overlay = document.createElement('div');
+        overlay.className = 'confirm-dialog-overlay';
+
+        var dialog = document.createElement('div');
+        dialog.className = 'confirm-dialog confirm-dialog-default route-merge-dialog';
+
+        var icon = document.createElement('i');
+        icon.className = 'material-icons-round confirm-dialog-icon';
+        icon.textContent = 'call_merge';
+
+        var title = document.createElement('div');
+        title.className = 'confirm-dialog-message';
+        title.textContent = t('route.merge.dialog_title');
+
+        var choice = document.createElement('div');
+        choice.className = 'route-merge-choice';
+        var radios = [];
+        [[true, opts.nameA], [false, opts.nameB]].forEach(function (option, n) {
+            var row = document.createElement('div');
+            row.className = 'route-merge-choice-row';
+            var radio = document.createElement('input');
+            radio.type = 'radio';
+            radio.name = 'routeMergeKept';
+            radio.id = 'routeMergeKept' + n;
+            radio.checked = option[0];
+            var label = document.createElement('label');
+            label.htmlFor = radio.id;
+            label.textContent = t('route.merge.keep', { name: option[1] });
+            row.appendChild(radio);
+            row.appendChild(label);
+            choice.appendChild(row);
+            radios.push(radio);
+        });
+
+        var nameLabel = document.createElement('label');
+        nameLabel.className = 'route-merge-name-label';
+        nameLabel.htmlFor = 'routeMergeName';
+        nameLabel.textContent = t('route.merge.name');
+
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.id = 'routeMergeName';
+        input.className = 'confirm-dialog-input route-merge-name';
+        input.maxLength = 150;
+
+        var hint = document.createElement('div');
+        hint.className = 'route-merge-hint';
+
+        var actions = document.createElement('div');
+        actions.className = 'confirm-dialog-actions';
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'button';
+        cancelBtn.textContent = t('common.cancel');
+
+        var confirmBtn = document.createElement('button');
+        confirmBtn.type = 'button';
+        confirmBtn.className = 'startbtn';
+        confirmBtn.textContent = t('route.merge.confirm');
+
+        var nameEdited = false;
+        function keptIsA() {
+            return radios[0].checked;
+        }
+        function refresh() {
+            if (!nameEdited) {
+                input.value = opts.suggestName(keptIsA());
+            }
+            hint.textContent = t('route.merge.delete_hint', { name: keptIsA() ? opts.nameB : opts.nameA });
+        }
+
+        function close(result) {
+            document.removeEventListener('keydown', onKeydown);
+            overlay.remove();
+            resolve(result);
+        }
+
+        function submit() {
+            var name = input.value.trim();
+            if (name === '') {
+                input.focus();
+                return;
+            }
+            close({ keptIsA: keptIsA(), name: name });
+        }
+
+        function onKeydown(event) {
+            if (event.key === 'Escape') {
+                close(null);
+            } else if (event.key === 'Enter' && event.target === input) {
+                submit();
+            }
+        }
+
+        radios.forEach(function (radio) {
+            radio.addEventListener('change', refresh);
+        });
+        input.addEventListener('input', function () {
+            nameEdited = true;
+        });
+        cancelBtn.addEventListener('click', function () {
+            close(null);
+        });
+        confirmBtn.addEventListener('click', submit);
+
+        actions.appendChild(cancelBtn);
+        actions.appendChild(confirmBtn);
+
+        dialog.appendChild(icon);
+        dialog.appendChild(title);
+        dialog.appendChild(choice);
+        dialog.appendChild(nameLabel);
+        dialog.appendChild(input);
+        dialog.appendChild(hint);
+        dialog.appendChild(actions);
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+
+        refresh();
+        document.addEventListener('keydown', onKeydown);
+        input.focus();
+    });
+}
