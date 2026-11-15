@@ -22,43 +22,6 @@
             'club_link' => '<a href="https://tjornkajak.se/" target="_blank">Tjörns Kajakklubb</a>',
         ]) ?>
     </p>
-    <?php if (!empty($dataSources)): ?>
-    <h2><?= $t('about.data_sources_title') ?></h2>
-    <p><?= $t('about.data_sources_intro') ?></p>
-    <ul>
-        <?php foreach ($dataSources as $source): ?>
-        <li>
-            <?php if (!empty($source['url'])): ?>
-            <a href="<?= htmlspecialchars($source['url'], ENT_QUOTES) ?>" target="_blank" rel="noopener"><?= htmlspecialchars($source['name']) ?></a>
-            <?php else: ?>
-            <?= htmlspecialchars($source['name']) ?>
-            <?php endif; ?>
-            <?php if (!empty($source['attribution'])): ?> - <?= htmlspecialchars($source['attribution']) ?><?php endif; ?>
-            <?php if (!empty($source['license'])): ?>
-            (<?php if (!empty($source['license_url'])): ?><a href="<?= htmlspecialchars($source['license_url'], ENT_QUOTES) ?>" target="_blank" rel="noopener"><?= htmlspecialchars($source['license']) ?></a><?php else: ?><?= htmlspecialchars($source['license']) ?><?php endif; ?>)
-            <?php endif; ?>
-        </li>
-        <?php endforeach; ?>
-    </ul>
-    <?php endif; ?>
-    <h2><?= $t('about.radar_title') ?></h2>
-    <p><?= $t('about.radar_text', [
-        'source_link' => '<a href="https://www.eumetnet.eu/observations/weather-radar-network/" target="_blank" rel="noopener">EUMETNET OPERA</a>',
-        'license_link' => '<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>',
-    ]) ?></p>
-    <h2><?= $t('about.wind_title') ?></h2>
-    <p><?= $t('about.wind_text', [
-        'source_link' => '<a href="https://www.dwd.de/DE/leistungen/opendata/opendata.html" target="_blank" rel="noopener">' . htmlspecialchars($t('about.wind_source_name')) . '</a>',
-    ]) ?></p>
-    <h2><?= $t('about.tide_title') ?></h2>
-    <p><?= $t('about.tide_text', [
-        'bsh_link' => '<a href="https://gezeiten.bsh.de/" target="_blank" rel="noopener">' . htmlspecialchars($t('about.tide_bsh_name')) . '</a>',
-        'dmi_link' => '<a href="https://www.dmi.dk/friedata/" target="_blank" rel="noopener">DMI</a>',
-        'rws_link' => '<a href="https://rijkswaterstaatdata.nl/" target="_blank" rel="noopener">Rijkswaterstaat</a>',
-        'imi_link' => '<a href="https://www.marine.ie/" target="_blank" rel="noopener">Marine Institute</a>',
-        'ukho_link' => '<a href="https://www.admiralty.co.uk/" target="_blank" rel="noopener">UK Hydrographic Office (ADMIRALTY)</a>',
-        'kartverket_link' => '<a href="https://www.kartverket.no/til-sjos/se-havniva" target="_blank" rel="noopener">Kartverket</a>',
-        'openmeteo_link' => '<a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>',
-    ]) ?></p>
+    <p><?= $t('about.credits_hint') ?></p>
 </body>
 </html>

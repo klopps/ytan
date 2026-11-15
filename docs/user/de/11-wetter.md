@@ -66,7 +66,7 @@ Die Winddaten stammen vom **Deutschen Wetterdienst** (Modelle ICON-D2, ICON-EU u
 | **Schweden** und die **Ostsee** außerhalb der Küstenstaaten | SMHI |
 | alle anderen Orte | Open-Meteo (internationale Modelle) |
 | **Wellen** | Open-Meteo Marine |
-| **Gezeiten** | der nächste Gezeitenpegel eines nationalen Dienstes bis 15 km entfernt (BSH, DMI, Rijkswaterstaat, Marine Institute, UK Hydrographic Office, Kartverket), sonst Open-Meteo Marine |
+| **Gezeiten** | der nächste Gezeitenpegel eines nationalen Dienstes bis 15 km entfernt (BSH, DMI, Rijkswaterstaat, Marine Institute, UK Hydrographic Office, Kartverket, Instituto Hidrográfico), sonst Open-Meteo Marine |
 | Sonnenauf- und -untergang | Open-Meteo |
 | **Ortsname** in der Überschrift | OpenStreetMap / Nominatim |
 

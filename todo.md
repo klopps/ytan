@@ -3,10 +3,13 @@
 ## Routencheck: Tidegewässer und Strömung aus Messdaten
 
 Folgepunkt zur Flussströmung im Routencheck (done.md, 2026-11-14). Offen:
-- Tidequellen für die übrigen Länder. Eingebaut sind DE, DK, NL, IE, UK und NO (done.md, „Routencheck: Tidequellen weiterer Länder“ und „Routencheck: Tidequelle UK“), sonst gilt Open-Meteo. Geprüft am 2026-11-14 und nicht eingebaut:
-  - SHOM (FR): Die Vorhersagen sind kostenpflichtig lizenziert, offen sind nur die Messwerte.
+- Tidequellen für die übrigen Länder. Eingebaut sind DE, DK, NL, IE, UK, NO und PT (done.md: „Routencheck: Tidequellen weiterer Länder“, „Routencheck: Tidequelle UK“, „Routencheck: Tidequelle Portugal“), sonst gilt Open-Meteo. Kostenpflichtige Quellen scheiden aus (User, 2026-11-15). Geprüft und nicht eingebaut:
+  - SHOM (FR): Die Vorhersagen sind kostenpflichtig lizenziert (api.data.shom.fr: nur mit gekauftem Abo-Schlüssel „SUP Marée“/„SAPM“), offen sind nur die Messwerte. Die interne Schnittstelle von maree.shom.fr liefert dieselben lizenzierten Daten, scheidet also auch aus.
+  - Ifremer MARC (FR, Licence Ouverte, geprüft 2026-11-15): Modelle MARS2D/MARS3D über OPeNDAP, z. B. `https://tds1.ifremer.fr/thredds/dodsC/MARC-MANGA700-L1_MARS2D-FOR_FULL_TIME_SERIE`. Regelmäßiges Raster (MANGA700: ab 43,2828° N / -5,7256° E, 0,0062984° × 0,0091202°, 1386 × 1087 Zellen), Variable `XE` (Int16, scale_factor 0,0015259255 m), Zeit in Sekunden seit 1900. ABER: Alle Datensätze (MANGA700, MANE/MANW/SUDBZH/AQUI/FINIS250, ATLNE2000, MANGAE2500) endeten am 2026-11-15 um 06:00 bzw. 00:00 UTC, also nur gut 6 Stunden nach dem Abruf um 23:39 UTC. Die in den Beschreibungen genannten 4 Vorhersagetage kommen über den Server nicht. Eine Punktabfrage dauert außerdem etwa 6 s. Damit unbrauchbar. Später noch einmal prüfen, ob die Vorhersage wieder weiter reicht.
+  - TidesAtlas (kommerzieller Drittanbieter, freier Key, CC BY 4.0, eigenes Modell): nicht gewählt.
   - Puertos del Estado (ES): keine öffentliche API gefunden, nur Website, App „Imar“ und Widgets.
-  - Portugal und Belgien: nicht gesucht. Die Schelde bis Antwerpen-Prosperpolder deckt Rijkswaterstaat ab.
+  - Belgien: Meetnet Vlaamse Banken (Konto in `.env` als `MVB_USERNAME`/`MVB_PASSWORD`, Token über `POST https://api.meetnetvlaamsebanken.be/Token`, geprüft 2026-11-15) liefert nur MESSWERTE: „Tide TAW“ (WS5) alle 5 Minuten an 11 Orten, dazu Wellen, Wind, Strömung. Keine Vorhersage, für den Routencheck also unbrauchbar. Der CC0-Datensatz „Getijtafels Vlaamse kust“ (marineinfo.org Dataset 5185) hat keinen Download-Link. Die Schelde bis Antwerpen-Prosperpolder deckt Rijkswaterstaat ab, die offene Küste Open-Meteo. Registrierung: `https://meetnetvlaamsebanken.be/account/register` nur in einem breiten Fenster, sonst leitet die Seite auf die Handy-Ansicht `/Simple` um.
+  - Spanien, Galicien: MeteoGalicia MeteoSIX v5 `getTidesInfo` (HW/NW je Hafen), braucht einen kostenlosen API-Key. Am 2026-11-15 beantragt, sobald `METEOSIX_API_KEY` in `.env` steht, einbauen.
 
   Verworfen: Tidemodell lokal rechnen (EOT20/FES2022/TPXO mit pyTMD) und kommerzielle Anbieter (WorldTides, Stormglass).
 - Strömung aus Messdaten statt pauschal: Pegelonline (WSV) liefert für Bundeswasserstraßen Wasserstand und teils Abfluss, aber keine Fließgeschwindigkeit (Querschnitt fehlt) - höchstens als "Hochwasser/Niedrigwasser"-Hinweis nutzbar.

@@ -312,7 +312,7 @@ final class App
             new OpenMeteoWeatherProvider($c->get(CurlJsonHttpClient::class)),
             new SmhiWeatherProvider($c->get(CurlJsonHttpClient::class)),
         ));
-        // tide times of the national services (DE, DK, NL, IE, UK, NO) - the
+        // tide times of the national services (DE, DK, NL, IE, UK, NO, PT) - the
         // Routencheck adds Open-Meteo as the last source, the weather
         // timeline keeps Open-Meteo's own curve when none of them has a gauge
         $c->set('tides.national.sources', function ($c) use ($rootDir) {
@@ -327,6 +327,8 @@ final class App
                 // UK: free Discovery tier, key in .env, no caching allowed
                 new \Ytan\Service\Tide\UkhoTideSource((string) ($_ENV['UKHO_API_KEY'] ?? ''), $tideHttp),
                 new \Ytan\Service\Tide\KartverketTideSource($tideCache, $tideHttp),
+                // PT: undocumented internal API of hidrografico.pt (user's decision 2026-11-15)
+                new \Ytan\Service\Tide\IhTideSource($tideCache, $tideHttp),
             ];
         });
         $c->set(WeatherController::class, fn ($c) => new WeatherController(
@@ -615,14 +617,25 @@ final class App
             return $res->withHeader('Content-Type', 'application/javascript; charset=utf-8');
         });
 
-        $app->get('/about', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator, $c) {
+        $app->get('/about', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
+            ob_start();
+            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
+            require $rootDir . '/templates/about.php';
+            $res->getBody()->write(ob_get_clean());
+
+            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
+        });
+
+        // Credits: every data source with its licence/attribution, server-rendered
+        // (TidesAtlas' free plan requires its credit line in the page HTML itself).
+        $app->get('/credits', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator, $c) {
             ob_start();
             $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
             $dataSources = array_map(
                 fn (array $source) => DataSourceText::localize($source, $t),
                 $c->get(LighthouseImportRepository::class)->usedDataSources()
             );
-            require $rootDir . '/templates/about.php';
+            require $rootDir . '/templates/credits.php';
             $res->getBody()->write(ob_get_clean());
 
             return $res->withHeader('Content-Type', 'text/html; charset=utf-8');

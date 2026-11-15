@@ -1,5 +1,31 @@
 # Erledigt
 
+## Credits-Seite
+
+~~Wir benötigen eine Credits-Seite mit einem Verweis auf TidesAtlas (Bedingung des kostenlosen Tarifs „Free Web“).~~ Gelöst (2026-11-15): Neue serverseitige Seite `/credits` (`templates/credits.php`, Menüzeile „Quellen“/„Credits“ zwischen „Über“ und „Impressum“, geöffnet wie die anderen Textseiten über `openLegalMenu()`). Alle Datenquellen und Lizenzen sind von der About-Seite dorthin umgezogen: Leuchtfeuerlisten aus `data_source`, Regenradar, Wind, Gezeiten. „Über“ verweist nur noch darauf.
+
+Die von TidesAtlas verlangte Zeile `<p class="tidesatlas-credit">Tide data: <a href="https://tidesatlas.com/">TidesAtlas</a></p>` steht wörtlich im HTML, nicht per JavaScript eingefügt. Bei TidesAtlas einzutragende Adresse nach dem Deploy: `https://ytan.pesr.org/credits`. Mobil im App-Panel angesehen. PHPUnit 1021 grün.
+
+## Routencheck: Tidequelle Portugal
+
+~~Portugal: die undokumentierte interne Schnittstelle des Instituto Hidrográfico nutzen (Entscheidung des Users 2026-11-15).~~ Gelöst (2026-11-15): `IhTideSource` nutzt `https://www.hidrografico.pt/hmapi`. Die Endpunkte stammen aus der inoffiziellen Home-Assistant-Integration hass-hidrograficopt:
+- `/tides/`: GeoJSON mit 43 Stationen (Festland, Azoren, Madeira und frühere Gebiete; `CODP`, `PORTO`);
+- `/tidestation/?portID=&period=7`: `tide` PM = Hochwasser, BM = Niedrigwasser, `date` in UTC, Höhe in m; Mondphasen-Zeilen werden übersprungen.
+
+Der Server liefert höchstens 7 Tage ab gestern, auch mit größerem `period`. Deshalb merkt sich `GaugeTideSource` jetzt im Cache, bis zu welchem Ereignis die Daten wirklich reichen, statt den angefragten Zeitraum. Ein späterer Tag wird dann neu abgefragt. Die Schnittstelle ist nicht dokumentiert und hat keine Lizenzangabe. Ändert sie sich, fällt der Routencheck auf Open-Meteo zurück.
+
+Echte Abrufe:
+
+| Ort | Station | Tidenhub |
+|---|---|---|
+| Tejo | Lisboa - Alcântara | 1,46 m |
+| Douro | Leixões | 1,35 m |
+| Ria de Aveiro | Aveiro | 1,29 m |
+| Ria Formosa | Barra de Faro-Olhão | 1,28 m |
+| Sado | Setúbal-Tróia | 1,36 m |
+
+Belgien geprüft und nicht eingebaut: Meetnet Vlaamse Banken liefert nur Messwerte (siehe todo.md). Tests: `NationalTideSourcesTest` (Stationen, PM/BM, Mondphasen übersprungen, UTC, Cache bis zum letzten Ereignis). PHPUnit 1021 grün. About-Seite, Anleitung (Routencheck, Wetter), CLAUDE.md.
+
 ## Wetteranzeige: Gezeiten von nationalen Pegeln
 
 ~~In den Wetterdaten werden in Küstennähe Gezeitendaten angezeigt. Die neuen Datenquellen sind genauer und sollten auch dort verwendet werden.~~ Gelöst (2026-11-14). Entscheidung des Users: bei Bedarf abfragen mit dem bestehenden 30-Tage-Cache, kein Cron.

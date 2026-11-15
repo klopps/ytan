@@ -124,8 +124,12 @@ abstract class GaugeTideSource implements TideSource
             return null;
         }
         usort($events, static fn ($a, $b) => $a['time'] <=> $b['time']);
+        // remember how far the data really reaches, not how far was asked: a source
+        // that serves only a week (Instituto Hidrográfico) is asked again for a later day
+        $last = end($events);
+        $covered = $last === false ? $end : min($end, $last['time']);
 
-        return $this->cache->write($file, ['from' => $start, 'to' => $end, 'events' => $events])['events'];
+        return $this->cache->write($file, ['from' => $start, 'to' => $covered, 'events' => $events])['events'];
     }
 
     /**

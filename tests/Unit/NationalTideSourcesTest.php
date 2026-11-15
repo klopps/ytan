@@ -7,6 +7,7 @@ namespace Ytan\Tests\Unit;
 use PHPUnit\Framework\TestCase;
 use Ytan\Service\Tide\DmiTideSource;
 use Ytan\Service\Tide\GaugeTideSource;
+use Ytan\Service\Tide\IhTideSource;
 use Ytan\Service\Tide\KartverketTideSource;
 use Ytan\Service\Tide\MarineInstituteTideSource;
 use Ytan\Service\Tide\RwsTideSource;
@@ -279,6 +280,37 @@ final class NationalTideSourcesTest extends TestCase
         $tide = (new UkhoTideSource('k', $this->http))->tide(51.645, -2.67, null, $this->from, $this->to, 15000);
 
         $this->assertSame('Beachley', $tide['station']);
+    }
+
+    public function testInstitutoHidrograficoAndTheReallyCoveredWindow(): void
+    {
+        $this->http->on(IhTideSource::BASE_URL . '/tides/', json_encode(['type' => 'FeatureCollection', 'features' => [
+            ['geometry' => ['coordinates' => [-9.1632, 38.7001]], 'properties' => ['CODP' => 152, 'PORTO' => 'Lisboa - Alcântara']],
+            ['geometry' => ['coordinates' => [113.5267, 22.1883]], 'properties' => ['CODP' => 814, 'PORTO' => 'Macau (Porto Interior)']],
+        ]]));
+        $this->http->on(IhTideSource::BASE_URL . '/tidestation/', json_encode([
+            ['date' => '2026-11-09 07:02:00', 'height' => null, 'tide' => null, 'event' => 'Lua Nova'],
+            ['date' => '2026-11-14 23:39:00', 'height' => 1.45, 'tide' => 'BM'],
+            ['date' => '2026-11-15 06:10:00', 'height' => 3.13, 'tide' => 'PM'],
+            ['date' => '2026-11-15 12:22:00', 'height' => 1.43, 'tide' => 'BM'],
+            ['date' => '2026-11-15 18:39:00', 'height' => 2.81, 'tide' => 'PM'],
+        ]));
+        $source = new IhTideSource($this->cache(), $this->http);
+
+        $tide = $source->tide(38.70, -9.17, null, $this->from, $this->from + 86400, 15000);
+
+        $this->assertSame('Lisboa - Alcântara', $tide['station']);
+        $this->assertSame('ih', $tide['source']);
+        $this->assertSame(['NW', 'HW', 'NW', 'HW'], array_column($tide['events'], 'type'), 'moon phase rows skipped');
+        $this->assertSame(strtotime('2026-11-15 06:10:00 UTC'), $tide['events'][1]['time'], 'times are UTC');
+        $this->assertStringContainsString('portID=152', $this->http->requests[1]['url']);
+
+        // the cache only covers up to the last event, so a later day is asked again
+        $count = count($this->http->requests);
+        (new IhTideSource($this->cache(), $this->http))->tide(38.70, -9.17, null, $this->from, $this->from + 3600, 15000);
+        $this->assertCount($count, $this->http->requests, 'inside the covered window: from the cache');
+        (new IhTideSource($this->cache(), $this->http))->tide(38.70, -9.17, null, $this->from + 3 * 86400, $this->from + 4 * 86400, 15000);
+        $this->assertCount($count + 1, $this->http->requests, 'beyond the last event: asked again');
     }
 
     public function testTypedAndMeanRange(): void
