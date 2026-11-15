@@ -13,6 +13,7 @@ import glob
 import hashlib
 import json
 import os
+import shutil
 
 import cv2
 import numpy as np
@@ -100,25 +101,41 @@ def cache_key(grid: TileGrid, geom: Geometry, regions: list[dict] | None) -> str
 
 
 def cached(cache_dir: str, grid: TileGrid, geom: Geometry, regions: list[dict] | None) -> tuple[Reprojector, bool]:
-    """The lookup from cache_dir/reproject-KEY.npz, else built and stored there
-    (other reproject-*.npz files are deleted then). (reprojector, from_cache).
-    Uncompressed (~8 bytes per mosaic pixel): loading must stay far below the
-    build time, compressing would not."""
-    path = os.path.join(cache_dir, CACHE_PREFIX + cache_key(grid, geom, regions) + ".npz")
+    """The lookup from the directory cache_dir/reproject-KEY/, else built and
+    stored there (other reproject-* entries are deleted then).
+    (reprojector, from_cache).
+
+    Stored as one uncompressed .npy (map_x and map_y stacked, ~8 bytes per
+    mosaic pixel) plus crop.json, and opened memory-mapped: until 2026-11-15
+    it was an .npz read completely into memory by the job and again by every
+    spawned worker (0.5-0.8 GB each). Memory-mapped, the pages come from the
+    OS page cache, are shared by all processes and cost no load time when the
+    file was read recently."""
+    path = os.path.join(cache_dir, CACHE_PREFIX + cache_key(grid, geom, regions))
     try:
-        with np.load(path) as data:
-            crop = tuple(int(v) for v in data["crop"])
-            return Reprojector.from_arrays(grid, geom, crop, data["map_x"], data["map_y"]), True
-    except (OSError, KeyError, ValueError):
+        with open(os.path.join(path, "crop.json"), encoding="ascii") as f:
+            crop = tuple(int(v) for v in json.load(f))
+        maps = np.load(os.path.join(path, "maps.npy"), mmap_mode="r")
+        if len(crop) == 4 and maps.ndim == 3 and maps.shape[0] == 2:
+            return Reprojector.from_arrays(grid, geom, crop, maps[0], maps[1]), True
+    except (OSError, ValueError, TypeError):
         pass
     rp = Reprojector(grid, geom, regions=regions)
     try:
-        tmp = path[:-4] + ".tmp.npz"
-        np.savez(tmp, map_x=rp.map_x, map_y=rp.map_y, crop=np.array(rp.crop, np.int64))
+        tmp = path + ".tmp"
+        shutil.rmtree(tmp, ignore_errors=True)
+        os.makedirs(tmp)
+        np.save(os.path.join(tmp, "maps.npy"), np.stack([rp.map_x, rp.map_y]))
+        with open(os.path.join(tmp, "crop.json"), "w", encoding="ascii") as f:
+            json.dump(list(rp.crop), f)
+        shutil.rmtree(path, ignore_errors=True)
         os.replace(tmp, path)
-        for old in glob.glob(os.path.join(cache_dir, CACHE_PREFIX + "*.npz")):
-            if old != path:
-                os.remove(old)
+        for old in glob.glob(os.path.join(cache_dir, CACHE_PREFIX + "*")):
+            if old != path:  # older lookups, also the .npz files of the old format
+                if os.path.isdir(old):
+                    shutil.rmtree(old, ignore_errors=True)
+                else:
+                    os.remove(old)
     except OSError:
         pass  # no cache this time - the next run builds it again
     return rp, False

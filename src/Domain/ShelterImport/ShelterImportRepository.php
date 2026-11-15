@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Ytan\Domain\ShelterImport;
 
 use PDO;
+use Ytan\Domain\Poi\NearbyPoiMatcher;
 use Ytan\Service\Water\WaterDistanceService;
 
 /**
@@ -29,15 +30,18 @@ final class ShelterImportRepository
     public const DUPLICATE_DEGREES = 0.0003;
 
     /**
-     * SQL: entry `s` has a shelter POI (not its own) close by - e.g. the same
-     * shelter imported from another source before, or drawn by hand. Entries
-     * of other sources that are not imported yet do NOT count: before the
-     * first import every shelter would otherwise be "doubtful".
+     * Ids of the entries that have a shelter POI (not their own) close by -
+     * e.g. the same shelter imported from another source before, or drawn by
+     * hand. Entries of other sources that are not imported yet do NOT count:
+     * before the first import every shelter would otherwise be "doubtful".
+     * Not cached: ~60 ms for 31,000 entries, and an import in between changes it.
+     *
+     * @return list<int>
      */
-    private const DUPLICATE_CONDITION = '(EXISTS (SELECT 1 FROM poi p WHERE p.poitype_id = ' . self::POI_TYPE_SHELTER . ' AND p.id <> COALESCE(s.poi_id, 0)'
-        . ' AND p.latitude BETWEEN s.latitude - ' . self::DUPLICATE_DEGREES . ' AND s.latitude + ' . self::DUPLICATE_DEGREES
-        . ' AND p.longitude BETWEEN s.longitude - ' . self::DUPLICATE_DEGREES . ' / COS(RADIANS(s.latitude))'
-        . ' AND s.longitude + ' . self::DUPLICATE_DEGREES . ' / COS(RADIANS(s.latitude))))';
+    private function duplicateIds(): array
+    {
+        return NearbyPoiMatcher::stagedIdsNearPoi($this->db, 'shelter_import', [self::POI_TYPE_SHELTER], self::DUPLICATE_DEGREES);
+    }
 
     private const POI_TYPE_SHELTER = 10;
 
@@ -425,10 +429,11 @@ final class ShelterImportRepository
             $conditions[] = 's.poi_id IS NOT NULL';
         }
         $duplicate = (string) ($filters['duplicate'] ?? '');
-        if ($duplicate === 'yes') {
-            $conditions[] = self::DUPLICATE_CONDITION;
-        } elseif ($duplicate === 'no') {
-            $conditions[] = 'NOT ' . self::DUPLICATE_CONDITION;
+        if ($duplicate === 'yes' || $duplicate === 'no') {
+            $condition = NearbyPoiMatcher::condition($this->duplicateIds(), $duplicate === 'yes');
+            if ($condition !== null) {
+                $conditions[] = $condition;
+            }
         }
 
         return [$conditions === [] ? '' : ' WHERE ' . implode(' AND ', $conditions), $params];

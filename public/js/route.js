@@ -706,10 +706,7 @@ function getRoutesByUserId(userId) {
             routes[i].points = JSON.parse(routes[i].points);
             routes[i].labels = [];
         }
-        createRoutes();
-        if (settings.detailroutes) {
-            showRoutes();
-        }
+        createRoutes(); // shows each route itself when settings.detailroutes is on
         // Cached AFTER the points/labels normalization above - one shape
         // everywhere, so the offline fallback below doesn't need its own
         // separate parsing step.
@@ -727,9 +724,6 @@ function getRoutesByUserId(userId) {
                     routes[i].labels = [];
                 }
                 createRoutes();
-                if (settings.detailroutes) {
-                    showRoutes();
-                }
             }
             notifyOfflineFallback('routes', cached ? cached.cachedAt : null);
         });
@@ -752,10 +746,7 @@ function getPublicRoutes() {
             routes[i].points = JSON.parse(routes[i].points);
             routes[i].labels = [];
         }
-        createRoutes();
-        if (settings.detailroutes) {
-            showRoutes();
-        }
+        createRoutes(); // shows each route itself when settings.detailroutes is on
         putCachedCollection('routes', 'public', routes);
     }).catch(err => {
         log('getPublicRoutes() failed', LOG_ERROR, err);
@@ -767,9 +758,6 @@ function getPublicRoutes() {
                     routes[i].labels = [];
                 }
                 createRoutes();
-                if (settings.detailroutes) {
-                    showRoutes();
-                }
             }
             notifyOfflineFallback('routes', cached ? cached.cachedAt : null);
         });
@@ -790,9 +778,8 @@ function getRoutesByTourId(tourId) {
             routes[i].points = JSON.parse(routes[i].points);
             routes[i].labels = [];
         }
-        createRoutes();
+        createRoutes(); // shows each route itself when settings.detailroutes is on
         if (settings.detailroutes) {
-            showRoutes();
             fitToRouteBounds();
         }
     }).catch(err => log('getRoutesByTourId() failed', LOG_ERROR, err));

@@ -189,7 +189,7 @@ class WorkerTest(unittest.TestCase):
     def test_radar_keeps_its_working_files_and_the_servers_config_out_of_the_upload(self):
         radar = next(s for s in ytan_jobs.JOBS if s.name == "radar")
         args = ytan_worker.excludes(radar)
-        for pattern in ("raw/", "download/", "config.json", "reproject-*.npz", "manifest.json", "run-request"):
+        for pattern in ("raw/", "download/", "config.json", "reproject-*", "verify-masks/", "manifest.json", "run-request"):
             self.assertIn(pattern, args)
         self.assertNotIn("run-request", ytan_worker.excludes(radar, keep_request=False))
 

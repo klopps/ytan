@@ -20,21 +20,25 @@ namespace Ytan\Service;
  */
 final class Translator
 {
-    /** @var array<string, string> */
-    private array $strings;
+    /**
+     * Loaded on first use, not in the constructor: App::create() builds one
+     * Translator per request, and most requests (API calls, radar tiles,
+     * wind blocks) never translate anything - decoding the ~230 KB JSON
+     * file for them was wasted work. The fallback file is read only when a
+     * key is missing from the active locale.
+     *
+     * @var array<string, string>|null
+     */
+    private ?array $strings = null;
 
-    /** @var array<string, string> */
-    private array $fallbackStrings;
+    /** @var array<string, string>|null */
+    private ?array $fallbackStrings = null;
 
     public function __construct(
-        string $resourcesDir,
+        private readonly string $resourcesDir,
         private readonly string $locale,
         private readonly string $fallbackLocale = 'en',
     ) {
-        $this->strings = self::loadFile($resourcesDir, $this->locale);
-        $this->fallbackStrings = $this->locale === $this->fallbackLocale
-            ? $this->strings
-            : self::loadFile($resourcesDir, $this->fallbackLocale);
     }
 
     public function locale(): string
@@ -47,7 +51,7 @@ final class Translator
      */
     public function t(string $key, array $vars = []): string
     {
-        $template = $this->strings[$key] ?? $this->fallbackStrings[$key] ?? $key;
+        $template = $this->strings()[$key] ?? $this->fallbackStrings()[$key] ?? $key;
 
         if ($vars === []) {
             return $template;
@@ -70,7 +74,25 @@ final class Translator
      */
     public function all(): array
     {
-        return $this->strings;
+        return $this->strings();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function strings(): array
+    {
+        return $this->strings ??= self::loadFile($this->resourcesDir, $this->locale);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function fallbackStrings(): array
+    {
+        return $this->fallbackStrings ??= $this->locale === $this->fallbackLocale
+            ? $this->strings()
+            : self::loadFile($this->resourcesDir, $this->fallbackLocale);
     }
 
     /**

@@ -335,8 +335,17 @@ class Job:
         status["last_run"] = last_run
         if processed is not None:
             status["last_processing"] = processed
-        status["storage_bytes"] = directory_size(self.storage)
-        status["storage_measured_at"] = iso_sec()
+        # Most quarter-hour runs end at once ("unchanged"): walking every block
+        # file for them was the bulk of such a run. Measured after processing,
+        # otherwise at most hourly.
+        try:
+            age = datetime.now(timezone.utc) - datetime.strptime(
+                str(status.get("storage_measured_at")), "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        except ValueError:
+            age = None
+        if processed is not None or "storage_bytes" not in status or age is None or age >= timedelta(hours=1):
+            status["storage_bytes"] = directory_size(self.storage)
+            status["storage_measured_at"] = iso_sec()
         self._write_json(self.status_path(), status)
 
     @staticmethod

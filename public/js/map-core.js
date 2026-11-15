@@ -1379,11 +1379,23 @@ function updateGoogleSearchAllowed() {
  * API key in the Google Cloud console - a separate API from the legacy
  * "Places API".
  */
+function foldedPoiName(poi) {
+    if (poi._foldedFor !== poi.name) {
+        poi._folded = foldSearchText(poi.name);
+        poi._foldedFor = poi.name;
+    }
+    return poi._folded;
+}
+
 function handleSearchInput() {
     const query = document.getElementById('mapSearchInput').value.trim();
 
+    // The query is folded once, each POI name once per name (cached on the
+    // POI, keyed by the name so a renamed POI is folded anew) - not both
+    // again for every POI on every key stroke.
+    const foldedQuery = foldSearchText(query);
     ownPoiMatches = query.length >= 2
-        ? pois.filter(poi => poi.name && foldSearchText(poi.name).includes(foldSearchText(query))).slice(0, 8)
+        ? pois.filter(poi => poi.name && foldedPoiName(poi).includes(foldedQuery)).slice(0, 8)
         : [];
 
     clearTimeout(searchDebounceTimer);

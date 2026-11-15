@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gc
 import os
 import sys
 import tempfile
@@ -114,14 +115,32 @@ class ReprojectCacheTest(unittest.TestCase):
             self.assertEqual(loaded.crop, built.crop)
             np.testing.assert_array_equal(loaded.map_x, built.map_x)
             np.testing.assert_array_equal(loaded.map_y, built.map_y)
+            self.assertIsInstance(loaded.map_x, np.memmap, "the cached lookup is opened memory-mapped")
             first = [n for n in os.listdir(d) if n.startswith("reproject-")]
             self.assertEqual(len(first), 1)
+            # Windows keeps a memory-mapped file open until its arrays are gone
+            del loaded
+            gc.collect()
             # other regions: built again, the old file goes
-            _, from_cache = reproject.cached(d, grid, OPERA, None)
+            rebuilt, from_cache = reproject.cached(d, grid, OPERA, None)
             self.assertFalse(from_cache)
             files = [n for n in os.listdir(d) if n.startswith("reproject-")]
             self.assertEqual(len(files), 1)
             self.assertNotEqual(files, first)
+            del rebuilt
+
+    def test_old_npz_cache_files_are_removed(self):
+        from ytanradar import reproject
+        grid = TileGrid(south=54.0, west=10.0, north=56.0, east=13.0, zmin=7, zmax=8)
+        with tempfile.TemporaryDirectory() as d:
+            old = os.path.join(d, "reproject-0123456789abcdef.npz")
+            with open(old, "wb") as f:
+                f.write(b"old format")
+            rp, from_cache = reproject.cached(d, grid, OPERA, None)
+            self.assertFalse(from_cache)
+            self.assertFalse(os.path.exists(old))
+            del rp
+            gc.collect()
 
 
 class SmoothingTest(unittest.TestCase):
@@ -585,6 +604,70 @@ class JobTest(unittest.TestCase):
             north, south = float(px_to_lat(y * TILE, 8)), float(px_to_lat((y + 1) * TILE, 8))
             self.assertTrue(west <= r["east"] and east >= r["west"] and south <= r["north"] and north >= r["south"],
                             f"tile 8/{x}/{y} lies outside the region")
+
+
+class CodeCheck20261115Test(unittest.TestCase):
+    """Memory/run time changes: verify masks, uint8 frames, hourly storage size."""
+
+    def job(self, storage: str) -> Job:
+        grid = TileGrid(south=54.0, west=10.0, north=56.0, east=13.0, zmin=7, zmax=8)
+        return Job(Config(storage=storage, grid=grid, workers=1))
+
+    def test_verify_mask_gives_the_same_score_as_the_full_field(self):
+        rng = np.random.default_rng(1)
+        forecast = rng.uniform(-10, 50, (37, 53)).astype(np.float32)
+        forecast[:5] = np.nan
+        observed = rng.uniform(-10, 50, (37, 53)).astype(np.float32)
+        observed[:, :4] = np.nan
+        valid = datetime(2026, 11, 15, 12, 30, tzinfo=timezone.utc)
+        with tempfile.TemporaryDirectory() as d:
+            job = self.job(d)
+            job.save_verify_mask(valid, 30, forecast)
+            masks = job.load_verify_mask(valid, 30, forecast.shape)
+            self.assertIsNotNone(masks)
+            thr = palette.rate_to_dbz(job.cfg.verify_threshold_mm_h)
+            self.assertEqual(nowcast.csi_masks(masks[0], masks[1], observed, thr), nowcast.csi(forecast, observed, thr))
+            self.assertIsNone(job.load_verify_mask(valid, 30, (10, 10)), "another crop is not compared")
+            job.prune_verify_masks(valid)
+            self.assertIsNone(job.load_verify_mask(valid, 30, forecast.shape))
+
+    def test_encoded_frames_render_like_float_ones(self):
+        with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b:
+            out = []
+            for storage, encode in ((a, False), (b, True)):
+                job = self.job(storage)
+                rp = Reprojector(job.cfg.grid, OPERA)
+                cr0, cr1, cc0, cc1 = rp.crop
+                field = np.full((cr1 - cr0, cc1 - cc0), 30.0, np.float32)  # on a 0.5 dBZ step
+                fid, ok, count, _, _ = jobmod.publish_frame(job.frames_dir, job.cfg.grid, rp, "o202611151200",
+                                                            opera.encode(field) if encode else field)
+                self.assertTrue(ok)
+                files = {}
+                for root, _, names in os.walk(job.frames_dir):
+                    for n in names:
+                        with open(os.path.join(root, n), "rb") as f:
+                            files[os.path.relpath(os.path.join(root, n), job.frames_dir)] = f.read()
+                out.append(files)
+            self.assertEqual(out[0], out[1])
+
+    def test_storage_size_is_measured_at_most_hourly(self):
+        with tempfile.TemporaryDirectory() as d:
+            job = self.job(d)
+            recent = jobmod.iso(datetime.now(timezone.utc) - timedelta(minutes=10))
+            job.write_status({"storage_bytes": 123, "storage_measured_at": recent}, {"outcome": "x"}, None)
+            self.assertEqual(job.read_status()["storage_bytes"], 123)
+            old = jobmod.iso(datetime.now(timezone.utc) - timedelta(hours=2))
+            job.write_status({"storage_bytes": 123, "storage_measured_at": old}, {"outcome": "x"}, None)
+            self.assertNotEqual(job.read_status()["storage_bytes"], 123)
+
+    def test_fill_area_is_a_disc_around_the_lost_pixels(self):
+        previous = np.full((300, 300), 10.0, np.float32)
+        field = previous.copy()
+        field[140:160, 140:160] = np.nan  # a lost radar: 400 pixels
+        _, filled = nowcast.fill_missing_radars(field, previous, None, margin_px=50)
+        # a 20 x 20 square grown by a 50 px disc: between the square + 50 px box and its inner disc
+        self.assertGreater(filled, 20 * 20 + 4 * 20 * 50 + int(np.pi * 50 * 50 * 0.95))
+        self.assertLess(filled, (20 + 2 * 50) ** 2)
 
 
 if __name__ == "__main__":

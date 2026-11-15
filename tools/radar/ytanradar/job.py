@@ -39,6 +39,12 @@ log = logging.getLogger("ytanradar")
 
 STEP = timedelta(minutes=5)
 
+# status.json's storage_bytes (size of storage/radar) is re-measured at most this often.
+STORAGE_MEASURE_INTERVAL = timedelta(hours=1)
+
+# Forecast frames kept as rain/coverage bit masks for verify(): directory below storage.
+VERIFY_MASK_DIR = "verify-masks"
+
 # Bump when the way frames are drawn changes: a manifest with another
 # version makes the job draw every frame again (like changed regions).
 # 2 = radars missing from a composite are filled in (fill_missing_radars).
@@ -125,6 +131,8 @@ def publish_frame(frames_dir: str, grid: TileGrid, rp: Reprojector, frame_id: st
         return frame_id, True, -1, 0, None
     if os.path.isdir(final):  # incomplete leftover, or drawn with another signature
         shutil.rmtree(final, ignore_errors=True)
+    if field.dtype == np.uint8:  # Job.run() hands frames over encoded
+        field = opera.decode(field)
     tmp = tempfile.mkdtemp(prefix=f".tmp-{frame_id}-", dir=frames_dir)
     idx = palette.classify(rp.render(smooth_for_display(field, rp.geom)))
     count = write_pyramid(grid, idx, tmp)
@@ -460,7 +468,10 @@ class Job:
                 field = self.field(t)
                 if field is None:
                     continue
-                items.append((obs_id(t), field))
+                # uint8 (0.5 dBZ steps, opera.encode): a quarter of float32's
+                # memory while frames wait for rendering, and less to pickle for
+                # the worker processes; publish_frame() decodes it again.
+                items.append((obs_id(t), opera.encode(field)))
             frames.append({"id": obs_id(t), "time": iso(t), "type": "observation"})
 
         latest = self.field(newest)
@@ -471,7 +482,9 @@ class Job:
             motion = nowcast.motion_field([f for f in past if f is not None] + [latest])
         for k, field in enumerate(nowcast.extrapolate(latest, motion, steps), start=1):
             lead = k * 5
-            items.append((fc_id(newest, lead), field))
+            if lead in cfg.verify_leads:
+                self.save_verify_mask(newest + STEP * k, lead, field)
+            items.append((fc_id(newest, lead), opera.encode(field)))
             frames.append({"id": fc_id(newest, lead), "time": iso(newest + STEP * k),
                            "type": "forecast", "base_time": iso(newest), "lead_minutes": lead})
 
@@ -531,8 +544,16 @@ class Job:
         status["last_run"] = last_run
         if processed is not None:
             status["last_processing"] = processed
-        status["storage_bytes"] = directory_size(self.cfg.storage)
-        status["storage_measured_at"] = iso_now()
+        # Walking the whole tree (tens of thousands of tiles) on every 5-minute
+        # run cost more than it told: the size is measured at most hourly.
+        measured = status.get("storage_measured_at")
+        try:
+            fresh = measured and datetime.now(timezone.utc) - parse_iso(measured) < STORAGE_MEASURE_INTERVAL
+        except ValueError:
+            fresh = False
+        if not fresh or "storage_bytes" not in status:
+            status["storage_bytes"] = directory_size(self.cfg.storage)
+            status["storage_measured_at"] = iso_now()
         self._write_status_file(status)
 
     def _write_status_file(self, status: dict) -> None:
@@ -605,6 +626,56 @@ class Job:
             if os.path.getmtime(path) < time.time() - 3600:
                 os.remove(path)
 
+    def verify_mask_path(self, valid: datetime, lead: int) -> str:
+        return os.path.join(self.cfg.storage, VERIFY_MASK_DIR, f"{valid:%Y%m%d%H%M}-{lead:03d}.npz")
+
+    def save_verify_mask(self, valid: datetime, lead: int, forecast: np.ndarray) -> None:
+        """Keep what verify() needs of a forecast frame: rain at the
+        verification threshold and coverage, as packed bits (~1/16 of the
+        field's float32 size)."""
+        thr = palette.rate_to_dbz(self.cfg.verify_threshold_mm_h)
+        covered = ~np.isnan(forecast)
+        path = self.verify_mask_path(valid, lead)
+        try:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            tmp = path[:-4] + ".tmp.npz"
+            np.savez_compressed(tmp, rain=np.packbits((forecast >= thr) & covered),
+                                covered=np.packbits(covered), shape=np.array(forecast.shape, np.int64))
+            os.replace(tmp, path)
+        except OSError as e:
+            log.warning("verify mask %s not written: %s", path, e)
+
+    def load_verify_mask(self, valid: datetime, lead: int,
+                         shape: tuple[int, ...]) -> tuple[np.ndarray, np.ndarray] | None:
+        try:
+            with np.load(self.verify_mask_path(valid, lead)) as z:
+                if tuple(int(v) for v in z["shape"]) != tuple(shape):
+                    return None  # another crop (regions changed meanwhile)
+                n = int(np.prod(shape))
+                rain = np.unpackbits(z["rain"], count=n).astype(bool).reshape(shape)
+                covered = np.unpackbits(z["covered"], count=n).astype(bool).reshape(shape)
+                return rain, covered
+        except (OSError, KeyError, ValueError):
+            return None
+
+    def prune_verify_masks(self, newest: datetime) -> None:
+        """Masks whose valid time has passed are of no use any more."""
+        folder = os.path.join(self.cfg.storage, VERIFY_MASK_DIR)
+        try:
+            names = os.listdir(folder)
+        except OSError:
+            return
+        for name in names:
+            try:
+                valid = datetime.strptime(name[:12], "%Y%m%d%H%M").replace(tzinfo=timezone.utc)
+            except ValueError:
+                continue
+            if valid <= newest:
+                try:
+                    os.remove(os.path.join(folder, name))
+                except OSError:
+                    pass
+
     def verify(self, newest: datetime, observed: np.ndarray) -> None:
         """Score the forecasts that were valid for `newest` against what came.
 
@@ -623,15 +694,17 @@ class Job:
         thr = palette.rate_to_dbz(self.cfg.verify_threshold_mm_h)
         rows = []
         for lead in self.cfg.verify_leads:
-            base = newest - timedelta(minutes=lead)
-            fields = [self.field(base - STEP * i) for i in (2, 1, 0)]
-            if any(f is None for f in fields):
+            # The forecast frame itself was kept as bit masks when it was
+            # computed (save_verify_mask) - until 2026-11-15 this computed
+            # motion and extrapolation again for every lead, on every run.
+            masks = self.load_verify_mask(newest, lead, observed.shape)
+            base_field = self.field(newest - timedelta(minutes=lead))
+            if masks is None or base_field is None:
                 continue
-            motion = nowcast.motion_field(fields)
-            fc = nowcast.extrapolate(fields[-1], motion, lead // 5)[-1]
-            score, rain_px = nowcast.csi(fc, observed, thr)
-            persist, _ = nowcast.csi(fields[-1], observed, thr)
+            score, rain_px = nowcast.csi_masks(masks[0], masks[1], observed, thr)
+            persist, _ = nowcast.csi(base_field, observed, thr)
             rows.append(f"{iso(newest)},{lead},{rain_px},{_fmt(score)},{_fmt(persist)}\n")
+        self.prune_verify_masks(newest)
         new_file = not os.path.exists(path)
         with open(path, "a", encoding="utf-8") as f:
             if new_file:

@@ -65,7 +65,7 @@ class JobSpec:
 # in this order: the rain radar first (it is the one people watch minute by minute)
 JOBS = [
     JobSpec("radar", os.path.join("radar", "radar_job.py"), 5,
-            ("raw/", "download/", "verify.csv", "verify.last", "reproject-*.npz", "config.json")),
+            ("raw/", "download/", "verify.csv", "verify.last", "verify-masks/", "reproject-*", "config.json")),
     # a whole-world run took ~15 min on the YTAN worker (2026-11-15)
     JobSpec("wind", os.path.join("wind", "wind_job.py"), 15, ("icon-global-index.npy",), timeout_s=60 * 60),
     # daily cleanups (until 2026-11-12 a separate crontab line, bin/cron.sh, that never ran on prod:

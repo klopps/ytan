@@ -92,7 +92,8 @@ final class App
             Dotenv::createImmutable($rootDir)->load();
         }
 
-        $pdo = Connection::fromEnv();
+        // Connects on first use - requests that never query (tiles, wind blocks) skip it.
+        $pdo = new \Ytan\Database\LazyPdo(fn () => Connection::fromEnv());
 
         $appName = $_ENV['APP_NAME'] ?? 'YTAN';
         $appUrl = rtrim($_ENV['APP_URL'] ?? '', '/');
@@ -409,6 +410,8 @@ final class App
         $app->add(new AppVersionMiddleware((int) ($_ENV['MIN_APP_VERSION_CODE'] ?? 0)));
         $app->add(new AuthMiddleware($authService));
         $app->add(new ContentSecurityPolicyMiddleware($baseUrl));
+        // Inside compression: the tag is taken from the uncompressed body, a 304 is never zipped.
+        $app->add(new \Ytan\Http\Middleware\ETagMiddleware());
         // Added after (= runs around) the middlewares above, so it compresses their final body.
         $app->add(new CompressionMiddleware());
         $app->addRoutingMiddleware();

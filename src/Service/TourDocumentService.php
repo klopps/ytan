@@ -165,8 +165,20 @@ final class TourDocumentService
             return [];
         }
 
+        // Only the POIs inside the routes' box grown by the radius come from
+        // the database; the exact distance test below stays the rule.
+        $box = self::boundingBox($routePolylines);
+        $latMargin = $radiusMeters / 111320.0;
+        $lngMargin = $radiusMeters / (111320.0 * max(0.01, cos(deg2rad(max(abs($box['south']), abs($box['north']))))));
+
         $selected = [];
-        foreach ($this->pois->findByUserWithPublic((int) $tour['user_id']) as $poi) {
+        foreach ($this->pois->findByUserWithPublicInBox(
+            (int) $tour['user_id'],
+            $box['south'] - $latMargin,
+            $box['north'] + $latMargin,
+            $box['west'] - $lngMargin,
+            $box['east'] + $lngMargin
+        ) as $poi) {
             $point = ['lat' => (float) $poi['latitude'], 'lng' => (float) $poi['longitude']];
             $nearRoute = false;
             foreach ($routePolylines as $polyline) {
@@ -176,7 +188,7 @@ final class TourDocumentService
                 }
             }
 
-            if (!$nearRoute || !self::hasContent($poi['description'] ?? null, $this->pois->getImages((int) $poi['id']))) {
+            if (!$nearRoute || !self::hasContent($poi['description'] ?? null, fn () => $this->pois->getImages((int) $poi['id']))) {
                 continue;
             }
 
@@ -198,10 +210,18 @@ final class TourDocumentService
             return [];
         }
 
+        $routeBox = self::boundingBox($routePolylines);
+
         $selected = [];
         foreach ($this->areas->findByUserWithPublic((int) $tour['user_id']) as $area) {
             $polygon = self::decodePoints($area['points'] ?? null);
             if (count($polygon) < 3) {
+                continue;
+            }
+            // Cheap reject before the segment-by-segment intersection test.
+            $areaBox = self::boundingBox([$polygon]);
+            if ($areaBox['south'] > $routeBox['north'] || $areaBox['north'] < $routeBox['south']
+                || $areaBox['west'] > $routeBox['east'] || $areaBox['east'] < $routeBox['west']) {
                 continue;
             }
 
@@ -213,7 +233,7 @@ final class TourDocumentService
                 }
             }
 
-            if (!$crossed || !self::hasContent($area['description'] ?? null, $this->areas->getImages((int) $area['id']))) {
+            if (!$crossed || !self::hasContent($area['description'] ?? null, fn () => $this->areas->getImages((int) $area['id']))) {
                 continue;
             }
 
@@ -225,9 +245,29 @@ final class TourDocumentService
         return $selected;
     }
 
-    private static function hasContent(?string $description, array $images): bool
+    /** $images is only asked (one query) when there is no description. */
+    private static function hasContent(?string $description, callable $images): bool
     {
-        return trim((string) $description) !== '' || $images !== [];
+        return trim((string) $description) !== '' || $images() !== [];
+    }
+
+    /**
+     * @param iterable<array<int,array{lat:float,lng:float}>> $polylines
+     * @return array{south:float,north:float,west:float,east:float}
+     */
+    private static function boundingBox(iterable $polylines): array
+    {
+        $box = ['south' => INF, 'north' => -INF, 'west' => INF, 'east' => -INF];
+        foreach ($polylines as $polyline) {
+            foreach ($polyline as $point) {
+                $box['south'] = min($box['south'], (float) $point['lat']);
+                $box['north'] = max($box['north'], (float) $point['lat']);
+                $box['west'] = min($box['west'], (float) $point['lng']);
+                $box['east'] = max($box['east'], (float) $point['lng']);
+            }
+        }
+
+        return $box;
     }
 
     /**

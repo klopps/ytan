@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Ytan\Domain\CampsiteImport;
 
 use PDO;
+use Ytan\Domain\Poi\NearbyPoiMatcher;
 use Ytan\Service\Water\WaterDistanceService;
 
 /**
@@ -31,11 +32,21 @@ final class CampsiteImportRepository
 
     private const POI_TYPES_SQL = self::POI_TYPE_CAMPSITE . ', ' . self::POI_TYPE_BASIC;
 
-    /** SQL: entry `s` has a campsite/tent-site POI (not its own) close by. */
-    private const DUPLICATE_CONDITION = '(EXISTS (SELECT 1 FROM poi p WHERE p.poitype_id IN (' . self::POI_TYPES_SQL . ') AND p.id <> COALESCE(s.poi_id, 0)'
-        . ' AND p.latitude BETWEEN s.latitude - ' . self::DUPLICATE_DEGREES . ' AND s.latitude + ' . self::DUPLICATE_DEGREES
-        . ' AND p.longitude BETWEEN s.longitude - ' . self::DUPLICATE_DEGREES . ' / COS(RADIANS(s.latitude))'
-        . ' AND s.longitude + ' . self::DUPLICATE_DEGREES . ' / COS(RADIANS(s.latitude))))';
+    /**
+     * Ids of the entries with a campsite/tent-site POI (not their own) close
+     * by (NearbyPoiMatcher - the correlated EXISTS it replaces took seconds).
+     *
+     * @return list<int>
+     */
+    private function duplicateIds(): array
+    {
+        return NearbyPoiMatcher::stagedIdsNearPoi(
+            $this->db,
+            'campsite_import',
+            [self::POI_TYPE_CAMPSITE, self::POI_TYPE_BASIC],
+            self::DUPLICATE_DEGREES
+        );
+    }
 
     /** The three distance columns, in WaterDistanceService's key order (sea, river, lake). */
     public const DISTANCE_COLUMNS = ['sea' => 'sea_m', 'river' => 'river_m', 'lake' => 'lake_m'];
@@ -380,10 +391,11 @@ final class CampsiteImportRepository
             $conditions[] = 's.poi_id IS NOT NULL';
         }
         $duplicate = (string) ($filters['duplicate'] ?? '');
-        if ($duplicate === 'yes') {
-            $conditions[] = self::DUPLICATE_CONDITION;
-        } elseif ($duplicate === 'no') {
-            $conditions[] = 'NOT ' . self::DUPLICATE_CONDITION;
+        if ($duplicate === 'yes' || $duplicate === 'no') {
+            $condition = NearbyPoiMatcher::condition($this->duplicateIds(), $duplicate === 'yes');
+            if ($condition !== null) {
+                $conditions[] = $condition;
+            }
         }
 
         return [$conditions === [] ? '' : ' WHERE ' . implode(' AND ', $conditions), $params];

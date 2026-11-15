@@ -1,28 +1,12 @@
 # Offene Punkte
 
-## Code Check: Performance Backend
+## Code Check: Performance - Reste
 
-Vorschläge aus dem Code Check vom 2026-11-15 (done.md „Code Check“), noch nicht umgesetzt:
-- **PDO und Translator nur bei Bedarf bauen** (`App.php:91-107`): Jeder Request öffnet eine DB-Verbindung und dekodiert ~230 KB i18n-JSON, auch Radar-Kacheln, Wind-Blöcke, `/sw.js`, `/health`. Als Lazy-Factories in den `LazyContainer` (oder ein Lazy-PDO-Wrapper).
-- **ETag/304 für `/pois`, `/routes`, `/areas`**: Die vollen Listen (POIs ~945 KB roh) werden bei jedem Aufruf neu gezippt, ohne `ETag`/`Cache-Control`. ETag aus `MAX(updated_at)` + `COUNT(*)` + Scope/Benutzer.
-- **Tour-PDF** (`TourDocumentService::selectPois/selectAreas`, `:169`, `:202`): lädt alle sichtbaren POIs/Gebiete und filtert in PHP, dazu `getImages()` je Treffer (N+1). Besser `PoiRepository::findInBox()` mit der Routen-BBox und ein gebündeltes `getImagesFor(ids)`.
-- **Indizes prüfen**: Das Grundschema (`poi`, `route`, `area`, `tour`, `user`) liegt nicht im Repo (Migrationen ab 005). `schema.sql` einchecken und `findInBox`, `user_id = ? OR public = 1`, die `DUPLICATE_CONDITION`-Unterabfrage der Import-Repositories (`CampsiteImportRepository:35`, `ShelterImportRepository:37`) per EXPLAIN prüfen.
-- **Routencheck-Wetter parallel holen** (`RouteBriefingBuilder:177-200`): bis zu 5 Vorhersagen nacheinander, auf einem kalten Cache je 2-3 Anbieter-Abrufe.
-
-## Code Check: Performance Frontend
-
-- **Skripte**: 36 Skripte (~800 KB) laden synchron im `<head>` (`templates/app.php:60-96`), ohne `defer`. ~229 KB werden erst bei Bedarf gebraucht (tour-admin, route-briefing, route-animation, gpx-import, photo-upload, watch; track-recorder/capacitor-bridge/native-app nur in der App; marked/DOMPurify/lightcharacteristic). `defer` + ein `loadScriptOnce(src)` nach dem Muster von `injectAdditionalScripts()` (`map-core.js`).
-- **POI-Clustering** (`poi.js` `showPoiClusters`): rechnet bei jedem Zoom für jeden POI `fromLatLngToPoint` neu; Weltkoordinaten einmal in `setAllPois` berechnen. Je Zoom laufen `updatePoiClustering` + zweimal `applyPoiTypeVisibility`.
-- **Routen doppelt angezeigt**: `createRoute` ruft schon `showRoute(i)`, die Loader danach noch einmal `showRoutes()`; 6 Listener-Closures je Route.
-- **Suche** (`map-core.js` `foldSearchText`): faltet bei jedem Tastendruck jeden POI-Namen und die Anfrage je POI neu; einmal falten und cachen.
-
-## Code Check: Radar-Job Speicher und Laufzeit
-
-- Frames als uint8 (`opera.encode()`) statt float32 halten und an die Worker geben (`job.py:456-478`).
-- Reprojektions-Lookup als zwei `.npy` mit `mmap_mode="r"` statt npz je Worker (`reproject.py:107-117`).
-- `verify()` rechnet alte Vorhersagen neu (`job.py:625-634`): Vorhersage-Frames für 15/30/60 min beim Rechnen als `packbits` sichern.
-- `directory_size()` läuft jeden Lauf über den ganzen Speicherbaum (Radar `job.py:534`, Wind `job.py:338`): Bytes aus `write_pyramid` zurückgeben, Gesamtgröße höchstens stündlich.
-- `fill_missing_radars` dilatiert mit 201×201-Ellipse (`nowcast.py:261-263`): `cv2.distanceTransform` (O(N)), vorher/nachher messen.
+Aus Phase B des Code Checks (done.md „Code Check: Performance (Phase B)“) zurückgestellt, jeweils mit Grund:
+- **Routencheck-Wetter parallel holen** (`RouteBriefingBuilder:177-200`): bis zu 5 Vorhersagen nacheinander, auf einem kalten Cache je 2-3 Anbieter-Abrufe. Parallel ginge nur mit `curl_multi` durch die ganze Kette `WeatherController`-Cache → `WeatherService` → Anbieter (je eigener HTTP-Client) - großer Umbau für einen Fall, in dem die KI-Antwort (~13 s) ohnehin dominiert. Erst messen, wie lange die Ampel (`text: false`) auf Prod mit kaltem Cache braucht.
+- **Skripte nachladen / `defer`**: 36 Skripte (~800 KB) laden synchron im `<head>`. Sie sind mit `?v=` immutable gecacht, kosten also ab dem zweiten Besuch kein Netz, nur Parse-Zeit. `defer` verlangt, dass jedes Inline-Skript in `app.php` erst bei `DOMContentLoaded` läuft; Nachladen (tour-admin, route-briefing, route-animation, gpx-import, watch ~150 KB) braucht Platzhalter für jede Funktion, die `data-on-*`-Aufrufe oder andere Skripte direkt aufrufen. Vorher auf einem Handy messen (Performance-Panel, erster Besuch), ob es spürbar ist.
+- **6 Listener-Closures je Route** (`route.js` `createRoute`): bei ~120 Routen unkritisch, bleibt.
+- **Grundschema einchecken**: `poi`, `route`, `area`, `tour`, `user` liegen nicht als Migration im Repo (ab 005). Ein `schema.sql` aus dem Prod-Stand würde neue Testsysteme ohne Klon der Dev-DB ermöglichen.
 
 ## Code Check: Duplikate zusammenführen
 

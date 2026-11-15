@@ -74,6 +74,20 @@ final class PoiRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Like findByUserWithPublic(), limited to a latitude/longitude box - the
+     * tour PDF asks per route for the POIs near it and used to load (and
+     * test) every visible POI once per route.
+     */
+    public function findByUserWithPublicInBox(int $userId, float $south, float $north, float $west, float $east): array
+    {
+        $stmt = $this->db->prepare(self::BASE_SELECT
+            . ' WHERE (p.user_id = ? OR p.public = 1) AND p.latitude BETWEEN ? AND ? AND p.longitude BETWEEN ? AND ? ORDER BY p.id');
+        $stmt->execute([$userId, $south, $north, $west, $east]);
+
+        return $stmt->fetchAll();
+    }
+
     public function countByUserWithPublic(int $userId): int
     {
         $stmt = $this->db->prepare('SELECT COUNT(*) FROM poi WHERE user_id = ? OR public = 1');

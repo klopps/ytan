@@ -329,6 +329,23 @@ function paddedMapBounds(margin) {
  *
  * @param {google.maps.Projection} projection
  */
+/**
+ * A POI's world coordinate (zoom 0), kept on the POI object: the Mercator
+ * projection never changes, so it was wasted work to build a LatLng and
+ * project every POI again on each zoom step. The cache is keyed by the
+ * position, so a moved POI is projected anew.
+ */
+function poiWorldPoint(poi, projection, lat, lng) {
+    var key = lat + ',' + lng;
+    if (poi._worldKey !== key) {
+        var point = projection.fromLatLngToPoint(new google.maps.LatLng(lat, lng));
+        poi._worldX = point.x;
+        poi._worldY = point.y;
+        poi._worldKey = key;
+    }
+    return { x: poi._worldX, y: poi._worldY };
+}
+
 function showPoiClusters(projection) {
     var scale = Math.pow(2, map.getZoom());
     var cellPx = 60; // cluster grid cell size in CSS pixels, roughly constant on screen
@@ -344,7 +361,7 @@ function showPoiClusters(projection) {
 
         var lat = parseFloat(pois[i].latitude);
         var lng = parseFloat(pois[i].longitude);
-        var point = projection.fromLatLngToPoint(new google.maps.LatLng(lat, lng));
+        var point = poiWorldPoint(pois[i], projection, lat, lng);
         var px = point.x * scale;
         var py = point.y * scale;
         var cx = Math.floor(px / cellPx);

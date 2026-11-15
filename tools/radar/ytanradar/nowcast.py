@@ -116,9 +116,10 @@ def fill_missing_radars(field: np.ndarray, previous: np.ndarray,
     gone = np.isnan(field) & ~np.isnan(previous)
     if int(gone.sum()) < 50:  # a few stray pixels are not a missing radar
         return field, 0
-    size = 2 * margin_px + 1
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (size, size))
-    area = cv2.dilate(gone.astype(np.uint8), kernel).astype(bool) & ~np.isnan(previous)
+    # Everything within margin_px of a lost pixel: a distance transform is
+    # linear in the pixel count, dilating with a 201 x 201 disc was not.
+    distance = cv2.distanceTransform((~gone).astype(np.uint8), cv2.DIST_L2, cv2.DIST_MASK_PRECISE)
+    area = (distance <= margin_px) & ~np.isnan(previous)
     moved = extrapolate(previous, motion, 1)[0]
     out = field.copy()
     out[area] = np.fmax(field[area], moved[area])  # fmax: NaN in one of them = the other
@@ -128,8 +129,16 @@ def fill_missing_radars(field: np.ndarray, previous: np.ndarray,
 def csi(forecast: np.ndarray, observed: np.ndarray, threshold_dbz: float) -> tuple[float | None, int]:
     """Critical success index hits / (hits + misses + false alarms) over
     pixels covered in both; (None, 0) if neither has rain there."""
-    valid = ~np.isnan(forecast) & ~np.isnan(observed)
-    f = (forecast >= threshold_dbz) & valid
+    return csi_masks(forecast >= threshold_dbz, ~np.isnan(forecast), observed, threshold_dbz)
+
+
+def csi_masks(rain: np.ndarray, covered: np.ndarray, observed: np.ndarray,
+              threshold_dbz: float) -> tuple[float | None, int]:
+    """csi() for a forecast given as two boolean masks (rain at the
+    threshold, covered at all) - what the job keeps of a forecast frame for
+    verifying it later instead of computing it again."""
+    valid = covered & ~np.isnan(observed)
+    f = rain & valid
     o = (observed >= threshold_dbz) & valid
     hits = int((f & o).sum())
     denom = int((f | o).sum())

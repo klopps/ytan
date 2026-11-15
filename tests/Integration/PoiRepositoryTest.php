@@ -93,6 +93,21 @@ final class PoiRepositoryTest extends TestCase
         $this->assertSame(2, $this->pois->countByUserWithPublic($owner));
     }
 
+    public function testFindByUserWithPublicInBoxKeepsVisibilityAndBox(): void
+    {
+        $owner = $this->createUser();
+        $other = $this->createUser();
+        $own = $this->createPoi($owner, ['latitude' => 54.30, 'longitude' => 10.10]);
+        $public = $this->createPoi($other, ['public' => 1, 'latitude' => 54.31, 'longitude' => 10.11]);
+        $this->createPoi($other, ['public' => 0, 'latitude' => 54.30, 'longitude' => 10.10]); // not visible
+        $this->createPoi($owner, ['latitude' => 55.50, 'longitude' => 10.10]); // outside the box
+
+        $ids = array_map(fn (array $p) => (int) $p['id'], $this->pois->findByUserWithPublicInBox($owner, 54.0, 54.5, 10.0, 10.5));
+        sort($ids);
+
+        $this->assertSame([(int) $own['id'], (int) $public['id']], $ids);
+    }
+
     public function testFindAllIsUnfilteredAndSupportsPagination(): void
     {
         $userId = $this->createUser();
