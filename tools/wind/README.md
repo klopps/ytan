@@ -55,13 +55,13 @@ degrees, all on one global grid (origin -90 / -180).
 
 ## Setup
 
-It uses the rain radar's Python environment (`tools/radar/.venv`, see
+It uses the jobs' shared Python environment (`tools/.venv`, see
 `tools/radar/README.md`); the only extra package is `imagecodecs` (CCSDS
-decoding for ICON-EU), already in `tools/radar/requirements.txt`:
+decoding for ICON-EU), already in `tools/requirements.txt`:
 
 ```bash
-tools/radar/.venv/bin/python -m pip install --only-binary=:all: -r tools/radar/requirements.txt
-tools/radar/.venv/bin/python tools/wind/wind_job.py -v   # first run: ~25 s, ~200 MB download
+tools/.venv/bin/python -m pip install --only-binary=:all: -r tools/requirements.txt
+tools/.venv/bin/python tools/wind/wind_job.py -v   # first run: ~25 s, ~200 MB download
 ```
 
 Scheduling: no cron entry of its own. `tools/ytan_jobs.py` (the one cron entry, every
@@ -71,7 +71,7 @@ processed is complete, otherwise it ends within a second). Started by hand it ru
 its own:
 
 ```
-tools/radar/.venv/bin/python tools/wind/wind_job.py -v
+tools/.venv/bin/python tools/wind/wind_job.py -v
 ```
 
 **It never runs together with the rain radar job**: both hold `storage/.jobs.lock`

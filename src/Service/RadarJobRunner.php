@@ -13,7 +13,7 @@ use Ytan\Exception\ApiException;
  *
  * Also starts the wind job (tools/wind/wind_job.py, `new RadarJobRunner($root, 'wind')`):
  * same lock-file check on storage/wind/.lock, log storage/logs/wind.log (written by the job, tools/ytanlog.py), error
- * codes wind.job_*, and the same Python environment (tools/radar/.venv).
+ * codes wind.job_*, and the same Python environment (tools/.venv, shared by all jobs).
  *
  * "Is a run in progress?" is answered by the job's own lock file
  * storage/radar/.lock: radar_job.py holds an exclusive lock on it for the
@@ -91,7 +91,7 @@ final class RadarJobRunner
 
     private function python(): ?string
     {
-        foreach (['/tools/radar/.venv/bin/python', '/tools/radar/.venv/Scripts/python.exe'] as $candidate) {
+        foreach (['/tools/.venv/bin/python', '/tools/.venv/Scripts/python.exe'] as $candidate) {
             if (is_file($this->rootDir . $candidate)) {
                 return $this->rootDir . $candidate;
             }

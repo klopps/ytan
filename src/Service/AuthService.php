@@ -23,9 +23,11 @@ final class AuthService
 
     /**
      * Validates credentials and returns [token, expiresAt, user] on success.
-     * Mirrors the legacy behaviour of migrating a still-plaintext stored
-     * password to a bcrypt hash on first successful login. The identifier
-     * may be either the username or the account's email address.
+     * The identifier may be either the username or the account's email
+     * address. Only hashed passwords are accepted: the PESR-era branch that
+     * accepted a still-plaintext stored password (and re-hashed it) was
+     * removed on 2026-11-15 after production held no plaintext passwords
+     * any more.
      */
     public function login(string $username, string $password): array
     {
@@ -34,16 +36,7 @@ final class AuthService
             throw new UnauthorizedException('Invalid username or password.', 'auth.invalid_credentials');
         }
 
-        if (password_verify($password, $user['password'])) {
-            // already a proper hash
-        } elseif (password_get_info((string) $user['password'])['algo'] === null
-            && hash_equals((string) $user['password'], $password)) {
-            // Only for a stored value that is NOT a hash: otherwise whoever
-            // knows the hash (e.g. from a database dump) could log in by
-            // sending the hash itself as the password.
-            $user['password'] = password_hash($password, PASSWORD_DEFAULT);
-            $this->users->updatePassword((int) $user['id'], $user['password']);
-        } else {
+        if (!password_verify($password, $user['password'])) {
             throw new UnauthorizedException('Invalid username or password.', 'auth.invalid_credentials');
         }
 

@@ -97,7 +97,7 @@ tar -C "%ROOT_DIR%" ^
     --exclude="public/images/wsi/*.svg" ^
     --exclude="public/app" ^
     --exclude="public/.user.ini" ^
-    --exclude="tools/radar/.venv" ^
+    --exclude="tools/.venv" ^
     --exclude="tools/water" ^
     --exclude="__pycache__" ^
     --exclude="storage" ^

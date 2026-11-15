@@ -1,5 +1,18 @@
 # Erledigt
 
+## Prod-Prüfung offener Punkte
+
+~~Offene Prüfpunkte aus todo.md auf Prod klären (Sicherheit, OPcache, Wirkung der Radar-Verbesserungen vom 2026-11-06, Deploys von Routencheck und Wind).~~
+
+Gelöst (2026-11-15): Per SSH (nur lesend) und von außen geprüft.
+- **Sicherheit:** `JWT_SECRET` hat 64 Zeichen, `APP_DEBUG=false`, `ALLOWED_ORIGINS` ist leer (eine fremde `Origin` bekommt keinen CORS-Header), `CSP_MODE` ist nicht gesetzt, also wird die CSP erzwungen. Die Header (CSP, HSTS, `nosniff`, `X-Frame-Options`, `Referrer-Policy`) kommen an, `http://` leitet mit 301 um. Im `storage/logs/error.log` steht keine `YTAN CSP violation`. `TRANSLATE_TOOL_ENABLED=true` bleibt auf Prod absichtlich an (User, 2026-11-15): Dort wird übersetzt, und der Deploy behält die vorhandenen Werte (`bin/merge-i18n.php`). 
+- **Login-Altlast entfernt:** Prod hatte zunächst 2 Klartext-Passwörter. Nachdem der User sie bereinigt hatte, war die Zahl 0 (`SELECT COUNT(*) FROM user WHERE password IS NOT NULL AND password NOT LIKE '$2y$%'`). Deshalb ist der PESR-Zweig in `AuthService::login()` weg, der ein im Klartext gespeichertes Passwort annahm und dabei neu hashte. Jetzt gilt nur noch `password_verify()`. Der Test dazu prüft jetzt das Gegenteil (`AuthSecurityTest::testPlaintextStoredPasswordIsNoLongerAccepted`). Auf test.pesr.org und in der lokalen Dev-DB gibt es noch je 2 solche Konten. Sie melden sich bei Bedarf über „Passwort vergessen“ neu an (Entscheidung des Users).
+- **OPcache:** Im Web-PHP (php-fpm 8.3, Hoster-Ini unter `/etc/php/8.3/fpm/ini/`) ist `opcache.enable=1` gesetzt, mit `memory_consumption=64` und `validate_timestamps=1`. Nur das CLI-PHP hat es aus, das spielt keine Rolle.
+- **Regenradar:** `radar.log` meldet „reprojection lookup loaded in 0.6-4.2 s“ statt „built“. Die Meldung „the previous tick is still working“ kam am 11. und 12.11. noch 27- bzw. 28-mal, seit dem 13.11. gar nicht mehr. Ein Tick dauert ~90 s. Die Prognose reicht weiter bis +60 min.
+- **Routencheck:** live, `ai_enabled` = 1, `ANTHROPIC_API_KEY` gesetzt, 1 Benutzer mit dem Recht `ai_use`.
+- **Wind:** läuft auf dem YTAN-Worker (`external_jobs: ["wind"]`). Die Cron-Zeile `*/5 ... tools/ytan_jobs.py` steht, `imagecodecs` ist installiert. Gemessen: 20 Veröffentlichungen pro Tag (13. und 14.11., erwartet waren 15-20 statt vorher 35-37), Gebiet „Ganze Welt“, +48 h. Ein Lauf dauert 869 s, lädt ~603 MB vom DWD und schreibt ~469 MB, die per rsync auf Prod gehen (~9 GB pro Tag); `storage/wind` hat 0,95-1,2 GB. Entscheidung (User, 2026-11-15): Der Wind bleibt so auf dem HA-Worker.
+- **Crontab:** Die alte Zeile `bin/cron.sh` ist auskommentiert (User, 2026-11-15).
+
 ## Credits-Seite
 
 ~~Wir benötigen eine Credits-Seite mit einem Verweis auf TidesAtlas (Bedingung des kostenlosen Tarifs „Free Web“).~~ Gelöst (2026-11-15): Neue serverseitige Seite `/credits` (`templates/credits.php`, Menüzeile „Quellen“/„Credits“ zwischen „Über“ und „Impressum“, geöffnet wie die anderen Textseiten über `openLegalMenu()`). Alle Datenquellen und Lizenzen sind von der About-Seite dorthin umgezogen: Leuchtfeuerlisten aus `data_source`, Regenradar, Wind, Gezeiten. „Über“ verweist nur noch darauf.

@@ -47,6 +47,7 @@
         'ukho_link' => '<a href="https://www.admiralty.co.uk/" target="_blank" rel="noopener">UK Hydrographic Office (ADMIRALTY)</a>',
         'kartverket_link' => '<a href="https://www.kartverket.no/til-sjos/se-havniva" target="_blank" rel="noopener">Kartverket</a>',
         'ih_link' => '<a href="https://www.hidrografico.pt/" target="_blank" rel="noopener">Instituto Hidrográfico</a>',
+        'tidesatlas_link' => '<a href="https://tidesatlas.com/" target="_blank" rel="noopener">TidesAtlas</a>',
         'openmeteo_link' => '<a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>',
     ]) ?></p>
     <?php /* TidesAtlas "Free Web" plan: this exact line, in the page HTML (not added by JavaScript) - their condition for the free key */ ?>

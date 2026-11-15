@@ -9,7 +9,7 @@ RUN apt-get update \
 
 WORKDIR /app
 # all jobs' packages (rain radar + wind), so moving another job to the worker needs no rebuild
-COPY tools/radar/requirements.txt /tmp/requirements.txt
+COPY tools/requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
 COPY tools /app/tools

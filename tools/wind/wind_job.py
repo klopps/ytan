@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Wind field job: newest DWD ICON-D2 / ICON-EU runs -> blocks in storage/wind.
 
-Run from cron every 15 minutes (see README.md):
-    tools/radar/.venv/bin/python tools/wind/wind_job.py
+Run every 15 minutes by tools/ytan_jobs.py (see README.md), by hand:
+    tools/.venv/bin/python tools/wind/wind_job.py
 """
 
 from __future__ import annotations

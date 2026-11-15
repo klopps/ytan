@@ -41,15 +41,22 @@ with `get-pip.py`, and only packages with binary wheels (no pysteps):
 
 ```bash
 cd /path/to/ytan
-python3 -m venv --without-pip tools/radar/.venv
-curl -sSo tools/radar/.venv/get-pip.py https://bootstrap.pypa.io/get-pip.py
-tools/radar/.venv/bin/python tools/radar/.venv/get-pip.py
-tools/radar/.venv/bin/python -m pip install --only-binary=:all: -r tools/radar/requirements.txt
-tools/radar/.venv/bin/python tools/radar/radar_job.py   # first run: ~2 min (13 observations)
+python3 -m venv --without-pip tools/.venv
+curl -sSo tools/.venv/get-pip.py https://bootstrap.pypa.io/get-pip.py
+tools/.venv/bin/python tools/.venv/get-pip.py
+tools/.venv/bin/python -m pip install --only-binary=:all: -r tools/requirements.txt
+tools/.venv/bin/python tools/radar/radar_job.py   # first run: ~2 min (13 observations)
 ```
 
-Locally (Windows): `python -m venv tools/radar/.venv` and
-`tools/radar/.venv/Scripts/python -m pip install -r tools/radar/requirements.txt`.
+Locally (Windows): `python -m venv tools/.venv` and
+`tools/.venv/Scripts/python -m pip install -r tools/requirements.txt`.
+
+`tools/.venv` is the ONE environment of all scheduled jobs (`ytan_jobs.py`, the
+YTAN worker, radar, wind); `tools/requirements.txt` lists every job's packages.
+Until 2026-11-15 both lived in `tools/radar/`. An existing `tools/radar/.venv`
+can simply be moved (`mv tools/radar/.venv tools/.venv`): the jobs call
+`.venv/bin/python` directly, which finds its environment from its own location
+(only pip's own launcher scripts keep the old path - use `python -m pip`).
 
 /admin/radar can pause the job (15/30/60 minutes or for good: `paused_until` /
 `paused_forever` in config.json, the run then ends at once with outcome
@@ -64,7 +71,7 @@ Linux they share the reprojection lookup via fork, on Windows (spawn) each
 builds its own (~5 s, and needs the regions too):
 
 ```
-*/5 * * * * /path/to/ytan/tools/radar/.venv/bin/python /path/to/ytan/tools/ytan_jobs.py >> /path/to/ytan/storage/logs/console.log 2>&1
+*/5 * * * * /path/to/ytan/tools/.venv/bin/python /path/to/ytan/tools/ytan_jobs.py >> /path/to/ytan/storage/logs/console.log 2>&1
 ```
 
 The jobs write their logs themselves (`tools/ytanlog.py`: `storage/logs/jobs.log`,
@@ -77,7 +84,7 @@ output is not a terminal).
 `radar_job.py` itself stays runnable by hand (and is what /admin/radar's "update
 now" starts); overlapping runs skip themselves via `storage/radar/.lock`.
 
-The deploy scripts upload `tools/radar/` but neither `.venv` nor
+The deploy scripts upload `tools/` but neither `tools/.venv` nor
 `storage/radar`.
 
 ## Numbers (measured 2026-10-17, frontal rain over DK/DE)

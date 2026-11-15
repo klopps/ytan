@@ -56,7 +56,7 @@ tar -C "$ROOT_DIR" \
     --exclude='storage/ai-cache' \
     --exclude='storage/tide-cache' \
     --exclude='storage/water' \
-    --exclude='tools/radar/.venv' \
+    --exclude='tools/.venv' \
     --exclude='tools/water' \
     --exclude='__pycache__' \
     -cf - . | tar -C "$BUILD_DIR" -xf -

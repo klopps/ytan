@@ -24,7 +24,7 @@ final class RadarSettingsControllerTest extends ControllerTestCase
         parent::setUp();
         // app_settings is a singleton row; the structure-only test DB has none
         $this->pdo->exec('INSERT INTO app_settings (id) VALUES (1)');
-        // a fake checkout root without tools/radar/.venv: the job is "not installed"
+        // a fake checkout root without tools/.venv: the job is "not installed"
         $this->root = sys_get_temp_dir() . '/ytan-radar-root-' . uniqid();
         $this->radarDir = $this->root . '/storage/radar';
         $this->controller = new RadarSettingsController(new SettingsRepository($this->pdo), $this->radarDir, new RadarJobRunner($this->root));

@@ -17,7 +17,7 @@ use Ytan\Service\MailService;
 /**
  * Security audit 2026-10-16: revoking JWTs (token_version / "tv" claim),
  * brute-force throttling of login and forgot-password (RequestThrottle), the
- * legacy plaintext-password branch, set-password token purpose and hashed
+ * removed legacy plaintext-password branch, set-password token purpose and hashed
  * user_token storage.
  */
 final class AuthSecurityTest extends ControllerTestCase
@@ -114,15 +114,18 @@ final class AuthSecurityTest extends ControllerTestCase
         $this->auth->login($user['username'], (string) $user['password']);
     }
 
-    public function testLegacyPlaintextPasswordStillWorksAndIsMigratedToAHash(): void
+    public function testPlaintextStoredPasswordIsNoLongerAccepted(): void
     {
         $id = $this->createUser();
         $this->users->updatePassword($id, 'Plain-Old-55');
         $user = $this->users->findById($id);
 
-        $this->auth->login($user['username'], 'Plain-Old-55');
-
-        $this->assertTrue(password_verify('Plain-Old-55', (string) $this->users->findById($id)['password']));
+        try {
+            $this->auth->login($user['username'], 'Plain-Old-55');
+            $this->fail('A plaintext stored password must not log in.');
+        } catch (UnauthorizedException) {
+            $this->assertSame('Plain-Old-55', $this->users->findById($id)['password'], 'Nothing is re-hashed.');
+        }
     }
 
     /* ------------------------------------------------- user_token table */

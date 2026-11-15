@@ -2,7 +2,10 @@
 """YTAN's scheduled jobs from ONE cron entry, one after the other.
 
 Cron, every 5 minutes (replaces the separate radar and wind entries):
-    */5 * * * * tools/radar/.venv/bin/python tools/ytan_jobs.py >> storage/logs/console.log 2>&1
+    */5 * * * * tools/.venv/bin/python tools/ytan_jobs.py >> storage/logs/console.log 2>&1
+
+(tools/.venv = the one environment of all jobs, packages in tools/requirements.txt; it was
+tools/radar/.venv until 2026-11-15.)
 
 The jobs write their own logs (storage/logs/jobs.log, radar.log, wind.log - tools/ytanlog.py);
 console.log only catches what goes wrong before that (e.g. a missing package).
