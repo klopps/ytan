@@ -61,6 +61,8 @@ Die Farben **rechnet YTAN selbst nach festen Regeln**, nicht die KI. Die KI erkl
 
 Dazu berücksichtigt YTAN, wie viel **offenes Wasser** in Windrichtung liegt: Im **Lee** einer Küste oder Insel gelten großzügigere Grenzen, über eine weite freie Wasserfläche strengere. Gegenwind macht dich langsamer, das verschiebt die Ankunftszeit. Fehlen für eine Stunde Wetterdaten, bleibt der Abschnitt **grau**; ein Hinweis nennt das.
 
+Das Wetter holt YTAN an bis zu fünf Punkten entlang der Route, jeweils vom Dienst des Landes, in dem der Punkt liegt (siehe [Wetter](#wetter-woher-kommen-die-daten)). Unten im Infobereich steht, welche Quellen für diese Route verwendet wurden. Bei einer Route über eine Grenze sind das mehrere, zum Beispiel „Wetter: DWD, DMI. Wellen: Open-Meteo Marine.“
+
 Die Grenzwerte legen die Administratoren fest, die Erfahrungsstufe verschiebt sie für dich.
 
 ## Strömung auf Flüssen

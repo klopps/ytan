@@ -1,6 +1,6 @@
 ---
 title: Wetter
-keywords: Wetter, Wind, Böen, Regen, Welle, Gezeiten, Tide, Sonnenaufgang, Open-Meteo, DWD, DMI, SMHI, Windy, Regenradar, Windebene, Partikel, Windkarte, Niederschlagsprognose, OPERA, Beaufort
+keywords: Wetter, Wind, Böen, Regen, Welle, Gezeiten, Tide, Sonnenaufgang, Open-Meteo, DWD, DMI, SMHI, FMI, Finnland, Windy, Regenradar, Windebene, Partikel, Windkarte, Niederschlagsprognose, OPERA, Beaufort
 ---
 
 Für jeden Kartenpunkt zeigt YTAN eine Wettervorhersage für die nächsten **sieben Tage**, stündlich, mit Wind, Böen, Regen, Wellenhöhe und Gezeiten.
@@ -64,6 +64,7 @@ Die Winddaten stammen vom **Deutschen Wetterdienst** (Modelle ICON-D2, ICON-EU u
 | **Frankreich** | Météo-France |
 | **Niederlande** | KNMI |
 | **Schweden** und die **Ostsee** außerhalb der Küstenstaaten | SMHI |
+| **Finnland** und **Åland** | Finnisches Meteorologisches Institut (FMI) |
 | alle anderen Orte | Open-Meteo (internationale Modelle) |
 | **Wellen** | Open-Meteo Marine |
 | **Gezeiten** | der nächste Gezeitenpegel eines nationalen Dienstes bis 15 km entfernt (BSH, DMI, Rijkswaterstaat, Marine Institute, UK Hydrographic Office, Kartverket, Instituto Hidrográfico), sonst Open-Meteo Marine |

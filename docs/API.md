@@ -139,7 +139,7 @@ bearing}]`), `windows`
 (`[{hour, rating, reason, end}]` - the rating for every start hour of the
 rules' window), `pois` (`[{id, name, type, type_label, role
 (landing|danger|portage), lat, lng, distance_m, at_m}]`, max 30 within
-2 km), `sun {sunrise, sunset}`, `weather {source, model, generated_at}`,
+2 km), `sun {sunrise, sunset}`, `weather {source, model, generated_at, sources, marine}` (source/model/generated_at of the first sample point; `sources` = every weather source along the route in route order, each once, e.g. `["DWD", "DMI"]`; `marine` = waves from Open-Meteo Marine were used; `null` when no forecast could be fetched),
 `thresholds` (wind/gust/wave/current for this level), `current {on_river,
 on_canal, on_tidal, river_kmh, default_kmh, tidal_kmh, tidal_default_kmh,
 tides: [{station, source (bsh|open-meteo), attribution, distance_m,
@@ -381,7 +381,7 @@ cached to disk. No auth required (same as POIs).
 `GET /api/v1/weather?lat=..&lng=..` (forecast for the weather timeline) and
 `GET /api/v1/geocode/reverse?lat=..&lng=..` (`{data: {place_name}}`), no
 auth required. `lat` must be -90..90, `lng` -180..180 (else 422). Both call
-external services (Open-Meteo/SMHI, Nominatim), so together they are limited
+external services (Open-Meteo/SMHI/FMI, Nominatim), so together they are limited
 to 120 requests per IP in 10 minutes (429, `auth.too_many_attempts`).
 
 ## Rain radar

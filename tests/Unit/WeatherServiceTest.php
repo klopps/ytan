@@ -7,11 +7,13 @@ namespace Ytan\Tests\Unit;
 use PHPUnit\Framework\TestCase;
 use Ytan\Exception\ApiException;
 use Ytan\Service\GeocodingService;
+use Ytan\Service\Weather\FmiWeatherProvider;
 use Ytan\Service\Weather\OpenMeteoWeatherProvider;
 use Ytan\Service\Weather\SmhiWeatherProvider;
 use Ytan\Service\Weather\WeatherRegionResolver;
 use Ytan\Service\WeatherService;
 use Ytan\Tests\Fixtures\FakeJsonHttpClient;
+use Ytan\Tests\Fixtures\FakeTideHttp;
 use Ytan\Tests\Fixtures\FakeWeatherForecastRepository;
 
 /**
@@ -326,6 +328,60 @@ final class WeatherServiceTest extends TestCase
         $this->assertSame(36.0, $hour['wind_gusts']);
         $this->assertSame(0, $hour['weather_code']);
         $this->assertSame(0.35, $hour['wave_height']);
+    }
+
+    public function testAFinnishCoordinateRoutesToFmiAndIsFilledFromOpenMeteo(): void
+    {
+        $this->httpClient->setResponseFor(self::NOMINATIM_URL, ['address' => ['country_code' => 'fi']]);
+        // Open-Meteo = filler for the hours before FMI's first one, and sun times
+        $this->httpClient->setResponseFor(self::FORECAST_URL, [
+            'utc_offset_seconds' => 7200,
+            'hourly' => [
+                'time' => ['2026-11-15T17:00', '2026-11-15T18:00'],
+                'temperature_2m' => [2.0, 3.0], 'apparent_temperature' => [0.0, 1.0],
+                'wind_speed_10m' => [10.0, 11.0], 'wind_gusts_10m' => [20.0, 21.0], 'wind_direction_10m' => [180, 190],
+                'precipitation' => [0.0, 0.0], 'weather_code' => [3, 3],
+            ],
+            'daily' => ['time' => ['2026-11-15'], 'sunrise' => ['2026-11-15T08:20'], 'sunset' => ['2026-11-15T15:30']],
+        ]);
+        $fmi = new FakeTideHttp();
+        $fmi->on('https://opendata.fmi.fi/wfs', '<?xml version="1.0"?><wfs:FeatureCollection xmlns:wfs="http://www.opengis.net/wfs/2.0"'
+            . ' xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:wml2="http://www.opengis.net/waterml/2.0">'
+            . '<gml:TimeInstant gml:id="analysis-time-1-1-Temperature--"><gml:timePosition>2026-11-15T14:40:00Z</gml:timePosition></gml:TimeInstant>'
+            . '<wml2:MeasurementTimeseries gml:id="mts-1-1-Temperature"><wml2:point><wml2:MeasurementTVP>'
+            . '<wml2:time>2026-11-15T16:00:00Z</wml2:time><wml2:value>8.1</wml2:value></wml2:MeasurementTVP></wml2:point></wml2:MeasurementTimeseries>'
+            . '<wml2:MeasurementTimeseries gml:id="mts-1-1-WindSpeedMS"><wml2:point><wml2:MeasurementTVP>'
+            . '<wml2:time>2026-11-15T16:00:00Z</wml2:time><wml2:value>5</wml2:value></wml2:MeasurementTVP></wml2:point></wml2:MeasurementTimeseries>'
+            . '</wfs:FeatureCollection>');
+        $geocoding = new GeocodingService($this->geocodingCacheDir, $this->httpClient, 'en');
+        $service = new WeatherService(
+            $this->forecasts,
+            new WeatherRegionResolver($geocoding),
+            new OpenMeteoWeatherProvider($this->httpClient),
+            new SmhiWeatherProvider($this->httpClient),
+            new FmiWeatherProvider($fmi),
+        );
+
+        $result = $service->getForecast(60.17, 24.94);
+
+        $this->assertSame('FMI', $result['source']);
+        $this->assertSame('2026-11-15T14:40:00Z', $result['generated_at']);
+        // 16:00 UTC = 18:00 Helsinki: FMI's own value wins over Open-Meteo's
+        $this->assertSame(8.1, $this->findHourlyEntry($result['hourly'], '2026-11-15T18:00')['temperature']);
+        $this->assertSame(18.0, $this->findHourlyEntry($result['hourly'], '2026-11-15T18:00')['wind_speed']);
+        // the hour before FMI's first one comes from Open-Meteo
+        $this->assertSame(2.0, $this->findHourlyEntry($result['hourly'], '2026-11-15T17:00')['temperature']);
+        $this->assertCount(168, $result['hourly']);
+        $this->assertSame('2026-11-15T08:20', $result['daily'][0]['sunrise']);
+    }
+
+    public function testFinlandFallsBackToOpenMeteoWhenNoFmiProviderIsWired(): void
+    {
+        $this->httpClient->setResponseFor(self::NOMINATIM_URL, ['address' => ['country_code' => 'fi']]);
+
+        $result = $this->service->getForecast(60.17, 24.94);
+
+        $this->assertSame('Open-Meteo', $result['source']);
     }
 
     /**

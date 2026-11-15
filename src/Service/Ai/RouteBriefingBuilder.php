@@ -171,6 +171,8 @@ final class RouteBriefingBuilder
         $samples = max(1, min(self::WEATHER_MAX_SAMPLES, (int) ceil($geometry->length / self::WEATHER_SAMPLE_SPACING_M)));
         $forecasts = [];
         $weatherInfo = null;
+        $sources = [];
+        $marine = false;
         $timezone = null;
         for ($i = 0; $i < $samples; $i++) {
             [$lat, $lng] = $geometry->at($geometry->length * ($i + 0.5) / $samples);
@@ -187,6 +189,13 @@ final class RouteBriefingBuilder
                 'model' => $payload['model'] ?? null,
                 'generated_at' => $payload['generated_at'] ?? null,
             ] : null;
+            // every source along the route (a route across a border has
+            // several - DWD and DMI, ...), in route order, for the sheet's footer
+            $source = is_string($payload['source'] ?? null) ? trim($payload['source']) : '';
+            if ($source !== '' && !in_array($source, $sources, true)) {
+                $sources[] = $source;
+            }
+            $marine = $marine || !empty($payload['has_marine_data']);
             $forecasts[] = self::forecastTables($payload, $zone ?? new DateTimeZone('UTC'));
         }
         $timezone ??= new DateTimeZone('UTC');
@@ -249,7 +258,13 @@ final class RouteBriefingBuilder
                 'sunrise' => $sun !== null && $sun['sunrise'] !== null ? $sun['sunrise']->format('H:i') : null,
                 'sunset' => $sun !== null && $sun['sunset'] !== null ? $sun['sunset']->format('H:i') : null,
             ],
-            'weather' => $weatherInfo,
+            // source/model/generated_at = the first sample point's; sources = all
+            // of them, marine = waves from Open-Meteo Marine were used (not in
+            // aiContext(), so neither prompt nor AI cache key change)
+            'weather' => $weatherInfo === null ? null : $weatherInfo + [
+                'sources' => $sources,
+                'marine' => $marine,
+            ],
             'thresholds' => [
                 'wind' => self::scaled($rules['wind'], $levelFactor),
                 'gust' => self::scaled($rules['gust'], $levelFactor),

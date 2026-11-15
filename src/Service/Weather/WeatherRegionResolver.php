@@ -19,8 +19,8 @@ use Ytan\Service\GeocodingService;
  * its own, so none of these five need WeatherService::fillHourlyGaps()
  * either - unlike SMHI's real point-forecast API, Open-Meteo already blends
  * every "_seamless" model with ECMWF internally to cover the full week).
- * Only Finland/FMI (WFS/XML, its own API key, no Open-Meteo equivalent) is
- * still a later, separate step - see todo.md.
+ * Finland (incl. Åland) has its own provider too since 2026-11-15:
+ * FmiWeatherProvider (WFS/XML, no key any more, no Open-Meteo equivalent).
  *
  * Country lookup goes through GeocodingService (already doing reverse
  * geocoding for the weather panel's place-name title - see its own doc
@@ -42,9 +42,9 @@ final class WeatherRegionResolver
     // resolution/range runs out - confirmed live for all five (full
     // 168-hour series, no API key, same api.open-meteo.com/v1/forecast
     // endpoint WeatherProviderInterface's own Open-Meteo path already
-    // uses). Extend this map for future countries the todo item lists
-    // (only Finland/FMI is left, and it needs its own real provider, not a
-    // models= entry here).
+    // uses). Extend this map for further countries Open-Meteo has a
+    // national model for (Finland/FMI has none there - own provider, see
+    // FMI_COUNTRIES).
     private const COUNTRY_MODELS = [
         'de' => ['model' => 'icon_seamless', 'source' => 'DWD'],
         'dk' => ['model' => 'dmi_seamless', 'source' => 'DMI'],
@@ -52,6 +52,10 @@ final class WeatherRegionResolver
         'fr' => ['model' => 'meteofrance_seamless', 'source' => 'Météo-France'],
         'nl' => ['model' => 'knmi_seamless', 'source' => 'KNMI'],
     ];
+
+    // Finland and Åland (Nominatim usually answers 'fi' for Åland, 'ax' is
+    // its own ISO code) -> FmiWeatherProvider
+    private const FMI_COUNTRIES = ['fi', 'ax'];
 
     // Rough Baltic Sea basin envelope - covers everything from the Danish
     // straits/Kattegat up through the Gulf of Bothnia and Gulf of Finland.
@@ -77,6 +81,10 @@ final class WeatherRegionResolver
 
         if ($countryCode === 'se') {
             return new WeatherRegion(WeatherRegion::PROVIDER_SMHI, 'SE');
+        }
+
+        if ($countryCode !== null && in_array($countryCode, self::FMI_COUNTRIES, true)) {
+            return new WeatherRegion(WeatherRegion::PROVIDER_FMI, strtoupper($countryCode));
         }
 
         if ($countryCode !== null && isset(self::COUNTRY_MODELS[$countryCode])) {

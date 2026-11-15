@@ -23,6 +23,7 @@ final class WeatherRegion
 {
     public const PROVIDER_OPEN_METEO = 'open_meteo';
     public const PROVIDER_SMHI = 'smhi';
+    public const PROVIDER_FMI = 'fmi';
 
     public function __construct(
         public readonly string $provider,

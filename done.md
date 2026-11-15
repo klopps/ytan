@@ -1,5 +1,29 @@
 # Erledigt
 
+## Routencheck: Wetterquellen der Route in der Fußzeile
+
+~~Der Hinweistext `route_check.disclaimer` („… Wetter: Open-Meteo/SMHI.“) muss die Wetterquellen nennen, die für die jeweilige Route tatsächlich verwendet wurden. Sie unterscheiden sich von Route zu Route.~~
+
+Gelöst (2026-11-15): `RouteBriefingBuilder::build()` holt das Wetter an bis zu 5 Punkten über `WeatherService`, je Land von einem anderen Dienst (DWD, DMI, MET Norway, Météo-France, KNMI, SMHI, FMI, Open-Meteo). Bisher meldete `weather` nur die Quelle des ersten Punkts, und das Sheet zeigte stattdessen einen festen Text.
+- **Ergebnis:** `weather.sources` enthält jetzt alle Quellen in Routenreihenfolge, jede einmal. `weather.marine` gibt an, ob Wellen von Open-Meteo Marine verwendet wurden (`has_marine_data` an einem Punkt). Ohne jede Vorhersage ist `weather` null. `aiContext()` liest `weather` nicht, also ändern sich weder Prompt noch KI-Cache.
+- **Anzeige:** `route-briefing.js`'s `routeCheckSourcesText()` setzt die Fußzeile zusammen, zum Beispiel „KI-Einschätzung, keine Sicherheitsgarantie. Wetter: DWD, DMI. Wellen: Open-Meteo Marine.“ Die Quellnamen werden escaped. Die Gezeitenquellen stehen schon in den Pegelzeilen.
+- **i18n:** Neue Schlüssel `route_check.disclaimer_ai`, `route_check.weather_from` und `route_check.waves_from`, der alte `route_check.disclaimer` ist entfernt. So kommt die Änderung auch auf Prod an: `bin/merge-i18n.php` behält dort vorhandene Werte, fügt neue Schlüssel aber hinzu und entfernt gelöschte.
+- **Tests:** `RouteCheckTest` prüft Quellen über eine Grenze (DWD, DMI) und den Fall ganz ohne Wetter.
+- **Doku:** docs/API.md und die Anleitung „Routencheck“.
+
+## Wetterdaten: Finnland/FMI
+
+~~Gesonderte Datenquellen für bestimmte Länder/Regionen: Finnland/FMI - WFS/XML-Format, eigener API-Key, daher ein echter neuer Provider (`WeatherProviderInterface`) mit Eintrag in `WeatherRegionResolver`.~~
+
+Gelöst (2026-11-15): Neuer `FmiWeatherProvider` (`src/Service/Weather/`). Einen API-Key braucht FMI nicht mehr: Die offenen Daten sind seit 2019 ohne Key abrufbar, Lizenz CC BY 4.0. Die Notiz stammte von vorher. Open-Meteo hat kein FMI-Modell, deshalb ein eigener Provider wie bei SMHI.
+- **Quelle:** WFS `https://opendata.fmi.fi/wfs`, Stored Query `fmi::forecast::edited::weather::scandinavia::point::timevaluepair` mit `latlon`, `timestep=60` und `endtime` = heute + 8 Tage. Antwort in ~0,3 s, eine `wml2:MeasurementTimeseries` je Parameter (`gml:id` „mts-1-1-{Parameter}“), stündlich ab der nächsten vollen Stunde, Zeiten in UTC. Die Analysezeit steht im `TimeInstant` „analysis-time-…“ und wird `generated_at`. Gelesen wird per DOM; eine DOCTYPE wird abgelehnt.
+- **Fallen, live geprüft:** `WindGust` ist in dieser Vorhersage für jede Stunde `NaN`, die Böen liefert `HourlyMaximumGust`. Wind kommt in m/s und wird ×3,6 in km/h umgerechnet. „NaN“ zählt als kein Wert. Die Zeiten werden nach Europe/Helsinki umgerechnet. `WeatherSymbol3` wird auf die WMO-Gruppen von weather.js abgebildet, Schneeregen wie bei SMHI auf Schneeschauer.
+- **Region:** `WeatherRegionResolver` gibt für die Ländercodes `fi` und `ax` (Åland) `WeatherRegion::PROVIDER_FMI` zurück. Die offene Ostsee bleibt bei SMHI.
+- **WeatherService:** ruft FMI auf. Die Lückenfüllung aus Open-Meteo (`fillHourlyGaps()`) und die getrennt geholten Sonnenzeiten gelten jetzt für jeden Anbieter außer Open-Meteo. Grund: FMI beginnt wie SMHI erst bei der nächsten Stunde, die Stunden davor kommen von Open-Meteo. Ohne verdrahteten FMI-Provider (optionaler letzter Konstruktor-Parameter) gilt für Finnland Open-Meteo. HTTP läuft über `TideHttp`/`CurlTideHttp`, den schlichten „Text holen“-Weg.
+- **Tests:** `FmiWeatherProviderTest` (URL ohne Key, Abbildung, NaN, Fehler, DOCTYPE), Finnland/Åland in `WeatherRegionResolverTest`, Routing samt Füllen und Rückfall in `WeatherServiceTest`.
+- **Live lokal:** Schären bei Turku, Quelle FMI, 168 Stunden ohne Lücke, Wellen weiter von Open-Meteo Marine.
+- **Doku:** Anleitung „Wetter“ (Quellentabelle und Stichworte) und docs/API.md.
+
 ## Prod-Prüfung offener Punkte
 
 ~~Offene Prüfpunkte aus todo.md auf Prod klären (Sicherheit, OPcache, Wirkung der Radar-Verbesserungen vom 2026-11-06, Deploys von Routencheck und Wind).~~

@@ -500,11 +500,27 @@ function routeCheckRender() {
         routeCheckTextHtml(result) +
         routeCheckSectionsHtml(result) +
         routeCheckPlacesHtml(result) +
-        '<div class="rc-footer rc-muted rc-small">' + t('route_check.disclaimer') +
+        '<div class="rc-footer rc-muted rc-small">' + routeCheckSourcesText(result) +
             (result.limit ? ' ' + t('route_check.remaining', { n: Math.max(0, result.limit.per_day - result.limit.used_today) }) : '') +
         '</div>' +
     '</div>';
     sheet.innerHTML = html;
+}
+
+// Footer: the AI note plus the weather sources THIS route's forecast came
+// from (one per country it crosses - DWD, DMI, SMHI, FMI, ...) and the wave
+// source when waves were used. Tide sources are already in the gauge lines.
+function routeCheckSourcesText(result) {
+    var weather = result.weather || {};
+    var sources = Array.isArray(weather.sources) ? weather.sources : [];
+    var text = t('route_check.disclaimer_ai');
+    if (sources.length) {
+        text += ' ' + t('route_check.weather_from', { sources: sources.map(function (s) { return escapeHTML(String(s)); }).join(', ') });
+    }
+    if (weather.marine) {
+        text += ' ' + t('route_check.waves_from', { source: 'Open-Meteo Marine' });
+    }
+    return text;
 }
 
 function routeCheckSectionsHtml(result) {

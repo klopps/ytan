@@ -44,6 +44,20 @@ final class WeatherRegionResolverTest extends TestCase
         $this->assertSame('SE', $region->regionCode);
     }
 
+    public function testFinlandAndAlandResolveToFmi(): void
+    {
+        foreach (['fi' => 'FI', 'ax' => 'AX'] as $countryCode => $regionCode) {
+            $this->httpClient->setResponseFor(self::NOMINATIM_URL, ['address' => ['country_code' => $countryCode]]);
+
+            // a different coordinate each time, the geocoding cache is per position
+            $region = $this->resolver->resolve($countryCode === 'fi' ? 60.17 : 60.1, $countryCode === 'fi' ? 24.94 : 19.94);
+
+            $this->assertSame(WeatherRegion::PROVIDER_FMI, $region->provider);
+            $this->assertSame($regionCode, $region->regionCode);
+            $this->assertNull($region->openMeteoModel);
+        }
+    }
+
     public function testAGermanCountryCodeResolvesToDwdViaOpenMeteo(): void
     {
         $this->httpClient->setResponseFor(self::NOMINATIM_URL, ['address' => ['country_code' => 'de']]);

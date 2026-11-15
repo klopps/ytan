@@ -311,6 +311,7 @@ final class App
             new WeatherRegionResolver($c->get(GeocodingService::class)),
             new OpenMeteoWeatherProvider($c->get(CurlJsonHttpClient::class)),
             new SmhiWeatherProvider($c->get(CurlJsonHttpClient::class)),
+            new \Ytan\Service\Weather\FmiWeatherProvider(new \Ytan\Service\Tide\CurlTideHttp()),
         ));
         // tide times of the national services (DE, DK, NL, IE, UK, NO, PT) - the
         // Routencheck adds Open-Meteo as the last source, the weather

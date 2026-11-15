@@ -9,6 +9,7 @@ use DateTimeZone;
 use Exception;
 use Ytan\Domain\Weather\WeatherForecastRepositoryInterface;
 use Ytan\Exception\ApiException;
+use Ytan\Service\Weather\FmiWeatherProvider;
 use Ytan\Service\Weather\OpenMeteoWeatherProvider;
 use Ytan\Service\Weather\SmhiWeatherProvider;
 use Ytan\Service\Weather\WeatherProviderResult;
@@ -65,6 +66,8 @@ final class WeatherService
         private readonly WeatherRegionResolver $regionResolver,
         private readonly OpenMeteoWeatherProvider $openMeteoProvider,
         private readonly SmhiWeatherProvider $smhiProvider,
+        // Finland/Åland; null (tests, or not wired) = Open-Meteo for them
+        private readonly ?FmiWeatherProvider $fmiProvider = null,
     ) {
     }
 
@@ -109,8 +112,14 @@ final class WeatherService
 
     private function fetchAndCombine(float $lat, float $lng, WeatherRegion $region): array
     {
+        if ($region->provider === WeatherRegion::PROVIDER_FMI && $this->fmiProvider === null) {
+            $region = new WeatherRegion(WeatherRegion::PROVIDER_OPEN_METEO, $region->regionCode);
+        }
+
         if ($region->provider === WeatherRegion::PROVIDER_SMHI) {
             $general = $this->smhiProvider->fetchGeneralForecast($lat, $lng);
+        } elseif ($region->provider === WeatherRegion::PROVIDER_FMI) {
+            $general = $this->fmiProvider->fetchGeneralForecast($lat, $lng);
         } elseif ($region->openMeteoModel !== null) {
             // One of the five countries WeatherRegionResolver maps onto a
             // specific Open-Meteo model (DWD/DMI/MET Norway/Météo-France/
@@ -135,11 +144,11 @@ final class WeatherService
         // OR one of the five countries routed through its `models=`
         // parameter (see fetchAndCombine() above) - $general->daily already
         // carries it (that same request asks for hourly+daily together);
-        // fetchDailySunTimes() only runs as a separate call for the one
-        // region that isn't OpenMeteoWeatherProvider at all (SMHI), which
-        // has no daily block of its own to reuse.
+        // fetchDailySunTimes() only runs as a separate call for the regions
+        // that aren't OpenMeteoWeatherProvider at all (SMHI, FMI), which
+        // have no daily block of their own to reuse.
         $marine = $this->openMeteoProvider->fetchMarineHourly($lat, $lng);
-        $daily = $region->provider === WeatherRegion::PROVIDER_SMHI
+        $daily = $region->provider !== WeatherRegion::PROVIDER_OPEN_METEO
             ? $this->openMeteoProvider->fetchDailySunTimes($lat, $lng)['daily']
             : $general->daily;
 
@@ -210,7 +219,9 @@ final class WeatherService
      */
     private function fillHourlyGaps(WeatherProviderResult $general, WeatherRegion $region, float $lat, float $lng): WeatherProviderResult
     {
-        if ($region->provider !== WeatherRegion::PROVIDER_SMHI) {
+        // SMHI and FMI both start at the next full hour (and SMHI thins out
+        // after ~2.5 days), so both get filled; Open-Meteo is the filler itself
+        if ($region->provider === WeatherRegion::PROVIDER_OPEN_METEO) {
             return $general;
         }
 

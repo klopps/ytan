@@ -39,6 +39,8 @@ final class RouteCheckTest extends ControllerTestCase
     private ?\Closure $sea = null;
     /** @var (\Closure(float, float, ?array, int, int, int): ?array)|null tide source handed to the builder */
     private ?\Closure $tide = null;
+    /** @var (\Closure(float, float): array)|null replaces forecast() when set (may throw) */
+    private ?\Closure $forecastAt = null;
 
     protected function setUp(): void
     {
@@ -68,7 +70,7 @@ final class RouteCheckTest extends ControllerTestCase
             function (float $lat, float $lng): array {
                 $this->weatherCalls++;
 
-                return $this->forecast();
+                return $this->forecastAt !== null ? ($this->forecastAt)($lat, $lng) : $this->forecast();
             },
             fn () => null,
             fn (float $south, float $north, float $west, float $east, array $types, ?int $userId) => array_map(
@@ -157,6 +159,34 @@ final class RouteCheckTest extends ControllerTestCase
         $this->assertSame((string) $userId, (string) $row['user_id']);
         $this->assertSame('1200', (string) $row['input_tokens']);
         $this->assertSame('ok', $row['status']);
+    }
+
+    public function testTheResultNamesEveryWeatherSourceAlongTheRoute(): void
+    {
+        $userId = $this->createUser(['ai_use' => 1]);
+        // ~33 km north: 5 sample points at 56.03, 56.09, 56.15, 56.21, 56.27
+        $routeId = $this->createRoute($userId, ['public' => 1, 'points' => json_encode([['lat' => 56.0, 'lng' => 10.0], ['lat' => 56.3, 'lng' => 10.0]])]);
+        $this->forecastAt = fn (float $lat, float $lng) => [
+            'source' => $lat < 56.12 ? 'DWD' : 'DMI',
+            'has_marine_data' => $lat > 56.2,
+        ] + $this->forecast();
+
+        $weather = $this->check($userId, $routeId, ['ai_use' => true], ['text' => false])['data']['weather'];
+
+        $this->assertSame(['DWD', 'DMI'], $weather['sources'], 'in route order, each once');
+        $this->assertTrue($weather['marine']);
+        $this->assertSame('DWD', $weather['source'], 'the first point, as before');
+    }
+
+    public function testWithoutAnyWeatherThereAreNoSources(): void
+    {
+        $userId = $this->createUser(['ai_use' => 1]);
+        $routeId = $this->route($userId);
+        $this->forecastAt = fn (float $lat, float $lng) => throw new \RuntimeException('down');
+
+        $data = $this->check($userId, $routeId, ['ai_use' => true], ['text' => false])['data'];
+
+        $this->assertNull($data['weather']);
     }
 
     public function testTheSameRequestIsAnsweredFromTheCache(): void
