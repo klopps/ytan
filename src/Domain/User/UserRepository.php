@@ -32,6 +32,23 @@ final class UserRepository
         return $user === false ? null : $user;
     }
 
+    /**
+     * Only what AuthService::authenticate() needs on every request: the
+     * claim columns (AuthService::claimsFor()) and token_version - not the
+     * password hash and the rest of the row.
+     */
+    public function findClaimsById(int $id): ?array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT id, username, email, firstname, lastname, is_admin, tour_create, tour_publish, tour_manage, tour_copy,'
+            . ' route_view_recording, export_routes_own, export_routes_public, ai_use, token_version FROM user WHERE id = ?'
+        );
+        $stmt->execute([$id]);
+        $user = $stmt->fetch();
+
+        return $user === false ? null : $user;
+    }
+
     public function findById(int $id): ?array
     {
         $stmt = $this->db->prepare('SELECT * FROM user WHERE id = ?');

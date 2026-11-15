@@ -261,13 +261,18 @@ class ServerSkipTest(unittest.TestCase):
     def test_php_jobs_run_with_the_configured_php(self):
         spec = next(s for s in ytan_jobs.JOBS if s.name == "cleanup-weather")
         calls = []
-        old = (os.environ.get("PHP_CLI"), ytan_jobs.subprocess.call)
+        old = (os.environ.get("PHP_CLI"), ytan_jobs.subprocess.run)
         os.environ["PHP_CLI"] = "/opt/my/php"
-        ytan_jobs.subprocess.call = lambda command, **kw: calls.append(command) or 0
+
+        def fake_run(command, **kw):
+            calls.append(command)
+            self.assertEqual(kw["timeout"], spec.timeout_s)
+            return ytan_jobs.subprocess.CompletedProcess(command, 0)
+        ytan_jobs.subprocess.run = fake_run
         try:
             ytan_jobs.run_job(spec)
         finally:
-            ytan_jobs.subprocess.call = old[1]
+            ytan_jobs.subprocess.run = old[1]
             if old[0] is None:
                 del os.environ["PHP_CLI"]
             else:

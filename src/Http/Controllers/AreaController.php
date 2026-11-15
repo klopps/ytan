@@ -89,11 +89,13 @@ final class AreaController extends BaseController
         $existing = $this->areas->findById($id);
         $this->assertOwnerOrAdmin($auth, (int) $existing['user_id']);
 
-        foreach ($this->areas->getImages($id) as $image) {
-            $this->images->delete($id, $image['filename']);
-        }
+        // files only after the row is gone: delete() can still refuse (stale expected_updated_at)
+        $images = $this->areas->getImages($id);
         $expectedUpdatedAt = $request->getQueryParams()['expected_updated_at'] ?? null;
         $this->areas->delete($id, $expectedUpdatedAt);
+        foreach ($images as $image) {
+            $this->images->delete($id, $image['filename']);
+        }
 
         return $this->json($response, ['data' => ['id' => $id]]);
     }

@@ -1,5 +1,34 @@
 # Erledigt
 
+## Code Check
+
+~~Sieh Dir das System und den Quellcode an und suche nach Optimierungsmöglichkeiten in bezug auf Code Quality, Wartbarkeit und Performance. Mache Vorschläge zur Verbesserung.~~
+
+Gelöst (2026-11-15): Drei getrennte Prüfungen, nur lesend: PHP-Backend, Frontend (JS/CSS/Templates), Python-Tools/Skripte/Tests. Zusammen ~65 Befunde. Die Bugs und kleinen Eingriffe mit großer Wirkung („Phase A“) sind umgesetzt. Die übrigen Vorschläge stehen nach Bereichen in todo.md („Code Check: …“), mit Fundstellen. Das System auf Prod (OPcache, `.env`, Header, Crontab, Klartext-Passwörter, Radar/Wind-Läufe) wurde am selben Tag geprüft („Prod-Prüfung offener Punkte“). SQL ist durchgehend parametrisiert, die Templates escapen sauber, toter PHP-Code gibt es praktisch keinen.
+
+Umgesetzt:
+- **500er** (`App::errorPayload()`): Der eigene Fehler-Handler ersetzt Slims Logging, unerwartete Exceptions wurden also nie geloggt. Außerdem ging ihr Text an den Client, bei einem `PDOException` samt SQL und Spaltennamen. Jetzt werden sie mit `error_log()` geloggt, der Client bekommt „Internal server error.“ (mit `APP_DEBUG` Text und Trace). Die drei gleichen `getPayload()`-Zweige sind ein Interface `Exception\PayloadException`. Test: `AppErrorPayloadTest`.
+- **Fotos beim Löschen**: Poi/Area/Route/Tour-Controller löschten die Bilddateien vor dem DB-Delete. Ein veraltetes `expected_updated_at` (`ConflictException`) ließ die Entität stehen, die Fotos waren aber weg. Jetzt erst der Datensatz, dann die Dateien. Test: `EntityImageCleanupTest::testARefusedDeleteKeepsThePhotos`.
+- **Import-Batches in einer Transaktion**: neues `Database\Transaction::run()` (verschachtelbar: in einer offenen Transaktion läuft nur die Arbeit). Camping/Vereine/Shelter/Leuchtfeuer importieren je Batch alles oder nichts, mit einem Disk-Flush statt ~5 je Eintrag. Test: `TransactionTest`.
+- **Settings**: `SettingsRepository` liest die `app_settings`-Zeile einmal je Instanz (= je Request) statt eines SELECT je Feld (`/` machte 6+). Jeder Setter verwirft die Kopie.
+- **`authenticate()`** liest je Request nur noch die Claim-Spalten (`UserRepository::findClaimsById()`), nicht `SELECT *` mit Passwort-Hash.
+- **`templates/app.php`**: Die Übersetzungen in den `data-on-click`-Aufrufen der Fußzeilen-Menüs stehen jetzt als JSON-String HTML-escaped drin (`$jsArg`), vorher roh in `'…'`. Der Übersetzungs-Editor ist auf Prod an, ein Apostroph hätte den Aufruf gebrochen. Die `json_encode` in `<script>` haben jetzt `JSON_HEX_TAG`.
+- **Frontend**:
+  - `isOpen` wurde an 8 Stellen ohne Klammern geprüft, also immer wahr (einmal `== true`, also immer falsch). Ein echter Aufruf hätte das Aufräumen nach `closeclick` übersprungen. Deshalb sind die Bedingungen entfernt, das Verhalten bleibt gleich. Das eigene `InfoWindow.prototype.isOpen` (überschrieb Googles) ist weg.
+  - Die Edit-Fenster sammelten bei jedem Öffnen `domready`/`closeclick`-Listener an, ein Schließen rief `cancelEdit*` mehrfach mit alten Indizes auf. Jetzt werden sie vorher mit `clearListeners` abgeräumt.
+  - Neues `deleteAreas()`, aufgerufen von `createAreas()` und beim Abmelden. Beim Neuladen blieben die alten Gebietspolygone auf der Karte (nach dem Abmelden die privaten Gebiete des vorigen Benutzers), und Long-Press-Kandidaten wuchsen. Beim Anmelden werden jetzt auch Gebiete und Touren geladen.
+  - Tippfehler `"undefinded"` in `setAllPois()`.
+  - `saveSettings()` läuft auf `idle` statt bei jedem Frame von `center_changed`.
+  - 15 nie aufgerufene Funktionen entfernt (helper/poi/route/map-core/ui/wind).
+- **`deploy_test.bat`** lud den lokalen `storage/` (Logs, Fotos, Caches, Lock-Dateien) auf den Test-Server. Jetzt ist `storage` ganz ausgeschlossen, wie in `deploy.bat`.
+- **Radar**:
+  - `opera.fetch_frame()` brach bei einem HTTP-/Netzfehler der Primärquelle ab, statt den Ersatz zu versuchen, also genau im Störfall, für den der Ersatz da ist. Jetzt wird je Quelle abgefangen. Nur wenn alle Quellen fehlschlagen, wird der Fehler weitergegeben. 3 neue Tests.
+  - `palette.classify()` zählt die Schwellen direkt in uint8 statt `searchsorted` (int64) plus `nan_to_num`-Kopie, das spart ~12 Byte Zwischenspeicher je Mosaik-Pixel und Frame. Identische Ergebnisse geprüft.
+- **Jobs**: `JobSpec.timeout_s` (Radar 20, Wind 60, Aufräumjobs 15 min). Ein hängender Job wird beendet (Exit 124, Log), statt `.jobs.lock` für immer zu halten. rsync des Workers mit `--timeout=120`. Tests in `tools/tests`.
+- **Douglas-Peucker** (`GeometryService::simplifyPolyline()`) rechnet planar in lokalen Metern mit quadrierten Abständen statt Haversine je Vergleich. Der Test mit einer zittrigen 5.000-Punkte-Aufzeichnung brauchte 21 s, jetzt einen Bruchteil davon. Das bremste auch `WatchController`/GPX-Import auf Prod.
+- **bcrypt** in den Tests mit Kosten 4 (`AuthService::$hashOptions`, gesetzt in `tests/bootstrap.php`). PHPUnit insgesamt: 42 s → 13 s (1038 Tests).
+- **Prüfung**: PHPUnit grün, Python (tools, radar, wind) grün, e2e 31/31 grün, Browser mobil (390×650) und Desktop: Gebiete nach zweimaligem Neuladen ohne Duplikate (231 Polygone, Long-Press-Kandidaten unverändert 354), die Kartenmitte wird nach dem Schwenken gespeichert, der Menüpunkt „Über“ öffnet mit den neuen JSON-Argumenten, keine Konsolenfehler.
+
 ## Routencheck: Wetterquellen der Route in der Fußzeile
 
 ~~Der Hinweistext `route_check.disclaimer` („… Wetter: Open-Meteo/SMHI.“) muss die Wetterquellen nennen, die für die jeweilige Route tatsächlich verwendet wurden. Sie unterscheiden sich von Route zu Route.~~

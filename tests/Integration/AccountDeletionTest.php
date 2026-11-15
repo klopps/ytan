@@ -91,7 +91,7 @@ final class AccountDeletionTest extends ControllerTestCase
 
     private function withPassword(int $userId, string $password): void
     {
-        $this->pdo->prepare('UPDATE user SET password = ? WHERE id = ?')->execute([password_hash($password, PASSWORD_DEFAULT), $userId]);
+        $this->pdo->prepare('UPDATE user SET password = ? WHERE id = ?')->execute([password_hash($password, PASSWORD_DEFAULT, TEST_HASH_OPTIONS), $userId]);
     }
 
     public function testSuccessorIsTheAdminNamedYtanElseTheSmallestAdminId(): void

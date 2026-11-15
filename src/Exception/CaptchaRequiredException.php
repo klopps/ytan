@@ -10,7 +10,7 @@ namespace Ytan\Exception;
  * captcha before deleting a tour route" flow). Carries the challenge so the
  * frontend can show it and retry the same DELETE with the answer attached.
  */
-final class CaptchaRequiredException extends ApiException
+final class CaptchaRequiredException extends ApiException implements PayloadException
 {
     public function __construct(
         private readonly int $tourCount,

@@ -30,7 +30,7 @@ final class AuthServiceAuthenticateTest extends TestCase
     private function tokenFor(int $userId): string
     {
         $user = $this->users->findById($userId);
-        $this->users->updatePassword($userId, password_hash('Correct-Horse-1', PASSWORD_DEFAULT));
+        $this->users->updatePassword($userId, password_hash('Correct-Horse-1', PASSWORD_DEFAULT, TEST_HASH_OPTIONS));
 
         return $this->authService->login($user['username'], 'Correct-Horse-1')['token'];
     }

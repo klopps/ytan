@@ -38,7 +38,7 @@ final class AuthControllerErrorCodeTest extends ControllerTestCase
     public function testLoginWithAWrongPasswordCarriesTheInvalidCredentialsCode(): void
     {
         $userId = $this->createUser();
-        $this->users->updatePassword($userId, password_hash('Correct-Horse-1', PASSWORD_DEFAULT));
+        $this->users->updatePassword($userId, password_hash('Correct-Horse-1', PASSWORD_DEFAULT, TEST_HASH_OPTIONS));
         $user = $this->users->findById($userId);
 
         try {

@@ -41,7 +41,7 @@ final class AuthSecurityTest extends ControllerTestCase
     private function userWithPassword(): array
     {
         $id = $this->createUser();
-        $this->users->updatePassword($id, password_hash(self::PASSWORD, PASSWORD_DEFAULT));
+        $this->users->updatePassword($id, password_hash(self::PASSWORD, PASSWORD_DEFAULT, TEST_HASH_OPTIONS));
 
         return $this->users->findById($id);
     }

@@ -6,6 +6,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 import unittest
 from datetime import datetime, timezone
 
@@ -119,6 +120,22 @@ class ChildProcessTest(unittest.TestCase):
             with open(script, "w") as f:
                 f.write("import sys\nsys.exit(7)\n")
             self.assertEqual(ytan_jobs.run_job(JobSpec("x", script, 5)), 7)
+
+    def test_a_job_running_too_long_is_killed(self):
+        with tempfile.TemporaryDirectory() as d:
+            script = os.path.join(d, "child.py")
+            with open(script, "w") as f:
+                f.write("import time\ntime.sleep(30)\n")
+            started = time.monotonic()
+            with self.assertLogs("ytanjobs", level="ERROR") as logged:
+                code = ytan_jobs.run_job(JobSpec("x", script, 5, timeout_s=1))
+            self.assertEqual(code, ytan_jobs.TIMEOUT_EXIT)
+            self.assertLess(time.monotonic() - started, 15)
+            self.assertIn("timeout", logged.output[0])
+
+    def test_every_job_has_a_timeout(self):
+        for spec in ytan_jobs.JOBS:
+            self.assertGreater(spec.timeout_s, 0, spec.name)
 
 
 class LockTest(unittest.TestCase):

@@ -35,6 +35,8 @@ final class ShelterImportService
         private readonly ShelterImportRepository $staging,
         private readonly PoiRepository $pois,
         private readonly ?PoiWaterDistanceService $waterDistances = null,
+        // set = one transaction per batch (all or nothing, one disk flush)
+        private readonly ?\PDO $db = null,
     ) {
     }
 
@@ -43,6 +45,17 @@ final class ShelterImportService
      * @return array{imported:int, skipped:int}
      */
     public function import(array $ids, int $userId, bool $public): array
+    {
+        return $this->db !== null
+            ? \Ytan\Database\Transaction::run($this->db, fn () => $this->importBatch($ids, $userId, $public))
+            : $this->importBatch($ids, $userId, $public);
+    }
+
+    /**
+     * @param list<int> $ids
+     * @return array{imported:int, skipped:int}
+     */
+    private function importBatch(array $ids, int $userId, bool $public): array
     {
         $imported = 0;
         foreach ($this->staging->findOpenByIds($ids) as $entry) {

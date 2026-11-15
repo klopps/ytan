@@ -15,7 +15,7 @@ namespace Ytan\Exception;
  * App.php's error handler, which merges this into the JSON error body the
  * same way.
  */
-final class TranslationKeyMismatchException extends ValidationException
+final class TranslationKeyMismatchException extends ValidationException implements PayloadException
 {
     public function __construct(
         private readonly array $onlyInEn,

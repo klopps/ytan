@@ -909,11 +909,6 @@ function initMap() {
 
     mapInitialized = true;
 
-    google.maps.InfoWindow.prototype.isOpen = function() {
-        var m = this.getMap();
-        return (m !== null && typeof m !== "undefined");
-    }
-
     map = new google.maps.Map(document.getElementById("map"), {
         zoom: initialZoom,
         mapTypeId: settings.maptype,
@@ -1025,8 +1020,10 @@ function initMap() {
         }
     });
 
-    map.addListener('center_changed', () => {
-        log('center changed: ' + map.getCenter(), LOG_DEBUG);
+    // Saved once the map comes to rest, not on 'center_changed': that fires on
+    // every frame of a pan, and saveSettings() reads ~45 form fields and
+    // rewrites the settings cookie each time.
+    map.addListener('idle', () => {
         saveSettings();
     });
 
@@ -1682,19 +1679,6 @@ function toggleAreas(element) {
     saveSettings();
 }
 
-function toggleMarkerType(poitype_id) {
-    for (let i = 0; i < pois.length; i++) {
-        if (typeof pois[i] !== "undefined") {
-            if (pois[i]['poitype_id'] == poitype_id) {
-                if (markers[pois[i]['id']].getMap() === null) {
-                    markers[pois[i]['id']].setMap(map);
-                } else {
-                    markers[pois[i]['id']].setMap(null);
-                }
-            }
-        }
-    }
-}
 
 function toggleMarkerByType(element, poitype_id) {
     // Switching a type off hides its markers right away; switching it on is

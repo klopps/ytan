@@ -42,6 +42,8 @@ final class LighthouseImportService
     public function __construct(
         private readonly LighthouseImportRepository $staging,
         private readonly PoiRepository $pois,
+        // set = the writes of one import run in one transaction (all or nothing)
+        private readonly ?\PDO $db = null,
     ) {
     }
 
@@ -81,6 +83,19 @@ final class LighthouseImportService
             }
         }
 
+        $write = fn () => $this->writeEntries($entries, $userId, $public, $onConflict, $defaultRanges, $decisions, $alreadyImported);
+
+        return $this->db !== null ? \Ytan\Database\Transaction::run($this->db, $write) : $write();
+    }
+
+    /**
+     * @param list<array<string,mixed>> $entries
+     * @param array<string,float> $defaultRanges
+     * @param array<int,string> $decisions
+     * @return array{imported:int, overwritten:int, skipped:int, conflicts:list<array<string,mixed>>}
+     */
+    private function writeEntries(array $entries, int $userId, bool $public, string $onConflict, array $defaultRanges, array $decisions, int $alreadyImported): array
+    {
         $imported = 0;
         $overwritten = 0;
         $skipped = $alreadyImported;

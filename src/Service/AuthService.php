@@ -12,6 +12,15 @@ use Ytan\Exception\ValidationException;
 
 final class AuthService
 {
+    /**
+     * Options for password_hash(). Empty = PHP's default cost. Only the
+     * PHPUnit bootstrap lowers the cost (bcrypt at the default cost made the
+     * auth tests take ~12 s); password_verify() reads the cost from the hash.
+     *
+     * @var array<string, int>
+     */
+    public static array $hashOptions = [];
+
     public function __construct(
         private readonly UserRepository $users,
         private readonly string $jwtSecret,
@@ -62,7 +71,7 @@ final class AuthService
         $this->validatePasswordFormat($newPassword);
 
         $userId = (int) $tokenRow['user_id'];
-        $this->users->updatePassword($userId, password_hash($newPassword, PASSWORD_DEFAULT));
+        $this->users->updatePassword($userId, password_hash($newPassword, PASSWORD_DEFAULT, self::$hashOptions));
         $this->users->consumeToken($rawToken);
         // A reset usually means the old password may be known to someone
         // else - sign out every session that was opened with it.
@@ -88,7 +97,7 @@ final class AuthService
         }
 
         $this->validatePasswordFormat($newPassword);
-        $this->users->updatePassword($userId, password_hash($newPassword, PASSWORD_DEFAULT));
+        $this->users->updatePassword($userId, password_hash($newPassword, PASSWORD_DEFAULT, self::$hashOptions));
 
         return $this->logoutEverywhere($userId);
     }
@@ -101,7 +110,7 @@ final class AuthService
     public function adminSetPassword(int $userId, string $newPassword): void
     {
         $this->validatePasswordFormat($newPassword);
-        $this->users->updatePassword($userId, password_hash($newPassword, PASSWORD_DEFAULT));
+        $this->users->updatePassword($userId, password_hash($newPassword, PASSWORD_DEFAULT, self::$hashOptions));
         $this->users->bumpTokenVersion($userId);
     }
 
@@ -261,7 +270,7 @@ final class AuthService
             return null;
         }
 
-        $user = $this->users->findById((int) $payload['sub']);
+        $user = $this->users->findClaimsById((int) $payload['sub']);
         if ($user === null) {
             return null;
         }

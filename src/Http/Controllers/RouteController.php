@@ -164,11 +164,13 @@ final class RouteController extends BaseController
 
         $wasPublic = (bool) $existing['public'];
 
-        foreach ($this->routes->getImages($id) as $image) {
-            $this->images->delete($id, $image['filename']);
-        }
+        // files only after the row is gone: delete() can still refuse (stale expected_updated_at)
+        $images = $this->routes->getImages($id);
         $expectedUpdatedAt = $request->getQueryParams()['expected_updated_at'] ?? null;
         $this->routes->delete($id, $expectedUpdatedAt);
+        foreach ($images as $image) {
+            $this->images->delete($id, $image['filename']);
+        }
 
         foreach ($affectedTours as $tour) {
             $this->tours->recalculateTotalLength((int) $tour['id']);

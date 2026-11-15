@@ -30,15 +30,15 @@
     </script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_API_BASE = "<?= htmlspecialchars($baseUrl, ENT_QUOTES) ?>/api/v1";</script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_GOOGLE_SEARCH_REQUIRES_LOGIN = <?= $googleSearchRequiresLogin ? 'true' : 'false' ?>;</script>
-    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_MAPS_ID = <?= json_encode($mapsId) ?>;</script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_MAPS_ID = <?= json_encode($mapsId, JSON_HEX_TAG) ?>;</script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_INJECT_VERSIONS = <?= json_encode([
         '/lib/map-label-rotated/rotated-label.js' => \Ytan\App::assetVersion($rootDir, '/lib/map-label-rotated/rotated-label.js'),
         '/lib/sectorlight-overlay/sectorlight-overlay.js' => \Ytan\App::assetVersion($rootDir, '/lib/sectorlight-overlay/sectorlight-overlay.js'),
     ]) ?>;</script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_GPX_EXPORT_PUBLIC = <?= $gpxExportPublic ? 'true' : 'false' ?>;</script>
-    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_TRACK_DISTANCE_FILTER_PRESETS = <?= json_encode($trackDistanceFilterPresets) ?>;</script>
-    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_ROUTE_LABEL_FONT_SIZE_RANGE = <?= json_encode($routeLabelFontSizeRange) ?>;</script>
-    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_ROUTE_ANIMATION = <?= json_encode($routeAnimation) ?>;</script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_TRACK_DISTANCE_FILTER_PRESETS = <?= json_encode($trackDistanceFilterPresets, JSON_HEX_TAG) ?>;</script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_ROUTE_LABEL_FONT_SIZE_RANGE = <?= json_encode($routeLabelFontSizeRange, JSON_HEX_TAG) ?>;</script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_ROUTE_ANIMATION = <?= json_encode($routeAnimation, JSON_HEX_TAG) ?>;</script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_ROUTE_CHECK_ENABLED = <?= !empty($routeCheckEnabled) ? 'true' : 'false' ?>;</script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_LOCALE = "<?= htmlspecialchars($translator->locale(), ENT_QUOTES) ?>";</script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_TRANSLATIONS = <?= json_encode($translator->all(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;</script>
@@ -240,11 +240,17 @@
           <div class="nav-divider"></div>
 
           <ul class="nav-menu-list nav-menu-footer">
-            <li><button type="button" class="nav-menu-row" data-on-click="openHelpMenu('<?= $baseUrl ?>/help?embed=1', '<?= $t('app.nav.help') ?>');"><i class="material-icons-round nav-menu-row-icon">menu_book</i><span class="nav-menu-row-labels"><?= $t('app.nav.help') ?></span></button></li>
-            <li><button type="button" class="nav-menu-row" data-on-click="openLegalMenu('<?= $baseUrl ?>/about', '<?= $t('app.nav.about') ?>');"><i class="material-icons-round nav-menu-row-icon">info</i><span class="nav-menu-row-labels"><?= $t('app.nav.about') ?></span></button></li>
-            <li><button type="button" class="nav-menu-row" data-on-click="openLegalMenu('<?= $baseUrl ?>/credits', '<?= $t('app.nav.credits') ?>');"><i class="material-icons-round nav-menu-row-icon">library_books</i><span class="nav-menu-row-labels"><?= $t('app.nav.credits') ?></span></button></li>
-            <li><button type="button" class="nav-menu-row" data-on-click="openLegalMenu('<?= $baseUrl ?>/legal/imprint', '<?= $t('app.nav.imprint') ?>');"><i class="material-icons-round nav-menu-row-icon">description</i><span class="nav-menu-row-labels"><?= $t('app.nav.imprint') ?></span></button></li>
-            <li><button type="button" class="nav-menu-row" data-on-click="openLegalMenu('<?= $baseUrl ?>/legal/privacy', '<?= $t('app.nav.privacy_note') ?>');"><i class="material-icons-round nav-menu-row-icon">privacy_tip</i><span class="nav-menu-row-labels"><?= $t('app.nav.privacy_note') ?></span></button></li>
+            <?php
+            // a string argument inside data-on-click: JSON string literal (csp-events.js parses
+            // it), HTML-escaped for the attribute - translations are editable on prod
+            // (/admin/translate), so an apostrophe must not break out of the call
+            $jsArg = fn (string $value): string => htmlspecialchars(json_encode($value, JSON_UNESCAPED_UNICODE), ENT_QUOTES);
+            ?>
+            <li><button type="button" class="nav-menu-row" data-on-click="openHelpMenu(<?= $jsArg($baseUrl . '/help?embed=1') ?>, <?= $jsArg($t('app.nav.help')) ?>);"><i class="material-icons-round nav-menu-row-icon">menu_book</i><span class="nav-menu-row-labels"><?= $t('app.nav.help') ?></span></button></li>
+            <li><button type="button" class="nav-menu-row" data-on-click="openLegalMenu(<?= $jsArg($baseUrl . '/about') ?>, <?= $jsArg($t('app.nav.about')) ?>);"><i class="material-icons-round nav-menu-row-icon">info</i><span class="nav-menu-row-labels"><?= $t('app.nav.about') ?></span></button></li>
+            <li><button type="button" class="nav-menu-row" data-on-click="openLegalMenu(<?= $jsArg($baseUrl . '/credits') ?>, <?= $jsArg($t('app.nav.credits')) ?>);"><i class="material-icons-round nav-menu-row-icon">library_books</i><span class="nav-menu-row-labels"><?= $t('app.nav.credits') ?></span></button></li>
+            <li><button type="button" class="nav-menu-row" data-on-click="openLegalMenu(<?= $jsArg($baseUrl . '/legal/imprint') ?>, <?= $jsArg($t('app.nav.imprint')) ?>);"><i class="material-icons-round nav-menu-row-icon">description</i><span class="nav-menu-row-labels"><?= $t('app.nav.imprint') ?></span></button></li>
+            <li><button type="button" class="nav-menu-row" data-on-click="openLegalMenu(<?= $jsArg($baseUrl . '/legal/privacy') ?>, <?= $jsArg($t('app.nav.privacy_note')) ?>);"><i class="material-icons-round nav-menu-row-icon">privacy_tip</i><span class="nav-menu-row-labels"><?= $t('app.nav.privacy_note') ?></span></button></li>
             <li><button type="button" class="nav-menu-row" data-on-click="openCookieMenu();"><i class="material-icons-round nav-menu-row-icon">verified_user</i><span class="nav-menu-row-labels"><?= $t('app.nav.cookies') ?></span></button></li>
           </ul>
 

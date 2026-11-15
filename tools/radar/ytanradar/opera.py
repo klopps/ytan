@@ -46,10 +46,23 @@ def frame_url(t: datetime, product: str = "DBZH", base: str = BASE_URLS[0]) -> s
 
 def fetch_frame(t: datetime, dest: str, product: str = "DBZH") -> str | None:
     """Download the composite for t from the first source of BASE_URLS that
-    has it. The base URL that delivered, or None if no source has it (yet)."""
+    has it. The base URL that delivered, or None if no source has it (yet).
+
+    A source that fails (5xx, timeout, connection refused - the very outage
+    the backup exists for) is skipped like a missing file, so the next one is
+    tried. Only when EVERY source failed is the last error raised (the run is
+    then "failed", not "no new data")."""
+    error: Exception | None = None
+    answered = False
     for base in BASE_URLS:
-        if download(frame_url(t, product, base), dest):
-            return base
+        try:
+            if download(frame_url(t, product, base), dest):
+                return base
+            answered = True
+        except (urllib.error.URLError, TimeoutError, ConnectionError, OSError) as e:
+            error = e
+    if error is not None and not answered:
+        raise error
     return None
 
 

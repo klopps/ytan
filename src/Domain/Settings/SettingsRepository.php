@@ -6,23 +6,54 @@ namespace Ytan\Domain\Settings;
 
 use PDO;
 
+/**
+ * The single app_settings row (id = 1). The row is read once per instance
+ * (= per request) and kept: a page like / asks for half a dozen settings,
+ * which used to be one SELECT each. Every setter drops the kept copy, so a
+ * read after a write sees the new value.
+ */
 final class SettingsRepository
 {
+    /** @var array<string, mixed>|false|null null = not read yet, false = no row */
+    private array|false|null $row = null;
+
     public function __construct(private readonly PDO $db)
     {
     }
 
+    /** @return array<string, mixed>|false */
+    private function row(): array|false
+    {
+        if ($this->row === null) {
+            $this->row = $this->db->query('SELECT * FROM app_settings WHERE id = 1')->fetch(PDO::FETCH_ASSOC);
+        }
+
+        return $this->row;
+    }
+
+    /** One column of the row, false when there is no row (like PDOStatement::fetchColumn()). */
+    private function column(string $name): mixed
+    {
+        $row = $this->row();
+
+        return $row === false ? false : ($row[$name] ?? null);
+    }
+
+    /** @param list<mixed> $params */
+    private function write(string $sql, array $params): void
+    {
+        $this->db->prepare($sql)->execute($params);
+        $this->row = null;
+    }
+
     public function googleSearchRequiresLogin(): bool
     {
-        $stmt = $this->db->query('SELECT google_search_requires_login FROM app_settings WHERE id = 1');
-
-        return (bool) $stmt->fetchColumn();
+        return (bool) $this->column('google_search_requires_login');
     }
 
     public function setGoogleSearchRequiresLogin(bool $enabled): void
     {
-        $stmt = $this->db->prepare('UPDATE app_settings SET google_search_requires_login = ? WHERE id = 1');
-        $stmt->execute([(int) $enabled]);
+        $this->write('UPDATE app_settings SET google_search_requires_login = ? WHERE id = 1', [(int) $enabled]);
     }
 
     /**
@@ -32,15 +63,12 @@ final class SettingsRepository
      */
     public function gpxExportPublic(): bool
     {
-        $stmt = $this->db->query('SELECT gpx_export_public FROM app_settings WHERE id = 1');
-
-        return (bool) $stmt->fetchColumn();
+        return (bool) $this->column('gpx_export_public');
     }
 
     public function setGpxExportPublic(bool $enabled): void
     {
-        $stmt = $this->db->prepare('UPDATE app_settings SET gpx_export_public = ? WHERE id = 1');
-        $stmt->execute([(int) $enabled]);
+        $this->write('UPDATE app_settings SET gpx_export_public = ? WHERE id = 1', [(int) $enabled]);
     }
 
     /**
@@ -50,15 +78,12 @@ final class SettingsRepository
      */
     public function routeMergeMidpointMeters(): int
     {
-        $stmt = $this->db->query('SELECT route_merge_midpoint_m FROM app_settings WHERE id = 1');
-
-        return (int) $stmt->fetchColumn();
+        return (int) $this->column('route_merge_midpoint_m');
     }
 
     public function setRouteMergeMidpointMeters(int $meters): void
     {
-        $stmt = $this->db->prepare('UPDATE app_settings SET route_merge_midpoint_m = ? WHERE id = 1');
-        $stmt->execute([$meters]);
+        $this->write('UPDATE app_settings SET route_merge_midpoint_m = ? WHERE id = 1', [$meters]);
     }
 
     /**
@@ -71,20 +96,18 @@ final class SettingsRepository
      */
     public function trackDistanceFilterPresets(): array
     {
-        $stmt = $this->db->query('SELECT track_distance_filter_precise_m, track_distance_filter_balanced_m, track_distance_filter_battery_m FROM app_settings WHERE id = 1');
-        $row = $stmt->fetch();
+        $row = $this->row();
 
         return [
-            'precise' => (int) $row['track_distance_filter_precise_m'],
-            'balanced' => (int) $row['track_distance_filter_balanced_m'],
-            'battery' => (int) $row['track_distance_filter_battery_m'],
+            'precise' => (int) ($row['track_distance_filter_precise_m'] ?? 0),
+            'balanced' => (int) ($row['track_distance_filter_balanced_m'] ?? 0),
+            'battery' => (int) ($row['track_distance_filter_battery_m'] ?? 0),
         ];
     }
 
     public function setTrackDistanceFilterPresets(int $precise, int $balanced, int $battery): void
     {
-        $stmt = $this->db->prepare('UPDATE app_settings SET track_distance_filter_precise_m = ?, track_distance_filter_balanced_m = ?, track_distance_filter_battery_m = ? WHERE id = 1');
-        $stmt->execute([$precise, $balanced, $battery]);
+        $this->write('UPDATE app_settings SET track_distance_filter_precise_m = ?, track_distance_filter_balanced_m = ?, track_distance_filter_battery_m = ? WHERE id = 1', [$precise, $balanced, $battery]);
     }
 
     /**
@@ -100,19 +123,17 @@ final class SettingsRepository
      */
     public function routeLabelFontSizeRange(): array
     {
-        $stmt = $this->db->query('SELECT route_label_font_size_min, route_label_font_size_max FROM app_settings WHERE id = 1');
-        $row = $stmt->fetch();
+        $row = $this->row();
 
         return [
-            'min' => (int) $row['route_label_font_size_min'],
-            'max' => (int) $row['route_label_font_size_max'],
+            'min' => (int) ($row['route_label_font_size_min'] ?? 0),
+            'max' => (int) ($row['route_label_font_size_max'] ?? 0),
         ];
     }
 
     public function setRouteLabelFontSizeRange(int $min, int $max): void
     {
-        $stmt = $this->db->prepare('UPDATE app_settings SET route_label_font_size_min = ?, route_label_font_size_max = ? WHERE id = 1');
-        $stmt->execute([$min, $max]);
+        $this->write('UPDATE app_settings SET route_label_font_size_min = ?, route_label_font_size_max = ? WHERE id = 1', [$min, $max]);
     }
 
     /**
@@ -126,21 +147,20 @@ final class SettingsRepository
      */
     public function routeAnimationSettings(): array
     {
-        $row = $this->db->query('SELECT route_animation_color, route_animation_line_width, route_animation_zoom, route_animation_end_delay_s, route_animation_speed FROM app_settings WHERE id = 1')->fetch();
+        $row = $this->row();
 
         return [
-            'color' => (string) $row['route_animation_color'],
-            'line_width' => (int) $row['route_animation_line_width'],
-            'zoom' => (float) $row['route_animation_zoom'],
-            'end_delay_s' => (float) $row['route_animation_end_delay_s'],
-            'speed' => (int) $row['route_animation_speed'],
+            'color' => (string) ($row['route_animation_color'] ?? ''),
+            'line_width' => (int) ($row['route_animation_line_width'] ?? 0),
+            'zoom' => (float) ($row['route_animation_zoom'] ?? 0),
+            'end_delay_s' => (float) ($row['route_animation_end_delay_s'] ?? 0),
+            'speed' => (int) ($row['route_animation_speed'] ?? 0),
         ];
     }
 
     public function setRouteAnimationSettings(string $color, int $lineWidth, float $zoom, float $endDelaySeconds, int $speed): void
     {
-        $stmt = $this->db->prepare('UPDATE app_settings SET route_animation_color = ?, route_animation_line_width = ?, route_animation_zoom = ?, route_animation_end_delay_s = ?, route_animation_speed = ? WHERE id = 1');
-        $stmt->execute([$color, $lineWidth, $zoom, $endDelaySeconds, $speed]);
+        $this->write('UPDATE app_settings SET route_animation_color = ?, route_animation_line_width = ?, route_animation_zoom = ?, route_animation_end_delay_s = ?, route_animation_speed = ? WHERE id = 1', [$color, $lineWidth, $zoom, $endDelaySeconds, $speed]);
     }
 
     /**
@@ -151,8 +171,7 @@ final class SettingsRepository
      */
     public function waterDistancePoiTypes(): array
     {
-        $stmt = $this->db->query('SELECT water_distance_poitypes FROM app_settings WHERE id = 1');
-        $types = json_decode((string) $stmt->fetchColumn(), true);
+        $types = json_decode((string) $this->column('water_distance_poitypes'), true);
 
         return is_array($types) ? array_values(array_map('intval', array_filter($types, 'is_numeric'))) : [];
     }
@@ -162,7 +181,7 @@ final class SettingsRepository
     {
         $types = array_values(array_unique(array_map('intval', $types)));
         sort($types);
-        $this->db->prepare('UPDATE app_settings SET water_distance_poitypes = ? WHERE id = 1')->execute([json_encode($types)]);
+        $this->write('UPDATE app_settings SET water_distance_poitypes = ? WHERE id = 1', [json_encode($types)]);
     }
 
     /**
@@ -173,8 +192,7 @@ final class SettingsRepository
      */
     public function radarSettings(): array
     {
-        $stmt = $this->db->query('SELECT radar_history_minutes, radar_forecast_minutes, radar_fetch_interval_minutes, radar_workers, radar_max_mosaic_pixels, radar_regions, radar_paused_until, radar_paused_forever FROM app_settings WHERE id = 1');
-        $row = $stmt->fetch();
+        $row = $this->row();
         $config = \Ytan\Service\RadarConfig::defaults();
         if ($row === false) {
             return $config;
@@ -204,15 +222,13 @@ final class SettingsRepository
      */
     public function setRadarPause(?string $untilUtc, bool $forever): void
     {
-        $stmt = $this->db->prepare('UPDATE app_settings SET radar_paused_until = ?, radar_paused_forever = ? WHERE id = 1');
-        $stmt->execute([$untilUtc, (int) $forever]);
+        $this->write('UPDATE app_settings SET radar_paused_until = ?, radar_paused_forever = ? WHERE id = 1', [$untilUtc, (int) $forever]);
     }
 
     /** @param array<string, mixed> $config normalized by RadarConfig::normalize() */
     public function setRadarSettings(array $config): void
     {
-        $stmt = $this->db->prepare('UPDATE app_settings SET radar_history_minutes = ?, radar_forecast_minutes = ?, radar_fetch_interval_minutes = ?, radar_workers = ?, radar_max_mosaic_pixels = ?, radar_regions = ? WHERE id = 1');
-        $stmt->execute([
+        $this->write('UPDATE app_settings SET radar_history_minutes = ?, radar_forecast_minutes = ?, radar_fetch_interval_minutes = ?, radar_workers = ?, radar_max_mosaic_pixels = ?, radar_regions = ? WHERE id = 1', [
             $config['history_minutes'],
             $config['forecast_minutes'],
             $config['fetch_interval_minutes'],
@@ -229,7 +245,7 @@ final class SettingsRepository
      */
     public function windSettings(): array
     {
-        $row = $this->db->query('SELECT wind_enabled, wind_horizon_hours, wind_run_interval_hours, wind_gusts, wind_fine, wind_world, wind_regions FROM app_settings WHERE id = 1')->fetch();
+        $row = $this->row();
         if ($row === false) {
             return \Ytan\Service\WindConfig::defaults();
         }
@@ -249,7 +265,7 @@ final class SettingsRepository
      */
     public function externalJobs(): array
     {
-        $value = $this->db->query('SELECT external_jobs FROM app_settings WHERE id = 1')->fetchColumn();
+        $value = $this->column('external_jobs');
         $jobs = $value === false || $value === null ? [] : json_decode((string) $value, true);
 
         return \Ytan\Service\JobPlacement::normalize(is_array($jobs) ? $jobs : []);
@@ -258,8 +274,7 @@ final class SettingsRepository
     /** @param list<string> $jobs */
     public function setExternalJobs(array $jobs): void
     {
-        $this->db->prepare('UPDATE app_settings SET external_jobs = ? WHERE id = 1')
-            ->execute([json_encode(\Ytan\Service\JobPlacement::normalize($jobs))]);
+        $this->write('UPDATE app_settings SET external_jobs = ? WHERE id = 1', [json_encode(\Ytan\Service\JobPlacement::normalize($jobs))]);
     }
 
     /**
@@ -270,7 +285,7 @@ final class SettingsRepository
      */
     public function aiSettings(): array
     {
-        $row = $this->db->query('SELECT ai_enabled, ai_daily_limit, ai_cache_hours FROM app_settings WHERE id = 1')->fetch();
+        $row = $this->row();
         if ($row === false) {
             return ['enabled' => false, 'daily_limit' => 20, 'cache_hours' => 3];
         }
@@ -280,8 +295,7 @@ final class SettingsRepository
 
     public function setAiSettings(bool $enabled, int $dailyLimit, int $cacheHours): void
     {
-        $this->db->prepare('UPDATE app_settings SET ai_enabled = ?, ai_daily_limit = ?, ai_cache_hours = ? WHERE id = 1')
-            ->execute([(int) $enabled, $dailyLimit, $cacheHours]);
+        $this->write('UPDATE app_settings SET ai_enabled = ?, ai_daily_limit = ?, ai_cache_hours = ? WHERE id = 1', [(int) $enabled, $dailyLimit, $cacheHours]);
     }
 
     /**
@@ -292,7 +306,7 @@ final class SettingsRepository
      */
     public function briefingRules(): array
     {
-        $value = $this->db->query('SELECT briefing_rules FROM app_settings WHERE id = 1')->fetchColumn();
+        $value = $this->column('briefing_rules');
         $rules = is_string($value) ? json_decode($value, true) : null;
 
         return \Ytan\Service\Ai\BriefingRules::normalize(is_array($rules) ? $rules : null);
@@ -301,7 +315,7 @@ final class SettingsRepository
     /** @param array<string, mixed>|null $rules null = back to the defaults */
     public function setBriefingRules(?array $rules): void
     {
-        $this->db->prepare('UPDATE app_settings SET briefing_rules = ? WHERE id = 1')->execute([
+        $this->write('UPDATE app_settings SET briefing_rules = ? WHERE id = 1', [
             $rules === null ? null : json_encode(\Ytan\Service\Ai\BriefingRules::normalize($rules)),
         ]);
     }
@@ -309,8 +323,9 @@ final class SettingsRepository
     /** @param array<string, mixed> $config normalized by WindConfig::normalize() */
     public function setWindSettings(array $config): void
     {
-        $stmt = $this->db->prepare('UPDATE app_settings SET wind_enabled = ?, wind_horizon_hours = ?, wind_run_interval_hours = ?, wind_gusts = ?, wind_fine = ?, wind_world = ?, wind_regions = ? WHERE id = 1');
-        $stmt->execute([(int) $config['enabled'], $config['horizon_hours'], $config['run_interval_hours'], (int) $config['gusts'], (int) $config['fine'], (int) $config['world'],
-            $config['regions'] === null ? null : json_encode($config['regions'], JSON_UNESCAPED_UNICODE)]);
+        $this->write('UPDATE app_settings SET wind_enabled = ?, wind_horizon_hours = ?, wind_run_interval_hours = ?, wind_gusts = ?, wind_fine = ?, wind_world = ?, wind_regions = ? WHERE id = 1', [
+            (int) $config['enabled'], $config['horizon_hours'], $config['run_interval_hours'], (int) $config['gusts'], (int) $config['fine'], (int) $config['world'],
+            $config['regions'] === null ? null : json_encode($config['regions'], JSON_UNESCAPED_UNICODE),
+        ]);
     }
 }

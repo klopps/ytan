@@ -185,11 +185,13 @@ final class PoiController extends BaseController
         $existing = $this->pois->findById($id);
         $this->assertOwnerOrAdmin($auth, (int) $existing['user_id']);
 
-        foreach ($this->pois->getImages($id) as $image) {
-            $this->images->delete($id, $image['filename']);
-        }
+        // files only after the row is gone: delete() can still refuse (stale expected_updated_at)
+        $images = $this->pois->getImages($id);
         $expectedUpdatedAt = $request->getQueryParams()['expected_updated_at'] ?? null;
         $this->pois->delete($id, $expectedUpdatedAt);
+        foreach ($images as $image) {
+            $this->images->delete($id, $image['filename']);
+        }
 
         return $this->json($response, ['data' => ['id' => $id]]);
     }

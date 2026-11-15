@@ -123,6 +123,29 @@ final class EntityImageCleanupTest extends ControllerTestCase
         $this->assertFileDoesNotExist($path);
     }
 
+    public function testARefusedDeleteKeepsThePhotos(): void
+    {
+        $this->pdo->exec("INSERT INTO poitype (id, name) VALUES (2, 'Test Type')");
+        $images = new ImageStorageService($this->storageDir);
+        $pois = new PoiRepository($this->pdo);
+        $controller = new PoiController($pois, $images);
+
+        $userId = $this->createUser();
+        $poi = $pois->create($userId, ['poitype_id' => 2, 'name' => 'With Photo', 'latitude' => 54.0, 'longitude' => 10.0]);
+        $poiId = (int) $poi['id'];
+        $path = $this->writeFakeImageFile($poiId, 'photo.jpg');
+        $pois->addImage($poiId, 'photo.jpg', 'image/jpeg', 17);
+
+        try {
+            // a stale expected_updated_at: the record changed on the server meanwhile
+            $controller->delete($this->request('DELETE', '/pois/' . $poiId . '?expected_updated_at=2000-01-01%2000:00:00', $this->authPayload($userId)), $this->response(), ['id' => (string) $poiId]);
+            $this->fail('A stale delete must be refused.');
+        } catch (\Ytan\Exception\ConflictException) {
+            $this->assertNotNull($pois->findById($poiId));
+            $this->assertFileExists($path, 'the photo stays as long as the POI does');
+        }
+    }
+
     public function testDeletingARouteRemovesItsImageFilesFromDisk(): void
     {
         $images = new ImageStorageService($this->storageDir);

@@ -146,6 +146,10 @@ function showAreaEditWindow(i, latLng) {
 
     areaEditWindow.open(map);
 
+    // The window is shared: drop the previous opening's listeners, or they pile up and a
+    // close calls cancelEditArea() once per earlier opening, with old indexes.
+    google.maps.event.clearListeners(areaEditWindow, 'domready');
+    google.maps.event.clearListeners(areaEditWindow, 'closeclick');
     areaEditWindow.addListener('domready', function() {
         validateAreaEditForm();
 
@@ -227,13 +231,12 @@ function cancelEditArea(i) {
 }
 
 function closeAreaEditWindow() {
-    if (areaEditWindow.isOpen) {
-        enableAreaButton();
-        enablePoiButton();
-        enableRouteButton();
-        editMode(false);
-        areaEditWindow.close();
-    }
+    // Always clean up: also called from 'closeclick', when the window is already closed.
+    enableAreaButton();
+    enablePoiButton();
+    enableRouteButton();
+    editMode(false);
+    areaEditWindow.close();
 }
 
 /**
@@ -563,7 +566,26 @@ function hideArea(i) {
     }
 }
 
+/**
+ * Removes every area polygon from the map (counterpart of deleteRoutes() in
+ * route.js). createAreas() calls it first: a reload (login/logout, back
+ * online) used to overwrite areaPolygons[i] without taking the old polygon
+ * off the map - a signed-out user's private areas stayed visible, and every
+ * reload added duplicates plus long-press candidates.
+ */
+function deleteAreas() {
+    for (let i = 0; i < areaPolygons.length; i++) {
+        if (typeof areaPolygons[i] !== 'undefined') {
+            google.maps.event.clearInstanceListeners(areaPolygons[i]);
+            detachLongPressCandidate(areaPolygons[i]);
+            areaPolygons[i].setMap(null);
+        }
+    }
+    areaPolygons = [];
+}
+
 function createAreas() {
+    deleteAreas();
     for (let i = 0; i < areas.length; i++) {
         if (typeof areas[i] !== "undefined") {
             createArea(i);
@@ -662,10 +684,7 @@ function areaContextMenuRemoveArea(i) {
 }
 
 function showAreaInfoWindow(event, i) {
-    if (areaInfoWindow.isOpen) {
-        log('areaInfoWindow is open.', LOG_DEBUG);
-        areaInfoWindow.close();
-    }
+    areaInfoWindow.close(); // a no-op when it isn't open
 
     var areaSize = google.maps.geometry.spherical.computeArea(areas[i].points);
     var areaSizeText;
@@ -697,9 +716,7 @@ function showAreaInfoWindow(event, i) {
 }
 
 function editArea(i, lat, lng) {
-    if (areaInfoWindow.isOpen) {
-        areaInfoWindow.close();
-    }
+    areaInfoWindow.close(); // a no-op when it isn't open
     hideArea(i);
 
     measureTool.index = i;

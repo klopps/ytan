@@ -202,7 +202,7 @@ final class App
         $c->set(AreaController::class, fn ($c) => new AreaController($c->get(AreaRepository::class), $c->get('images.area')));
         $c->set(LighthouseImportController::class, fn ($c) => new LighthouseImportController(
             $c->get(LighthouseImportRepository::class),
-            new LighthouseImportService($c->get(LighthouseImportRepository::class), $c->get(PoiRepository::class)),
+            new LighthouseImportService($c->get(LighthouseImportRepository::class), $c->get(PoiRepository::class), $pdo),
             new NgaMsiImportService(
                 new CurlNgaMsiClient(),
                 $c->get(LighthouseImportRepository::class),
@@ -218,12 +218,12 @@ final class App
             \Ytan\Service\Log\ImportLog::file($rootDir, 'club-import')
         ));
         $c->set(\Ytan\Domain\ShelterImport\ShelterImportRepository::class, fn ($c) => new \Ytan\Domain\ShelterImport\ShelterImportRepository($pdo, $c->get(\Ytan\Service\Water\WaterDistanceService::class)));
-        $c->set(\Ytan\Http\Controllers\ShelterImportController::class, function ($c) use ($rootDir) {
+        $c->set(\Ytan\Http\Controllers\ShelterImportController::class, function ($c) use ($rootDir, $pdo) {
             $staging = $c->get(\Ytan\Domain\ShelterImport\ShelterImportRepository::class);
 
             return new \Ytan\Http\Controllers\ShelterImportController(
                 $staging,
-                new \Ytan\Service\ShelterImportService($staging, $c->get(PoiRepository::class), $c->get(\Ytan\Service\Water\PoiWaterDistanceService::class)),
+                new \Ytan\Service\ShelterImportService($staging, $c->get(PoiRepository::class), $c->get(\Ytan\Service\Water\PoiWaterDistanceService::class), $pdo),
                 new \Ytan\Service\ShelterSourceImportService($staging, [
                     new \Ytan\Service\ShelterList\GeoFaShelterSource(),
                     new \Ytan\Service\ShelterList\NvvShelterSource(),
@@ -235,12 +235,12 @@ final class App
             );
         });
         $c->set(\Ytan\Domain\CampsiteImport\CampsiteImportRepository::class, fn ($c) => new \Ytan\Domain\CampsiteImport\CampsiteImportRepository($pdo, $c->get(\Ytan\Service\Water\WaterDistanceService::class)));
-        $c->set(\Ytan\Http\Controllers\CampsiteImportController::class, function ($c) use ($rootDir) {
+        $c->set(\Ytan\Http\Controllers\CampsiteImportController::class, function ($c) use ($rootDir, $pdo) {
             $staging = $c->get(\Ytan\Domain\CampsiteImport\CampsiteImportRepository::class);
 
             return new \Ytan\Http\Controllers\CampsiteImportController(
                 $staging,
-                new \Ytan\Service\CampsiteImportService($staging, $c->get(PoiRepository::class), $c->get(\Ytan\Service\Water\PoiWaterDistanceService::class)),
+                new \Ytan\Service\CampsiteImportService($staging, $c->get(PoiRepository::class), $c->get(\Ytan\Service\Water\PoiWaterDistanceService::class), $pdo),
                 $c->get(\Ytan\Service\Water\WaterDistanceService::class),
                 \Ytan\Service\Log\ImportLog::file($rootDir, 'campsite-import')
             );
@@ -417,27 +417,7 @@ final class App
         $errorMiddleware = $app->addErrorMiddleware($displayErrors, true, true);
         $errorMiddleware->setDefaultErrorHandler(
             function (Request $request, Throwable $exception) use ($app, $displayErrors) {
-                $status = match (true) {
-                    $exception instanceof ApiException => $exception->getStatusCode(),
-                    $exception instanceof \Slim\Exception\HttpSpecializedException => $exception->getCode(),
-                    default => 500,
-                };
-                $payload = ['error' => ['message' => $exception->getMessage()]];
-                if ($exception instanceof ApiException && $exception->getErrorCode() !== null) {
-                    $payload['error']['code'] = $exception->getErrorCode();
-                }
-                if ($exception instanceof \Ytan\Exception\CaptchaRequiredException) {
-                    $payload['error'] = array_merge($payload['error'], $exception->getPayload());
-                }
-                if ($exception instanceof \Ytan\Exception\ConflictException) {
-                    $payload['error'] = array_merge($payload['error'], $exception->getPayload());
-                }
-                if ($exception instanceof \Ytan\Exception\TranslationKeyMismatchException) {
-                    $payload['error'] = array_merge($payload['error'], $exception->getPayload());
-                }
-                if ($displayErrors && $status === 500) {
-                    $payload['error']['trace'] = explode("\n", $exception->getTraceAsString());
-                }
+                [$status, $payload] = self::errorPayload($exception, $displayErrors);
 
                 $response = $app->getResponseFactory()->createResponse($status);
                 $response->getBody()->write(json_encode($payload));
@@ -996,6 +976,43 @@ final class App
         });
 
         return $app;
+    }
+
+    /**
+     * Status and JSON body for a thrown exception. Unexpected exceptions
+     * (anything that isn't an ApiException or one of Slim's HTTP exceptions -
+     * a PDOException, a TypeError, ...) are written to PHP's error log, since
+     * this handler replaces Slim's own logging, and answer with a generic
+     * message: their text can contain SQL, table names or paths. With
+     * APP_DEBUG the real message and the trace are sent.
+     *
+     * @return array{0: int, 1: array{error: array<string, mixed>}}
+     */
+    public static function errorPayload(Throwable $exception, bool $displayErrors): array
+    {
+        $expected = $exception instanceof ApiException || $exception instanceof \Slim\Exception\HttpSpecializedException;
+        $status = match (true) {
+            $exception instanceof ApiException => $exception->getStatusCode(),
+            $exception instanceof \Slim\Exception\HttpSpecializedException => $exception->getCode(),
+            default => 500,
+        };
+        if (!$expected || $status >= 500) {
+            error_log('YTAN unhandled ' . $exception::class . ': ' . $exception);
+        }
+
+        $message = $expected || $displayErrors ? $exception->getMessage() : 'Internal server error.';
+        $payload = ['error' => ['message' => $message]];
+        if ($exception instanceof ApiException && $exception->getErrorCode() !== null) {
+            $payload['error']['code'] = $exception->getErrorCode();
+        }
+        if ($exception instanceof \Ytan\Exception\PayloadException) {
+            $payload['error'] = array_merge($payload['error'], $exception->getPayload());
+        }
+        if ($displayErrors && $status === 500) {
+            $payload['error']['trace'] = explode("\n", $exception->getTraceAsString());
+        }
+
+        return [$status, $payload];
     }
 
     private static function jsonOk(Response $response, array $data): Response

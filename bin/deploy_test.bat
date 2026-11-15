@@ -97,11 +97,7 @@ tar -C "%ROOT_DIR%" ^
     --exclude="public/images/wsi/*.svg" ^
     --exclude="public/app" ^
     --exclude="public/.user.ini" ^
-    --exclude="storage/radar" ^
-    --exclude="storage/wind" ^
-    --exclude="storage/ai-cache" ^
-    --exclude="storage/tide-cache" ^
-    --exclude="storage/water" ^
+    --exclude="storage" ^
     --exclude="tools/.venv" ^
     --exclude="tools/water" ^
     --exclude="__pycache__" ^

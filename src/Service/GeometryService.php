@@ -86,15 +86,39 @@ final class GeometryService
      * Iterative (explicit stack) so a long GPS recording can't hit PHP's
      * recursion limits.
      *
+     * Distances are planar on a local equirectangular projection (metres,
+     * longitude scaled by the cosine of the mean latitude) and compared
+     * squared - no trigonometry in the inner loop. With haversine per
+     * comparison a jittery 5,000-point recording took ~20 s (Douglas-Peucker
+     * tends to O(n²) on zig-zag data, and WatchRoutePayload/GpxImportService
+     * run it repeatedly with a growing tolerance); at route scale the planar
+     * error is far below any tolerance used here.
+     *
      * @param list<array{lat:float,lng:float}> $points
      * @return list<array{lat:float,lng:float}>
      */
     public static function simplifyPolyline(array $points, float $toleranceMeters): array
     {
+        $points = array_values($points);
         $count = count($points);
         if ($count < 3) {
-            return array_values($points);
+            return $points;
         }
+
+        // local metric coordinates, once
+        $meanLat = 0.0;
+        foreach ($points as $point) {
+            $meanLat += (float) $point['lat'];
+        }
+        $metersPerDegree = M_PI * self::EARTH_RADIUS_METERS / 180;
+        $kx = $metersPerDegree * cos(deg2rad($meanLat / $count));
+        $x = [];
+        $y = [];
+        foreach ($points as $i => $point) {
+            $x[$i] = (float) $point['lng'] * $kx;
+            $y[$i] = (float) $point['lat'] * $metersPerDegree;
+        }
+        $tolerance2 = $toleranceMeters * $toleranceMeters;
 
         $keep = array_fill(0, $count, false);
         $keep[0] = true;
@@ -103,16 +127,29 @@ final class GeometryService
 
         while ($stack !== []) {
             [$start, $end] = array_pop($stack);
+            $ax = $x[$start];
+            $ay = $y[$start];
+            $dx = $x[$end] - $ax;
+            $dy = $y[$end] - $ay;
+            $length2 = $dx * $dx + $dy * $dy;
             $maxDistance = 0.0;
             $maxIndex = -1;
             for ($i = $start + 1; $i < $end; $i++) {
-                $distance = self::distancePointToSegmentMeters($points[$i], $points[$start], $points[$end]);
+                $px = $x[$i] - $ax;
+                $py = $y[$i] - $ay;
+                if ($length2 > 0.0) {
+                    $t = ($px * $dx + $py * $dy) / $length2;
+                    $t = $t < 0.0 ? 0.0 : ($t > 1.0 ? 1.0 : $t);
+                    $px -= $t * $dx;
+                    $py -= $t * $dy;
+                }
+                $distance = $px * $px + $py * $py; // squared
                 if ($distance > $maxDistance) {
                     $maxDistance = $distance;
                     $maxIndex = $i;
                 }
             }
-            if ($maxIndex !== -1 && $maxDistance > $toleranceMeters) {
+            if ($maxIndex !== -1 && $maxDistance > $tolerance2) {
                 $keep[$maxIndex] = true;
                 $stack[] = [$start, $maxIndex];
                 $stack[] = [$maxIndex, $end];

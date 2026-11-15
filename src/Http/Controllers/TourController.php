@@ -117,10 +117,12 @@ final class TourController extends BaseController
         $existing = $this->tours->findById($id);
         $this->assertCanManageTour($auth, $existing);
 
-        foreach ($this->tours->getImages($id) as $image) {
+        // files only after the row is gone, in case delete() fails
+        $images = $this->tours->getImages($id);
+        $this->tours->delete($id);
+        foreach ($images as $image) {
             $this->images->delete($id, $image['filename']);
         }
-        $this->tours->delete($id);
 
         return $this->json($response, ['data' => ['id' => $id]]);
     }

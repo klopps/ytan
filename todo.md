@@ -1,5 +1,40 @@
 # Offene Punkte
 
+## Code Check: Performance Backend
+
+Vorschläge aus dem Code Check vom 2026-11-15 (done.md „Code Check“), noch nicht umgesetzt:
+- **PDO und Translator nur bei Bedarf bauen** (`App.php:91-107`): Jeder Request öffnet eine DB-Verbindung und dekodiert ~230 KB i18n-JSON, auch Radar-Kacheln, Wind-Blöcke, `/sw.js`, `/health`. Als Lazy-Factories in den `LazyContainer` (oder ein Lazy-PDO-Wrapper).
+- **ETag/304 für `/pois`, `/routes`, `/areas`**: Die vollen Listen (POIs ~945 KB roh) werden bei jedem Aufruf neu gezippt, ohne `ETag`/`Cache-Control`. ETag aus `MAX(updated_at)` + `COUNT(*)` + Scope/Benutzer.
+- **Tour-PDF** (`TourDocumentService::selectPois/selectAreas`, `:169`, `:202`): lädt alle sichtbaren POIs/Gebiete und filtert in PHP, dazu `getImages()` je Treffer (N+1). Besser `PoiRepository::findInBox()` mit der Routen-BBox und ein gebündeltes `getImagesFor(ids)`.
+- **Indizes prüfen**: Das Grundschema (`poi`, `route`, `area`, `tour`, `user`) liegt nicht im Repo (Migrationen ab 005). `schema.sql` einchecken und `findInBox`, `user_id = ? OR public = 1`, die `DUPLICATE_CONDITION`-Unterabfrage der Import-Repositories (`CampsiteImportRepository:35`, `ShelterImportRepository:37`) per EXPLAIN prüfen.
+- **Routencheck-Wetter parallel holen** (`RouteBriefingBuilder:177-200`): bis zu 5 Vorhersagen nacheinander, auf einem kalten Cache je 2-3 Anbieter-Abrufe.
+
+## Code Check: Performance Frontend
+
+- **Skripte**: 36 Skripte (~800 KB) laden synchron im `<head>` (`templates/app.php:60-96`), ohne `defer`. ~229 KB werden erst bei Bedarf gebraucht (tour-admin, route-briefing, route-animation, gpx-import, photo-upload, watch; track-recorder/capacitor-bridge/native-app nur in der App; marked/DOMPurify/lightcharacteristic). `defer` + ein `loadScriptOnce(src)` nach dem Muster von `injectAdditionalScripts()` (`map-core.js`).
+- **POI-Clustering** (`poi.js` `showPoiClusters`): rechnet bei jedem Zoom für jeden POI `fromLatLngToPoint` neu; Weltkoordinaten einmal in `setAllPois` berechnen. Je Zoom laufen `updatePoiClustering` + zweimal `applyPoiTypeVisibility`.
+- **Routen doppelt angezeigt**: `createRoute` ruft schon `showRoute(i)`, die Loader danach noch einmal `showRoutes()`; 6 Listener-Closures je Route.
+- **Suche** (`map-core.js` `foldSearchText`): faltet bei jedem Tastendruck jeden POI-Namen und die Anfrage je POI neu; einmal falten und cachen.
+
+## Code Check: Radar-Job Speicher und Laufzeit
+
+- Frames als uint8 (`opera.encode()`) statt float32 halten und an die Worker geben (`job.py:456-478`).
+- Reprojektions-Lookup als zwei `.npy` mit `mmap_mode="r"` statt npz je Worker (`reproject.py:107-117`).
+- `verify()` rechnet alte Vorhersagen neu (`job.py:625-634`): Vorhersage-Frames für 15/30/60 min beim Rechnen als `packbits` sichern.
+- `directory_size()` läuft jeden Lauf über den ganzen Speicherbaum (Radar `job.py:534`, Wind `job.py:338`): Bytes aus `write_pyramid` zurückgeben, Gesamtgröße höchstens stündlich.
+- `fill_missing_radars` dilatiert mit 201×201-Ellipse (`nowcast.py:261-263`): `cv2.distanceTransform` (O(N)), vorher/nachher messen.
+
+## Code Check: Duplikate zusammenführen
+
+- **Backend**: ~20 Template-Closures in `App.php` (ein `render()`), `App::create()` (911 Zeilen) in Container- und Routen-Dateien teilen; Bild-Endpunkte 4× in Poi/Area/Route/Tour-Controller und -Repository; Staging-Import-Familie 4× (Controller, Repository, `*ImportFile`, `*OsmImportService`); sechs Curl-Clients mit eigenem User-Agent und Fehlerverhalten (Guzzle ist schon Abhängigkeit); Haversine 8× mit zwei Erdradien (6371000/6371008,8) - überall `GeometryService`; die Transaktionsblöcke in Merge/Split/GpxImport/AccountDeletion/LighthouseDuplicate auf `Database\Transaction::run()` umstellen; Business-Logik aus `RouteMergeController`/`RouteSplitController`/`GpxImportController` in Services.
+- **Frontend**: 7 fast gleiche Collection-Loader (POI/Route/Area/Tour, je public/eigene + Offline-Fallback) → `loadCollection()`; Benutzerobjekt an zwei Stellen befüllt (`app.php`, `user.js`) → `applyUserData()`; drei Share-Funktionen → `shareUrl()`; Panel-Öffnen/Schließen-Paare; 8 Escape-Helfer in den Admin-Skripten → `admin-common.js`; Routen-Label-HTML mit Inline-Farben (`route.js`, `map-core.js`).
+- **Jobs/Skripte**: Lock, Status-Lebenszyklus, atomares JSON-Schreiben, `directory_size` in Radar/Wind/`ytan_jobs.py` → ein `tools/ytanjob.py`; Regionen-Parsing doppelt (Wind importiert `ytanradar` per `sys.path`); Deploy-Excludes in einer Datei (`tar -X`), ein `deploy.bat [test]`, `deploy.sh` reparieren (`DEPLOY_PATH` ohne führenden `/`, ~12 Excludes fehlen) oder löschen; SSH-Einrichtung 5× kopiert. Sicherheit: `plink -pw` zeigt das Passwort in der Prozessliste, besser Schlüssel (pageant).
+
+## Code Check: CSS und Tests
+
+- **CSS** (`style.css`): tote Selektoren (`.pesrBtn*`-Sprite-Block, `.admin-filter-*`, `.nav-select-wrap`, `.tour-detail-back`, …), doppelte Blöcke (`#editAreaDescription` 3×, `#mapSearchClose`, …), Farbliterale statt `--color-*` (Zeilen ~2479, 4265, 5178, 1684).
+- **Tests**: 10 feste `waitForTimeout` in e2e (~9 s: area, radar, route-animation, weather-menu, wind) durch `expect.poll`/Locator-Waits ersetzen; ungetestet: `WaterIndex` (Binärformat gegen `water_index.py`), `LighthouseTableParser`, `CampsiteSurroundings`, `WsiRenderer`, `NgaLightText`, `RadarController`, `WsiController`, Radar `verify()`/`cleanup()`; doppelte Test-Helfer (`rmrf` 8×, `TourDocumentService`-Setup 5×) → Trait/Factory in `TestCase`.
+
 ## Routencheck: Tidegewässer und Strömung aus Messdaten
 
 Folgepunkt zur Flussströmung im Routencheck (done.md, 2026-11-14). Offen:
@@ -25,7 +60,6 @@ Entschieden:
 - API-Key nur in `.env` (`ANTHROPIC_API_KEY`, je Umgebung ein Workspace mit Spend Limit in der Anthropic Console; lokaler Key am 2026-11-13 erfolgreich getestet).
 - KI-Text wird zwischengespeichert (Schlüssel = gesendeter Kontext, gerundete Wetterwerte, Gültigkeit einstellbar, Default 3 h); Treffer zählen nicht ins Limit.
 - Admin-Seite /admin/ai: Schalter, Tageslimit, Verbindungstest, Verbrauch (Ø Tokens je Abfrage; Tabelle je berechtigtem Benutzer und Monat, sortierbar nach Benutzer/Abfragen/Tokens), Ampel-Regeln.
-- Zurückgestellt: Restguthaben-Anzeige (Anthropic hat keine Balance-API; Idee: Aufladungen von Hand eintragen, Kosten aus protokollierten Tokens schätzen).
 
 Plan mit allen Details: routencheck.md.
 
@@ -35,7 +69,7 @@ Offen:
 - Datenschutzerklärung: 2026-11-13 komplett auf den Stand von YTAN gebracht (`templates/privacy.php`, § 10 Routencheck; Hinweistext `route_check.consent` angeglichen - er behauptete "Wegpunkte" und "keine persönlichen Daten", gesendet werden aber keine Koordinaten, dafür die Namen eigener privater POIs). Vom Betreiber noch zu prüfen/freizugeben: Auftragsverarbeitung Hoster + Mail, Rechtsgrundlage der Übermittlung an Anthropic (DPF-Zertifizierung oder Standardvertragsklauseln, Vertragspartner), Löschfrist für `storage/logs`: Die Logs werden rotiert und in ZIP-Archive verschoben, aber nie gelöscht. Erledigt sind die Fotos mit EXIF-Daten: Seit Commit 9b39eb7 werden die Metadaten beim Upload entfernt, Migration 071 hat die gespeicherten Fotos bereinigt, `templates/privacy.php` beschreibt das bereits.
 - Erfahrungsstufe zusätzlich im Profil einstellbar machen (bisher nur über die Chips im Routencheck, gespeichert per `PUT /auth/paddle-level`).
 - e2e-Spec für den Routencheck (nur Ampel mit `text: false`, damit keine echten KI-Kosten entstehen).
-- Später: Tourcheck (ganze Tour), Restguthaben-Anzeige (s. o.).
+- Später: Tourcheck (ganze Tour)
 
 
 
@@ -50,7 +84,6 @@ Phase 0 (2026-10-17): Quelle ist OPERA über EUMETNET Open Radar Data (CC BY 4.0
 Phase 1-4 (2026-10-17) gebaut und lokal getestet: `tools/radar/` (Python-Job, 13 Unit-Tests), `RadarController`/`RadarTileService` (PHPUnit), `public/js/radar.js` (Drawer-Schalter, Kontextmenü, Zeitleiste mit Prognose-Teil, Legende, Offline-Sperre, "veraltet"-Hinweis), Anwenderdoku, About-Seite, docs/API.md. Kacheln bis Zoomstufe 8 statt 9, darüber vergrößert PHP. Abweichungen und Messwerte in wetterradar.md, "Stand der Umsetzung".
 
 Offen:
-- **Beim nächsten Deploy: venv auf dem Server umziehen.** Das gemeinsame venv der Jobs heißt seit 2026-11-15 `tools/.venv` (statt `tools/radar/.venv`), die Pakete stehen in `tools/requirements.txt`. Lokal ist es umgezogen. Auf prod (und test, falls dort ein venv liegt) direkt beim Deploy: `mv tools/radar/.venv tools/.venv` und in der Crontab die Zeile auf `.../tools/.venv/bin/python .../tools/ytan_jobs.py >> .../storage/logs/console.log 2>&1` ändern. Sonst findet `RadarJobRunner` kein Python („Jetzt aktualisieren“ gibt 503). Das HA-Add-on einmal mit `bin\publish-ha-addon.bat` neu bauen (das Dockerfile liest jetzt `tools/requirements.txt`).
 - In der Android-App testen.
 - Die Prognose rechnet auf Prod derzeit bis +60 min (25 Frames, am 2026-11-15 im Manifest bestätigt); 90/120 min sind nicht geprüft. Vor einer längeren Prognose `verify.csv` auch für diese Vorlaufzeiten schreiben lassen.
 - Möglich: Overzoom ab Zoomstufe 13 wirkt blockig (1-km-Pixel), ggf. weicher vergrößern (`RadarTileService` nimmt `imagecopyresized` = nächster Nachbar; `imagecopyresampled` braucht Truecolor und danach wieder die Palette, sonst verschwimmen die Farbstufen).
@@ -71,6 +104,7 @@ Phase 1-5 (2026-10-18) gebaut und lokal getestet, Phase 6 (feinere Modelle) offe
 Offen:
 - In der Android-App testen (Akku, Frame-Zeit bei 2.000 Partikeln, Geste Ziehen/Zoomen).
 - Messung am echten Handy: Zeit pro Frame und für den Raster-Neuaufbau (Ziel < 3 ms / < 30 ms; im Desktop-Chromium: 0,1-0,3 ms pro Frame ohne Rasterisierung).
+- Verkehr entscheiden. Gemessen 2026-11-15: Der Wind läuft auf dem YTAN-Worker (`external_jobs: ["wind"]`), Gebiet „Ganze Welt“, +48 h. Er veröffentlicht 20-mal pro Tag (13. und 14.11.). Ein Lauf dauert 869 s, lädt ~603 MB vom DWD und schreibt ~469 MB, die per rsync auf Prod gehen (~9 GB pro Tag). `storage/wind` hat 0,95-1,2 GB. Falls das zu viel ist: auf vollständige Sätze warten oder `run_interval_hours` 6. Frühere Notiz: Laufzeit, Speicher und Verkehr nach dem Fix vom 2026-11-06 erneut prüfen (done.md "Regenradar: Messung nach drei Wochen Betrieb"): vorher 35-37 Veröffentlichungen pro Tag zu je ~600 MB Download / ~470 MB geschrieben (~21 GB Verkehr/Tag statt der geschätzten ~1,7 GB), `storage/wind` 1,2 GB (zwei Läufe à 565 MB). Erwartet danach: eine Veröffentlichung je neuem Modelllauf (EU, D2, global - grob 15-20 pro Tag); wenn das noch zu viel ist, auf vollständige Sätze warten (EU+D2 desselben Termins zusammen) oder `run_interval_hours` 6.
 - Phase 6: MET Norway MEPS (2,5 km) und AROME als weitere L2-Quellen, siehe windkarte.md.
   - Prüfung am 2026-10-19, noch nichts gebaut: `thredds.met.no`/`api.met.no` lassen sich von dieser Entwicklungsmaschine aus nicht erreichen (DNS ok, TCP 443 läuft in den Timeout; `opendata.dwd.de` geht), MEPS ist deshalb nicht prüfbar - erst vom Prod-Server aus testen. AROME: der offene S3-Bucket `object.files.data.gouv.fr/meteofrance-pnt` braucht keinen Schlüssel (Range-Abrufe möglich), enthält aber nur Läufe bis 2026-05-11 (danach nichts mehr) und liefert pro Paket (SP1-SP3) nur 6-Stunden-Dateien von ~60 MB mit allen Feldern; der aktuelle Zugang läuft vermutlich über `portail-api.meteofrance.fr` (Schlüssel). Vor dem Bau klären: aktueller AROME-Zugang, GRIB2-Packung (Decoder kann nur 5.0/5.42), Download pro Lauf (grob 0,5-1 GB).
 - Möglich: Naht D2/EU weich überblenden (jetzt harter Wechsel), Stunden zwischen den 3-h-Schritten von ICON-EU nach +78 h interpolieren, Böen auch im Stundenverlauf.
@@ -162,12 +196,8 @@ Es geht hier nur um die Gestaltung des öffentlichen Bereichs. Das Theming des A
 
 ## Wetterdaten
 
+### Gesonderte Datenquellen für bestimmte Länder/Regionen: Finnland/FMI
+Umgesetzt sind SMHI (Schweden und internationale Ostseegewässer) sowie DWD, DMI, MET Norway, Météo-France und KNMI über Open-Meteos `models=`-Parameter (Verlauf in done.md, "Wetterdaten: Quellen ..."). **Offen:** Finnland/FMI - WFS/XML-Format, eigener API-Key, daher ein echter neuer Provider (`WeatherProviderInterface`) mit Eintrag in `WeatherRegionResolver`. Die Architektur erlaubt weitere Regionen.
+
 ### Interpolation von Niederschlagsmengen
-Niederschlagsmengen, die für einen Zeitraum von z. B. 3 Stunden angegeben wurden, müssen auf die einzelnen Stunden verteilt werden (9 mm von 12 bis 15 Uhr → je 3 mm für 12, 13 und 14 Uhr). **Zurückgestellt (Recherche 2026-09-19):** Bei Open-Meteo (stündlich) und SMHI (`precipitation_amount_mean` ist bereits ein Mittelwert in mm/h) tritt das Problem nicht auf, bei FMI auch nicht (`Precipitation1h` ist stündlich, angebunden 2026-11-15). Die Umverteilung wird erst gebaut, wenn ein Anbieter mit echten Mehrstunden-Summen angebunden wird, damit sie gegen echte Daten entworfen werden kann.
-
-## Mobile-Anzeige-Audit (2026-09-10): am echten Gerät gegenprüfen
-
-Die gefundenen Fehler sind behoben (done.md, "Mobile-Anzeige-Audit"). Unter Mobile-Emulation nicht abschließend testbar, daher am echten Gerät prüfen:
-- Route- und Area-Bearbeiten-Dialoge: nutzen dieselbe (als korrekt bestätigte) Markup-Struktur wie der POI-Dialog, konnten aber wegen ungenauer Klick-Positionierung auf der Route-/Area-Linie im Test nicht vollständig geöffnet werden.
-- "Add to tour"-Popup aus dem Routen-InfoWindow heraus: aus demselben Grund nicht getestet.
-- Kontextmenüs (Long-Press) auf Route/Area-Linien: für POIs auf dem echten Gerät bestätigt, für Linien nicht separat verifiziert - der Hit-Test-Mechanismus ist aber derselbe.
+Niederschlagsmengen, die für einen Zeitraum von z. B. 3 Stunden angegeben wurden, müssen auf die einzelnen Stunden verteilt werden (9 mm von 12 bis 15 Uhr → je 3 mm für 12, 13 und 14 Uhr). **Zurückgestellt (Recherche 2026-09-19):** Bei Open-Meteo (stündlich) und SMHI (`precipitation_amount_mean` ist bereits ein Mittelwert in mm/h) tritt das Problem nicht auf. Die Umverteilung wird erst gebaut, wenn FMI oder ein anderer Anbieter mit echten Mehrstunden-Summen angebunden wird, damit sie gegen echte Daten entworfen werden kann.

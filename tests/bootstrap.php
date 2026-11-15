@@ -26,3 +26,8 @@ putenv('DB_DATABASE=' . $testDatabase);
 if (empty($_ENV['JWT_SECRET'])) {
     $_ENV['JWT_SECRET'] = 'test-secret-do-not-use-in-production';
 }
+
+// bcrypt's lowest cost: hashing at the default cost made the auth tests take ~12 s.
+// Tests hash their own fixture passwords with TEST_HASH_OPTIONS too.
+const TEST_HASH_OPTIONS = ['cost' => 4];
+\Ytan\Service\AuthService::$hashOptions = TEST_HASH_OPTIONS;

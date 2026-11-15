@@ -2,15 +2,6 @@
  * POI markers, WSI markers, portages, POI CRUD and info/edit windows.
  */
 
-function showMarkerByPoiId(id) {
-    for (let i = 0; i < markers.length; i++) {
-        if (typeof markers[i] !== "undefined") {
-            if (markers[i].id == id) {
-                markers.setMap(map);
-            }
-        }
-    }
-}
 
 function showWsiMarkerByPoiId(id) {
     for (let i = 0; i < wsiMarkers.length; i++) {
@@ -133,15 +124,6 @@ function deleteWsiMarkerById(id) {
     }
 }
 
-function deleteWsiMarkers() {
-    clearWsiMarkers();
-    wsiMarkers = [];
-}
-
-function deletePortages() {
-    clearPortages();
-    portagePaths = [];
-}
 
 
 /**
@@ -188,15 +170,6 @@ function poiDataSourceText(poi, field) {
     return (text && text.indexOf('data_source.') !== 0) ? text : poi['source_' + field];
 }
 
-/**
- * Lade alle POIs (nur für Admins sinnvoll, siehe scope=all der API)
- */
-function getPois() {
-    Ytan.get('/pois?scope=all').then(answer => {
-        pois = withPoiDataSources(answer);
-        setAllPois(pois);
-    }).catch(err => log('getPois() failed', LOG_ERROR, err));
-}
 
 /**
  * Lade die öffentliches POIs aus der Datenbank
@@ -254,19 +227,6 @@ function fitToPoiBounds() {
     }).catch(err => log('fitToPoiBounds() failed', LOG_ERROR, err));
 }
 
-/**
- * Liefert die Koordinaten des Zentrums der POIs
- */
-function centerMapToBounds() {
-    Ytan.get('/pois/bounds').then(answer => {
-        var arrBounds = answer.data;
-        var bounds = new google.maps.LatLngBounds(
-            new google.maps.LatLng(arrBounds['min_lat'], arrBounds['min_lng']),
-            new google.maps.LatLng(arrBounds['max_lat'], arrBounds['max_lng'])
-        );
-        map.setCenter(bounds.getCenter());
-    }).catch(err => log('centerMapToBounds() failed', LOG_ERROR, err));
-}
 
 /**
  * Switches between individual POI markers and grouped count indicators
@@ -601,7 +561,7 @@ function setAllPois(arrPois) {
     settingAllPois = true;
     try {
         for (i = 0; i < arrPois.length; i++) {
-            if (typeof arrPois[i] !== "undefinded") {
+            if (typeof arrPois[i] !== "undefined") {
                 setPoi(i);
             }
         }
@@ -830,16 +790,6 @@ function closePoiInfoWindow(i) {
     delete poiInfoWindows[i];
 }
 
-function removeAllPoiInfowWindows() {
-    for (const poiInfoWindow of poiInfoWindows) {
-        // closeclick/closePoiInfoWindow() `delete` an entry, which leaves a hole
-        // (for...of yields undefined for it).
-        if (poiInfoWindow) {
-            poiInfoWindow.close();
-        }
-    }
-    poiInfoWindows = [];
-}
 
 function showPoiContextMenu(event, i) {
     log('showPoiContextMenu(event, ' + i +')', LOG_DEBUG);
@@ -1159,6 +1109,10 @@ function initPoiEditWindow(i) {
 
     poiEditWindow.setContent(content);
 
+    // The window is shared: drop the previous opening's listeners, or they pile up and a
+    // close calls cancelEditPoi() once per earlier opening, with old indexes.
+    google.maps.event.clearListeners(poiEditWindow, 'closeclick');
+    google.maps.event.clearListeners(poiEditWindow, 'position_changed');
     google.maps.event.addListener(poiEditWindow, 'closeclick', function(i, event) {
         cancelEditPoi(i);
     }.bind(poiEditWindow, i));
@@ -1480,6 +1434,7 @@ function editPoi(i) {
 
     map.panTo(poiMarker.position);
 
+    google.maps.event.clearListeners(poiEditWindow, 'domready'); // see initPoiEditWindow()
     poiEditWindow.addListener('domready', function() {
         validatePoiEditForm();
     });
@@ -1615,13 +1570,12 @@ function closePoiEditWindow() {
         poiMarker.setMap(null);
     }
 
-    if (poiEditWindow.isOpen) {
-        poiEditWindow.close();
-        enableAreaButton();
-        enablePoiButton();
-        enableRouteButton();
-        editMode(false);
-    }
+    // Always clean up: also reached from 'closeclick', when the window is already closed.
+    poiEditWindow.close();
+    enableAreaButton();
+    enablePoiButton();
+    enableRouteButton();
+    editMode(false);
 
     google.maps.event.clearListeners(poiEditWindow, 'position_changed');
 }

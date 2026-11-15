@@ -57,18 +57,24 @@ class JobSpec:
     # a PHP CLI script (bin/*.php): run with php_binary(); it writes no status.json of its own,
     # so this scheduler keeps its last run in storage/jobs-status.json (never on the YTAN worker)
     php: bool = False
+    # longest a run may take before it is killed (exit code TIMEOUT_EXIT): a hung job would
+    # otherwise hold .jobs.lock for ever and every later tick would skip everything
+    timeout_s: int = 20 * 60
 
 
 # in this order: the rain radar first (it is the one people watch minute by minute)
 JOBS = [
     JobSpec("radar", os.path.join("radar", "radar_job.py"), 5,
             ("raw/", "download/", "verify.csv", "verify.last", "reproject-*.npz", "config.json")),
-    JobSpec("wind", os.path.join("wind", "wind_job.py"), 15, ("icon-global-index.npy",)),
+    # a whole-world run took ~15 min on the YTAN worker (2026-11-15)
+    JobSpec("wind", os.path.join("wind", "wind_job.py"), 15, ("icon-global-index.npy",), timeout_s=60 * 60),
     # daily cleanups (until 2026-11-12 a separate crontab line, bin/cron.sh, that never ran on prod:
     # a user crontab has PATH=/usr/bin:/bin and PHP is /usr/local/bin/php there); due once per UTC day
-    JobSpec("cleanup-weather", os.path.join("bin", "cleanup-weather-data.php"), 1440, php=True),
-    JobSpec("cleanup-caches", os.path.join("bin", "cleanup-file-caches.php"), 1440, php=True),
+    JobSpec("cleanup-weather", os.path.join("bin", "cleanup-weather-data.php"), 1440, php=True, timeout_s=15 * 60),
+    JobSpec("cleanup-caches", os.path.join("bin", "cleanup-file-caches.php"), 1440, php=True, timeout_s=15 * 60),
 ]
+
+TIMEOUT_EXIT = 124  # like coreutils' timeout(1)
 
 JOBS_STATUS = "jobs-status.json"  # last runs of the jobs without a status.json of their own (php=True)
 
@@ -167,9 +173,15 @@ def run_job(spec: JobSpec, force: bool = False) -> int:
     """The job in a process of its own; its output goes on to ours (the cron log)."""
     env = dict(os.environ, YTAN_JOBS_LOCK_HELD="1")
     if spec.php:
-        return subprocess.call([php_binary(), os.path.join(ROOT, spec.script)], env=env, cwd=ROOT)
-    command = [sys.executable, os.path.join(HERE, spec.script)] + (["--force"] if force else [])
-    return subprocess.call(command, env=env, cwd=ROOT)
+        command = [php_binary(), os.path.join(ROOT, spec.script)]
+    else:
+        command = [sys.executable, os.path.join(HERE, spec.script)] + (["--force"] if force else [])
+    try:
+        # run() kills the child when the time is up; its own job lock goes with the process
+        return subprocess.run(command, env=env, cwd=ROOT, timeout=spec.timeout_s).returncode
+    except subprocess.TimeoutExpired:
+        log.error("%s killed after %d s (timeout)", spec.name, spec.timeout_s)
+        return TIMEOUT_EXIT
 
 
 def external_jobs(storage_root: str) -> list[str]:

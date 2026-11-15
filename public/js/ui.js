@@ -6,9 +6,6 @@ function showToolbar() {
     document.getElementById("editToolbar").style.display = "inline-block";
 }
 
-function hideToolbar() {
-    document.getElementById("editToolbar").style.display = "none";
-}
 
 
 /**
@@ -291,32 +288,6 @@ function unhideEditToolbar() {
     document.getElementById("editToolbar").style.display = "block";
 }
 
-function togglePanel(panelId, indicatorId) {
-    var panel = document.getElementById(panelId);
-    var indicator = document.getElementById(indicatorId);
-
-    if (panel.style.maxHeight) {
-        panel.style.maxHeight = null;
-        indicator.style.transform = "rotate(0deg)";
-    } else {
-        panel.style.maxHeight = panel.scrollHeight + "px";
-        indicator.style.transform = "rotate(180deg)";
-    }
-}
-
-function toggleMeasure(elementId) {
-    if (document.getElementById(elementId).checked) {
-        measureTool.start();
-        document.getElementById("btn_save_route").disabled = false;
-    } else {
-        measureTool.end();
-        document.getElementById("btn_save_route").disabled = true;
-    }
-}
-
-function toggleChecked(element) {
-    element.checked = !element.checked;
-}
 
 function toggleDisabled(elementId) {
     var element = document.getElementById(elementId);

@@ -492,19 +492,6 @@ function lerpPoint(p, q, tStart, tEnd, t) {
 }
 
 
-function angleFromCoordinates(p1, p2) {
-    var dLng = (p2.lng - p1.lng);
-    var y = Math.sin(dLng) * Math.cos(p2.lat);
-    var x = Math.cos(p1.lat) * Math.sin(p2.lat2) - Math.sin(p1.lat) * Math.cos(p2.lat) * Math.cos(dLng);
-    var brng = Math.atan2(y, x);
-
-    //brng = Math.toDegrees(brng);
-    brng = brng * 180 / Math.PI;
-    brng = (brng + 360) % 360;
-    brng = 360 - brng; // count degrees counter-clockwise - remove to make clockwise
-
-    return brng;
-}
 
 
 
@@ -562,9 +549,6 @@ function formatCoordinatePart(decimal, format, positiveDirection, negativeDirect
 
 
 
-function midElement(array) {
-        return array[Math.floor(array.length / 2)];
-}
 
 /**
  * Liefert ein leeres User-Objekt zurück.

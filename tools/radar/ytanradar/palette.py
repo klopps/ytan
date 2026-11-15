@@ -39,10 +39,17 @@ THRESHOLDS_DBZ = np.array([rate_to_dbz(r) for r, _ in CLASSES], dtype=np.float32
 
 
 def classify(dbz: np.ndarray) -> np.ndarray:
-    """dBZ (NaN = no coverage) -> uint8 class index, 0 = transparent."""
+    """dBZ (NaN = no coverage) -> uint8 class index, 0 = transparent.
+
+    Counts the thresholds each value reaches (= searchsorted side="right"),
+    straight into uint8: searchsorted returned int64 plus a float copy for
+    nan_to_num, ~12 bytes of temporaries per mosaic pixel and frame. NaN
+    compares False everywhere, so it stays 0 without nan_to_num."""
+    out = np.zeros(np.shape(dbz), np.uint8)
     with np.errstate(invalid="ignore"):
-        idx = np.searchsorted(THRESHOLDS_DBZ, np.nan_to_num(dbz, nan=-999.0), side="right")
-    return idx.astype(np.uint8)
+        for threshold in THRESHOLDS_DBZ:
+            out += dbz >= threshold
+    return out
 
 
 def png_palette() -> list[int]:

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Ytan\Service;
 
+use PDO;
+use Ytan\Database\Transaction;
 use Ytan\Domain\CampsiteImport\CampsiteImportRepository;
 use Ytan\Domain\Poi\PoiRepository;
 use Ytan\Service\Campsite\CampsiteOsmMapper;
@@ -26,6 +28,8 @@ final class CampsiteImportService
         private readonly CampsiteImportRepository $staging,
         private readonly PoiRepository $pois,
         private readonly ?PoiWaterDistanceService $waterDistances = null,
+        // set = one transaction per batch (all or nothing, one disk flush)
+        private readonly ?PDO $db = null,
     ) {
     }
 
@@ -34,6 +38,17 @@ final class CampsiteImportService
      * @return array{imported:int, skipped:int}
      */
     public function import(array $ids, int $userId, bool $public): array
+    {
+        return $this->db !== null
+            ? Transaction::run($this->db, fn () => $this->importBatch($ids, $userId, $public))
+            : $this->importBatch($ids, $userId, $public);
+    }
+
+    /**
+     * @param list<int> $ids
+     * @return array{imported:int, skipped:int}
+     */
+    private function importBatch(array $ids, int $userId, bool $public): array
     {
         $imported = 0;
         foreach ($this->staging->findOpenByIds($ids) as $entry) {

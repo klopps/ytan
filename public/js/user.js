@@ -439,8 +439,8 @@ function logoutUser() {
     updateGoogleSearchAllowed();
     resetSearchState();
     deleteRoutes();
+    deleteAreas();
     areas = [];
-    areaPolygons = [];
     getPublicPois();
     getPublicRoutes();
     getPublicAreas();
@@ -511,6 +511,9 @@ function loginUser() {
         closeUserWindow();
         getPoisByUserId(user.id);
         getRoutesByUserId(user.id);
+        // own private areas and tours appear right after login, not only after a reload
+        getAreasByUserId(user.id);
+        getToursByUserId(user.id);
         updateProfileRowLabel();
         updateAdminMenuVisibility();
         updatePendingChangesMenuVisibility();

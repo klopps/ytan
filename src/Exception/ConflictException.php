@@ -14,7 +14,7 @@ namespace Ytan\Exception;
  * current, authoritative server state so the frontend can show a
  * "server wins vs. app wins" resolution without a second round-trip.
  */
-final class ConflictException extends ApiException
+final class ConflictException extends ApiException implements PayloadException
 {
     public function __construct(private readonly array $serverRecord)
     {

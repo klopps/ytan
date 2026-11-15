@@ -172,7 +172,8 @@ final class SettingsControllerTest extends ControllerTestCase
         $this->assertSame(200, $decoded['status']);
         $expected = ['color' => '#00AA33', 'line_width' => 9, 'zoom' => 16.3, 'end_delay_s' => 1.5, 'speed' => 400];
         $this->assertSame($expected, $decoded['data'], 'colour upper-cased, zoom rounded to one decimal');
-        $this->assertSame($expected, $repository->routeAnimationSettings());
+        // a fresh instance: each one keeps the row it read (one SELECT per request)
+        $this->assertSame($expected, (new SettingsRepository($this->pdo))->routeAnimationSettings());
     }
 
     /** @return iterable<string, array{0: array<string,mixed>}> */
@@ -224,7 +225,8 @@ final class SettingsControllerTest extends ControllerTestCase
         ));
 
         $this->assertSame(['midpoint_m' => 25], $decoded['data']);
-        $this->assertSame(25, $repo->routeMergeMidpointMeters());
+        // a fresh instance: each one keeps the row it read (one SELECT per request)
+        $this->assertSame(25, (new SettingsRepository($this->pdo))->routeMergeMidpointMeters());
     }
 
     public function testRouteMergeMidpointRejectsOutOfRangeValues(): void

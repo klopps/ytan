@@ -173,6 +173,10 @@ function showRouteEditWindow(i, latLng) {
 
     routeEditWindow.open(map);
 
+    // The window is shared: drop the previous opening's listeners, or they pile up and a
+    // close calls cancelEditRoute() once per earlier opening, with old indexes.
+    google.maps.event.clearListeners(routeEditWindow, 'domready');
+    google.maps.event.clearListeners(routeEditWindow, 'closeclick');
     routeEditWindow.addListener('domready', function() {
         validateRouteEditForm();
 
@@ -231,13 +235,12 @@ function cancelEditRoute(i) {
 }
 
 function closeRouteEditWindow() {
-    if (routeEditWindow.isOpen) {
-        enableAreaButton();
-        enablePoiButton();
-        enableRouteButton();
-        editMode(false);
-        routeEditWindow.close();
-    }
+    // Always clean up: also called from 'closeclick', when the window is already closed.
+    enableAreaButton();
+    enablePoiButton();
+    enableRouteButton();
+    editMode(false);
+    routeEditWindow.close();
 }
 
 /**
@@ -438,12 +441,10 @@ function saveRouteOnlineWithPhotos(i, id, routeData) {
             applyPendingPhotoUploadChanges('routes', id);
         }
 
-        if (routeEditWindow.isOpen) {
-            measureTool.index = null;
-            measureTool.end();
-            closeRouteEditWindow();
-            document.getElementById('routeButton').classList.remove('active');
-        }
+        measureTool.index = null;
+        measureTool.end();
+        closeRouteEditWindow();
+        document.getElementById('routeButton').classList.remove('active');
 
         routeData.points = JSON.parse(routeData.points);
         var index = i;
@@ -817,16 +818,6 @@ function showRoute(i) {
     }
 }
 
-function showRouteById(id) {
-    for (let i = 0; i < routes.length; i++) {
-        if (typeof routes[i] !== "undefined") {
-            if (routes[i].id == id) {
-                showRoute(i);
-                break;
-            }
-        }
-    }
-}
 
 /**
  * Zeigt die Entfernungen an den Segmenten einer Route
@@ -1351,10 +1342,6 @@ function showRouteInfoWindow(event, i) {
         closeRouteInfoWindow(i);
     });
 
-    if (routeInfoWindow.isOpen == true) {
-        log('routeInfoWindows is open.', LOG_DEBUG);
-        closeRouteInfoWindow(i);
-    }
     routeInfoWindow.routeIndex = i;
 
     showRouteLabels(i);
@@ -1567,9 +1554,7 @@ function addNewRouteToActiveTour(routeId) {
 }
 
 function editRoute(i, lat, lng) {
-    if (routeInfoWindow.isOpen) {
-        closeRouteInfoWindow(i);
-    }
+    closeRouteInfoWindow(i);
     hideRoute(i);
     log('editRoute(' + i + ')', LOG_INFO, routes[i]);
 

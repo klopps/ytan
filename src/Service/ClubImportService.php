@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Ytan\Service;
 
 use PDO;
+use Ytan\Database\Transaction;
 use Ytan\Domain\ClubImport\ClubImportRepository;
 use Ytan\Domain\Poi\PoiRepository;
 use Ytan\Service\ClubList\ClubOsmMapper;
@@ -35,6 +36,16 @@ final class ClubImportService
      * @return array{imported:int, linked:int, skipped:int}
      */
     public function import(array $ids, int $userId, bool $public): array
+    {
+        // one transaction per batch: all or nothing, and one disk flush instead of ~5 per entry
+        return Transaction::run($this->db, fn () => $this->importBatch($ids, $userId, $public));
+    }
+
+    /**
+     * @param list<int> $ids
+     * @return array{imported:int, linked:int, skipped:int}
+     */
+    private function importBatch(array $ids, int $userId, bool $public): array
     {
         $entries = $this->staging->findOpenByIds($ids);
         $imported = 0;

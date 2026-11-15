@@ -243,9 +243,6 @@ function editWindFillOpacity(element) {
     saveSettings();
 }
 
-function windApiBase() {
-    return window.YTAN_API_BASE || '/api/v1';
-}
 
 function loadWindManifest() {
     return Ytan.get('/wind/manifest')

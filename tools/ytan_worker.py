@@ -65,7 +65,8 @@ class Remote:
         self.run = run
 
     def rsync(self, args: list[str]) -> int:
-        command = ["rsync", "-e", self.ssh] + args
+        # --timeout: give up after 120 s without data instead of hanging the tick (and the lock) for ever
+        command = ["rsync", "-e", self.ssh, "--timeout=120"] + args
         result = self.run(command, capture_output=True, text=True)
         if result.returncode != 0:
             log.error("rsync failed (exit %s): %s", result.returncode, (result.stderr or "").strip()[-500:])

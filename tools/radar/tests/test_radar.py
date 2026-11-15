@@ -6,6 +6,7 @@ import os
 import sys
 import tempfile
 import unittest
+import urllib.error
 from datetime import datetime, timezone
 
 import numpy as np
@@ -328,6 +329,28 @@ class FetchFrameTest(unittest.TestCase):
     def test_no_source_means_the_frame_is_missing(self):
         self.fake([])
         self.assertIsNone(opera.fetch_frame(self.t, "x.h5"))
+
+    def failing(self, broken, available):
+        def download(url, dest, timeout=60):
+            self.asked.append(url)
+            if any(url.startswith(base + "/") for base in broken):
+                raise urllib.error.HTTPError(url, 503, "Service Unavailable", {}, None)
+            return any(url.startswith(base + "/") for base in available)
+        opera.download = download
+
+    def test_a_failing_primary_falls_back_to_the_backup(self):
+        self.failing([opera.BASE_URLS[0]], [opera.BASE_URLS[1]])
+        self.assertEqual(opera.fetch_frame(self.t, "x.h5"), opera.BASE_URLS[1])
+        self.assertEqual(len(self.asked), 2)
+
+    def test_a_failing_primary_and_a_backup_without_the_frame_is_missing_not_failed(self):
+        self.failing([opera.BASE_URLS[0]], [])
+        self.assertIsNone(opera.fetch_frame(self.t, "x.h5"))
+
+    def test_every_source_failing_raises(self):
+        self.failing(list(opera.BASE_URLS), [])
+        with self.assertRaises(urllib.error.HTTPError):
+            opera.fetch_frame(self.t, "x.h5")
 
 
 class FillMissingRadarsTest(unittest.TestCase):
