@@ -13,40 +13,14 @@
  * @param {number} userId
  */
 function getToursByUserId(userId) {
-    Ytan.get('/tours?scope=mine_public').then(answer => {
-        tours = answer.data;
-        log('getToursByUserId(' + userId + ')', LOG_INFO, answer);
-        putCachedCollection('tours', 'mine_public', tours);
-    }).catch(err => {
-        log('getToursByUserId() failed', LOG_ERROR, err);
-        getCachedCollection('tours', 'mine_public').then(cached => {
-            if (cached) {
-                tours = cached.data;
-            }
-            notifyOfflineFallback('tours', cached ? cached.cachedAt : null);
-        });
-    });
+    loadCollection('tours', 'mine_public', answer => answer.data, data => { tours = data; }, 'getToursByUserId(' + userId + ')');
 }
 
 /**
  * Hole alle öffentlichen Touren und speichere sie in tours[]
  */
 function getPublicTours() {
-    log('getPublicTours() called', LOG_INFO);
-
-    Ytan.get('/tours?scope=public').then(answer => {
-        log('getPublicTours() answer received', LOG_INFO, answer);
-        tours = answer.data;
-        putCachedCollection('tours', 'public', tours);
-    }).catch(err => {
-        log('getPublicTours() failed', LOG_ERROR, err);
-        getCachedCollection('tours', 'public').then(cached => {
-            if (cached) {
-                tours = cached.data;
-            }
-            notifyOfflineFallback('tours', cached ? cached.cachedAt : null);
-        });
-    });
+    loadCollection('tours', 'public', answer => answer.data, data => { tours = data; }, 'getPublicTours()');
 }
 
 let activeTourModeId = null; // the tour active in Tour Mode, or null - route.js's saveRoute() reads this to auto-add newly created routes to it

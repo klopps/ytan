@@ -4,17 +4,10 @@ declare(strict_types=1);
 
 namespace Ytan\Tests\Integration;
 
-use League\CommonMark\GithubFlavoredMarkdownConverter;
-use Ytan\Domain\Area\AreaRepository;
-use Ytan\Domain\Poi\PoiRepository;
-use Ytan\Domain\Route\RouteRepository;
 use Ytan\Domain\Tour\TourRepository;
 use Ytan\Exception\ForbiddenException;
 use Ytan\Http\Controllers\TourController;
 use Ytan\Service\ImageStorageService;
-use Ytan\Service\StaticMapImageService;
-use Ytan\Service\TourDocumentService;
-use Ytan\Service\Translator;
 
 /**
  * Covers TourController's private assertCanManageTour()/assertCanPublishTour()
@@ -32,20 +25,7 @@ final class TourControllerPermissionsTest extends ControllerTestCase
         parent::setUp();
         $this->tours = new TourRepository($this->pdo);
         $imageDir = sys_get_temp_dir() . '/ytan-test-images';
-        $documents = new TourDocumentService(
-            $this->tours,
-            new RouteRepository($this->pdo),
-            new PoiRepository($this->pdo),
-            new AreaRepository($this->pdo),
-            new ImageStorageService($imageDir),
-            new ImageStorageService($imageDir),
-            new StaticMapImageService(sys_get_temp_dir() . '/ytan-test-maps', ''),
-            new GithubFlavoredMarkdownConverter(),
-            dirname(__DIR__, 2) . '/public/markers',
-            new Translator(dirname(__DIR__, 2) . '/resources/i18n', 'de'),
-            dirname(__DIR__, 2) . '/public/images/ytan-logo.png',
-            'https://example.com',
-        );
+        $documents = $this->tourDocuments(tours: $this->tours, poiImages: new ImageStorageService($imageDir));
         $this->controller = new TourController($this->tours, new ImageStorageService($imageDir), $documents);
     }
 

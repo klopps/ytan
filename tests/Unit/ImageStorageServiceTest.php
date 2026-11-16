@@ -9,6 +9,8 @@ use Ytan\Service\ImageStorageService;
 
 final class ImageStorageServiceTest extends TestCase
 {
+    use \Ytan\Tests\RemovesDirectories;
+
     private string $storageDir;
     private ImageStorageService $images;
 
@@ -23,20 +25,6 @@ final class ImageStorageServiceTest extends TestCase
         $this->rmrf($this->storageDir);
     }
 
-    private function rmrf(string $dir): void
-    {
-        if (!is_dir($dir)) {
-            return;
-        }
-        foreach (scandir($dir) as $entry) {
-            if ($entry === '.' || $entry === '..') {
-                continue;
-            }
-            $path = $dir . '/' . $entry;
-            is_dir($path) ? $this->rmrf($path) : unlink($path);
-        }
-        rmdir($dir);
-    }
 
     private function writeFile(int $entityId, string $filename, string $contents = 'fake'): void
     {

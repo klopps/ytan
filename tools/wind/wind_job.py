@@ -21,40 +21,7 @@ sys.path.insert(0, os.path.dirname(HERE))  # tools/: ytanlog
 from ytanwind.job import Job  # noqa: E402
 from ytanwind.settings import load_settings  # noqa: E402
 import ytanlog  # noqa: E402
-
-
-class Lock:
-    """Exclusive file lock: non-blocking by default, so a slow run never overlaps the next one."""
-
-    def __init__(self, path: str, wait_seconds: float = 0, poll_seconds: float = 5):
-        self.path = path
-        self.f = None
-        self.wait_seconds = wait_seconds
-        self.poll_seconds = poll_seconds
-
-    def _try(self) -> bool:
-        try:
-            if os.name == "nt":
-                import msvcrt
-                msvcrt.locking(self.f.fileno(), msvcrt.LK_NBLCK, 1)
-            else:
-                import fcntl
-                fcntl.flock(self.f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except OSError:
-            return False
-        return True
-
-    def __enter__(self) -> bool:
-        self.f = open(self.path, "a+")
-        deadline = time.monotonic() + self.wait_seconds
-        while not self._try():
-            if time.monotonic() >= deadline:
-                return False
-            time.sleep(self.poll_seconds)
-        return True
-
-    def __exit__(self, *exc) -> None:
-        self.f.close()
+from ytanjob import Lock  # noqa: E402  (tools/ytanjob.py, shared by all jobs)
 
 
 # The rain radar job (every 5 minutes, ~2 minutes of heavy work, up to ~1 GB) and this job must not run

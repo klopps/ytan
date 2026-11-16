@@ -1966,27 +1966,8 @@ function shareMap() {
     var zoom = map.getZoom();
     var center = map.getCenter();
 
-    var mapUrl = window.location.protocol + '//' + window.location.hostname + window.location.pathname + '?z=' + zoom + '&lat=' + center.lat() + '&lng=' + center.lng();
+    // origin, not protocol + hostname: the latter dropped a port (dev servers)
+    var mapUrl = window.location.origin + window.location.pathname + '?z=' + zoom + '&lat=' + center.lat() + '&lng=' + center.lng();
 
-    // Inside the Capacitor Android shell, navigator.share() falls through
-    // to the clipboard-copy branch below instead of opening a real dialog
-    // (see capacitor-bridge.js's shareLink() doc comment) - its own Share
-    // plugin is used there instead, same priority order as
-    // downloadBlob()'s CapacitorBridge check in helper.js.
-    if (typeof CapacitorBridge !== 'undefined' && CapacitorBridge.isAvailable()) {
-        CapacitorBridge.shareLink(mapUrl, 'YTAN', t('map.share_text'))
-            .then(() => log('shareMap() - successfull', LOG_INFO))
-            .catch((error) => log('shareMap() - error', LOG_ERROR, error));
-    } else if (navigator.share) {
-        navigator.share({
-            title: 'YTAN',
-            text: t('map.share_text'),
-            url: mapUrl,
-        })
-            .then(() => log('shareMap() - successfull', LOG_INFO))
-            .catch((error) => log('shareMap() - error', LOG_ERROR, error));
-    } else {
-        copyTextToClipboard(mapUrl);
-        showToast(t('map.link_copied'), 'success');
-    }
+    shareUrl(mapUrl, t('map.share_text'), 'shareMap()');
 }

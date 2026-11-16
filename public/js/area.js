@@ -477,67 +477,33 @@ async function removeArea(i) {
  * @param {number} userId
  */
 function getAreasByUserId(userId) {
-    Ytan.get('/areas?scope=mine_public').then(answer => {
-        areas = answer.data;
-        log('getAreasByUserId(' + userId + ')', LOG_INFO, answer);
-        for (let i = 0; i < areas.length; i++) {
-            areas[i].points = JSON.parse(areas[i].points);
-            areas[i].opacity = parseFloat(areas[i].opacity);
-            areas[i].zindex = parseInt(areas[i].zindex);
-        }
-        createAreas();
-        if (settings.detailareas) {
-            showAreas();
-        }
-        // Cached AFTER the points/opacity/zindex normalization above - one
-        // shape everywhere, so the offline fallback below doesn't need its
-        // own separate parsing step.
-        putCachedCollection('areas', 'mine_public', areas);
-    }).catch(err => {
-        log('getAreasByUserId() failed', LOG_ERROR, err);
-        getCachedCollection('areas', 'mine_public').then(cached => {
-            if (cached) {
-                areas = cached.data;
-                createAreas();
-                if (settings.detailareas) {
-                    showAreas();
-                }
-            }
-            notifyOfflineFallback('areas', cached ? cached.cachedAt : null);
-        });
-    });
+    loadCollection('areas', 'mine_public', normalizeAreas, applyAreas, 'getAreasByUserId(' + userId + ')');
 }
 
 /**
  * Hole alle öffentlichen Areas speichere sie in areas[] und zeige sie an
  */
 function getPublicAreas() {
-    Ytan.get('/areas?scope=public').then(answer => {
-        log('getPublicAreas()', LOG_INFO, answer);
-        areas = answer.data;
-        for (let i = 0; i < areas.length; i++) {
-            areas[i].points = JSON.parse(areas[i].points);
-            areas[i].opacity = parseFloat(areas[i].opacity);
-            areas[i].zindex = parseInt(areas[i].zindex);
-        }
-        createAreas();
-        if (settings.detailareas) {
-            showAreas();
-        }
-        putCachedCollection('areas', 'public', areas);
-    }).catch(err => {
-        log('getPublicAreas() failed', LOG_ERROR, err);
-        getCachedCollection('areas', 'public').then(cached => {
-            if (cached) {
-                areas = cached.data;
-                createAreas();
-                if (settings.detailareas) {
-                    showAreas();
-                }
-            }
-            notifyOfflineFallback('areas', cached ? cached.cachedAt : null);
-        });
-    });
+    loadCollection('areas', 'public', normalizeAreas, applyAreas, 'getPublicAreas()');
+}
+
+/** The API's areas with points parsed and opacity/zindex as numbers (also the cached shape). */
+function normalizeAreas(answer) {
+    const list = answer.data;
+    for (let i = 0; i < list.length; i++) {
+        list[i].points = JSON.parse(list[i].points);
+        list[i].opacity = parseFloat(list[i].opacity);
+        list[i].zindex = parseInt(list[i].zindex);
+    }
+    return list;
+}
+
+function applyAreas(data) {
+    areas = data;
+    createAreas(); // removes the previous polygons first (deleteAreas())
+    if (settings.detailareas) {
+        showAreas();
+    }
 }
 
 function showAreas() {

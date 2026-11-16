@@ -13,19 +13,24 @@ test.describe('Weather menu', () => {
     const submenu = page.locator('#weatherSubmenu');
     const next = page.locator('button[data-on-click="showUserWindow();"]');
 
+    // Distance below the weather row, not the absolute position: rows ABOVE it
+    // ("install the app", pending changes) appear/disappear asynchronously
+    // after the load and would shift everything by a row height.
+    const below = async () => (await next.boundingBox()).y - (await row.boundingBox()).y;
+
     await expect(submenu).toBeHidden();
-    const before = (await next.boundingBox()).y;
+    const before = await below();
 
     await row.click();
     await expect(submenu).toBeVisible();
     await expect(row).toHaveAttribute('aria-expanded', 'true');
     await expect(submenu.locator('button')).toHaveCount(3);
-    expect((await next.boundingBox()).y).toBeGreaterThan(before + 60);
+    expect(await below()).toBeGreaterThan(before + 60);
 
     await row.click();
     await expect(submenu).toBeHidden();
     await expect(row).toHaveAttribute('aria-expanded', 'false');
-    expect((await next.boundingBox()).y).toBeCloseTo(before, 0);
+    expect(await below()).toBeCloseTo(before, 0);
   });
 
   test('an entry closes the drawer and switches the layer', async ({ loggedInPage: page }) => {
@@ -44,7 +49,8 @@ test.describe('Weather menu', () => {
     expect(await page.evaluate(() => window.toggled)).toEqual(['radar']);
 
     // reopened: back on the main menu with the submenu collapsed
-    await page.waitForTimeout(700);
+    // (closeMenu() resets the drawer 500 ms after closing - wait for that reset, not a fixed time)
+    await expect(page.locator('#weatherSubmenu')).toBeHidden();
     await page.locator('#sidemenu-toggle').click();
     await expect(page.locator('#weatherSubmenu')).toBeHidden();
     await page.locator('#weatherMenuRow').click();
@@ -54,7 +60,7 @@ test.describe('Weather menu', () => {
 
     // the check mark follows the layer's state
     await page.evaluate(() => { settings.detailwind = true; });
-    await page.waitForTimeout(700);
+    await expect(page.locator('#weatherSubmenu')).toBeHidden();
     await page.locator('#sidemenu-toggle').click();
     await page.locator('#weatherMenuRow').click();
     await expect(page.locator('#weatherMenuWindState')).toBeVisible();

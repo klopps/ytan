@@ -21,11 +21,7 @@ var logsState = {
     polling: false,
 };
 
-function logsEscape(value) {
-    var div = document.createElement('div');
-    div.textContent = value == null ? '' : String(value);
-    return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-}
+// Escaping: helper.js's escapeHTML().
 
 function logsFormatBytes(bytes) {
     if (bytes < 1024) {
@@ -53,8 +49,8 @@ function logsDateHtml(iso) {
     }
     var date = new Date(iso);
     var locale = document.documentElement.lang || undefined;
-    return '<span class="text-nowrap">' + logsEscape(date.toLocaleDateString(locale, { year: 'numeric', month: '2-digit', day: '2-digit' })) + '</span> ' +
-        '<span class="text-nowrap">' + logsEscape(date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' })) + '</span>';
+    return '<span class="text-nowrap">' + escapeHTML(date.toLocaleDateString(locale, { year: 'numeric', month: '2-digit', day: '2-digit' })) + '</span> ' +
+        '<span class="text-nowrap">' + escapeHTML(date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' })) + '</span>';
 }
 
 function logsSourceLabel(source) {
@@ -84,35 +80,35 @@ async function logsLoadList() {
         logsRenderList();
         logsUpdateViewerInfo();
     } catch (err) {
-        document.getElementById('logsList').innerHTML = '<p class="p-3 mb-0 text-danger">' + logsEscape(t('admin.logs.load_failed', { error: err.message })) + '</p>';
+        document.getElementById('logsList').innerHTML = '<p class="p-3 mb-0 text-danger">' + escapeHTML(t('admin.logs.load_failed', { error: err.message })) + '</p>';
     }
 }
 
 function logsRenderList() {
     var container = document.getElementById('logsList');
     if (logsState.files.length === 0) {
-        container.innerHTML = '<p class="p-3 mb-0 text-secondary">' + logsEscape(t('admin.logs.none')) + '</p>';
+        container.innerHTML = '<p class="p-3 mb-0 text-secondary">' + escapeHTML(t('admin.logs.none')) + '</p>';
         logsUpdateSelectionButton();
         return;
     }
     var allSelected = logsState.files.every(function (file) { return logsState.selected[file.id]; });
     var html = '<div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0"><thead><tr>' +
-        '<th style="width:2.5rem;"><input type="checkbox" class="form-check-input" aria-label="' + logsEscape(t('admin.logs.select_all')) + '"' +
+        '<th style="width:2.5rem;"><input type="checkbox" class="form-check-input" aria-label="' + escapeHTML(t('admin.logs.select_all')) + '"' +
             (allSelected ? ' checked' : '') + ' data-on-change="logsToggleAll(this.checked);"></th>' +
-        '<th>' + logsEscape(t('admin.logs.col_name')) + '</th>' +
-        '<th class="text-end">' + logsEscape(t('admin.logs.col_size')) + '</th>' +
-        '<th>' + logsEscape(t('admin.logs.col_modified')) + '</th>' +
-        '<th class="d-none d-md-table-cell">' + logsEscape(t('admin.logs.col_source')) + '</th>' +
+        '<th>' + escapeHTML(t('admin.logs.col_name')) + '</th>' +
+        '<th class="text-end">' + escapeHTML(t('admin.logs.col_size')) + '</th>' +
+        '<th>' + escapeHTML(t('admin.logs.col_modified')) + '</th>' +
+        '<th class="d-none d-md-table-cell">' + escapeHTML(t('admin.logs.col_source')) + '</th>' +
         '</tr></thead><tbody>';
     logsState.files.forEach(function (file, index) {
         var active = logsState.current === file.id;
         html += '<tr' + (active ? ' class="table-active"' : '') + '>' +
-            '<td><input type="checkbox" class="form-check-input" aria-label="' + logsEscape(file.name) + '"' +
+            '<td><input type="checkbox" class="form-check-input" aria-label="' + escapeHTML(file.name) + '"' +
                 (logsState.selected[file.id] ? ' checked' : '') + ' data-on-change="logsToggle(' + index + ', this.checked);"></td>' +
-            '<td><a href="#" title="' + logsEscape(file.path) + '" data-on-click="logsOpen(' + index + '); return false;">' + logsEscape(file.name) + '</a></td>' +
-            '<td class="text-end text-nowrap">' + logsEscape(logsFormatBytes(file.size)) + '</td>' +
+            '<td><a href="#" title="' + escapeHTML(file.path) + '" data-on-click="logsOpen(' + index + '); return false;">' + escapeHTML(file.name) + '</a></td>' +
+            '<td class="text-end text-nowrap">' + escapeHTML(logsFormatBytes(file.size)) + '</td>' +
             '<td>' + logsDateHtml(file.modified) + '</td>' +
-            '<td class="d-none d-md-table-cell text-secondary small">' + logsEscape(logsSourceLabel(file.source)) + '</td>' +
+            '<td class="d-none d-md-table-cell text-secondary small">' + escapeHTML(logsSourceLabel(file.source)) + '</td>' +
             '</tr>';
     });
     container.innerHTML = html + '</tbody></table></div>';

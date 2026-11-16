@@ -36,12 +36,7 @@ var ldState = {
     picks: {},
 };
 
-function ldEscape(value) {
-    var div = document.createElement('div');
-    div.textContent = value == null ? '' : String(value);
-    // innerHTML escapes only &, < and > - quotes too, for attribute values.
-    return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-}
+// Escaping: helper.js's escapeHTML() (quotes too - results also go into attributes).
 
 function ldValue(poi, field) {
     switch (field) {
@@ -99,18 +94,18 @@ function ldPoiHeader(group, poi, pick) {
     var id = Number(poi.id);
     var checked = pick.ids.has(id) ? ' checked' : '';
     var origin = poi.manual
-        ? '<span class="badge text-bg-primary">' + ldEscape(t('admin.lighthouse_duplicates.origin_manual')) + '</span>'
-        : '<span class="badge text-bg-secondary">' + ldEscape(t('admin.lighthouse_duplicates.origin_imported')) + '</span>';
+        ? '<span class="badge text-bg-primary">' + escapeHTML(t('admin.lighthouse_duplicates.origin_manual')) + '</span>'
+        : '<span class="badge text-bg-secondary">' + escapeHTML(t('admin.lighthouse_duplicates.origin_imported')) + '</span>';
     var keep = pick.ids.has(id)
         ? '<div class="form-check mt-1"><input class="form-check-input ldKeep" type="radio" name="keep-' + group.key + '" id="keep-' + group.key + '-' + id + '" data-group="' + group.key + '" data-id="' + id + '"' + (pick.keep === id ? ' checked' : '') + '>' +
-            '<label class="form-check-label small" for="keep-' + group.key + '-' + id + '">' + ldEscape(t('admin.lighthouse_duplicates.keep_label')) + '</label></div>'
+            '<label class="form-check-label small" for="keep-' + group.key + '-' + id + '">' + escapeHTML(t('admin.lighthouse_duplicates.keep_label')) + '</label></div>'
         : '';
     return '<th class="align-top" style="min-width:13rem;">' +
         '<div class="form-check"><input class="form-check-input ldMember" type="checkbox" id="member-' + group.key + '-' + id + '" data-group="' + group.key + '" data-id="' + id + '"' + checked + '>' +
-            '<label class="form-check-label" for="member-' + group.key + '-' + id + '">' + ldEscape(t('admin.lighthouse_duplicates.merge_check')) + '</label></div>' +
+            '<label class="form-check-label" for="member-' + group.key + '-' + id + '">' + escapeHTML(t('admin.lighthouse_duplicates.merge_check')) + '</label></div>' +
         '<div class="small fw-normal mt-1">#' + id + ' ' + origin + '</div>' +
-        '<div class="small fw-normal text-secondary">' + ldEscape(poi.username || '') + '</div>' +
-        '<div class="small fw-normal text-secondary">' + ldEscape(t('admin.lighthouse_duplicates.distance_m', { distance: poi.distance_m })) + '</div>' +
+        '<div class="small fw-normal text-secondary">' + escapeHTML(poi.username || '') + '</div>' +
+        '<div class="small fw-normal text-secondary">' + escapeHTML(t('admin.lighthouse_duplicates.distance_m', { distance: poi.distance_m })) + '</div>' +
         keep +
     '</th>';
 }
@@ -119,10 +114,10 @@ function ldFieldCell(group, poi, field, pick) {
     var id = Number(poi.id);
     var value = ldValue(poi, field);
     var shown = field === 'sector_characteristic' || field === 'description'
-        ? '<div class="small" style="white-space:pre-line; max-height:7rem; overflow:auto;' + (field === 'sector_characteristic' ? ' font-family:monospace;' : '') + '">' + ldEscape(value) + '</div>'
-        : '<div class="small">' + ldEscape(value) + '</div>';
+        ? '<div class="small" style="white-space:pre-line; max-height:7rem; overflow:auto;' + (field === 'sector_characteristic' ? ' font-family:monospace;' : '') + '">' + escapeHTML(value) + '</div>'
+        : '<div class="small">' + escapeHTML(value) + '</div>';
     var radio = pick.ids.has(id)
-        ? '<input class="form-check-input ldField me-1 float-start" type="radio" name="field-' + group.key + '-' + field + '" data-group="' + group.key + '" data-field="' + field + '" data-id="' + id + '"' + (pick.fields[field] === id ? ' checked' : '') + ' title="' + ldEscape(t('admin.lighthouse_duplicates.take_from_this')) + '">'
+        ? '<input class="form-check-input ldField me-1 float-start" type="radio" name="field-' + group.key + '-' + field + '" data-group="' + group.key + '" data-field="' + field + '" data-id="' + id + '"' + (pick.fields[field] === id ? ' checked' : '') + ' title="' + escapeHTML(t('admin.lighthouse_duplicates.take_from_this')) + '">'
         : '';
     return '<td class="' + (pick.ids.has(id) && pick.fields[field] === id ? 'table-success' : '') + '">' + radio + shown + '</td>';
 }
@@ -133,28 +128,28 @@ function ldRenderGroup(group, index) {
 
     var header = group.pois.map(function (poi) { return ldPoiHeader(group, poi, pick); }).join('');
     var rows = LD_FIELDS.map(function (entry) {
-        return '<tr><th scope="row" class="small text-nowrap">' + ldEscape(t(entry[1])) + '</th>' +
+        return '<tr><th scope="row" class="small text-nowrap">' + escapeHTML(t(entry[1])) + '</th>' +
             group.pois.map(function (poi) { return ldFieldCell(group, poi, entry[0], pick); }).join('') + '</tr>';
     }).join('');
-    rows += '<tr><th scope="row" class="small text-nowrap">' + ldEscape(t('admin.lighthouse_duplicates.field_photos')) + '</th>' +
+    rows += '<tr><th scope="row" class="small text-nowrap">' + escapeHTML(t('admin.lighthouse_duplicates.field_photos')) + '</th>' +
         group.pois.map(function (poi) { return '<td class="small">' + Number(poi.image_count) + '</td>'; }).join('') + '</tr>';
     LD_TIMES.forEach(function (entry) {
-        rows += '<tr><th scope="row" class="small text-nowrap">' + ldEscape(t(entry[1])) + '</th>' +
+        rows += '<tr><th scope="row" class="small text-nowrap">' + escapeHTML(t(entry[1])) + '</th>' +
             group.pois.map(function (poi) {
                 var time = poi[entry[0]];
-                return '<td class="small text-nowrap' + (time ? '' : ' text-secondary') + '">' + ldEscape(time || t('admin.lighthouse_duplicates.never')) + '</td>';
+                return '<td class="small text-nowrap' + (time ? '' : ' text-secondary') + '">' + escapeHTML(time || t('admin.lighthouse_duplicates.never')) + '</td>';
             }).join('') + '</tr>';
     });
 
     var ready = pick.ids.size >= 2;
     return '<div class="card mb-3' + (ready ? ' border-danger' : '') + '">' +
         '<div class="card-header d-flex flex-wrap align-items-center gap-2">' +
-            '<strong>' + ldEscape(t('admin.lighthouse_duplicates.group_title', {
+            '<strong>' + escapeHTML(t('admin.lighthouse_duplicates.group_title', {
                 number: (ldState.page - 1) * ldState.pageSize + index + 1,
                 count: group.pois.length,
                 distance: group.max_distance,
             })) + '</strong>' +
-            '<button type="button" class="btn btn-outline-secondary btn-sm ms-auto ldAll" data-group="' + group.key + '">' + ldEscape(t('admin.lighthouse_duplicates.select_group')) + '</button>' +
+            '<button type="button" class="btn btn-outline-secondary btn-sm ms-auto ldAll" data-group="' + group.key + '">' + escapeHTML(t('admin.lighthouse_duplicates.select_group')) + '</button>' +
         '</div>' +
         '<div class="table-responsive"><table class="table table-sm align-middle mb-0">' +
             '<thead><tr><th></th>' + header + '</tr></thead><tbody>' + rows + '</tbody>' +
@@ -165,7 +160,7 @@ function ldRenderGroup(group, index) {
 function ldRender() {
     var container = document.getElementById('ldGroups');
     if (ldState.groups.length === 0) {
-        container.innerHTML = '<p class="text-secondary">' + ldEscape(t('admin.lighthouse_duplicates.no_groups')) + '</p>';
+        container.innerHTML = '<p class="text-secondary">' + escapeHTML(t('admin.lighthouse_duplicates.no_groups')) + '</p>';
     } else {
         container.innerHTML = ldState.groups.map(ldRenderGroup).join('');
     }
@@ -173,7 +168,7 @@ function ldRender() {
     var totalPages = Math.max(1, Math.ceil(ldState.total / ldState.pageSize));
     document.getElementById('ldPagination').innerHTML = ldState.total === 0 ? '' :
         '<button type="button" class="btn btn-sm btn-outline-secondary" id="ldPrev"' + (ldState.page <= 1 ? ' disabled' : '') + '><i class="bi bi-chevron-left"></i></button>' +
-        '<span class="small text-secondary">' + ldEscape(t('common.page_of', { page: ldState.page, total: totalPages })) + '</span>' +
+        '<span class="small text-secondary">' + escapeHTML(t('common.page_of', { page: ldState.page, total: totalPages })) + '</span>' +
         '<button type="button" class="btn btn-sm btn-outline-secondary" id="ldNext"' + (ldState.page >= totalPages ? ' disabled' : '') + '><i class="bi bi-chevron-right"></i></button>';
 
     document.getElementById('ldSummary').textContent = t('admin.lighthouse_duplicates.summary', { count: ldState.total, distance: ldState.distance });
@@ -215,7 +210,7 @@ async function ldLoad() {
         ldRender();
     } catch (err) {
         document.getElementById('ldGroups').innerHTML =
-            '<p class="text-danger">' + ldEscape(t('admin.lighthouse_duplicates.load_failed', { error: err.message })) + '</p>';
+            '<p class="text-danger">' + escapeHTML(t('admin.lighthouse_duplicates.load_failed', { error: err.message })) + '</p>';
     }
 }
 

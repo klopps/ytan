@@ -22,30 +22,7 @@ sys.path.insert(0, os.path.dirname(HERE))  # tools/: ytanlog
 from ytanradar.job import Config, Job  # noqa: E402
 from ytanradar.settings import grid_for, load_settings, regions_hash  # noqa: E402
 import ytanlog  # noqa: E402
-
-
-class Lock:
-    """Non-blocking exclusive lock, so a slow run never overlaps the next one."""
-
-    def __init__(self, path: str):
-        self.path = path
-        self.f = None
-
-    def __enter__(self) -> bool:
-        self.f = open(self.path, "a+")
-        try:
-            if os.name == "nt":
-                import msvcrt
-                msvcrt.locking(self.f.fileno(), msvcrt.LK_NBLCK, 1)
-            else:
-                import fcntl
-                fcntl.flock(self.f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except OSError:
-            return False
-        return True
-
-    def __exit__(self, *exc) -> None:
-        self.f.close()
+from ytanjob import Lock  # noqa: E402  (tools/ytanjob.py, shared by all jobs)
 
 
 def main() -> int:

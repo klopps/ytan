@@ -19,8 +19,6 @@ final class LighthouseDuplicateService
 {
     /** The fields of a merge: what the admin can take from which record. */
     public const FIELDS = ['name', 'description', 'position', 'characteristic', 'sector_characteristic', 'international_id', 'public'];
-
-    private const EARTH_RADIUS_M = 6371008.8;
     public const MAX_IMAGES_PER_POI = 5; // same limit as PoiController
 
     public function __construct(
@@ -305,12 +303,11 @@ final class LighthouseDuplicateService
      */
     private function distance(array $a, array $b): float
     {
-        $lat1 = deg2rad((float) $a['latitude']);
-        $lat2 = deg2rad((float) $b['latitude']);
-        $dLat = $lat2 - $lat1;
-        $dLon = deg2rad((float) $b['longitude'] - (float) $a['longitude']);
-        $h = sin($dLat / 2) ** 2 + cos($lat1) * cos($lat2) * sin($dLon / 2) ** 2;
-
-        return 2 * self::EARTH_RADIUS_M * asin(min(1.0, sqrt($h)));
+        return GeometryService::distanceMeters(
+            (float) $a['latitude'],
+            (float) $a['longitude'],
+            (float) $b['latitude'],
+            (float) $b['longitude']
+        );
     }
 }

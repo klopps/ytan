@@ -20,7 +20,6 @@ final class CampsiteSurroundings
     public const PLACE_TYPES = ['city', 'town', 'village', 'hamlet', 'suburb'];
 
     private const CELL = 0.1;
-    private const EARTH_RADIUS_M = 6371000.0;
 
     /** @var array<string, list<array{0:float,1:float,2:string}>> cell => [lat, lng, name] */
     private array $places = [];
@@ -124,11 +123,7 @@ final class CampsiteSurroundings
 
     private static function distance(float $lat1, float $lng1, float $lat2, float $lng2): float
     {
-        $dLat = deg2rad($lat2 - $lat1);
-        $dLng = deg2rad($lng2 - $lng1);
-        $a = sin($dLat / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
-
-        return 2 * self::EARTH_RADIUS_M * asin(min(1.0, sqrt($a)));
+        return \Ytan\Service\GeometryService::distanceMeters($lat1, $lng1, $lat2, $lng2);
     }
 
     /** Distance to a segment on a local flat projection (fine for 200 m). */
@@ -146,6 +141,6 @@ final class CampsiteSurroundings
         $x = $ax + $t * $dx;
         $y = $ay + $t * $dy;
 
-        return deg2rad(sqrt($x * $x + $y * $y)) * self::EARTH_RADIUS_M;
+        return deg2rad(sqrt($x * $x + $y * $y)) * \Ytan\Service\GeometryService::EARTH_RADIUS_M;
     }
 }

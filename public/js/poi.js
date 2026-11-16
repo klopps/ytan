@@ -175,42 +175,19 @@ function poiDataSourceText(poi, field) {
  * Lade die öffentliches POIs aus der Datenbank
  */
 function getPublicPois() {
-    Ytan.get('/pois?scope=public').then(answer => {
-        log("getPublicPois()", LOG_INFO, answer);
-        pois = withPoiDataSources(answer);
-        setAllPois(pois);
-        putCachedCollection('pois', 'public', pois);
-    }).catch(err => {
-        log('getPublicPois() failed', LOG_ERROR, err);
-        getCachedCollection('pois', 'public').then(cached => {
-            if (cached) {
-                pois = cached.data;
-                setAllPois(pois);
-            }
-            notifyOfflineFallback('pois', cached ? cached.cachedAt : null);
-        });
-    });
+    loadCollection('pois', 'public', withPoiDataSources, applyPois, 'getPublicPois()');
 }
 
 /**
  * Lade die eigenen und öffentlichen POIs aus der Datenbank
  */
 function getPoisByUserId(userId) {
-    Ytan.get('/pois?scope=mine_public').then(answer => {
-        log("getPoisByUserId()", LOG_INFO, answer);
-        pois = withPoiDataSources(answer);
-        setAllPois(pois);
-        putCachedCollection('pois', 'mine_public', pois);
-    }).catch(err => {
-        log('getPoisByUserId() failed', LOG_ERROR, err);
-        getCachedCollection('pois', 'mine_public').then(cached => {
-            if (cached) {
-                pois = cached.data;
-                setAllPois(pois);
-            }
-            notifyOfflineFallback('pois', cached ? cached.cachedAt : null);
-        });
-    });
+    loadCollection('pois', 'mine_public', withPoiDataSources, applyPois, 'getPoisByUserId()');
+}
+
+function applyPois(data) {
+    pois = data;
+    setAllPois(pois);
 }
 
 /**

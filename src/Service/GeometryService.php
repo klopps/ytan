@@ -20,18 +20,26 @@ namespace Ytan\Service;
  */
 final class GeometryService
 {
-    private const EARTH_RADIUS_METERS = 6371000.0;
+    /**
+     * Mean earth radius (IUGG). The ONE radius of the app: until 2026-11-15
+     * eight private haversine copies used either this or 6371000 m.
+     */
+    public const EARTH_RADIUS_M = 6371008.8;
 
+    /** Great-circle distance in metres (haversine) - every distance in the app goes through here. */
+    public static function distanceMeters(float $lat1, float $lng1, float $lat2, float $lng2): float
+    {
+        $p1 = deg2rad($lat1);
+        $p2 = deg2rad($lat2);
+        $h = sin(($p2 - $p1) / 2) ** 2 + cos($p1) * cos($p2) * sin(deg2rad($lng2 - $lng1) / 2) ** 2;
+
+        return 2 * self::EARTH_RADIUS_M * asin(min(1.0, sqrt($h)));
+    }
+
+    /** distanceMeters() for two ['lat' => ..., 'lng' => ...] points. */
     public static function haversineDistanceMeters(array $a, array $b): float
     {
-        $lat1 = deg2rad((float) $a['lat']);
-        $lat2 = deg2rad((float) $b['lat']);
-        $dLat = deg2rad((float) $b['lat'] - (float) $a['lat']);
-        $dLng = deg2rad((float) $b['lng'] - (float) $a['lng']);
-
-        $h = sin($dLat / 2) ** 2 + cos($lat1) * cos($lat2) * sin($dLng / 2) ** 2;
-
-        return self::EARTH_RADIUS_METERS * 2 * atan2(sqrt($h), sqrt(1 - $h));
+        return self::distanceMeters((float) $a['lat'], (float) $a['lng'], (float) $b['lat'], (float) $b['lng']);
     }
 
     /**
@@ -110,7 +118,7 @@ final class GeometryService
         foreach ($points as $point) {
             $meanLat += (float) $point['lat'];
         }
-        $metersPerDegree = M_PI * self::EARTH_RADIUS_METERS / 180;
+        $metersPerDegree = M_PI * self::EARTH_RADIUS_M / 180;
         $kx = $metersPerDegree * cos(deg2rad($meanLat / $count));
         $x = [];
         $y = [];

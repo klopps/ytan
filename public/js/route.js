@@ -698,36 +698,27 @@ function getRoutesByUserId(userId) {
         getRoutesByTourId(activeTourModeId);
         return;
     }
-    Ytan.get('/routes?scope=mine_public').then(answer => {
-        deleteRoutes();
-        routes = answer.data;
-        log('getRoutesByUserId(' + userId + ')', LOG_INFO, answer);
-        for (let i = 0; i < routes.length; i++) {
-            routes[i].points = JSON.parse(routes[i].points);
-            routes[i].labels = [];
-        }
-        createRoutes(); // shows each route itself when settings.detailroutes is on
-        // Cached AFTER the points/labels normalization above - one shape
-        // everywhere, so the offline fallback below doesn't need its own
-        // separate parsing step.
-        putCachedCollection('routes', 'mine_public', routes);
-    }).catch(err => {
-        log('getRoutesByUserId() failed', LOG_ERROR, err);
-        getCachedCollection('routes', 'mine_public').then(cached => {
-            if (cached) {
-                deleteRoutes();
-                routes = cached.data;
-                // points is already a parsed array in the cached copy;
-                // labels is transient UI state, never persisted - reset
-                // fresh rather than trusting a stale cached value.
-                for (let i = 0; i < routes.length; i++) {
-                    routes[i].labels = [];
-                }
-                createRoutes();
-            }
-            notifyOfflineFallback('routes', cached ? cached.cachedAt : null);
-        });
-    });
+    loadCollection('routes', 'mine_public', normalizeRoutes, applyRoutes, 'getRoutesByUserId(' + userId + ')');
+}
+
+/** The API's routes with points parsed (also the cached shape). */
+function normalizeRoutes(answer) {
+    const list = answer.data;
+    for (let i = 0; i < list.length; i++) {
+        list[i].points = JSON.parse(list[i].points);
+        list[i].labels = [];
+    }
+    return list;
+}
+
+function applyRoutes(data) {
+    deleteRoutes();
+    routes = data;
+    // labels is transient UI state, never persisted - always start fresh
+    for (let i = 0; i < routes.length; i++) {
+        routes[i].labels = [];
+    }
+    createRoutes(); // shows each route itself when settings.detailroutes is on
 }
 
 /**
@@ -738,30 +729,7 @@ function getPublicRoutes() {
         getRoutesByTourId(activeTourModeId);
         return;
     }
-    Ytan.get('/routes?scope=public').then(answer => {
-        log('getPublicRoutes()', LOG_INFO, answer);
-        deleteRoutes();
-        routes = answer.data;
-        for (let i = 0; i < routes.length; i++) {
-            routes[i].points = JSON.parse(routes[i].points);
-            routes[i].labels = [];
-        }
-        createRoutes(); // shows each route itself when settings.detailroutes is on
-        putCachedCollection('routes', 'public', routes);
-    }).catch(err => {
-        log('getPublicRoutes() failed', LOG_ERROR, err);
-        getCachedCollection('routes', 'public').then(cached => {
-            if (cached) {
-                deleteRoutes();
-                routes = cached.data;
-                for (let i = 0; i < routes.length; i++) {
-                    routes[i].labels = [];
-                }
-                createRoutes();
-            }
-            notifyOfflineFallback('routes', cached ? cached.cachedAt : null);
-        });
-    });
+    loadCollection('routes', 'public', normalizeRoutes, applyRoutes, 'getPublicRoutes()');
 }
 
 /**
@@ -771,14 +739,8 @@ function getPublicRoutes() {
  */
 function getRoutesByTourId(tourId) {
     Ytan.get('/routes?tour_id=' + encodeURIComponent(tourId)).then(answer => {
-        deleteRoutes();
-        routes = answer.data;
         log('getRoutesByTourId(' + tourId + ')', LOG_INFO, answer);
-        for (let i = 0; i < routes.length; i++) {
-            routes[i].points = JSON.parse(routes[i].points);
-            routes[i].labels = [];
-        }
-        createRoutes(); // shows each route itself when settings.detailroutes is on
+        applyRoutes(normalizeRoutes(answer));
         if (settings.detailroutes) {
             fitToRouteBounds();
         }
@@ -1300,22 +1262,7 @@ function shareRoute(i) {
     closeContextMenu();
     var routeUrl = window.location.origin + window.location.pathname + '?route=' + routes[i].id;
 
-    if (typeof CapacitorBridge !== 'undefined' && CapacitorBridge.isAvailable()) {
-        CapacitorBridge.shareLink(routeUrl, 'YTAN', t('route.context.share_text', { name: routes[i].name }))
-            .then(() => log('shareRoute(' + i + ') - successfull', LOG_INFO))
-            .catch((error) => log('shareRoute(' + i + ') - error', LOG_ERROR, error));
-    } else if (navigator.share) {
-        navigator.share({
-            title: 'YTAN',
-            text: t('route.context.share_text', { name: routes[i].name }),
-            url: routeUrl,
-        })
-            .then(() => log('shareRoute(' + i + ') - successfull', LOG_INFO))
-            .catch((error) => log('shareRoute(' + i + ') - error', LOG_ERROR, error));
-    } else {
-        copyTextToClipboard(routeUrl);
-        showToast(t('map.link_copied'), 'success');
-    }
+    shareUrl(routeUrl, t('route.context.share_text', { name: routes[i].name }), 'shareRoute(' + i + ')');
 }
 
 function showRouteInfoWindow(event, i) {

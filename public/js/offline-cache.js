@@ -165,6 +165,39 @@ function notifyOfflineFallback(collection, cachedAt) {
     offlineNoticeTimer = setTimeout(flushOfflineNotices, OFFLINE_NOTICE_DEBOUNCE_MS);
 }
 
+/**
+ * Loads one collection (pois/routes/areas/tours) of one scope and hands it
+ * to the page: GET /{collection}?scope={scope}, normalize(answer) -> data,
+ * apply(data), then that NORMALIZED data goes into the offline cache (one
+ * shape everywhere, so the fallback needs no parsing of its own). When the
+ * request (or apply) fails, the cached copy is applied instead and the
+ * offline notice is queued. Until 2026-11-15 each of the eight loaders in
+ * poi.js/route.js/area.js/tour.js had its own copy of this.
+ *
+ * @param {string} collection 'pois' | 'routes' | 'areas' | 'tours'
+ * @param {string} scope 'public' | 'mine_public'
+ * @param {function(object): Array} normalize the API answer -> the array to keep
+ * @param {function(Array): void} apply puts the array into place (globals, map)
+ * @param {string} label for the log
+ * @returns {Promise<void>}
+ */
+function loadCollection(collection, scope, normalize, apply, label) {
+    return Ytan.get('/' + collection + '?scope=' + scope).then(answer => {
+        log(label, LOG_INFO, answer);
+        const data = normalize(answer);
+        apply(data);
+        putCachedCollection(collection, scope, data);
+    }).catch(err => {
+        log(label + ' failed', LOG_ERROR, err);
+        return getCachedCollection(collection, scope).then(cached => {
+            if (cached) {
+                apply(cached.data);
+            }
+            notifyOfflineFallback(collection, cached ? cached.cachedAt : null);
+        });
+    });
+}
+
 function flushOfflineNotices() {
     const notices = pendingOfflineNotices;
     pendingOfflineNotices = [];

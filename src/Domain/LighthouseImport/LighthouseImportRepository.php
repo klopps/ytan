@@ -59,12 +59,7 @@ final class LighthouseImportRepository
 
         $inserted = 0;
         $updated = 0;
-        // Already inside a transaction when a caller (a test) wrapped this in one.
-        $ownTransaction = !$this->db->inTransaction();
-        if ($ownTransaction) {
-            $this->db->beginTransaction();
-        }
-        try {
+        \Ytan\Database\Transaction::run($this->db, function () use ($entries, $stmt, $source, &$inserted, &$updated): void {
             foreach ($entries as $entry) {
                 $stmt->execute([
                     $source,
@@ -94,15 +89,7 @@ final class LighthouseImportRepository
                     $updated++;
                 }
             }
-            if ($ownTransaction) {
-                $this->db->commit();
-            }
-        } catch (\Throwable $e) {
-            if ($ownTransaction) {
-                $this->db->rollBack();
-            }
-            throw $e;
-        }
+        });
 
         return ['inserted' => $inserted, 'updated' => $updated];
     }

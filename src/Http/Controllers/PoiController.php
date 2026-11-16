@@ -7,14 +7,14 @@ namespace Ytan\Http\Controllers;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Ytan\Domain\Poi\PoiRepository;
-use Ytan\Exception\ForbiddenException;
 use Ytan\Exception\NotFoundException;
-use Ytan\Exception\ValidationException;
 use Ytan\Service\ImageStorageService;
 use Ytan\Service\Water\PoiWaterDistanceService;
 
 final class PoiController extends BaseController
 {
+    use EntityImageEndpoints;
+
     // Mirrored client-side by POI_PHOTO_MAX_COUNT (public/js/config.js) -
     // kept in sync manually, there being no shared config layer between PHP and JS.
     private const MAX_IMAGES_PER_POI = 5;
@@ -196,86 +196,25 @@ final class PoiController extends BaseController
         return $this->json($response, ['data' => ['id' => $id]]);
     }
 
-    public function uploadImage(Request $request, Response $response, array $args): Response
+    // Photos: upload/list/delete/show come from EntityImageEndpoints.
+    protected function imageRepository(): object
     {
-        $auth = $this->requireAuthUser($request);
-        $poiId = (int) $args['id'];
-        $poi = $this->pois->findById($poiId);
-        $this->assertOwnerOrAdmin($auth, (int) $poi['user_id']);
-
-        if ($this->pois->countImages($poiId) >= self::MAX_IMAGES_PER_POI) {
-            throw new ValidationException('This POI already has the maximum of ' . self::MAX_IMAGES_PER_POI . ' photos.');
-        }
-
-        $file = $request->getUploadedFiles()['image'] ?? null;
-        if ($file === null) {
-            throw new ValidationException('No image uploaded.');
-        }
-
-        $stored = $this->images->store($poiId, $file);
-        $images = $this->pois->addImage($poiId, $stored['filename'], $stored['mime_type'], $stored['size_bytes']);
-
-        return $this->json($response, ['data' => $images], 201);
+        return $this->pois;
     }
 
-    public function listImages(Request $request, Response $response, array $args): Response
+    protected function imageEntityLabel(): string
     {
-        $poiId = (int) $args['id'];
-        $poi = $this->pois->findById($poiId);
-        $this->assertCanViewImages($request, $poi);
-
-        return $this->json($response, ['data' => $this->pois->getImages($poiId)]);
+        return 'POI';
     }
 
-    public function deleteImage(Request $request, Response $response, array $args): Response
+    protected function maxImages(): int
     {
-        $auth = $this->requireAuthUser($request);
-        $poiId = (int) $args['id'];
-        $poi = $this->pois->findById($poiId);
-        $this->assertOwnerOrAdmin($auth, (int) $poi['user_id']);
-
-        $image = $this->pois->findImage($poiId, (int) $args['imageId']);
-        if ($image === null) {
-            throw new NotFoundException('Image not found.');
-        }
-
-        $this->images->delete($poiId, $image['filename']);
-        $this->pois->removeImage($poiId, (int) $args['imageId']);
-
-        return $this->json($response, ['data' => $this->pois->getImages($poiId)]);
+        return self::MAX_IMAGES_PER_POI;
     }
 
-    public function showImage(Request $request, Response $response, array $args): Response
+    protected function canViewEntity(Request $request, array $entity): bool
     {
-        $poiId = (int) $args['id'];
-        $poi = $this->pois->findById($poiId);
-        $this->assertCanViewImages($request, $poi);
-
-        $image = $this->pois->findImage($poiId, (int) $args['imageId']);
-        if ($image === null) {
-            throw new NotFoundException('Image not found.');
-        }
-
-        $file = $this->images->read($poiId, $image['filename']);
-        if ($file === null) {
-            throw new NotFoundException('Image not found.');
-        }
-
-        $response->getBody()->write($file['contents']);
-
-        return $response->withHeader('Content-Type', $image['mime_type']);
-    }
-
-    /**
-     * A public POI's photos are visible to anyone (incl. anonymous
-     * visitors); a private POI's photos only to its owner or an admin -
-     * same shape as TourController::showImage()'s $canView check.
-     */
-    private function assertCanViewImages(Request $request, array $poi): void
-    {
-        if (!$this->canView($request, $poi)) {
-            throw new ForbiddenException();
-        }
+        return $this->canView($request, $entity);
     }
 
     /** Public, own, or admin - show() and the photo endpoints. */

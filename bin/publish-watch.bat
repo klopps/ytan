@@ -31,20 +31,8 @@ if /i "%~1"=="test" (
     set "HOST_ARG=test"
 )
 
-if not defined DEPLOY_USER set "DEPLOY_USER=csteindorff"
-if not defined DEPLOY_HOST set "DEPLOY_HOST=steindorff.de"
-if not defined DEPLOY_PORT set "DEPLOY_PORT=22"
-if not defined DEPLOY_PATH set "DEPLOY_PATH=/home/www/doc/9769/%SITE%/www"
-if not defined DEPLOY_SSH_CLIENT set "DEPLOY_SSH_CLIENT=plink"
-if not defined DEPLOY_SSH_PASSWORD (
-    for /f "usebackq eol=# tokens=1,* delims==" %%A in ("%ROOT_DIR%\.env") do (
-        if "%%A"=="DEPLOY_SSH_PASSWORD" set "DEPLOY_SSH_PASSWORD=%%B"
-    )
-)
-if not defined DEPLOY_SSH_PASSWORD (
-    echo ==^> DEPLOY_SSH_PASSWORD is not set and not found in .env.
-    goto :error
-)
+call "%~dp0ssh-setup.bat"
+if errorlevel 1 goto :error
 if not defined LOCAL_PHP set "LOCAL_PHP=C:\dev\php8\php.exe"
 
 set "STAGE=%TEMP%\ytan-watch-%RANDOM%"
@@ -67,15 +55,17 @@ type "%STAGE%\index.json"
 
 set "TARGET=%DEPLOY_PATH%/public/app/watch"
 echo ==^> Uploading to https://%SITE%/app/watch/
-tar -cf - -C "%STAGE%" . | "%DEPLOY_SSH_CLIENT%" -ssh -P %DEPLOY_PORT% -l %DEPLOY_USER% -pw %DEPLOY_SSH_PASSWORD% %DEPLOY_HOST% "rm -rf '%TARGET%.tmp' '%TARGET%.old' && mkdir -p '%TARGET%.tmp' && tar -xf - -C '%TARGET%.tmp' && { [ ! -d '%TARGET%' ] || mv '%TARGET%' '%TARGET%.old'; } && mv '%TARGET%.tmp' '%TARGET%' && rm -rf '%TARGET%.old' && ls -l '%TARGET%'"
+tar -cf - -C "%STAGE%" . | "%DEPLOY_SSH_CLIENT%" %SSH_TARGET% "rm -rf '%TARGET%.tmp' '%TARGET%.old' && mkdir -p '%TARGET%.tmp' && tar -xf - -C '%TARGET%.tmp' && { [ ! -d '%TARGET%' ] || mv '%TARGET%' '%TARGET%.old'; } && mv '%TARGET%.tmp' '%TARGET%' && rm -rf '%TARGET%.old' && ls -l '%TARGET%'"
 if errorlevel 1 goto :error
 
 rmdir /s /q "%STAGE%"
 echo ==^> Published: https://%SITE%/app/watch/index.json
+call "%~dp0ssh-setup.bat" cleanup
 endlocal
 exit /b 0
 
 :error
+call "%~dp0ssh-setup.bat" cleanup
 if defined STAGE if exist "%STAGE%" rmdir /s /q "%STAGE%"
 echo ==^> Publishing the data fields FAILED.
 endlocal

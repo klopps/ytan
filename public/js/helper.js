@@ -583,6 +583,33 @@ function initUser() {
 }
 
 /**
+ * Fills the global `user` from a server answer - the login response's
+ * `user` (id in `id`) or GET /auth/me's `data` (id in `sub`, plus the
+ * pending e-mail change / account deletion) - and keeps it in
+ * sessionStorage. Until 2026-11-15 templates/app.php and user.js each
+ * copied these lines; a new right had to be added in both.
+ *
+ * @param {object} data
+ */
+function applyUserData(data) {
+    user.id = data.id !== undefined ? data.id : data.sub;
+    user.username = data.username;
+    user.email = data.email;
+    user.firstname = data.firstname;
+    user.lastname = data.lastname;
+    ['is_admin', 'tour_create', 'tour_publish', 'tour_manage', 'tour_copy', 'route_view_recording',
+        'export_routes_own', 'export_routes_public', 'ai_use'].forEach(right => {
+        user[right] = !!data[right];
+    });
+    if ('pending_email' in data) {
+        user.pending_email = data.pending_email;
+        user.pending_email_expires_at = data.pending_email_expires_at;
+        user.pending_account_deletion_expires_at = data.pending_account_deletion_expires_at || null;
+    }
+    sessionStorage.setItem('user', JSON.stringify(user));
+}
+
+/**
  * Triggers a browser "Save As"/download of an in-memory Blob (e.g. a PDF
  * fetched via Ytan.fetchBlob()). Inside the Capacitor Android shell, an
  * <a download> click is silently a no-op (the WebView has no download

@@ -11,6 +11,8 @@ use Ytan\Service\RadarTileService;
 
 final class RadarTileServiceTest extends TestCase
 {
+    use \Ytan\Tests\RemovesDirectories;
+
     private const FRAME = 'o202610170430';
 
     private string $dir;
@@ -44,6 +46,30 @@ final class RadarTileServiceTest extends TestCase
     public function testManifestIsReturnedAsArray(): void
     {
         $this->assertSame(8, $this->service->manifest()['zoom']['max']);
+    }
+
+    public function testControllerServesTheManifestBrieflyCached(): void
+    {
+        $response = (new \Ytan\Http\Controllers\RadarController($this->service))->manifest(
+            (new \Slim\Psr7\Factory\ServerRequestFactory())->createServerRequest('GET', '/api/v1/radar/manifest'),
+            (new \Slim\Psr7\Factory\ResponseFactory())->createResponse()
+        );
+
+        $this->assertSame('public, max-age=60', $response->getHeaderLine('Cache-Control'));
+        $this->assertSame(self::FRAME, json_decode((string) $response->getBody(), true)['data']['frames'][0]['id']);
+    }
+
+    public function testControllerServesATileImmutable(): void
+    {
+        $response = (new \Ytan\Http\Controllers\RadarController($this->service))->tile(
+            (new \Slim\Psr7\Factory\ServerRequestFactory())->createServerRequest('GET', '/api/v1/radar/tiles/x'),
+            (new \Slim\Psr7\Factory\ResponseFactory())->createResponse(),
+            ['frame' => self::FRAME, 'z' => '8', 'x' => '137', 'y' => '80']
+        );
+
+        $this->assertSame('image/png', $response->getHeaderLine('Content-Type'));
+        $this->assertStringContainsString('immutable', $response->getHeaderLine('Cache-Control'));
+        $this->assertStringStartsWith("\x89PNG", (string) $response->getBody());
     }
 
     public function testMissingManifestIs404(): void
@@ -134,18 +160,4 @@ final class RadarTileServiceTest extends TestCase
         return [$c['red'], $c['green'], $c['blue']];
     }
 
-    private function rmrf(string $dir): void
-    {
-        if (!is_dir($dir)) {
-            return;
-        }
-        foreach (scandir($dir) as $entry) {
-            if ($entry === '.' || $entry === '..') {
-                continue;
-            }
-            $path = $dir . '/' . $entry;
-            is_dir($path) ? $this->rmrf($path) : unlink($path);
-        }
-        rmdir($dir);
-    }
 }

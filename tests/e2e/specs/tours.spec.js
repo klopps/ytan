@@ -37,6 +37,9 @@ test.describe('Tours', () => {
     const tour = (await createResponse.json()).data;
 
     await page.locator(`[data-on-click="manageTourRoutes(${tour.id});"]`).click();
+    // the candidate list is paged - other specs' routes can push this one off
+    // page 1, so search for it the way a user with many routes would
+    await page.locator('#tourRouteSearchInput').fill('E2E Tour Candidate Route');
     await expect(page.locator(`[data-on-click="addRouteToTour(${route.id});"]`)).toBeVisible({ timeout: 10_000 });
     await page.locator(`[data-on-click="addRouteToTour(${route.id});"]`).click();
 

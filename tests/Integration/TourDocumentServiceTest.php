@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Ytan\Tests\Integration;
 
-use League\CommonMark\GithubFlavoredMarkdownConverter;
 use Ytan\Domain\Area\AreaRepository;
 use Ytan\Domain\Poi\PoiRepository;
 use Ytan\Domain\Route\RouteRepository;
@@ -12,7 +11,6 @@ use Ytan\Domain\Tour\TourRepository;
 use Ytan\Service\ImageStorageService;
 use Ytan\Service\StaticMapImageService;
 use Ytan\Service\TourDocumentService;
-use Ytan\Service\Translator;
 use Ytan\Tests\TestCase;
 
 /**
@@ -41,19 +39,14 @@ final class TourDocumentServiceTest extends TestCase
         $this->areas = new AreaRepository($this->pdo);
 
         $imageDir = sys_get_temp_dir() . '/ytan-tourdoc-test-' . uniqid();
-        $this->documents = new TourDocumentService(
-            $this->tours,
-            $this->routes,
-            $this->pois,
-            $this->areas,
-            new ImageStorageService($imageDir . '/poi'),
-            new ImageStorageService($imageDir . '/area'),
-            new StaticMapImageService($imageDir . '/maps', ''),
-            new GithubFlavoredMarkdownConverter(),
-            dirname(__DIR__, 2) . '/public/markers',
-            new Translator(dirname(__DIR__, 2) . '/resources/i18n', 'de'),
-            dirname(__DIR__, 2) . '/public/images/ytan-logo.png',
-            'https://example.com',
+        $this->documents = $this->tourDocuments(
+            tours: $this->tours,
+            poiImages: new ImageStorageService($imageDir . '/poi'),
+            areaImages: new ImageStorageService($imageDir . '/area'),
+            routes: $this->routes,
+            pois: $this->pois,
+            areas: $this->areas,
+            mapsDir: $imageDir . '/maps',
         );
     }
 

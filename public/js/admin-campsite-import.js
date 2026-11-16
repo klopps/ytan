@@ -16,12 +16,7 @@ var ciState = {
     filterTimer: null,
 };
 
-function ciEscape(value) {
-    var div = document.createElement('div');
-    div.textContent = value == null ? '' : String(value);
-    // Quotes too: the result also goes into attributes, and the data comes from outside.
-    return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-}
+// Escaping: helper.js's escapeHTML() (quotes too - results also go into attributes).
 
 function ciFilters() {
     var filters = {};
@@ -44,25 +39,25 @@ function ciLink(url) {
     if (!/^https?:\/\//i.test(url || '')) {
         return '';
     }
-    return '<a href="' + ciEscape(url) + '" target="_blank" rel="noopener noreferrer">' +
-        ciEscape(url.replace(/^https?:\/\/(www\.)?/i, '').replace(/\/$/, '').slice(0, 40)) + '</a>';
+    return '<a href="' + escapeHTML(url) + '" target="_blank" rel="noopener noreferrer">' +
+        escapeHTML(url.replace(/^https?:\/\/(www\.)?/i, '').replace(/\/$/, '').slice(0, 40)) + '</a>';
 }
 
 function ciMapLink(row) {
     var url = 'https://www.google.com/maps/search/?api=1&query=' + Number(row.latitude) + ',' + Number(row.longitude);
-    return '<a href="' + ciEscape(url) + '" target="_blank" rel="noopener noreferrer" class="small" title="' +
-        ciEscape(t('admin.shelter_import.show_on_map')) + '"><i class="bi bi-geo-alt"></i></a>';
+    return '<a href="' + escapeHTML(url) + '" target="_blank" rel="noopener noreferrer" class="small" title="' +
+        escapeHTML(t('admin.shelter_import.show_on_map')) + '"><i class="bi bi-geo-alt"></i></a>';
 }
 
 /** "Meer 120 m · Fluss 3400 m · See –" (– = farther than 100 km or outside the index), or "not computed". */
 function ciWaterText(row) {
     if (!row.water_checked_at) {
-        return '<span class="text-secondary">' + ciEscape(t('admin.shelter_import.water_unchecked')) + '</span>';
+        return '<span class="text-secondary">' + escapeHTML(t('admin.shelter_import.water_unchecked')) + '</span>';
     }
     return ['sea', 'river', 'lake'].map(function (kind) {
         var meters = row[kind + '_m'];
-        return '<span class="text-nowrap">' + ciEscape(t('admin.shelter_import.water_' + kind)) + ' ' +
-            ciEscape(meters === null ? '–' : t('admin.shelter_import.water_distance_value', { meters: meters })) + '</span>';
+        return '<span class="text-nowrap">' + escapeHTML(t('admin.shelter_import.water_' + kind)) + ' ' +
+            escapeHTML(meters === null ? '–' : t('admin.shelter_import.water_distance_value', { meters: meters })) + '</span>';
     }).join(' · ');
 }
 
@@ -73,7 +68,7 @@ function ciAllowedText(row) {
     }).map(function (flag) {
         return t('admin.campsite_import.flag_' + flag);
     });
-    return parts.length === 0 ? '<span class="text-secondary">–</span>' : ciEscape(parts.join(', '));
+    return parts.length === 0 ? '<span class="text-secondary">–</span>' : escapeHTML(parts.join(', '));
 }
 
 /** A campsite or tent-site POI within ~220 m: a possible duplicate (badge + its name). */
@@ -81,9 +76,9 @@ function ciNeighboursText(neighbours) {
     if (!neighbours || neighbours.length === 0) {
         return '';
     }
-    return '<span class="badge text-bg-warning">' + ciEscape(t('admin.shelter_import.duplicate_badge')) + '</span> ' +
+    return '<span class="badge text-bg-warning">' + escapeHTML(t('admin.shelter_import.duplicate_badge')) + '</span> ' +
         neighbours.map(function (n) {
-            return '<span class="small">' + ciEscape(t('admin.shelter_import.neighbour_poi', { id: n.id }) + (n.name ? ': ' + n.name : '')) + '</span>';
+            return '<span class="small">' + escapeHTML(t('admin.shelter_import.neighbour_poi', { id: n.id }) + (n.name ? ': ' + n.name : '')) + '</span>';
         }).join('<br>');
 }
 
@@ -104,7 +99,7 @@ async function ciLoadEntries() {
         ciRender();
     } catch (err) {
         document.getElementById('ciRows').innerHTML =
-            '<tr><td colspan="10" class="text-danger">' + ciEscape(t('admin.shelter_import.load_failed', { error: err.message })) + '</td></tr>';
+            '<tr><td colspan="10" class="text-danger">' + escapeHTML(t('admin.shelter_import.load_failed', { error: err.message })) + '</td></tr>';
     }
 }
 
@@ -128,32 +123,32 @@ function ciFillCountries(countries) {
         return;
     }
     var current = select.value;
-    select.innerHTML = '<option value="">' + ciEscape(t('admin.shelter_import.filter_all')) + '</option>' +
-        countries.map(function (code) { return '<option value="' + ciEscape(code) + '">' + ciEscape(code) + '</option>'; }).join('');
+    select.innerHTML = '<option value="">' + escapeHTML(t('admin.shelter_import.filter_all')) + '</option>' +
+        countries.map(function (code) { return '<option value="' + escapeHTML(code) + '">' + escapeHTML(code) + '</option>'; }).join('');
     select.value = current;
 }
 
 function ciRender() {
     var body = document.getElementById('ciRows');
     if (ciState.rows.length === 0) {
-        body.innerHTML = '<tr><td colspan="10" class="text-secondary">' + ciEscape(t('admin.campsite_import.no_results')) + '</td></tr>';
+        body.innerHTML = '<tr><td colspan="10" class="text-secondary">' + escapeHTML(t('admin.campsite_import.no_results')) + '</td></tr>';
     } else {
         body.innerHTML = ciState.rows.map(function (row) {
             var imported = row.poi_id !== null;
             return '<tr>' +
                 '<td><input type="checkbox" class="form-check-input ciRowCheckbox" data-id="' + row.id + '"' +
                     (imported ? ' disabled' : '') + (ciState.selected.has(Number(row.id)) ? ' checked' : '') + '></td>' +
-                '<td>' + ciEscape(row.name) + ' ' + ciMapLink(row) + '</td>' +
-                '<td class="small text-nowrap">' + ciEscape(ciCategoryName(row.category)) + '</td>' +
-                '<td class="small">' + ciEscape(row.place) + '</td>' +
-                '<td class="small">' + ciEscape(row.country) + '</td>' +
+                '<td>' + escapeHTML(row.name) + ' ' + ciMapLink(row) + '</td>' +
+                '<td class="small text-nowrap">' + escapeHTML(ciCategoryName(row.category)) + '</td>' +
+                '<td class="small">' + escapeHTML(row.place) + '</td>' +
+                '<td class="small">' + escapeHTML(row.country) + '</td>' +
                 '<td class="small">' + ciWaterText(row) + '</td>' +
                 '<td class="small">' + ciAllowedText(row) + '</td>' +
                 '<td class="small">' + ciLink(row.website) + '</td>' +
                 '<td>' + ciNeighboursText(row.neighbours) + '</td>' +
                 '<td>' + (imported
-                    ? '<span class="badge text-bg-success">' + ciEscape(t('admin.lighthouse_import.status_imported')) + '</span>'
-                    : '<span class="badge text-bg-secondary">' + ciEscape(t('admin.lighthouse_import.status_open')) + '</span>') + '</td>' +
+                    ? '<span class="badge text-bg-success">' + escapeHTML(t('admin.lighthouse_import.status_imported')) + '</span>'
+                    : '<span class="badge text-bg-secondary">' + escapeHTML(t('admin.lighthouse_import.status_open')) + '</span>') + '</td>' +
             '</tr>';
         }).join('');
     }
@@ -161,7 +156,7 @@ function ciRender() {
     var totalPages = Math.max(1, Math.ceil(ciState.total / ciState.pageSize));
     document.getElementById('ciPagination').innerHTML =
         '<button type="button" class="btn btn-sm btn-outline-secondary" id="ciPrev"' + (ciState.page <= 1 ? ' disabled' : '') + '><i class="bi bi-chevron-left"></i></button>' +
-        '<span class="small text-secondary">' + ciEscape(ciState.total === 0 ? t('admin.shelter_import.zero_results') : t('common.page_of', { page: ciState.page, total: totalPages }) + ' (' + ciState.total + ')') + '</span>' +
+        '<span class="small text-secondary">' + escapeHTML(ciState.total === 0 ? t('admin.shelter_import.zero_results') : t('common.page_of', { page: ciState.page, total: totalPages }) + ' (' + ciState.total + ')') + '</span>' +
         '<button type="button" class="btn btn-sm btn-outline-secondary" id="ciNext"' + (ciState.page >= totalPages ? ' disabled' : '') + '><i class="bi bi-chevron-right"></i></button>';
 
     ciUpdateSelectionUi();
@@ -230,7 +225,7 @@ async function ciImport() {
 
 /** The load button's normal content. */
 function ciOsmIdleHtml() {
-    return '<i class="bi bi-cloud-download"></i> ' + ciEscape(t('admin.campsite_import.osm_load'));
+    return '<i class="bi bi-cloud-download"></i> ' + escapeHTML(t('admin.campsite_import.osm_load'));
 }
 
 /**

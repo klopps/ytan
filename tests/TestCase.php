@@ -5,8 +5,17 @@ declare(strict_types=1);
 namespace Ytan\Tests;
 
 use PDO;
+use League\CommonMark\GithubFlavoredMarkdownConverter;
 use PHPUnit\Framework\TestCase as BaseTestCase;
 use Ytan\Database\Connection;
+use Ytan\Domain\Area\AreaRepository;
+use Ytan\Domain\Poi\PoiRepository;
+use Ytan\Domain\Route\RouteRepository;
+use Ytan\Domain\Tour\TourRepository;
+use Ytan\Service\ImageStorageService;
+use Ytan\Service\StaticMapImageService;
+use Ytan\Service\TourDocumentService;
+use Ytan\Service\Translator;
 
 /**
  * Base class for tests that touch the database (tests/Integration/*).
@@ -162,5 +171,39 @@ abstract class TestCase extends BaseTestCase
             'export_routes_public' => false,
             'ai_use' => false,
         ], $overrides);
+    }
+
+    /**
+     * A TourDocumentService wired like App.php's, with whatever a test needs
+     * of its own passed in (named arguments) and fresh repositories / a temp
+     * map cache for the rest. Used to be the same 12-argument constructor
+     * call copied into five test classes.
+     */
+    protected function tourDocuments(
+        ?TourRepository $tours = null,
+        ?ImageStorageService $poiImages = null,
+        ?ImageStorageService $areaImages = null,
+        ?RouteRepository $routes = null,
+        ?PoiRepository $pois = null,
+        ?AreaRepository $areas = null,
+        ?string $mapsDir = null,
+    ): TourDocumentService {
+        $root = dirname(__DIR__);
+        $images = $poiImages ?? new ImageStorageService(sys_get_temp_dir() . '/ytan-test-images');
+
+        return new TourDocumentService(
+            $tours ?? new TourRepository($this->pdo),
+            $routes ?? new RouteRepository($this->pdo),
+            $pois ?? new PoiRepository($this->pdo),
+            $areas ?? new AreaRepository($this->pdo),
+            $images,
+            $areaImages ?? $images,
+            new StaticMapImageService($mapsDir ?? sys_get_temp_dir() . '/ytan-test-maps', ''),
+            new GithubFlavoredMarkdownConverter(),
+            $root . '/public/markers',
+            new Translator($root . '/resources/i18n', 'de'),
+            $root . '/public/images/ytan-logo.png',
+            'https://example.com',
+        );
     }
 }

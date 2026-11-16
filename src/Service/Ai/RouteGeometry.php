@@ -11,7 +11,6 @@ namespace Ytan\Service\Ai;
  */
 final class RouteGeometry
 {
-    private const EARTH_RADIUS = 6371008.8;
     private const METERS_PER_DEGREE = 111320.0;
 
     /** @var list<array{0: float, 1: float}> */
@@ -54,11 +53,7 @@ final class RouteGeometry
     /** @param array{0: float, 1: float} $a @param array{0: float, 1: float} $b */
     public static function distance(array $a, array $b): float
     {
-        $p1 = deg2rad($a[0]);
-        $p2 = deg2rad($b[0]);
-        $h = sin(($p2 - $p1) / 2) ** 2 + cos($p1) * cos($p2) * sin(deg2rad($b[1] - $a[1]) / 2) ** 2;
-
-        return 2 * self::EARTH_RADIUS * asin(min(1.0, sqrt($h)));
+        return \Ytan\Service\GeometryService::distanceMeters($a[0], $a[1], $b[0], $b[1]);
     }
 
     /** Initial course from $a to $b in degrees (0 = north, 90 = east). */

@@ -120,11 +120,7 @@ final class AccountDeletionService
             }
         }
 
-        $ownTransaction = !$this->db->inTransaction();
-        if ($ownTransaction) {
-            $this->db->beginTransaction();
-        }
-        try {
+        \Ytan\Database\Transaction::run($this->db, function () use ($userId, $successor): void {
             // Tours of OTHER owners (or the user's public ones) that lose a deleted private route.
             $stmt = $this->db->prepare(
                 'SELECT DISTINCT tr.tour_id FROM tour_route tr
@@ -154,15 +150,7 @@ final class AccountDeletionService
             foreach ($affectedTours as $tourId) {
                 $this->tours->recalculateTotalLength($tourId);
             }
-            if ($ownTransaction) {
-                $this->db->commit();
-            }
-        } catch (\Throwable $e) {
-            if ($ownTransaction) {
-                $this->db->rollBack();
-            }
-            throw $e;
-        }
+        });
 
         foreach ($files as [$entity, $entityId, $filename]) {
             if (isset($this->imageStores[$entity])) {

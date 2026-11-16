@@ -20,6 +20,8 @@ use Ytan\Service\RadarJobRunner;
  */
 final class JobPlacementTest extends ControllerTestCase
 {
+    use \Ytan\Tests\RemovesDirectories;
+
     private string $root;
     private SettingsRepository $settings;
 
@@ -38,19 +40,6 @@ final class JobPlacementTest extends ControllerTestCase
         parent::tearDown();
     }
 
-    private function rmrf(string $path): void
-    {
-        if (is_dir($path)) {
-            foreach (scandir($path) as $f) {
-                if ($f !== '.' && $f !== '..') {
-                    $this->rmrf($path . '/' . $f);
-                }
-            }
-            rmdir($path);
-        } elseif (file_exists($path)) {
-            unlink($path);
-        }
-    }
 
     private function admin(): array
     {

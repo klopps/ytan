@@ -1,4 +1,4 @@
-const { test, expect, settleMapAt } = require('../fixtures');
+const { test, expect, settleMapAt, setZoomAndWaitIdle } = require('../fixtures');
 
 /**
  * Rain radar (radar.js) at fractional zoom levels. After a pinch Google draws
@@ -37,8 +37,7 @@ test.describe('Rain radar geometry', () => {
     await page.waitForFunction(() => typeof radarOverlay !== 'undefined' && radarOverlay && radarOverlay.getProjection(), null, { timeout: 15_000 });
 
     for (const zoom of [7, 6.63, 7.5, 8.4]) {
-      await page.evaluate((z) => map.setZoom(z), zoom);
-      await page.waitForTimeout(1500);
+      await setZoomAndWaitIdle(page, zoom);
       const r = await page.evaluate(() => {
         const projection = radarOverlay.getProjection();
         const a = projection.fromLatLngToDivPixel(new google.maps.LatLng(0, 0));

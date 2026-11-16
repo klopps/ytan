@@ -8,16 +8,13 @@ Aus Phase B des Code Checks (done.md „Code Check: Performance (Phase B)“) zu
 - **6 Listener-Closures je Route** (`route.js` `createRoute`): bei ~120 Routen unkritisch, bleibt.
 - **Grundschema einchecken**: `poi`, `route`, `area`, `tour`, `user` liegen nicht als Migration im Repo (ab 005). Ein `schema.sql` aus dem Prod-Stand würde neue Testsysteme ohne Klon der Dev-DB ermöglichen.
 
-## Code Check: Duplikate zusammenführen
+## Code Check: Duplikate - Reste
 
-- **Backend**: ~20 Template-Closures in `App.php` (ein `render()`), `App::create()` (911 Zeilen) in Container- und Routen-Dateien teilen; Bild-Endpunkte 4× in Poi/Area/Route/Tour-Controller und -Repository; Staging-Import-Familie 4× (Controller, Repository, `*ImportFile`, `*OsmImportService`); sechs Curl-Clients mit eigenem User-Agent und Fehlerverhalten (Guzzle ist schon Abhängigkeit); Haversine 8× mit zwei Erdradien (6371000/6371008,8) - überall `GeometryService`; die Transaktionsblöcke in Merge/Split/GpxImport/AccountDeletion/LighthouseDuplicate auf `Database\Transaction::run()` umstellen; Business-Logik aus `RouteMergeController`/`RouteSplitController`/`GpxImportController` in Services.
-- **Frontend**: 7 fast gleiche Collection-Loader (POI/Route/Area/Tour, je public/eigene + Offline-Fallback) → `loadCollection()`; Benutzerobjekt an zwei Stellen befüllt (`app.php`, `user.js`) → `applyUserData()`; drei Share-Funktionen → `shareUrl()`; Panel-Öffnen/Schließen-Paare; 8 Escape-Helfer in den Admin-Skripten → `admin-common.js`; Routen-Label-HTML mit Inline-Farben (`route.js`, `map-core.js`).
-- **Jobs/Skripte**: Lock, Status-Lebenszyklus, atomares JSON-Schreiben, `directory_size` in Radar/Wind/`ytan_jobs.py` → ein `tools/ytanjob.py`; Regionen-Parsing doppelt (Wind importiert `ytanradar` per `sys.path`); Deploy-Excludes in einer Datei (`tar -X`), ein `deploy.bat [test]`, `deploy.sh` reparieren (`DEPLOY_PATH` ohne führenden `/`, ~12 Excludes fehlen) oder löschen; SSH-Einrichtung 5× kopiert. Sicherheit: `plink -pw` zeigt das Passwort in der Prozessliste, besser Schlüssel (pageant).
-
-## Code Check: CSS und Tests
-
-- **CSS** (`style.css`): tote Selektoren (`.pesrBtn*`-Sprite-Block, `.admin-filter-*`, `.nav-select-wrap`, `.tour-detail-back`, …), doppelte Blöcke (`#editAreaDescription` 3×, `#mapSearchClose`, …), Farbliterale statt `--color-*` (Zeilen ~2479, 4265, 5178, 1684).
-- **Tests**: 10 feste `waitForTimeout` in e2e (~9 s: area, radar, route-animation, weather-menu, wind) durch `expect.poll`/Locator-Waits ersetzen; ungetestet: `WaterIndex` (Binärformat gegen `water_index.py`), `LighthouseTableParser`, `CampsiteSurroundings`, `WsiRenderer`, `NgaLightText`, `RadarController`, `WsiController`, Radar `verify()`/`cleanup()`; doppelte Test-Helfer (`rmrf` 8×, `TourDocumentService`-Setup 5×) → Trait/Factory in `TestCase`.
+Aus Phase C des Code Checks (done.md „Code Check: Duplikate, CSS und Tests (Phase C)“) zurückgestellt, jeweils mit Grund:
+- **Staging-Import-Familie** (Shelter/Camping/Vereine/Leuchtfeuer: Controller, Repository, `*ImportFile`, `*OsmImportService`): gemeinsam ist nur das Gerüst (Transferformat, Version, Eintragsgrenze, Upsert-Zählung); Felder, Längen, Prüfungen und Filter sind je Quelle verschieden. Eine Basisklasse hieße alle vier Admin-Werkzeuge umbauen und neu testen, für wenig gesparten Code. Sinnvoll erst, wenn ein fünftes Import-Werkzeug kommt.
+- **Logik aus `RouteMergeController`/`RouteSplitController`/`GpxImportController` in Services**: funktioniert und ist getestet; ein Umzug brächte nur Struktur. Beim nächsten größeren Eingriff dort mitmachen. Ihre Transaktionsblöcke (und der in `LighthouseDuplicateService`) bleiben explizit: sie setzen viele Variablen für danach und räumen kopierte Fotos im Fehlerfall auf - als `Transaction::run()`-Closure bräuchten sie 5-8 Referenzen.
+- **Panel-Öffnen/Schließen-Paare und Routen-Label-HTML mit Inline-Farben** (`route.js`, `map-core.js`): kleine, verteilte Stellen mit je eigenem Verhalten; Gewinn gering.
+- **Lokale Admin-Seiten mit Login nicht im Browser geprüft**: Die Escape-Umstellung der Admin-Skripte (`escapeHTML()` statt 8 Kopien) ist ein reiner Namenswechsel auf eine gleich arbeitende Funktion; geprüft wurde Laden ohne Fehler. Beim nächsten Admin-Test die Listen der Import-Werkzeuge einmal ansehen.
 
 ## Routencheck: Tidegewässer und Strömung aus Messdaten
 

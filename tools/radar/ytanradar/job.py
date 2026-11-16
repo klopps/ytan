@@ -34,6 +34,7 @@ from .mercator import TileGrid
 from . import reproject
 from .reproject import Reprojector, smooth_for_display
 from .tiles import write_pyramid
+from ytanjob import directory_size, write_json_atomic  # tools/ytanjob.py (path set in __init__.py)
 
 log = logging.getLogger("ytanradar")
 
@@ -156,16 +157,6 @@ def publish_frame(frames_dir: str, grid: TileGrid, rp: Reprojector, frame_id: st
     return frame_id, False, 0, 0, "rename failed"
 
 
-def directory_size(path: str) -> int:
-    """Bytes of all files below path."""
-    total = 0
-    for root, _, names in os.walk(path):
-        for name in names:
-            try:
-                total += os.path.getsize(os.path.join(root, name))
-            except OSError:
-                pass  # deleted meanwhile
-    return total
 
 
 def is_published(frames_dir: str, frame_id: str, signature: str | None = None) -> bool:
@@ -557,10 +548,7 @@ class Job:
         self._write_status_file(status)
 
     def _write_status_file(self, status: dict) -> None:
-        tmp = self.status_path() + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(status, f, indent=1)
-        os.replace(tmp, self.status_path())
+        write_json_atomic(self.status_path(), status, indent=1)
 
     # -- manifest, cleanup, verification ----------------------------------
 
@@ -575,10 +563,7 @@ class Job:
             return None
 
     def write_manifest(self, manifest: dict) -> None:
-        tmp = self.manifest_path() + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(manifest, f, separators=(",", ":"))
-        os.replace(tmp, self.manifest_path())
+        write_json_atomic(self.manifest_path(), manifest, separators=(",", ":"))
 
     def drop_all_frames(self) -> None:
         """Delete every frame and the manifest (regions changed). Clients get

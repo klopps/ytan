@@ -42,6 +42,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, ".."))
 sys.path.insert(0, HERE)
 import ytanlog  # noqa: E402
+from ytanjob import Lock, write_json_atomic  # noqa: E402  (shared by all jobs)
 
 log = logging.getLogger("ytanjobs")
 
@@ -79,28 +80,6 @@ TIMEOUT_EXIT = 124  # like coreutils' timeout(1)
 JOBS_STATUS = "jobs-status.json"  # last runs of the jobs without a status.json of their own (php=True)
 
 
-class Lock:
-    """Non-blocking exclusive lock (same mechanism as the single jobs')."""
-
-    def __init__(self, path: str):
-        self.path = path
-        self.f = None
-
-    def __enter__(self) -> bool:
-        self.f = open(self.path, "a+")
-        try:
-            if os.name == "nt":
-                import msvcrt
-                msvcrt.locking(self.f.fileno(), msvcrt.LK_NBLCK, 1)
-            else:
-                import fcntl
-                fcntl.flock(self.f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except OSError:
-            return False
-        return True
-
-    def __exit__(self, *exc) -> None:
-        self.f.close()
 
 
 def slot_of(t: datetime, slot_minutes: int) -> int:
@@ -140,9 +119,7 @@ def write_php_status(storage_root: str, spec: JobSpec, started: datetime, ended:
     data[spec.name] = {"last_run": {"start": started.strftime("%Y-%m-%dT%H:%M:%SZ"), "end": ended.strftime("%Y-%m-%dT%H:%M:%SZ"),
                                     "outcome": "processed" if code == 0 else "failed", "exit_code": code, "script": spec.script.replace(os.sep, "/")}}
     try:
-        with open(path + ".tmp", "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=1)
-        os.replace(path + ".tmp", path)
+        write_json_atomic(path, data, indent=1)
     except OSError as e:
         log.warning("could not write %s: %s", JOBS_STATUS, e)
 
@@ -258,10 +235,7 @@ def _read_json(path: str) -> dict | None:
 
 
 def _write_json(path: str, data: dict) -> None:
-    tmp = path + ".%d.tmp" % os.getpid()
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
-    os.replace(tmp, path)
+    write_json_atomic(path, data, ensure_ascii=False, separators=(",", ":"))
 
 
 def _spawn_detached(command: list[str], console_log: str) -> None:
@@ -318,9 +292,7 @@ def write_heartbeat(storage_root: str, now: datetime) -> None:
     AdminHealthService) - jobs.log only gets a line when something is worth logging."""
     path = os.path.join(storage_root, HEARTBEAT)
     try:
-        with open(path + ".tmp", "w", encoding="utf-8") as f:
-            json.dump({"tick": now.strftime("%Y-%m-%dT%H:%M:%SZ"), "pid": os.getpid()}, f)
-        os.replace(path + ".tmp", path)
+        write_json_atomic(path, {"tick": now.strftime("%Y-%m-%dT%H:%M:%SZ"), "pid": os.getpid()})
     except OSError as e:
         log.warning("could not write %s: %s", HEARTBEAT, e)
 

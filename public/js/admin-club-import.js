@@ -16,12 +16,7 @@ var ciState = {
     filterTimer: null,
 };
 
-function ciEscape(value) {
-    var div = document.createElement('div');
-    div.textContent = value == null ? '' : String(value);
-    // Quotes too: the result also goes into attributes, and the data comes from outside (OpenStreetMap).
-    return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-}
+// Escaping: helper.js's escapeHTML() (quotes too - results also go into attributes).
 
 function ciFilters() {
     var filters = {};
@@ -44,7 +39,7 @@ function ciWebsiteLink(url) {
     if (!/^https?:\/\//i.test(url || '')) {
         return '';
     }
-    return '<a href="' + ciEscape(url) + '" target="_blank" rel="noopener noreferrer">' + ciEscape(url.replace(/^https?:\/\/(www\.)?/i, '').replace(/\/$/, '')) + '</a>';
+    return '<a href="' + escapeHTML(url) + '" target="_blank" rel="noopener noreferrer">' + escapeHTML(url.replace(/^https?:\/\/(www\.)?/i, '').replace(/\/$/, '')) + '</a>';
 }
 
 async function ciLoadEntries() {
@@ -60,7 +55,7 @@ async function ciLoadEntries() {
         ciRender();
     } catch (err) {
         document.getElementById('ciRows').innerHTML =
-            '<tr><td colspan="7" class="text-danger">' + ciEscape(t('admin.club_import.load_failed', { error: err.message })) + '</td></tr>';
+            '<tr><td colspan="7" class="text-danger">' + escapeHTML(t('admin.club_import.load_failed', { error: err.message })) + '</td></tr>';
     }
 }
 
@@ -71,8 +66,8 @@ function ciFillCountries(countries) {
         return;
     }
     var current = select.value;
-    select.innerHTML = '<option value="">' + ciEscape(t('admin.club_import.filter_all')) + '</option>' +
-        countries.map(function (code) { return '<option value="' + ciEscape(code) + '">' + ciEscape(code) + '</option>'; }).join('');
+    select.innerHTML = '<option value="">' + escapeHTML(t('admin.club_import.filter_all')) + '</option>' +
+        countries.map(function (code) { return '<option value="' + escapeHTML(code) + '">' + escapeHTML(code) + '</option>'; }).join('');
     select.value = current;
 }
 
@@ -83,21 +78,21 @@ function ciKindName(kind) {
 function ciRender() {
     var body = document.getElementById('ciRows');
     if (ciState.rows.length === 0) {
-        body.innerHTML = '<tr><td colspan="7" class="text-secondary">' + ciEscape(t('admin.club_import.no_results')) + '</td></tr>';
+        body.innerHTML = '<tr><td colspan="7" class="text-secondary">' + escapeHTML(t('admin.club_import.no_results')) + '</td></tr>';
     } else {
         body.innerHTML = ciState.rows.map(function (row) {
             var imported = row.poi_id !== null;
             return '<tr>' +
                 '<td><input type="checkbox" class="form-check-input ciRowCheckbox" data-id="' + row.id + '"' +
                     (imported ? ' disabled' : '') + (ciState.selected.has(Number(row.id)) ? ' checked' : '') + '></td>' +
-                '<td>' + ciEscape(row.name) + '</td>' +
-                '<td class="small text-nowrap">' + ciEscape(ciKindName(row.kind)) + '</td>' +
-                '<td class="small">' + ciEscape(row.country) + '</td>' +
-                '<td class="small">' + ciEscape(row.city) + '</td>' +
+                '<td>' + escapeHTML(row.name) + '</td>' +
+                '<td class="small text-nowrap">' + escapeHTML(ciKindName(row.kind)) + '</td>' +
+                '<td class="small">' + escapeHTML(row.country) + '</td>' +
+                '<td class="small">' + escapeHTML(row.city) + '</td>' +
                 '<td class="small">' + ciWebsiteLink(row.website) + '</td>' +
                 '<td>' + (imported
-                    ? '<span class="badge text-bg-success">' + ciEscape(t('admin.lighthouse_import.status_imported')) + '</span>'
-                    : '<span class="badge text-bg-secondary">' + ciEscape(t('admin.lighthouse_import.status_open')) + '</span>') + '</td>' +
+                    ? '<span class="badge text-bg-success">' + escapeHTML(t('admin.lighthouse_import.status_imported')) + '</span>'
+                    : '<span class="badge text-bg-secondary">' + escapeHTML(t('admin.lighthouse_import.status_open')) + '</span>') + '</td>' +
             '</tr>';
         }).join('');
     }
@@ -105,7 +100,7 @@ function ciRender() {
     var totalPages = Math.max(1, Math.ceil(ciState.total / ciState.pageSize));
     document.getElementById('ciPagination').innerHTML =
         '<button type="button" class="btn btn-sm btn-outline-secondary" id="ciPrev"' + (ciState.page <= 1 ? ' disabled' : '') + '><i class="bi bi-chevron-left"></i></button>' +
-        '<span class="small text-secondary">' + ciEscape(ciState.total === 0 ? t('admin.club_import.zero_results') : t('common.page_of', { page: ciState.page, total: totalPages }) + ' (' + ciState.total + ')') + '</span>' +
+        '<span class="small text-secondary">' + escapeHTML(ciState.total === 0 ? t('admin.club_import.zero_results') : t('common.page_of', { page: ciState.page, total: totalPages }) + ' (' + ciState.total + ')') + '</span>' +
         '<button type="button" class="btn btn-sm btn-outline-secondary" id="ciNext"' + (ciState.page >= totalPages ? ' disabled' : '') + '><i class="bi bi-chevron-right"></i></button>';
 
     ciUpdateSelectionUi();
@@ -170,7 +165,7 @@ async function ciImport() {
 
 /** The load button's normal content. */
 function ciOsmIdleHtml() {
-    return '<i class="bi bi-cloud-download"></i> ' + ciEscape(t('admin.club_import.osm_load'));
+    return '<i class="bi bi-cloud-download"></i> ' + escapeHTML(t('admin.club_import.osm_load'));
 }
 
 /**

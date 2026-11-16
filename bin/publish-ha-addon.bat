@@ -22,7 +22,7 @@ net use "%SHARE%" "%HA_SAMBA_PASSWORD%" /user:%HA_SAMBA_USER% >nul || (echo Cann
 echo ==^> Copying the add-on to %TARGET%
 robocopy "%ROOT_DIR%\ha-addon\ytan-worker" "%TARGET%" /MIR /XD tools /NFL /NDL /NJH /NJS /NP >nul
 if errorlevel 8 goto copyfail
-robocopy "%ROOT_DIR%\tools" "%TARGET%\tools" ytan_jobs.py ytan_worker.py ytanlog.py requirements.txt /NFL /NDL /NJH /NJS /NP >nul
+robocopy "%ROOT_DIR%\tools" "%TARGET%\tools" ytan_jobs.py ytan_worker.py ytanlog.py ytanjob.py requirements.txt /NFL /NDL /NJH /NJS /NP >nul
 if errorlevel 8 goto copyfail
 robocopy "%ROOT_DIR%\tools\radar" "%TARGET%\tools\radar" /MIR /XD .venv tests __pycache__ /XF *.pyc /NFL /NDL /NJH /NJS /NP >nul
 if errorlevel 8 goto copyfail

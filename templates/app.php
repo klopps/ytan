@@ -743,25 +743,7 @@
 
       if (Ytan.isLoggedIn()) {
         Ytan.get('/auth/me').then(answer => {
-          user.id = answer.data.sub;
-          user.username = answer.data.username;
-          user.email = answer.data.email;
-          user.firstname = answer.data.firstname;
-          user.lastname = answer.data.lastname;
-          user.is_admin = !!answer.data.is_admin;
-          user.tour_create = !!answer.data.tour_create;
-          user.tour_publish = !!answer.data.tour_publish;
-          user.tour_manage = !!answer.data.tour_manage;
-          user.tour_copy = !!answer.data.tour_copy;
-          user.route_view_recording = !!answer.data.route_view_recording;
-          user.export_routes_own = !!answer.data.export_routes_own;
-          user.export_routes_public = !!answer.data.export_routes_public;
-          user.ai_use = !!answer.data.ai_use;
-          user.pending_email = answer.data.pending_email;
-          user.pending_email_expires_at = answer.data.pending_email_expires_at;
-          user.pending_account_deletion_expires_at = answer.data.pending_account_deletion_expires_at || null;
-
-          sessionStorage.setItem('user', JSON.stringify(user));
+          applyUserData(answer.data);
           updateProfileRowLabel();
           updateAdminMenuVisibility();
           updatePendingChangesMenuVisibility();

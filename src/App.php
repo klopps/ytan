@@ -8,6 +8,7 @@ use Dotenv\Dotenv;
 use League\CommonMark\GithubFlavoredMarkdownConverter;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
+use PDO;
 use Slim\App as SlimApp;
 use Slim\Factory\AppFactory;
 use Throwable;
@@ -128,11 +129,75 @@ final class App
             $appUrl
         );
 
-        // Everything below is built on demand (LazyContainer): a request only
-        // creates the controller of its route and what that needs. Shared
-        // pieces are registered by class name, the per-entity image stores
-        // by 'images.<entity>'.
         $c = new LazyContainer();
+        self::registerServices($c, $rootDir, $pdo, $translator, $locale, $appName, $appUrl, $jwtKey, $userRepository, $mailService, $authService);
+
+        // Route callables [SomeController::class, 'method'] are resolved
+        // through $c, i.e. only for the route that matched.
+        AppFactory::setContainer($c);
+        $app = AppFactory::create();
+
+        // When the app isn't served from the web root (e.g. Apache/XAMPP
+        // serving this whole project as http://localhost/ytan/public/
+        // instead of a vhost whose document root IS public/), routes like
+        // "/" or "/api/v1/..." need the request's subdirectory prefix
+        // stripped before Slim tries to match them against it.
+        $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
+        $baseUrl = ($scriptDir === '' || $scriptDir === '/') ? '' : $scriptDir;
+        if ($baseUrl !== '') {
+            $app->setBasePath($baseUrl);
+        }
+
+        $app->addBodyParsingMiddleware();
+        // No cross-origin access unless .env lists origins (the app itself is same-origin).
+        $app->add(new CorsMiddleware($_ENV['ALLOWED_ORIGINS'] ?? ''));
+        $app->add(new AppVersionMiddleware((int) ($_ENV['MIN_APP_VERSION_CODE'] ?? 0)));
+        $app->add(new AuthMiddleware($authService));
+        $app->add(new ContentSecurityPolicyMiddleware($baseUrl));
+        // Inside compression: the tag is taken from the uncompressed body, a 304 is never zipped.
+        $app->add(new \Ytan\Http\Middleware\ETagMiddleware());
+        // Added after (= runs around) the middlewares above, so it compresses their final body.
+        $app->add(new CompressionMiddleware());
+        $app->addRoutingMiddleware();
+
+        $displayErrors = ($_ENV['APP_DEBUG'] ?? 'false') === 'true';
+        $errorMiddleware = $app->addErrorMiddleware($displayErrors, true, true);
+        $errorMiddleware->setDefaultErrorHandler(
+            function (Request $request, Throwable $exception) use ($app, $displayErrors) {
+                [$status, $payload] = self::errorPayload($exception, $displayErrors);
+
+                $response = $app->getResponseFactory()->createResponse($status);
+                $response->getBody()->write(json_encode($payload));
+
+                return $response->withHeader('Content-Type', 'application/json');
+            }
+        );
+
+        self::registerRoutes($app, $c, $rootDir, $appName, $baseUrl, $translator);
+
+        return $app;
+    }
+
+    /**
+     * Everything the routes need, built on demand (LazyContainer): a request
+     * only creates the controller of its route and what that needs. Shared
+     * pieces are registered by class name, the per-entity image stores by
+     * 'images.<entity>'. A new controller needs an entry here (AppWiringTest
+     * fails for a route whose class has none).
+     */
+    private static function registerServices(
+        LazyContainer $c,
+        string $rootDir,
+        PDO $pdo,
+        Translator $translator,
+        string $locale,
+        string $appName,
+        string $appUrl,
+        string $jwtKey,
+        UserRepository $userRepository,
+        MailService $mailService,
+        AuthService $authService,
+    ): void {
         $c->set(UserRepository::class, fn () => $userRepository);
         $c->set(MailService::class, fn () => $mailService);
 
@@ -388,47 +453,21 @@ final class App
         $c->set(GeocodingController::class, fn ($c) => new GeocodingController($c->get(GeocodingService::class), $c->get(RequestThrottle::class)));
         $c->set(WatchController::class, fn ($c) => new WatchController(new WatchLinkRepository($pdo), $c->get(RouteRepository::class), $c->get(TourRepository::class), new WatchKeyVault((string) $_ENV['JWT_SECRET'])));
 
-        // Route callables [SomeController::class, 'method'] are resolved
-        // through $c, i.e. only for the route that matched.
-        AppFactory::setContainer($c);
-        $app = AppFactory::create();
+    }
 
-        // When the app isn't served from the web root (e.g. Apache/XAMPP
-        // serving this whole project as http://localhost/ytan/public/
-        // instead of a vhost whose document root IS public/), routes like
-        // "/" or "/api/v1/..." need the request's subdirectory prefix
-        // stripped before Slim tries to match them against it.
-        $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
-        $baseUrl = ($scriptDir === '' || $scriptDir === '/') ? '' : $scriptDir;
-        if ($baseUrl !== '') {
-            $app->setBasePath($baseUrl);
-        }
-
-        $app->addBodyParsingMiddleware();
-        // No cross-origin access unless .env lists origins (the app itself is same-origin).
-        $app->add(new CorsMiddleware($_ENV['ALLOWED_ORIGINS'] ?? ''));
-        $app->add(new AppVersionMiddleware((int) ($_ENV['MIN_APP_VERSION_CODE'] ?? 0)));
-        $app->add(new AuthMiddleware($authService));
-        $app->add(new ContentSecurityPolicyMiddleware($baseUrl));
-        // Inside compression: the tag is taken from the uncompressed body, a 304 is never zipped.
-        $app->add(new \Ytan\Http\Middleware\ETagMiddleware());
-        // Added after (= runs around) the middlewares above, so it compresses their final body.
-        $app->add(new CompressionMiddleware());
-        $app->addRoutingMiddleware();
-
-        $displayErrors = ($_ENV['APP_DEBUG'] ?? 'false') === 'true';
-        $errorMiddleware = $app->addErrorMiddleware($displayErrors, true, true);
-        $errorMiddleware->setDefaultErrorHandler(
-            function (Request $request, Throwable $exception) use ($app, $displayErrors) {
-                [$status, $payload] = self::errorPayload($exception, $displayErrors);
-
-                $response = $app->getResponseFactory()->createResponse($status);
-                $response->getBody()->write(json_encode($payload));
-
-                return $response->withHeader('Content-Type', 'application/json');
-            }
-        );
-
+    /**
+     * Every route: API endpoints as [SomeController::class, 'method'] (built
+     * through the container only when matched), server-rendered pages as
+     * closures around $render/$renderAdmin.
+     */
+    private static function registerRoutes(
+        SlimApp $app,
+        LazyContainer $c,
+        string $rootDir,
+        string $appName,
+        string $baseUrl,
+        Translator $translator,
+    ): void {
         $app->get('/api/v1/health', fn (Request $req, Response $res) => self::jsonOk($res, ['status' => 'ok']));
 
         // Content-Security-Policy violation reports (report-uri of
@@ -570,6 +609,26 @@ final class App
         $app->put('/api/v1/settings/briefing-rules', [\Ytan\Http\Controllers\AiAdminController::class, 'updateRules']);
         $app->get('/api/v1/admin/ai/usage', [\Ytan\Http\Controllers\AiAdminController::class, 'usage']);
 
+        // Server-rendered pages: templates/{name}.php with $rootDir, $appName,
+        // $baseUrl and $t (translation) plus the page's own variables
+        // ($vars, extracted - a 't' entry replaces the default $t). Until
+        // 2026-11-15 every page route repeated these eight lines.
+        $render = function (Response $res, string $template, array $vars = []) use ($rootDir, $appName, $baseUrl, $translator): Response {
+            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
+            extract($vars, EXTR_OVERWRITE);
+            ob_start();
+            require $rootDir . '/templates/' . $template . '.php';
+            $res->getBody()->write(ob_get_clean());
+
+            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
+        };
+        // The AdminLTE pages: the shell's sidebar needs $logLevel and $translateToolEnabled on every one.
+        $renderAdmin = fn (Response $res, string $template, array $vars = []): Response => $render($res, $template, [
+            'logLevel' => ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1,
+            'translateToolEnabled' => ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true',
+        ] + $vars);
+        $mapsApiKey = $_ENV['MAPS_API_KEY'] ?? '';
+
         $app->get('/', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $c, $translator) {
             ob_start();
             $mapsApiKey = $_ENV['MAPS_API_KEY'] ?? '';
@@ -601,104 +660,49 @@ final class App
             return $res->withHeader('Content-Type', 'application/javascript; charset=utf-8');
         });
 
-        $app->get('/about', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
-            ob_start();
-            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
-            require $rootDir . '/templates/about.php';
-            $res->getBody()->write(ob_get_clean());
-
-            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
-        });
+        $app->get('/about', fn (Request $req, Response $res) => $render($res, 'about'));
 
         // Credits: every data source with its licence/attribution, server-rendered
         // (TidesAtlas' free plan requires its credit line in the page HTML itself).
-        $app->get('/credits', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator, $c) {
-            ob_start();
+        $app->get('/credits', function (Request $req, Response $res) use ($render, $translator, $c) {
             $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
-            $dataSources = array_map(
+
+            return $render($res, 'credits', ['dataSources' => array_map(
                 fn (array $source) => DataSourceText::localize($source, $t),
                 $c->get(LighthouseImportRepository::class)->usedDataSources()
-            );
-            require $rootDir . '/templates/credits.php';
-            $res->getBody()->write(ob_get_clean());
-
-            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
+            )]);
         });
 
         // End-user documentation (docs/user/{locale}/*.md, UserGuideService).
         // ?embed=1 is the in-app panel's iframe: same page without its own
         // header/back link.
-        $app->get('/help', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
+        $app->get('/help', function (Request $req, Response $res) use ($render, $rootDir, $baseUrl, $translator) {
             $guide = new UserGuideService($rootDir . '/docs/user', new GithubFlavoredMarkdownConverter());
             $chapters = $guide->chapters($translator->locale(), $baseUrl);
-            $keywordIndex = UserGuideService::keywordIndex($chapters);
             $guideInFallbackLocale = $guide->servedLocale($translator->locale()) !== $translator->locale();
-            $embed = ($req->getQueryParams()['embed'] ?? '') === '1';
-            ob_start();
             // The page's own texts (title, search, cover, ...) follow the language the guide is
             // actually written in; only the "not available in your language" note is in the UI language.
             $guideTranslator = $guideInFallbackLocale
                 ? new Translator($rootDir . '/resources/i18n', $guide->servedLocale($translator->locale()))
                 : $translator;
-            $tNote = fn (string $key) => $translator->t($key);
-            $t = fn (string $key, array $vars = []) => $guideTranslator->t($key, $vars);
-            require $rootDir . '/templates/help.php';
-            $res->getBody()->write(ob_get_clean());
 
-            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
+            return $render($res, 'help', [
+                'chapters' => $chapters,
+                'keywordIndex' => UserGuideService::keywordIndex($chapters),
+                'guideInFallbackLocale' => $guideInFallbackLocale,
+                'guideTranslator' => $guideTranslator,
+                'embed' => ($req->getQueryParams()['embed'] ?? '') === '1',
+                'tNote' => fn (string $key) => $translator->t($key),
+                't' => fn (string $key, array $vars = []) => $guideTranslator->t($key, $vars),
+            ]);
         });
 
-        $app->get('/legal/imprint', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl) {
-            ob_start();
-            require $rootDir . '/templates/imprint.php';
-            $res->getBody()->write(ob_get_clean());
-
-            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
-        });
-
-        $app->get('/legal/privacy', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl) {
-            ob_start();
-            require $rootDir . '/templates/privacy.php';
-            $res->getBody()->write(ob_get_clean());
-
-            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
-        });
-
-        $app->get('/set-password', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
-            ob_start();
-            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
-            require $rootDir . '/templates/set-password.php';
-            $res->getBody()->write(ob_get_clean());
-
-            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
-        });
-
-        $app->get('/forgot-password', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
-            ob_start();
-            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
-            require $rootDir . '/templates/forgot-password.php';
-            $res->getBody()->write(ob_get_clean());
-
-            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
-        });
-
-        $app->get('/confirm-account-deletion', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
-            ob_start();
-            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
-            require $rootDir . '/templates/confirm-account-deletion.php';
-            $res->getBody()->write(ob_get_clean());
-
-            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
-        });
-
-        $app->get('/confirm-email', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
-            ob_start();
-            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
-            require $rootDir . '/templates/confirm-email.php';
-            $res->getBody()->write(ob_get_clean());
-
-            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
-        });
+        $app->get('/legal/imprint', fn (Request $req, Response $res) => $render($res, 'imprint'));
+        $app->get('/legal/privacy', fn (Request $req, Response $res) => $render($res, 'privacy'));
+        $app->get('/set-password', fn (Request $req, Response $res) => $render($res, 'set-password'));
+        $app->get('/forgot-password', fn (Request $req, Response $res) => $render($res, 'forgot-password'));
+        $app->get('/confirm-account-deletion', fn (Request $req, Response $res) => $render($res, 'confirm-account-deletion'));
+        $app->get('/confirm-email', fn (Request $req, Response $res) => $render($res, 'confirm-email'));
 
         // All five /admin/* pages below share one AdminLTE shell
         // (templates/partials/admin-shell-header.php/-footer.php) - each
@@ -708,16 +712,7 @@ final class App
         // admin tools should be added as their own route + template + one
         // entry in admin-shell-header.php's $adminNavItems array, not as a
         // growing pile of unrelated features crammed into one page.
-        $app->get('/admin', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
-            ob_start();
-            $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
-            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
-            $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
-            require $rootDir . '/templates/admin.php';
-            $res->getBody()->write(ob_get_clean());
-
-            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
-        });
+        $app->get('/admin', fn (Request $req, Response $res) => $renderAdmin($res, 'admin'));
         $app->get('/api/v1/admin/dashboard-stats', [AdminController::class, 'dashboardStats']);
         $app->get('/api/v1/admin/health', [\Ytan\Http\Controllers\AdminHealthController::class, 'index']);
 
@@ -728,16 +723,7 @@ final class App
         // unchanged admin-user.js panel. No opt-in flag needed (same
         // reasoning as /admin itself) - the /api/v1/users* endpoints are
         // already independently admin-gated server-side.
-        $app->get('/admin/users', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
-            ob_start();
-            $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
-            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
-            $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
-            require $rootDir . '/templates/admin-users.php';
-            $res->getBody()->write(ob_get_clean());
-
-            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
-        });
+        $app->get('/admin/users', fn (Request $req, Response $res) => $renderAdmin($res, 'admin-users'));
 
         // Dev-only translation editor (templates/translate.php,
         // public/js/translate.js) - writes directly to
@@ -751,16 +737,7 @@ final class App
         // (JWTs are valid for 10 years by default - see JWT_TTL_SECONDS).
         // Reachable via the /admin menu above, hence the nested path.
         if (($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true') {
-            $app->get('/admin/translate', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
-                ob_start();
-                $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
-                $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
-                $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
-                require $rootDir . '/templates/translate.php';
-                $res->getBody()->write(ob_get_clean());
-
-                return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
-            });
+            $app->get('/admin/translate', fn (Request $req, Response $res) => $renderAdmin($res, 'translate'));
 
             $app->get('/api/v1/translations', [TranslationController::class, 'index']);
             $app->put('/api/v1/translations', [TranslationController::class, 'update']);
@@ -772,33 +749,14 @@ final class App
         // AdminController's own doc comment): unlike the translate tool,
         // this action by construction only ever touches already-orphaned
         // files/rows, so the standard requireAdmin() gate is enough.
-        $app->get('/admin/image-cleanup', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
-            ob_start();
-            $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
-            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
-            $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
-            require $rootDir . '/templates/admin-image-cleanup.php';
-            $res->getBody()->write(ob_get_clean());
-
-            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
-        });
+        $app->get('/admin/image-cleanup', fn (Request $req, Response $res) => $renderAdmin($res, 'admin-image-cleanup'));
         $app->get('/api/v1/admin/image-orphans', [AdminController::class, 'scanImageOrphans']);
         $app->post('/api/v1/admin/image-orphans/delete', [AdminController::class, 'deleteImageOrphans']);
 
         // Admin tool: imports lighthouses from the staged entries of an official
         // lighthouse list (LighthouseImportController; the list itself is read
         // into the staging table by bin/import-lighthouse-list.php).
-        $app->get('/admin/lighthouse-import', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
-            ob_start();
-            $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
-            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
-            $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
-            $mapsApiKey = $_ENV['MAPS_API_KEY'] ?? '';
-            require $rootDir . '/templates/admin-lighthouse-import.php';
-            $res->getBody()->write(ob_get_clean());
-
-            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
-        });
+        $app->get('/admin/lighthouse-import', fn (Request $req, Response $res) => $renderAdmin($res, 'admin-lighthouse-import', ['mapsApiKey' => $mapsApiKey]));
         $app->get('/api/v1/admin/lighthouse-import', [LighthouseImportController::class, 'index']);
         $app->get('/api/v1/admin/lighthouse-import/ids', [LighthouseImportController::class, 'ids']);
         $app->post('/api/v1/admin/lighthouse-import/nga', [LighthouseImportController::class, 'loadNga']);
@@ -808,17 +766,7 @@ final class App
 
         // Admin tool: canoe/kayak and rowing clubs from OpenStreetMap, staged
         // and imported as POIs of type 13 (ClubImportController).
-        $app->get('/admin/club-import', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
-            ob_start();
-            $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
-            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
-            $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
-            $mapsApiKey = $_ENV['MAPS_API_KEY'] ?? '';
-            require $rootDir . '/templates/admin-club-import.php';
-            $res->getBody()->write(ob_get_clean());
-
-            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
-        });
+        $app->get('/admin/club-import', fn (Request $req, Response $res) => $renderAdmin($res, 'admin-club-import', ['mapsApiKey' => $mapsApiKey]));
         $app->get('/api/v1/admin/club-import', [\Ytan\Http\Controllers\ClubImportController::class, 'index']);
         $app->get('/api/v1/admin/club-import/ids', [\Ytan\Http\Controllers\ClubImportController::class, 'ids']);
         $app->post('/api/v1/admin/club-import', [\Ytan\Http\Controllers\ClubImportController::class, 'import']);
@@ -828,17 +776,7 @@ final class App
         // Admin tool: shelters and huts near water from OpenStreetMap and the
         // official lists of DK/SE/NO/FI, staged and imported as POIs of type 10
         // (ShelterImportController).
-        $app->get('/admin/shelter-import', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
-            ob_start();
-            $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
-            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
-            $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
-            $mapsApiKey = $_ENV['MAPS_API_KEY'] ?? '';
-            require $rootDir . '/templates/admin-shelter-import.php';
-            $res->getBody()->write(ob_get_clean());
-
-            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
-        });
+        $app->get('/admin/shelter-import', fn (Request $req, Response $res) => $renderAdmin($res, 'admin-shelter-import', ['mapsApiKey' => $mapsApiKey]));
         $app->get('/api/v1/admin/shelter-import', [\Ytan\Http\Controllers\ShelterImportController::class, 'index']);
         $app->get('/api/v1/admin/shelter-import/ids', [\Ytan\Http\Controllers\ShelterImportController::class, 'ids']);
         $app->post('/api/v1/admin/shelter-import/source', [\Ytan\Http\Controllers\ShelterImportController::class, 'loadSource']);
@@ -849,17 +787,7 @@ final class App
         // Admin tool: campsites from OpenStreetMap (one European country per
         // load), filtered by their distance to water and imported as POIs of
         // type 11 or 1 (CampsiteImportController).
-        $app->get('/admin/campsite-import', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
-            ob_start();
-            $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
-            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
-            $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
-            $mapsApiKey = $_ENV['MAPS_API_KEY'] ?? '';
-            require $rootDir . '/templates/admin-campsite-import.php';
-            $res->getBody()->write(ob_get_clean());
-
-            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
-        });
+        $app->get('/admin/campsite-import', fn (Request $req, Response $res) => $renderAdmin($res, 'admin-campsite-import', ['mapsApiKey' => $mapsApiKey]));
         $app->get('/api/v1/admin/campsite-import', [\Ytan\Http\Controllers\CampsiteImportController::class, 'index']);
         $app->get('/api/v1/admin/campsite-import/ids', [\Ytan\Http\Controllers\CampsiteImportController::class, 'ids']);
         // Loading from OpenStreetMap (campsites/clubs/shelters: a country, lighthouses: an area) in the background (OsmImportJobController).
@@ -871,114 +799,59 @@ final class App
 
         // Admin tool: finds lighthouses that lie close together and merges the
         // ones the admin says are the same (LighthouseDuplicateController).
-        $app->get('/admin/lighthouse-duplicates', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
-            ob_start();
-            $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
-            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
-            $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
-            require $rootDir . '/templates/admin-lighthouse-duplicates.php';
-            $res->getBody()->write(ob_get_clean());
-
-            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
-        });
+        $app->get('/admin/lighthouse-duplicates', fn (Request $req, Response $res) => $renderAdmin($res, 'admin-lighthouse-duplicates'));
         $app->get('/api/v1/admin/lighthouse-duplicates', [LighthouseDuplicateController::class, 'index']);
         $app->post('/api/v1/admin/lighthouse-duplicates/merge', [LighthouseDuplicateController::class, 'merge']);
 
         // Site-wide settings (currently just "Google search requires
         // login") - its own page so future settings have somewhere to go
         // without growing the dashboard into a dumping ground.
-        $app->get('/admin/settings', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator, $c) {
-            ob_start();
-            $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
-            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
-            $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
-            $googleSearchRequiresLogin = $c->get(SettingsRepository::class)->googleSearchRequiresLogin();
-            $gpxExportPublic = $c->get(SettingsRepository::class)->gpxExportPublic();
-            $trackDistanceFilterPresets = $c->get(SettingsRepository::class)->trackDistanceFilterPresets();
-            $routeLabelFontSizeRange = $c->get(SettingsRepository::class)->routeLabelFontSizeRange();
-            $routeAnimation = $c->get(SettingsRepository::class)->routeAnimationSettings();
-            $routeMergeMidpointMeters = $c->get(SettingsRepository::class)->routeMergeMidpointMeters();
-            $waterDistancePoiTypes = $c->get(SettingsRepository::class)->waterDistancePoiTypes();
-            require $rootDir . '/templates/admin-settings.php';
-            $res->getBody()->write(ob_get_clean());
+        $app->get('/admin/settings', function (Request $req, Response $res) use ($renderAdmin, $c) {
+            $settings = $c->get(SettingsRepository::class);
 
-            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
+            return $renderAdmin($res, 'admin-settings', [
+                'googleSearchRequiresLogin' => $settings->googleSearchRequiresLogin(),
+                'gpxExportPublic' => $settings->gpxExportPublic(),
+                'trackDistanceFilterPresets' => $settings->trackDistanceFilterPresets(),
+                'routeLabelFontSizeRange' => $settings->routeLabelFontSizeRange(),
+                'routeAnimation' => $settings->routeAnimationSettings(),
+                'routeMergeMidpointMeters' => $settings->routeMergeMidpointMeters(),
+                'waterDistancePoiTypes' => $settings->waterDistancePoiTypes(),
+            ]);
         });
 
         // Rain radar: the radar job's settings and its last runs (RadarSettingsController).
-        $app->get('/admin/radar', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator, $c) {
-            ob_start();
-            $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
-            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
-            $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
-            $radarSettings = $c->get(SettingsRepository::class)->radarSettings();
-            $externalJobs = $c->get(SettingsRepository::class)->externalJobs();
-            $mapsApiKey = $_ENV['MAPS_API_KEY'] ?? '';
-            require $rootDir . '/templates/admin-radar.php';
-            $res->getBody()->write(ob_get_clean());
-
-            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
-        });
+        $app->get('/admin/radar', fn (Request $req, Response $res) => $renderAdmin($res, 'admin-radar', [
+            'radarSettings' => $c->get(SettingsRepository::class)->radarSettings(),
+            'externalJobs' => $c->get(SettingsRepository::class)->externalJobs(),
+            'mapsApiKey' => $mapsApiKey,
+        ]));
 
         // Log files: view (with auto-follow) and download the system's logs (LogController, LogFileService).
-        $app->get('/admin/logs', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
-            ob_start();
-            $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
-            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
-            $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
-            require $rootDir . '/templates/admin-logs.php';
-            $res->getBody()->write(ob_get_clean());
-
-            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
-        });
+        $app->get('/admin/logs', fn (Request $req, Response $res) => $renderAdmin($res, 'admin-logs'));
         $app->get('/api/v1/admin/logs', [\Ytan\Http\Controllers\LogController::class, 'index']);
         $app->get('/api/v1/admin/logs/read', [\Ytan\Http\Controllers\LogController::class, 'read']);
         $app->get('/api/v1/admin/logs/download', [\Ytan\Http\Controllers\LogController::class, 'download']);
 
         // Wind layer: the wind job's settings and its last runs (WindSettingsController).
-        $app->get('/admin/wind', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator, $c) {
-            ob_start();
-            $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
-            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
-            $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
-            $windSettings = $c->get(SettingsRepository::class)->windSettings();
-            $externalJobs = $c->get(SettingsRepository::class)->externalJobs();
-            $mapsApiKey = $_ENV['MAPS_API_KEY'] ?? '';
-            require $rootDir . '/templates/admin-wind.php';
-            $res->getBody()->write(ob_get_clean());
-
-            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
-        });
+        $app->get('/admin/wind', fn (Request $req, Response $res) => $renderAdmin($res, 'admin-wind', [
+            'windSettings' => $c->get(SettingsRepository::class)->windSettings(),
+            'externalJobs' => $c->get(SettingsRepository::class)->externalJobs(),
+            'mapsApiKey' => $mapsApiKey,
+        ]));
 
         // Routencheck: switch, limit, connection test, token usage, traffic-light rules (AiAdminController).
-        $app->get('/admin/ai', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator, $c) {
-            ob_start();
-            $logLevel = ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? 3 : 1;
-            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
-            $translateToolEnabled = ($_ENV['TRANSLATE_TOOL_ENABLED'] ?? 'false') === 'true';
-            $aiSettings = $c->get(SettingsRepository::class)->aiSettings();
-            $briefingRules = $c->get(SettingsRepository::class)->briefingRules();
-            $aiClient = $c->get(\Ytan\Service\Ai\AiClient::class);
-            require $rootDir . '/templates/admin-ai.php';
-            $res->getBody()->write(ob_get_clean());
-
-            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
-        });
+        $app->get('/admin/ai', fn (Request $req, Response $res) => $renderAdmin($res, 'admin-ai', [
+            'aiSettings' => $c->get(SettingsRepository::class)->aiSettings(),
+            'briefingRules' => $c->get(SettingsRepository::class)->briefingRules(),
+            'aiClient' => $c->get(\Ytan\Service\Ai\AiClient::class),
+        ]));
 
         // Gestaltungs-Vergleichsseite (todo.md: "Standards für alle
         // Gestaltungselemente festlegen") - deliberately its OWN template,
         // not one of the AdminLTE-shell pages above (see
         // templates/admin-styleguide.php's own doc comment for why).
-        $app->get('/admin/styleguide', function (Request $req, Response $res) use ($rootDir, $appName, $baseUrl, $translator) {
-            ob_start();
-            $t = fn (string $key, array $vars = []) => $translator->t($key, $vars);
-            require $rootDir . '/templates/admin-styleguide.php';
-            $res->getBody()->write(ob_get_clean());
-
-            return $res->withHeader('Content-Type', 'text/html; charset=utf-8');
-        });
-
-        return $app;
+        $app->get('/admin/styleguide', fn (Request $req, Response $res) => $render($res, 'admin-styleguide'));
     }
 
     /**

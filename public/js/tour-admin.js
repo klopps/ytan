@@ -1235,25 +1235,5 @@ async function downloadTourGpx(tourId, name) {
 function shareTour(id, name) {
     var tourUrl = window.location.origin + window.location.pathname + '?tour=' + id;
 
-    // Inside the Capacitor Android shell, navigator.share() falls through
-    // to the clipboard-copy branch below instead of opening a real dialog
-    // (see capacitor-bridge.js's shareLink() doc comment) - its own Share
-    // plugin is used there instead, same priority order as shareMap()'s
-    // own CapacitorBridge check in map-core.js.
-    if (typeof CapacitorBridge !== 'undefined' && CapacitorBridge.isAvailable()) {
-        CapacitorBridge.shareLink(tourUrl, 'YTAN', t('tour_admin.share_text', { name: name }))
-            .then(() => log('shareTour(' + id + ') - successfull', LOG_INFO))
-            .catch((error) => log('shareTour(' + id + ') - error', LOG_ERROR, error));
-    } else if (navigator.share) {
-        navigator.share({
-            title: 'YTAN',
-            text: t('tour_admin.share_text', { name: name }),
-            url: tourUrl,
-        })
-            .then(() => log('shareTour(' + id + ') - successfull', LOG_INFO))
-            .catch((error) => log('shareTour(' + id + ') - error', LOG_ERROR, error));
-    } else {
-        copyTextToClipboard(tourUrl);
-        showToast(t('map.link_copied'), 'success');
-    }
+    shareUrl(tourUrl, t('tour_admin.share_text', { name: name }), 'shareTour(' + id + ')');
 }

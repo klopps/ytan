@@ -43,6 +43,8 @@ final class FakeImageRepositoryStub
 
 final class ImageReconciliationServiceTest extends TestCase
 {
+    use \Ytan\Tests\RemovesDirectories;
+
     private string $tourStorageDir;
     private string $poiStorageDir;
 
@@ -58,20 +60,6 @@ final class ImageReconciliationServiceTest extends TestCase
         $this->rmrf($this->poiStorageDir);
     }
 
-    private function rmrf(string $dir): void
-    {
-        if (!is_dir($dir)) {
-            return;
-        }
-        foreach (scandir($dir) as $entry) {
-            if ($entry === '.' || $entry === '..') {
-                continue;
-            }
-            $path = $dir . '/' . $entry;
-            is_dir($path) ? $this->rmrf($path) : unlink($path);
-        }
-        rmdir($dir);
-    }
 
     private function writeFile(string $storageDir, int $entityId, string $filename): void
     {

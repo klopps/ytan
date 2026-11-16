@@ -31,37 +31,27 @@ if not exist "%META%" (
 )
 set "SITE=ytan.pesr.org"
 if /i "%~1"=="test" set "SITE=test.pesr.org"
-if not defined DEPLOY_USER set "DEPLOY_USER=csteindorff"
-if not defined DEPLOY_HOST set "DEPLOY_HOST=steindorff.de"
-if not defined DEPLOY_PORT set "DEPLOY_PORT=22"
-if not defined DEPLOY_PATH set "DEPLOY_PATH=/home/www/doc/9769/%SITE%/www"
-if not defined DEPLOY_SSH_CLIENT set "DEPLOY_SSH_CLIENT=plink"
-if not defined DEPLOY_SSH_PASSWORD (
-    for /f "usebackq eol=# tokens=1,* delims==" %%A in ("%ROOT_DIR%\.env") do (
-        if "%%A"=="DEPLOY_SSH_PASSWORD" set "DEPLOY_SSH_PASSWORD=%%B"
-    )
-)
-if not defined DEPLOY_SSH_PASSWORD (
-    echo ==^> DEPLOY_SSH_PASSWORD is not set and not found in .env.
-    goto :error
-)
+call "%~dp0ssh-setup.bat"
+if errorlevel 1 goto :error
 
 echo ==^> Index:
 type "%META%"
 echo.
 echo ==^> Uploading water-index.bin to %SITE%
-"%DEPLOY_SSH_CLIENT%" -ssh -P %DEPLOY_PORT% -l %DEPLOY_USER% -pw %DEPLOY_SSH_PASSWORD% %DEPLOY_HOST% "mkdir -p '%DEPLOY_PATH%/storage/water' && cat > '%DEPLOY_PATH%/storage/water/water-index.bin.tmp' && mv '%DEPLOY_PATH%/storage/water/water-index.bin.tmp' '%DEPLOY_PATH%/storage/water/water-index.bin' && ls -l '%DEPLOY_PATH%/storage/water/water-index.bin'" < "%INDEX%"
+"%DEPLOY_SSH_CLIENT%" %SSH_TARGET% "mkdir -p '%DEPLOY_PATH%/storage/water' && cat > '%DEPLOY_PATH%/storage/water/water-index.bin.tmp' && mv '%DEPLOY_PATH%/storage/water/water-index.bin.tmp' '%DEPLOY_PATH%/storage/water/water-index.bin' && ls -l '%DEPLOY_PATH%/storage/water/water-index.bin'" < "%INDEX%"
 if errorlevel 1 goto :error
 
 echo ==^> Uploading water-index.json
-"%DEPLOY_SSH_CLIENT%" -ssh -P %DEPLOY_PORT% -l %DEPLOY_USER% -pw %DEPLOY_SSH_PASSWORD% %DEPLOY_HOST% "cat > '%DEPLOY_PATH%/storage/water/water-index.json.tmp' && mv '%DEPLOY_PATH%/storage/water/water-index.json.tmp' '%DEPLOY_PATH%/storage/water/water-index.json'" < "%META%"
+"%DEPLOY_SSH_CLIENT%" %SSH_TARGET% "cat > '%DEPLOY_PATH%/storage/water/water-index.json.tmp' && mv '%DEPLOY_PATH%/storage/water/water-index.json.tmp' '%DEPLOY_PATH%/storage/water/water-index.json'" < "%META%"
 if errorlevel 1 goto :error
 
 echo ==^> Published the water index to %SITE%.
+call "%~dp0ssh-setup.bat" cleanup
 endlocal
 exit /b 0
 
 :error
 echo ==^> Publishing the water index FAILED.
+call "%~dp0ssh-setup.bat" cleanup
 endlocal
 exit /b 1

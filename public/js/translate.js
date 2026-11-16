@@ -16,12 +16,7 @@ var state = {
     dirtyKeys: {}, // key -> true
 };
 
-function escapeHtml(value) {
-    var div = document.createElement('div');
-    div.textContent = value == null ? '' : String(value);
-    // innerHTML escapes only &, < and > - quotes too, for attribute values.
-    return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-}
+// Escaping: helper.js's escapeHTML() (quotes too - results also go into attributes).
 
 /* ------------------------------------------------------------ Loading */
 

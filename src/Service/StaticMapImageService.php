@@ -23,7 +23,6 @@ namespace Ytan\Service;
 final class StaticMapImageService
 {
     private const BASE_URL = 'https://maps.googleapis.com/maps/api/staticmap';
-    private const USER_AGENT = 'YTAN/1.0 (+https://ytan.pesr.org; no-reply@pesr.org)';
     private const SIZE = '640x400';
     private const SCALE = 2;
     private const VALID_MAP_TYPES = ['hybrid', 'terrain', 'satellite'];
@@ -140,25 +139,12 @@ final class StaticMapImageService
 
     private function fetchBinary(string $url): ?string
     {
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_CONNECTTIMEOUT => 4,
-            CURLOPT_TIMEOUT => 10,
-            CURLOPT_FOLLOWLOCATION => false,
-            CURLOPT_USERAGENT => self::USER_AGENT,
-        ]);
-
-        $body = curl_exec($ch);
-        $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-        $errno = curl_errno($ch);
-
-        if ($errno !== 0 || $body === false || $statusCode !== 200 || !str_starts_with((string) $contentType, 'image/')) {
+        $result = Http\HttpFetch::request($url, [], 4, 10);
+        if ($result['status'] !== 200 || $result['body'] === null || !str_starts_with($result['content_type'], 'image/')) {
             return null;
         }
 
-        return $body;
+        return $result['body'];
     }
 
     /**

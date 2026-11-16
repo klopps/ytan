@@ -16,6 +16,8 @@ use Ytan\Service\WindDataService;
 
 final class WindSettingsControllerTest extends ControllerTestCase
 {
+    use \Ytan\Tests\RemovesDirectories;
+
     private WindSettingsController $controller;
     private string $root;
     private string $radarDir;
@@ -42,19 +44,6 @@ final class WindSettingsControllerTest extends ControllerTestCase
         parent::tearDown();
     }
 
-    private function rmrf(string $path): void
-    {
-        if (is_dir($path)) {
-            foreach (scandir($path) as $f) {
-                if ($f !== '.' && $f !== '..') {
-                    $this->rmrf($path . '/' . $f);
-                }
-            }
-            rmdir($path);
-        } elseif (file_exists($path)) {
-            unlink($path);
-        }
-    }
 
     private function admin(): array
     {

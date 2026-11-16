@@ -14,16 +14,9 @@ final class ShelterHttp
 {
     public static function get(string $url): string
     {
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_TIMEOUT => 180,
-            CURLOPT_USERAGENT => 'YTAN shelter import (+https://ytan.pesr.org)',
-        ]);
-        $body = curl_exec($ch);
-        $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-        if (!is_string($body) || $status !== 200) {
+        // The official lists' hosts redirect (http -> https, moved files).
+        ['status' => $status, 'body' => $body] = \Ytan\Service\Http\HttpFetch::request($url, [CURLOPT_FOLLOWLOCATION => true], 30, 180);
+        if ($body === null || $status !== 200) {
             throw new ApiException('The shelter source ' . parse_url($url, PHP_URL_HOST) . ' is not reachable (HTTP ' . $status . ').', 502, 'shelter_import.source_unreachable');
         }
 

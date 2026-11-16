@@ -18,12 +18,7 @@ var siState = {
     filterTimer: null,
 };
 
-function siEscape(value) {
-    var div = document.createElement('div');
-    div.textContent = value == null ? '' : String(value);
-    // Quotes too: the result also goes into attributes, and the data comes from outside.
-    return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-}
+// Escaping: helper.js's escapeHTML() (quotes too - results also go into attributes).
 
 function siFilters() {
     var filters = {};
@@ -46,25 +41,25 @@ function siLink(url) {
     if (!/^https?:\/\//i.test(url || '')) {
         return '';
     }
-    return '<a href="' + siEscape(url) + '" target="_blank" rel="noopener noreferrer">' +
-        siEscape(url.replace(/^https?:\/\/(www\.)?/i, '').replace(/\/$/, '').slice(0, 40)) + '</a>';
+    return '<a href="' + escapeHTML(url) + '" target="_blank" rel="noopener noreferrer">' +
+        escapeHTML(url.replace(/^https?:\/\/(www\.)?/i, '').replace(/\/$/, '').slice(0, 40)) + '</a>';
 }
 
 function siMapLink(row) {
     var url = 'https://www.google.com/maps/search/?api=1&query=' + Number(row.latitude) + ',' + Number(row.longitude);
-    return '<a href="' + siEscape(url) + '" target="_blank" rel="noopener noreferrer" class="small" title="' +
-        siEscape(t('admin.shelter_import.show_on_map')) + '"><i class="bi bi-geo-alt"></i></a>';
+    return '<a href="' + escapeHTML(url) + '" target="_blank" rel="noopener noreferrer" class="small" title="' +
+        escapeHTML(t('admin.shelter_import.show_on_map')) + '"><i class="bi bi-geo-alt"></i></a>';
 }
 
 /** "Meer 120 m · Fluss 3400 m · See –" (– = farther than 100 km), or "not computed". */
 function siWaterText(row) {
     if (!row.water_checked_at) {
-        return '<span class="text-secondary">' + siEscape(t('admin.shelter_import.water_unchecked')) + '</span>';
+        return '<span class="text-secondary">' + escapeHTML(t('admin.shelter_import.water_unchecked')) + '</span>';
     }
     return ['sea', 'river', 'lake'].map(function (kind) {
         var meters = row[kind + '_m'];
-        return '<span class="text-nowrap">' + siEscape(t('admin.shelter_import.water_' + kind)) + ' ' +
-            siEscape(meters === null ? '–' : t('admin.shelter_import.water_distance_value', { meters: meters })) + '</span>';
+        return '<span class="text-nowrap">' + escapeHTML(t('admin.shelter_import.water_' + kind)) + ' ' +
+            escapeHTML(meters === null ? '–' : t('admin.shelter_import.water_distance_value', { meters: meters })) + '</span>';
     }).join(' · ');
 }
 
@@ -80,15 +75,15 @@ function siNeighboursText(neighbours) {
     var staged = neighbours.filter(function (n) { return n.kind !== 'poi'; });
     var parts = [];
     if (pois.length > 0) {
-        parts.push('<span class="badge text-bg-warning">' + siEscape(t('admin.shelter_import.duplicate_badge')) + '</span> ' +
+        parts.push('<span class="badge text-bg-warning">' + escapeHTML(t('admin.shelter_import.duplicate_badge')) + '</span> ' +
             pois.map(function (n) {
-                return '<span class="small">' + siEscape(t('admin.shelter_import.neighbour_poi', { id: n.id }) + (n.name ? ': ' + n.name : '')) + '</span>';
+                return '<span class="small">' + escapeHTML(t('admin.shelter_import.neighbour_poi', { id: n.id }) + (n.name ? ': ' + n.name : '')) + '</span>';
             }).join('<br>'));
     }
     if (staged.length > 0) {
-        parts.push('<span class="small text-secondary">' + siEscape(t('admin.shelter_import.also_in')) + ' ' +
+        parts.push('<span class="small text-secondary">' + escapeHTML(t('admin.shelter_import.also_in')) + ' ' +
             staged.map(function (n) {
-                return siEscape(t('admin.shelter_import.source_short_' + n.source) + (n.name ? ': ' + n.name : '') +
+                return escapeHTML(t('admin.shelter_import.source_short_' + n.source) + (n.name ? ': ' + n.name : '') +
                     (n.imported ? ' (' + t('admin.lighthouse_import.status_imported') + ')' : ''));
             }).join(', ') + '</span>');
     }
@@ -113,7 +108,7 @@ async function siLoadEntries() {
         siRender();
     } catch (err) {
         document.getElementById('siRows').innerHTML =
-            '<tr><td colspan="9" class="text-danger">' + siEscape(t('admin.shelter_import.load_failed', { error: err.message })) + '</td></tr>';
+            '<tr><td colspan="9" class="text-danger">' + escapeHTML(t('admin.shelter_import.load_failed', { error: err.message })) + '</td></tr>';
     }
 }
 
@@ -137,15 +132,15 @@ function siFillCountries(countries) {
         return;
     }
     var current = select.value;
-    select.innerHTML = '<option value="">' + siEscape(t('admin.shelter_import.filter_all')) + '</option>' +
-        countries.map(function (code) { return '<option value="' + siEscape(code) + '">' + siEscape(code) + '</option>'; }).join('');
+    select.innerHTML = '<option value="">' + escapeHTML(t('admin.shelter_import.filter_all')) + '</option>' +
+        countries.map(function (code) { return '<option value="' + escapeHTML(code) + '">' + escapeHTML(code) + '</option>'; }).join('');
     select.value = current;
 }
 
 function siRender() {
     var body = document.getElementById('siRows');
     if (siState.rows.length === 0) {
-        body.innerHTML = '<tr><td colspan="9" class="text-secondary">' + siEscape(t('admin.shelter_import.no_results')) + '</td></tr>';
+        body.innerHTML = '<tr><td colspan="9" class="text-secondary">' + escapeHTML(t('admin.shelter_import.no_results')) + '</td></tr>';
     } else {
         body.innerHTML = siState.rows.map(function (row) {
             var imported = row.poi_id !== null;
@@ -153,16 +148,16 @@ function siRender() {
             return '<tr>' +
                 '<td><input type="checkbox" class="form-check-input siRowCheckbox" data-id="' + row.id + '"' +
                     (selectable ? '' : ' disabled') + (siState.selected.has(Number(row.id)) ? ' checked' : '') + '></td>' +
-                '<td>' + siEscape(row.display_name || t('admin.shelter_import.no_name')) + ' ' + siMapLink(row) + '</td>' +
-                '<td class="small text-nowrap">' + siEscape(siKindName(row.kind)) + '</td>' +
-                '<td class="small">' + siEscape(row.country) + '</td>' +
+                '<td>' + escapeHTML(row.display_name || t('admin.shelter_import.no_name')) + ' ' + siMapLink(row) + '</td>' +
+                '<td class="small text-nowrap">' + escapeHTML(siKindName(row.kind)) + '</td>' +
+                '<td class="small">' + escapeHTML(row.country) + '</td>' +
                 '<td class="small">' + siWaterText(row) + '</td>' +
-                '<td class="small text-nowrap">' + siEscape(t('admin.shelter_import.source_short_' + row.source)) + '</td>' +
+                '<td class="small text-nowrap">' + escapeHTML(t('admin.shelter_import.source_short_' + row.source)) + '</td>' +
                 '<td class="small">' + siLink(row.website) + '</td>' +
                 '<td>' + siNeighboursText(row.neighbours) + '</td>' +
                 '<td>' + (imported
-                    ? '<span class="badge text-bg-success">' + siEscape(t('admin.lighthouse_import.status_imported')) + '</span>'
-                    : '<span class="badge text-bg-secondary">' + siEscape(t('admin.lighthouse_import.status_open')) + '</span>') + '</td>' +
+                    ? '<span class="badge text-bg-success">' + escapeHTML(t('admin.lighthouse_import.status_imported')) + '</span>'
+                    : '<span class="badge text-bg-secondary">' + escapeHTML(t('admin.lighthouse_import.status_open')) + '</span>') + '</td>' +
             '</tr>';
         }).join('');
     }
@@ -170,7 +165,7 @@ function siRender() {
     var totalPages = Math.max(1, Math.ceil(siState.total / siState.pageSize));
     document.getElementById('siPagination').innerHTML =
         '<button type="button" class="btn btn-sm btn-outline-secondary" id="siPrev"' + (siState.page <= 1 ? ' disabled' : '') + '><i class="bi bi-chevron-left"></i></button>' +
-        '<span class="small text-secondary">' + siEscape(siState.total === 0 ? t('admin.shelter_import.zero_results') : t('common.page_of', { page: siState.page, total: totalPages }) + ' (' + siState.total + ')') + '</span>' +
+        '<span class="small text-secondary">' + escapeHTML(siState.total === 0 ? t('admin.shelter_import.zero_results') : t('common.page_of', { page: siState.page, total: totalPages }) + ' (' + siState.total + ')') + '</span>' +
         '<button type="button" class="btn btn-sm btn-outline-secondary" id="siNext"' + (siState.page >= totalPages ? ' disabled' : '') + '><i class="bi bi-chevron-right"></i></button>';
 
     siUpdateSelectionUi();
@@ -248,7 +243,7 @@ function siLoadResultToast(data) {
 
 /** The load button's normal content. */
 function siOsmIdleHtml() {
-    return '<i class="bi bi-cloud-download"></i> ' + siEscape(t('admin.shelter_import.osm_load'));
+    return '<i class="bi bi-cloud-download"></i> ' + escapeHTML(t('admin.shelter_import.osm_load'));
 }
 
 /**

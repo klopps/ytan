@@ -6,6 +6,7 @@ import gc
 import os
 import sys
 import tempfile
+import time
 import unittest
 import urllib.error
 from datetime import datetime, timezone
@@ -659,6 +660,29 @@ class CodeCheck20261115Test(unittest.TestCase):
             old = jobmod.iso(datetime.now(timezone.utc) - timedelta(hours=2))
             job.write_status({"storage_bytes": 123, "storage_measured_at": old}, {"outcome": "x"}, None)
             self.assertNotEqual(job.read_status()["storage_bytes"], 123)
+
+    def test_cleanup_keeps_referenced_and_young_entries(self):
+        with tempfile.TemporaryDirectory() as d:
+            now = datetime(2026, 11, 15, 12, 0, tzinfo=timezone.utc)
+            grid = TileGrid(south=54.0, west=10.0, north=56.0, east=13.0, zmin=7, zmax=8)
+            job = Job(Config(storage=d, grid=grid, workers=1), now=now)
+            old = time.time() - 2 * 3600
+            for name, age in (("o202611151150", old), ("o202611151000", old), ("o202611151155", time.time()),
+                              (".tmp-o1-x", time.time() - 600), (".tmp-o2-y", old)):
+                os.makedirs(os.path.join(job.frames_dir, name))
+                os.utime(os.path.join(job.frames_dir, name), (age, age))
+            for name in ("202611151030.npz", "202611151130.npz"):  # keep_raw_minutes = 80: limit 10:40
+                open(os.path.join(job.raw_dir, name), "wb").close()
+            for name, age in (("partial-old", old), ("partial-new", time.time())):
+                path = os.path.join(job.dl_dir, name)
+                open(path, "wb").close()
+                os.utime(path, (age, age))
+
+            job.cleanup({"frames": [{"id": "o202611151150"}]})
+
+            self.assertEqual(sorted(os.listdir(job.frames_dir)), [".tmp-o1-x", "o202611151150", "o202611151155"])
+            self.assertEqual(os.listdir(job.raw_dir), ["202611151130.npz"])
+            self.assertEqual(os.listdir(job.dl_dir), ["partial-new"])
 
     def test_fill_area_is_a_disc_around_the_lost_pixels(self):
         previous = np.full((300, 300), 10.0, np.float32)

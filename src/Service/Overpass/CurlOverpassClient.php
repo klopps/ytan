@@ -27,7 +27,6 @@ final class CurlOverpassClient implements OverpassClient
 {
     public const DEFAULT_ENDPOINT = 'https://overpass-api.de/api/interpreter';
     private const BUSY_RETRIES = 2;
-    private const USER_AGENT = 'YTAN/1.0 (+https://ytan.pesr.org; no-reply@pesr.org)';
 
     /** @param list<string> $endpoints */
     public function __construct(
@@ -75,20 +74,11 @@ final class CurlOverpassClient implements OverpassClient
     /** @return array{0: string|false, 1: int, 2: string} body, HTTP status (0 = none), curl error */
     private function post(string $endpoint, string $query): array
     {
-        $ch = curl_init($endpoint);
-        curl_setopt_array($ch, [
+        $result = \Ytan\Service\Http\HttpFetch::request($endpoint, [
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => http_build_query(['data' => $query]),
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_CONNECTTIMEOUT => 10,
-            CURLOPT_TIMEOUT => $this->timeoutSeconds,
-            CURLOPT_FOLLOWLOCATION => false,
-            CURLOPT_USERAGENT => self::USER_AGENT,
-        ]);
-        $body = curl_exec($ch);
-        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $error = curl_error($ch);
+        ], 10, $this->timeoutSeconds);
 
-        return [$body, $status, $error];
+        return [$result['body'] ?? false, $result['status'], $result['error']];
     }
 }

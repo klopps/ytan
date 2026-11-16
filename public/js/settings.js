@@ -360,3 +360,29 @@ function copyTextToClipboard(text) {
 
     document.body.removeChild(textArea);
 }
+
+/**
+ * Shares a link: the Capacitor Share plugin inside the Android app (there
+ * navigator.share() would fall through to the clipboard, see
+ * capacitor-bridge.js's shareLink()), else the Web Share API, else the
+ * clipboard with a toast. Used by shareMap(), shareRoute() and shareTour() -
+ * until 2026-11-15 each had its own copy of these three branches.
+ *
+ * @param {string} url absolute link
+ * @param {string} text the share sheet's text
+ * @param {string} label for the log ("shareRoute(3)")
+ */
+function shareUrl(url, text, label) {
+    if (typeof CapacitorBridge !== 'undefined' && CapacitorBridge.isAvailable()) {
+        CapacitorBridge.shareLink(url, 'YTAN', text)
+            .then(() => log(label + ' - successfull', LOG_INFO))
+            .catch((error) => log(label + ' - error', LOG_ERROR, error));
+    } else if (navigator.share) {
+        navigator.share({ title: 'YTAN', text: text, url: url })
+            .then(() => log(label + ' - successfull', LOG_INFO))
+            .catch((error) => log(label + ' - error', LOG_ERROR, error));
+    } else {
+        copyTextToClipboard(url);
+        showToast(t('map.link_copied'), 'success');
+    }
+}

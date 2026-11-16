@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Ytan\Tests\Integration;
 
-use League\CommonMark\GithubFlavoredMarkdownConverter;
 use Ytan\Domain\Area\AreaRepository;
 use Ytan\Domain\Poi\PoiRepository;
 use Ytan\Domain\Route\RouteRepository;
@@ -20,10 +19,7 @@ use Ytan\Http\Controllers\TourController;
 use Ytan\Service\CaptchaService;
 use Ytan\Service\ImageStorageService;
 use Ytan\Service\MailService;
-use Ytan\Service\StaticMapImageService;
-use Ytan\Service\TourDocumentService;
 use Ytan\Service\TourNotificationService;
-use Ytan\Service\Translator;
 
 /**
  * Who may READ a single POI/route/area/tour (security audit 2026-10-16: the
@@ -69,19 +65,12 @@ final class VisibilityTest extends ControllerTestCase
             new TourNotificationService(new UserRepository($this->pdo), new MailService('', 587, '', '', 'noreply@example.test', 'tls', 'YTAN'), 'http://localhost'),
             $images
         );
-        $documents = new TourDocumentService(
-            $this->tours,
-            $this->routes,
-            $this->pois,
-            $this->areas,
-            $images,
-            $images,
-            new StaticMapImageService(sys_get_temp_dir() . '/ytan-test-maps', ''),
-            new GithubFlavoredMarkdownConverter(),
-            dirname(__DIR__, 2) . '/public/markers',
-            new Translator(dirname(__DIR__, 2) . '/resources/i18n', 'de'),
-            dirname(__DIR__, 2) . '/public/images/ytan-logo.png',
-            'https://example.com',
+        $documents = $this->tourDocuments(
+            tours: $this->tours,
+            poiImages: $images,
+            routes: $this->routes,
+            pois: $this->pois,
+            areas: $this->areas,
         );
         $this->tourController = new TourController($this->tours, $images, $documents);
 

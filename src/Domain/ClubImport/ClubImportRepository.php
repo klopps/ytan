@@ -39,11 +39,7 @@ final class ClubImportRepository
 
         $inserted = 0;
         $updated = 0;
-        $ownTransaction = !$this->db->inTransaction();
-        if ($ownTransaction) {
-            $this->db->beginTransaction();
-        }
-        try {
+        \Ytan\Database\Transaction::run($this->db, function () use ($entries, $stmt, &$inserted, &$updated): void {
             foreach ($entries as $entry) {
                 $stmt->execute([
                     $entry['osm_ref'],
@@ -63,15 +59,7 @@ final class ClubImportRepository
                     $updated++;
                 }
             }
-            if ($ownTransaction) {
-                $this->db->commit();
-            }
-        } catch (\Throwable $e) {
-            if ($ownTransaction) {
-                $this->db->rollBack();
-            }
-            throw $e;
-        }
+        });
 
         return ['inserted' => $inserted, 'updated' => $updated];
     }

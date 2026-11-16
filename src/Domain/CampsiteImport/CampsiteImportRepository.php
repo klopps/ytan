@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Ytan\Domain\CampsiteImport;
 
 use PDO;
+use Ytan\Database\Transaction;
 use Ytan\Domain\Poi\NearbyPoiMatcher;
 use Ytan\Service\Water\WaterDistanceService;
 
@@ -79,11 +80,7 @@ final class CampsiteImportRepository
 
         $inserted = 0;
         $updated = 0;
-        $ownTransaction = !$this->db->inTransaction();
-        if ($ownTransaction) {
-            $this->db->beginTransaction();
-        }
-        try {
+        Transaction::run($this->db, function () use ($entries, $stmt, $stored, $canCompute, &$inserted, &$updated): void {
             foreach ($entries as $entry) {
                 [$distances, $checkedAt] = $this->distancesFor($entry, $stored[$entry['source'] . "\n" . $entry['source_ref']] ?? null, $canCompute);
                 $stmt->execute([
@@ -112,15 +109,7 @@ final class CampsiteImportRepository
                     $updated++;
                 }
             }
-            if ($ownTransaction) {
-                $this->db->commit();
-            }
-        } catch (\Throwable $e) {
-            if ($ownTransaction) {
-                $this->db->rollBack();
-            }
-            throw $e;
-        }
+        });
 
         return ['inserted' => $inserted, 'updated' => $updated];
     }

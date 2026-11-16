@@ -492,22 +492,7 @@ function loginUser() {
 
         Ytan.setToken(answer.token);
 
-        user.id         = answer.user.id;
-        user.username   = answer.user.username;
-        user.email      = answer.user.email;
-        user.firstname  = answer.user.firstname;
-        user.lastname   = answer.user.lastname;
-        user.is_admin   = !!answer.user.is_admin;
-        user.tour_create  = !!answer.user.tour_create;
-        user.tour_publish = !!answer.user.tour_publish;
-        user.tour_manage  = !!answer.user.tour_manage;
-        user.tour_copy    = !!answer.user.tour_copy;
-        user.route_view_recording = !!answer.user.route_view_recording;
-        user.export_routes_own = !!answer.user.export_routes_own;
-        user.export_routes_public = !!answer.user.export_routes_public;
-        user.ai_use = !!answer.user.ai_use;
-
-        sessionStorage.setItem('user', JSON.stringify(user));
+        applyUserData(answer.user);
         closeUserWindow();
         getPoisByUserId(user.id);
         getRoutesByUserId(user.id);

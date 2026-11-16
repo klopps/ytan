@@ -17,7 +17,6 @@ use Ytan\Exception\NgaMsiException;
 final class CurlNgaMsiClient implements NgaMsiClient
 {
     public const ENDPOINT = 'https://msi.nga.mil/api/publications/ngalol/lights-buoys';
-    private const USER_AGENT = 'YTAN/1.0 (+https://ytan.pesr.org; no-reply@pesr.org)';
 
     public function __construct(private readonly string $endpoint = self::ENDPOINT, private readonly int $timeoutSeconds = 180)
     {
@@ -25,20 +24,14 @@ final class CurlNgaMsiClient implements NgaMsiClient
 
     public function fetchVolume(int $volume): array
     {
-        $ch = curl_init($this->endpoint . '?' . http_build_query(['volume' => $volume, 'includeRemovals' => 'false', 'output' => 'json']));
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_CONNECTTIMEOUT => 15,
-            CURLOPT_TIMEOUT => $this->timeoutSeconds,
-            CURLOPT_FOLLOWLOCATION => false,
-            CURLOPT_ENCODING => '', // accept and decode gzip
-            CURLOPT_USERAGENT => self::USER_AGENT,
-        ]);
-        $body = curl_exec($ch);
-        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $error = curl_error($ch);
+        ['status' => $status, 'body' => $body, 'error' => $error] = \Ytan\Service\Http\HttpFetch::request(
+            $this->endpoint . '?' . http_build_query(['volume' => $volume, 'includeRemovals' => 'false', 'output' => 'json']),
+            [],
+            15,
+            $this->timeoutSeconds
+        );
 
-        if ($body === false || $status !== 200) {
+        if ($body === null || $status !== 200) {
             throw new NgaMsiException('NGA Maritime Safety Information not available (' . ($status > 0 ? "HTTP $status" : ($error !== '' ? $error : 'no answer')) . ').');
         }
 

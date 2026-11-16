@@ -28,14 +28,8 @@ var liArea = {
 };
 var LI_AREA_MAX_VERTICES = 100;
 
-function liEscape(value) {
-    var div = document.createElement('div');
-    div.textContent = value == null ? '' : String(value);
-    // innerHTML escapes only &, < and > - quotes too, since the result also
-    // goes into attributes (title="...", value="...") and the data comes
-    // from outside (OpenStreetMap, NGA).
-    return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-}
+// Escaping: helper.js's escapeHTML() (quotes too - results also go into
+// attributes, and the data comes from outside: OpenStreetMap, NGA).
 
 function liFilters() {
     var filters = {};
@@ -190,7 +184,7 @@ async function loadEntries() {
         liRender();
     } catch (err) {
         document.getElementById('liRows').innerHTML =
-            '<tr><td colspan="10" class="text-danger">' + liEscape(t('admin.lighthouse_import.load_failed', { error: err.message })) + '</td></tr>';
+            '<tr><td colspan="10" class="text-danger">' + escapeHTML(t('admin.lighthouse_import.load_failed', { error: err.message })) + '</td></tr>';
     }
 }
 
@@ -226,7 +220,7 @@ async function liLoadNga() {
         showAdminToast(t('admin.lighthouse_import.nga_failed', { error: translateApiError(err.data) || err.message }), 'error');
     } finally {
         button.disabled = false;
-        button.innerHTML = '<i class="bi bi-cloud-download"></i> ' + liEscape(t('admin.lighthouse_import.nga_load'));
+        button.innerHTML = '<i class="bi bi-cloud-download"></i> ' + escapeHTML(t('admin.lighthouse_import.nga_load'));
     }
 }
 
@@ -255,7 +249,7 @@ async function liLoadOsm() {
 
 /** The load button's normal content. */
 function liOsmIdleHtml() {
-    return '<i class="bi bi-cloud-download"></i> ' + liEscape(t('admin.lighthouse_import.osm_load'));
+    return '<i class="bi bi-cloud-download"></i> ' + escapeHTML(t('admin.lighthouse_import.osm_load'));
 }
 
 /** Fills the area fields from a preset ("label|south|west|north|east"). */
@@ -278,37 +272,37 @@ function liFillOptions(listId, values) {
         return;
     }
     list.innerHTML = values.map(function (value) {
-        return '<option value="' + liEscape(value) + '"></option>';
+        return '<option value="' + escapeHTML(value) + '"></option>';
     }).join('');
 }
 
 function liRender() {
     var body = document.getElementById('liRows');
     if (liState.rows.length === 0) {
-        body.innerHTML = '<tr><td colspan="10" class="text-secondary">' + liEscape(t('admin.lighthouse_import.no_results')) + '</td></tr>';
+        body.innerHTML = '<tr><td colspan="10" class="text-secondary">' + escapeHTML(t('admin.lighthouse_import.no_results')) + '</td></tr>';
     } else {
         body.innerHTML = liState.rows.map(function (row) {
             var imported = row.poi_id !== null;
             var sectors = row.sector_characteristic
-                ? '<span class="font-monospace small text-nowrap" title="' + liEscape(row.remarks || '') + '">' + liEscape(row.sector_characteristic).replace(/\n/g, '<br>') + '</span>'
+                ? '<span class="font-monospace small text-nowrap" title="' + escapeHTML(row.remarks || '') + '">' + escapeHTML(row.sector_characteristic).replace(/\n/g, '<br>') + '</span>'
                 : '';
             if (Number(row.sector_missing_range) === 1) {
-                sectors += ' <i class="bi bi-exclamation-triangle text-warning" title="' + liEscape(t('admin.lighthouse_import.sector_missing_range')) + '"></i>';
+                sectors += ' <i class="bi bi-exclamation-triangle text-warning" title="' + escapeHTML(t('admin.lighthouse_import.sector_missing_range')) + '"></i>';
             }
             return '<tr>' +
                 '<td><input type="checkbox" class="form-check-input liRowCheckbox" data-id="' + row.id + '"' +
                     (imported ? ' disabled' : '') + (liState.selected.has(Number(row.id)) ? ' checked' : '') + '></td>' +
-                '<td class="text-nowrap small">' + liEscape(liSourceName(row.source)) + '</td>' +
-                '<td class="text-nowrap">' + liEscape(row.dk_no) + '</td>' +
-                '<td class="text-nowrap">' + liEscape(row.international_id) + '</td>' +
-                '<td>' + liEscape(row.name) + '</td>' +
-                '<td class="small">' + liEscape(row.location) + '</td>' +
-                '<td class="small">' + liEscape(row.region) + (row.subregion ? '<br><span class="text-secondary">' + liEscape(row.subregion) + '</span>' : '') + '</td>' +
-                '<td class="text-nowrap">' + liEscape(row.characteristic) + '</td>' +
+                '<td class="text-nowrap small">' + escapeHTML(liSourceName(row.source)) + '</td>' +
+                '<td class="text-nowrap">' + escapeHTML(row.dk_no) + '</td>' +
+                '<td class="text-nowrap">' + escapeHTML(row.international_id) + '</td>' +
+                '<td>' + escapeHTML(row.name) + '</td>' +
+                '<td class="small">' + escapeHTML(row.location) + '</td>' +
+                '<td class="small">' + escapeHTML(row.region) + (row.subregion ? '<br><span class="text-secondary">' + escapeHTML(row.subregion) + '</span>' : '') + '</td>' +
+                '<td class="text-nowrap">' + escapeHTML(row.characteristic) + '</td>' +
                 '<td>' + sectors + '</td>' +
                 '<td>' + (imported
-                    ? '<span class="badge text-bg-success">' + liEscape(t('admin.lighthouse_import.status_imported')) + '</span>'
-                    : '<span class="badge text-bg-secondary">' + liEscape(t('admin.lighthouse_import.status_open')) + '</span>') + '</td>' +
+                    ? '<span class="badge text-bg-success">' + escapeHTML(t('admin.lighthouse_import.status_imported')) + '</span>'
+                    : '<span class="badge text-bg-secondary">' + escapeHTML(t('admin.lighthouse_import.status_open')) + '</span>') + '</td>' +
             '</tr>';
         }).join('');
     }
@@ -316,7 +310,7 @@ function liRender() {
     var totalPages = Math.max(1, Math.ceil(liState.total / liState.pageSize));
     document.getElementById('liPagination').innerHTML =
         '<button type="button" class="btn btn-sm btn-outline-secondary" id="liPrev"' + (liState.page <= 1 ? ' disabled' : '') + '><i class="bi bi-chevron-left"></i></button>' +
-        '<span class="small text-secondary">' + liEscape(liState.total === 0 ? t('admin.lighthouse_import.zero_results') : t('common.page_of', { page: liState.page, total: totalPages }) + ' (' + liState.total + ')') + '</span>' +
+        '<span class="small text-secondary">' + escapeHTML(liState.total === 0 ? t('admin.lighthouse_import.zero_results') : t('common.page_of', { page: liState.page, total: totalPages }) + ' (' + liState.total + ')') + '</span>' +
         '<button type="button" class="btn btn-sm btn-outline-secondary" id="liNext"' + (liState.page >= totalPages ? ' disabled' : '') + '><i class="bi bi-chevron-right"></i></button>';
 
     liUpdateSelectionUi();
@@ -417,12 +411,12 @@ function liShowConflicts(conflicts) {
         }
         // Skipping is the safe default: nothing changes unless the admin chooses otherwise.
         return '<div class="list-group-item d-flex flex-wrap align-items-center gap-2 px-0">' +
-            '<div class="flex-grow-1"><strong>' + liEscape(conflict.international_id) + '</strong> ' + liEscape(conflict.name) +
-                '<div class="small text-secondary">' + liEscape(existing) + '</div></div>' +
+            '<div class="flex-grow-1"><strong>' + escapeHTML(conflict.international_id) + '</strong> ' + escapeHTML(conflict.name) +
+                '<div class="small text-secondary">' + escapeHTML(existing) + '</div></div>' +
             '<select class="form-select form-select-sm w-auto liConflictAction" data-id="' + conflict.id + '">' +
-                '<option value="skip">' + liEscape(t('admin.lighthouse_import.conflict_skip')) + '</option>' +
-                '<option value="add">' + liEscape(t('admin.lighthouse_import.conflict_add')) + '</option>' +
-                (conflict.existing_poi_id === null ? '' : '<option value="overwrite">' + liEscape(t('admin.lighthouse_import.conflict_overwrite')) + '</option>') +
+                '<option value="skip">' + escapeHTML(t('admin.lighthouse_import.conflict_skip')) + '</option>' +
+                '<option value="add">' + escapeHTML(t('admin.lighthouse_import.conflict_add')) + '</option>' +
+                (conflict.existing_poi_id === null ? '' : '<option value="overwrite">' + escapeHTML(t('admin.lighthouse_import.conflict_overwrite')) + '</option>') +
             '</select>' +
         '</div>';
     }).join('');

@@ -21,26 +21,10 @@ namespace Ytan\Service;
  */
 final class CurlJsonHttpClient implements JsonHttpClient
 {
-    private const USER_AGENT = 'YTAN/1.0 (+https://ytan.pesr.org; no-reply@pesr.org)';
-
     public function getJson(string $baseUrl, array $query): ?array
     {
-        $url = $baseUrl . '?' . http_build_query($query);
-
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_CONNECTTIMEOUT => 4,
-            CURLOPT_TIMEOUT => 8,
-            CURLOPT_FOLLOWLOCATION => false,
-            CURLOPT_USERAGENT => self::USER_AGENT,
-        ]);
-
-        $body = curl_exec($ch);
-        $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $errno = curl_errno($ch);
-
-        if ($errno !== 0 || $body === false || $statusCode !== 200) {
+        $body = Http\HttpFetch::body($baseUrl . '?' . http_build_query($query), [], 4, 8);
+        if ($body === null) {
             return null;
         }
 

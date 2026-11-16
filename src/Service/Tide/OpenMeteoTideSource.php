@@ -145,10 +145,6 @@ final class OpenMeteoTideSource implements TideSource
 
     private static function haversine(float $lat1, float $lng1, float $lat2, float $lng2): float
     {
-        $p1 = deg2rad($lat1);
-        $p2 = deg2rad($lat2);
-        $a = sin(($p2 - $p1) / 2) ** 2 + cos($p1) * cos($p2) * sin(deg2rad($lng2 - $lng1) / 2) ** 2;
-
-        return 2 * 6371008.8 * asin(min(1.0, sqrt($a)));
+        return \Ytan\Service\GeometryService::distanceMeters($lat1, $lng1, $lat2, $lng2);
     }
 }

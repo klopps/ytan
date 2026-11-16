@@ -9,6 +9,8 @@ use Ytan\Service\FileCacheCleanupService;
 
 final class FileCacheCleanupServiceTest extends TestCase
 {
+    use \Ytan\Tests\RemovesDirectories;
+
     private string $dir;
     private FileCacheCleanupService $cleanup;
 
@@ -24,20 +26,6 @@ final class FileCacheCleanupServiceTest extends TestCase
         $this->rmrf($this->dir);
     }
 
-    private function rmrf(string $dir): void
-    {
-        if (!is_dir($dir)) {
-            return;
-        }
-        foreach (scandir($dir) as $entry) {
-            if ($entry === '.' || $entry === '..') {
-                continue;
-            }
-            $path = $dir . '/' . $entry;
-            is_dir($path) ? $this->rmrf($path) : unlink($path);
-        }
-        rmdir($dir);
-    }
 
     private function writeFile(string $filename, int $ageSeconds): void
     {

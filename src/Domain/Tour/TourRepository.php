@@ -9,6 +9,8 @@ use Ytan\Exception\NotFoundException;
 
 final class TourRepository
 {
+    use \Ytan\Domain\EntityImageRows;
+
     private const SELECT_ONE = 'SELECT tour.*, user.username AS creator_username FROM tour JOIN user ON user.id = tour.user_id WHERE tour.id = ?';
 
     public function __construct(private readonly PDO $db)
@@ -442,61 +444,10 @@ final class TourRepository
 
     /* ---------------------------------------------------------- Images */
 
-    public function getImages(int $tourId): array
+    // getImages() & co.: EntityImageRows (table tour_image); reorderImages() below is tours only.
+    protected function imageEntity(): string
     {
-        $stmt = $this->db->prepare(
-            'SELECT id, filename, sort_order, mime_type, size_bytes, uploaded_at FROM tour_image WHERE tour_id = ? ORDER BY sort_order'
-        );
-        $stmt->execute([$tourId]);
-
-        return $stmt->fetchAll();
-    }
-
-    /**
-     * Every tour_image row across every tour, for
-     * ImageReconciliationService's admin cleanup tool - unlike getImages(),
-     * not scoped to one tour.
-     *
-     * @return list<array{id:int, entity_id:int, filename:string, size_bytes:int}>
-     */
-    public function getAllImages(): array
-    {
-        return $this->db->query('SELECT id, tour_id AS entity_id, filename, size_bytes FROM tour_image')->fetchAll();
-    }
-
-    public function findImage(int $tourId, int $imageId): ?array
-    {
-        $stmt = $this->db->prepare('SELECT * FROM tour_image WHERE id = ? AND tour_id = ?');
-        $stmt->execute([$imageId, $tourId]);
-        $row = $stmt->fetch();
-
-        return $row === false ? null : $row;
-    }
-
-    public function countImages(int $tourId): int
-    {
-        $stmt = $this->db->prepare('SELECT COUNT(*) FROM tour_image WHERE tour_id = ?');
-        $stmt->execute([$tourId]);
-
-        return (int) $stmt->fetchColumn();
-    }
-
-    public function addImage(int $tourId, string $filename, string $mimeType, int $sizeBytes): array
-    {
-        $stmt = $this->db->prepare('SELECT COALESCE(MAX(sort_order), -1) + 1 FROM tour_image WHERE tour_id = ?');
-        $stmt->execute([$tourId]);
-        $nextOrder = (int) $stmt->fetchColumn();
-
-        $this->db->prepare(
-            'INSERT INTO tour_image (tour_id, filename, sort_order, mime_type, size_bytes, uploaded_at) VALUES (?, ?, ?, ?, ?, NOW())'
-        )->execute([$tourId, $filename, $nextOrder, $mimeType, $sizeBytes]);
-
-        return $this->getImages($tourId);
-    }
-
-    public function removeImage(int $tourId, int $imageId): void
-    {
-        $this->db->prepare('DELETE FROM tour_image WHERE id = ? AND tour_id = ?')->execute([$imageId, $tourId]);
+        return 'tour';
     }
 
     /**

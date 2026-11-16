@@ -11,6 +11,8 @@ use Ytan\Service\WindDataService;
 
 final class WindDataServiceTest extends TestCase
 {
+    use \Ytan\Tests\RemovesDirectories;
+
     private const RUN = '202610182132';
 
     private string $dir;
@@ -86,17 +88,4 @@ final class WindDataServiceTest extends TestCase
         ];
     }
 
-    private function rmrf(string $path): void
-    {
-        if (is_dir($path)) {
-            foreach (scandir($path) as $f) {
-                if ($f !== '.' && $f !== '..') {
-                    $this->rmrf($path . '/' . $f);
-                }
-            }
-            rmdir($path);
-        } elseif (file_exists($path)) {
-            unlink($path);
-        }
-    }
 }

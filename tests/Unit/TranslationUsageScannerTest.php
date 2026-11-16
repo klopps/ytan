@@ -9,6 +9,8 @@ use Ytan\Service\TranslationUsageScanner;
 
 final class TranslationUsageScannerTest extends TestCase
 {
+    use \Ytan\Tests\RemovesDirectories;
+
     private string $rootDir;
 
     protected function setUp(): void
@@ -23,20 +25,6 @@ final class TranslationUsageScannerTest extends TestCase
         $this->rmrf($this->rootDir);
     }
 
-    private function rmrf(string $dir): void
-    {
-        if (!is_dir($dir)) {
-            return;
-        }
-        foreach (scandir($dir) as $entry) {
-            if ($entry === '.' || $entry === '..') {
-                continue;
-            }
-            $path = $dir . '/' . $entry;
-            is_dir($path) ? $this->rmrf($path) : unlink($path);
-        }
-        rmdir($dir);
-    }
 
     public function testFindsAJsCallSiteWithItsLineNumber(): void
     {

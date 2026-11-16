@@ -1,63 +1,44 @@
 @echo off
-REM Deploys the current working tree to the test system over SSH.
+REM Deploys the current working tree over SSH.
+REM
+REM   bin\deploy.bat          production (ytan.pesr.org)
+REM   bin\deploy.bat test     test system (test.pesr.org) - bin\deploy_test.bat does the same
 REM
 REM There is no composer on the remote host, so production dependencies are
 REM built locally (in a throwaway temp copy, so the developer's own vendor\
 REM with dev dependencies like phpunit is left untouched) and shipped as
-REM part of the upload. The actual upload uses PuTTY's plink.exe (not
-REM ssh.exe) piped together with tar.exe - see the DEPLOY_SSH_PASSWORD block
-REM below for why.
+REM part of the upload. The upload is tar.exe piped into PuTTY's plink.exe;
+REM connection settings and the password file come from bin\ssh-setup.bat
+REM (shared with the publish scripts).
 REM
 REM The remote .env is never touched: it's excluded from the package, and
-REM this script never deletes anything on the remote side, it only extracts
-REM on top of what's already there. That also means files removed locally
-REM are NOT removed from the remote - this is a simple "copy newer files
-REM over", not a mirror.
+REM this script never deletes anything on the remote side (except docs/user,
+REM see below), it only extracts on top of what's already there. That also
+REM means files removed locally are NOT removed from the remote - this is a
+REM simple "copy newer files over", not a mirror.
 REM
-REM Only what the PHP app actually needs at runtime is uploaded. Everything
-REM below is local dev/build-only tooling and is excluded (see the --exclude
-REM list): android/ (the whole native Capacitor Android Studio project),
-REM node_modules/ + package.json/package-lock.json + capacitor.config.json
-REM (root-level npm/Capacitor tooling, unrelated to the PHP app's own
-REM composer dependencies), assets/ (Capacitor app icon/splash source
-REM images), tests/ (PHPUnit + the self-contained Playwright e2e project,
-REM including ITS OWN node_modules/), docs/API.md (docs/user, the user guide, ships), .githooks/, .phpunit.cache/,
-REM .playwright-mcp/ (Claude/Playwright MCP tool scratch output - gitignored
-REM but not tar-ignored, so it would otherwise ship whatever happens to be
-REM sitting in the working tree at deploy time).
+REM Only what the PHP app actually needs at runtime is uploaded: the list of
+REM what stays local is bin\deploy-excludes.txt (one tar pattern per line) -
+REM the Android/Capacitor project and npm tooling, tests, the Garmin watch
+REM sources, the HA add-on, Python venvs, storage\ and every per-host file
+REM such as .env and public\.user.ini. Until 2026-11-15 each deploy script
+REM had its own copy of that list, and they had drifted apart (the test
+REM deploy uploaded the local storage\).
 REM
-REM Usage: bin\deploy.bat
-REM Override any of these by setting the env var before running, e.g.:
-REM   set REMOTE_PHP=php8.1
+REM Override any of the settings by setting the env var before running, e.g.:
+REM   set REMOTE_PHP=php8.3
 REM   bin\deploy.bat
+REM NOTE: never put an unescaped less-than, greater-than or pipe character
+REM in a REM line of this file - cmd.exe parses them even in comments.
 
-REM Delayed expansion (!var!) stays OFF on purpose: DEPLOY_SSH_PASSWORD is
-REM used later as a plain %-expanded value, and if it ever contains a "!"
-REM (this file's own does), delayed expansion's own "!...!" scanning could
-REM mangle it on the command line. Nothing in this script needs !var! syntax.
+REM Delayed expansion (!var!) stays OFF on purpose: the password could
+REM contain a "!" and delayed expansion would mangle it.
 setlocal
 
-if not defined DEPLOY_USER set "DEPLOY_USER=csteindorff"
-if not defined DEPLOY_HOST set "DEPLOY_HOST=steindorff.de"
-if not defined DEPLOY_PORT set "DEPLOY_PORT=22"
-if not defined DEPLOY_PATH set "DEPLOY_PATH=/home/www/doc/9769/ytan.pesr.org/www"
-
-REM Windows' native ssh.exe has no flag to supply a password non-interactively
-REM (only key-based auth or an interactive prompt) - plink.exe (PuTTY) does,
-REM via -pw, and is already installed on this machine. Falls back to reading
-REM DEPLOY_SSH_PASSWORD from .env (never committed - see .gitignore) if it
-REM isn't already set as an environment variable.
-if not defined DEPLOY_SSH_CLIENT set "DEPLOY_SSH_CLIENT=plink"
-if not defined DEPLOY_SSH_PASSWORD (
-    for /f "usebackq eol=# tokens=1,* delims==" %%A in ("%~dp0..\.env") do (
-        if "%%A"=="DEPLOY_SSH_PASSWORD" set "DEPLOY_SSH_PASSWORD=%%B"
-    )
-)
-if not defined DEPLOY_SSH_PASSWORD (
-    echo ==^> DEPLOY_SSH_PASSWORD is not set and not found in .env - add a line
-    echo      DEPLOY_SSH_PASSWORD=... to .env, or set the env var before running.
-    goto :error
-)
+set "SITE=ytan.pesr.org"
+if /i "%~1"=="test" set "SITE=test.pesr.org"
+call "%~dp0ssh-setup.bat"
+if errorlevel 1 goto :error
 
 REM PHP/Composer used LOCALLY to build the production vendor\ directory.
 REM Plain `php`/`composer` on PATH resolve to PHP 7.4 on this machine, which
@@ -66,42 +47,15 @@ REM install + composer.phar directly instead.
 if not defined LOCAL_PHP set "LOCAL_PHP=C:\dev\php8\php.exe"
 if not defined LOCAL_COMPOSER_PHAR set "LOCAL_COMPOSER_PHAR=C:\ProgramData\ComposerSetup\bin\composer.phar"
 
-REM PHP used on the REMOTE host to run bin/migrate.php after upload. Must be
-REM 8.1+; adjust if the server's default `php` on PATH is older (shared
-REM hosts often expose specific versions as e.g. php8.1/php8.2).
+REM PHP used on the REMOTE host to run bin/migrate.php after upload (8.1+).
 if not defined REMOTE_PHP set "REMOTE_PHP=php"
 
 set "ROOT_DIR=%~dp0.."
 set "BUILD_DIR=%TEMP%\ytan-deploy-%RANDOM%%RANDOM%"
 
-echo ==^> Packaging working tree (excluding dev/build-only files - see comment above)
+echo ==^> Packaging working tree for %SITE% (without bin\deploy-excludes.txt)
 mkdir "%BUILD_DIR%" || goto :error
-tar -C "%ROOT_DIR%" ^
-    --exclude=".git" ^
-    --exclude=".env" ^
-    --exclude=".claude" ^
-    --exclude=".githooks" ^
-    --exclude=".phpunit.cache" ^
-    --exclude=".playwright-mcp" ^
-    --exclude="vendor" ^
-    --exclude="node_modules" ^
-    --exclude="android" ^
-    --exclude="watch" ^
-    --exclude="ha-addon" ^
-    --exclude="assets" ^
-    --exclude="docs/API.md" ^
-    --exclude="tests" ^
-    --exclude="capacitor.config.json" ^
-    --exclude="package.json" ^
-    --exclude="package-lock.json" ^
-    --exclude="public/images/wsi/*.svg" ^
-    --exclude="public/app" ^
-    --exclude="public/.user.ini" ^
-    --exclude="tools/.venv" ^
-    --exclude="tools/water" ^
-    --exclude="__pycache__" ^
-    --exclude="storage" ^
-    -cf - . | tar -C "%BUILD_DIR%" -xf -
+tar -C "%ROOT_DIR%" -X "%~dp0deploy-excludes.txt" -cf - . | tar -C "%BUILD_DIR%" -xf -
 if errorlevel 1 goto :error
 
 REM Locale files travel as resources\i18n-incoming so the upload never overwrites the
@@ -115,26 +69,23 @@ echo ==^> Installing production dependencies (composer install --no-dev)
 if errorlevel 1 goto :error
 
 echo ==^> Uploading to %DEPLOY_USER%@%DEPLOY_HOST%:%DEPLOY_PATH% and running migrations
-REM No -batch here on purpose: plink keeps its own host-key cache, separate
-REM from ssh.exe's known_hosts, so the very first run against a host may
-REM still show a one-time "store this host key?" prompt even though the
-REM password itself is no longer asked for - accept it once and it's cached
-REM for every run after that.
 REM docs/user is removed first: tar only adds/overwrites, so a renamed or
 REM deleted chapter (e.g. the renumbering of 2026-11-10) would otherwise stay
 REM on the server and show up twice in the user guide.
-tar -C "%BUILD_DIR%" -cf - . | "%DEPLOY_SSH_CLIENT%" -ssh -P %DEPLOY_PORT% -l %DEPLOY_USER% -pw %DEPLOY_SSH_PASSWORD% %DEPLOY_HOST% "mkdir -p '%DEPLOY_PATH%' && rm -rf '%DEPLOY_PATH%/docs/user' && tar -C '%DEPLOY_PATH%' -xf - && cd '%DEPLOY_PATH%' && %REMOTE_PHP% bin/merge-i18n.php && %REMOTE_PHP% bin/migrate.php"
+tar -C "%BUILD_DIR%" -cf - . | "%DEPLOY_SSH_CLIENT%" %SSH_TARGET% "mkdir -p '%DEPLOY_PATH%' && rm -rf '%DEPLOY_PATH%/docs/user' && tar -C '%DEPLOY_PATH%' -xf - && cd '%DEPLOY_PATH%' && %REMOTE_PHP% bin/merge-i18n.php && %REMOTE_PHP% bin/migrate.php"
 if errorlevel 1 goto :error
 
 echo ==^> Deploy finished.
 date /t
 time /t
+call "%~dp0ssh-setup.bat" cleanup
 rmdir /s /q "%BUILD_DIR%" 2>nul
 endlocal
 exit /b 0
 
 :error
 echo ==^> Deploy FAILED.
+call "%~dp0ssh-setup.bat" cleanup
 if exist "%BUILD_DIR%" rmdir /s /q "%BUILD_DIR%" 2>nul
 endlocal
 exit /b 1

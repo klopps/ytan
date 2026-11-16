@@ -29,6 +29,7 @@ import numpy as np
 
 from . import blocks, dwd, grib2, icon_global
 from .settings import WindSettings
+from ytanjob import directory_size, write_json_atomic  # tools/ytanjob.py (path set in __init__.py)
 
 log = logging.getLogger("ytanwind")
 
@@ -62,15 +63,6 @@ def iso_sec(t: datetime | None = None) -> str:
     return (t or datetime.now(timezone.utc)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def directory_size(path: str) -> int:
-    total = 0
-    for root, _dirs, files in os.walk(path):
-        for name in files:
-            try:
-                total += os.path.getsize(os.path.join(root, name))
-            except OSError:
-                pass
-    return total
 
 
 @dataclass
@@ -350,10 +342,7 @@ class Job:
 
     @staticmethod
     def _write_json(path: str, data: dict) -> None:
-        tmp = path + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(data, f, separators=(",", ":"))
-        os.replace(tmp, path)
+        write_json_atomic(path, data, separators=(",", ":"))
 
     def manifest_path(self) -> str:
         return os.path.join(self.storage, "manifest.json")

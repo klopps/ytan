@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Ytan\Tests\Integration;
 
-use League\CommonMark\GithubFlavoredMarkdownConverter;
 use Ytan\Domain\Area\AreaRepository;
 use Ytan\Domain\Poi\PoiRepository;
 use Ytan\Domain\Route\RouteRepository;
@@ -15,10 +14,7 @@ use Ytan\Http\Controllers\RouteController;
 use Ytan\Http\Controllers\TourController;
 use Ytan\Service\CaptchaService;
 use Ytan\Service\ImageStorageService;
-use Ytan\Service\StaticMapImageService;
-use Ytan\Service\TourDocumentService;
 use Ytan\Service\TourNotificationService;
-use Ytan\Service\Translator;
 use Ytan\Domain\User\UserRepository;
 use Ytan\Service\MailService;
 
@@ -74,20 +70,7 @@ final class EntityImageCleanupTest extends ControllerTestCase
     {
         $images = new ImageStorageService($this->storageDir);
         $tours = new TourRepository($this->pdo);
-        $documents = new TourDocumentService(
-            $tours,
-            new RouteRepository($this->pdo),
-            new PoiRepository($this->pdo),
-            new AreaRepository($this->pdo),
-            $images,
-            $images,
-            new StaticMapImageService(sys_get_temp_dir() . '/ytan-test-maps', ''),
-            new GithubFlavoredMarkdownConverter(),
-            dirname(__DIR__, 2) . '/public/markers',
-            new Translator(dirname(__DIR__, 2) . '/resources/i18n', 'de'),
-            dirname(__DIR__, 2) . '/public/images/ytan-logo.png',
-            'https://example.com',
-        );
+        $documents = $this->tourDocuments(tours: $tours, poiImages: $images);
         $controller = new TourController($tours, $images, $documents);
 
         $userId = $this->createUser();

@@ -11,12 +11,7 @@ var state = {
     danglingRows: [],
 };
 
-function escapeHtml(value) {
-    var div = document.createElement('div');
-    div.textContent = value == null ? '' : String(value);
-    // innerHTML escapes only &, < and > - quotes too, for attribute values.
-    return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-}
+// Escaping: helper.js's escapeHTML() (quotes too - results also go into attributes).
 
 function formatBytes(bytes) {
     if (bytes < 1024) {
@@ -68,9 +63,9 @@ function renderSection(items, kind, titleHtml, hintHtml, hasSize) {
     items.forEach(function (item, index) {
         html += '<tr>' +
             '<td><input type="checkbox" class="form-check-input ' + kind + 'Checkbox" data-index="' + index + '"></td>' +
-            '<td class="text-capitalize">' + escapeHtml(item.type) + '</td>' +
+            '<td class="text-capitalize">' + escapeHTML(item.type) + '</td>' +
             '<td>#' + item.entity_id + '</td>' +
-            '<td class="font-monospace small text-break">' + escapeHtml(item.filename) + '</td>' +
+            '<td class="font-monospace small text-break">' + escapeHTML(item.filename) + '</td>' +
             (hasSize ? '<td class="text-nowrap">' + formatBytes(item.size_bytes) + '</td>' : '') +
         '</tr>';
     });
