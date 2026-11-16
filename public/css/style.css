@@ -2354,6 +2354,93 @@ img.wsi {
   inset: 0;
 }
 
+/* AR route mode: the route on the water under the POI labels */
+.ar-route-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* next waypoint: numbered ring, centred on its point, above the labels */
+.ar-target {
+  position: absolute;
+  left: -18px;
+  top: -18px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background-color: rgba(10, 20, 28, 0.55);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  pointer-events: none;
+  z-index: 1400;
+  will-change: transform;
+}
+
+.ar-nav {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  max-width: 480px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 8px 10px 14px;
+  border-radius: 16px;
+  background-color: var(--color-bg-panel);
+  color: var(--color-text);
+  box-shadow: var(--shadow-panel);
+  font-family: var(--font-body);
+  z-index: 2001;
+}
+
+.ar-nav-arrow {
+  flex: none;
+  font-size: 40px;
+  color: var(--color-accent);
+  transition: transform 0.15s linear;
+}
+
+.ar-nav-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ar-nav-text strong {
+  font-size: 20px;
+}
+
+.ar-nav-close {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: none;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+/* with the nav bar at the bottom the info card sits above it */
+.ar-route-on .ar-info {
+  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+}
+
 .ar-label {
   position: absolute;
   left: 0;

@@ -1145,6 +1145,11 @@ function showRouteContextMenu(event, i) {
         content += '<div class="contextMenuItem" data-on-click="routeContextMenuSendToWatch(' + i + ');"><i class="material-icons-round">watch</i>' + t('route.context.send_to_watch') + '</div>';
     }
 
+    // AR route mode (ar-view.js): every route the user sees, on a phone with camera + compass
+    if (typeof arSupported === 'function' && arSupported() && routes[i].points && routes[i].points.length >= 2) {
+        content += '<div class="contextMenuItem" data-on-click="routeContextMenuArRoute(' + i + ');"><i class="material-icons-round">navigation</i>' + t('ar.route.context_menu') + '</div>';
+    }
+
     if (canExport) {
         content += '<div class="contextMenuItem" data-on-click="routeContextMenuExportGpx(' + i + ');"><i class="material-icons-round">file_download</i>' + t('route.context.export_gpx') + '</div>';
     }
@@ -1235,6 +1240,11 @@ function routeContextMenuAddToTour(i) {
 function routeContextMenuSendToWatch(i) {
     closeContextMenu();
     sendRouteToWatch(i);
+}
+
+function routeContextMenuArRoute(i) {
+    closeContextMenu();
+    startArRoute(routes[i].id);
 }
 
 function routeContextMenuRemoveRoute(i) {

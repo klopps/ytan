@@ -216,16 +216,16 @@ final class SettingsControllerTest extends ControllerTestCase
 
     public function testArSettingsHaveDefaultsAndPersistClamped(): void
     {
-        $this->assertSame(['radius_m' => 2000, 'radius_max_m' => 10000, 'max_pois' => 10, 'max_pois_limit' => 30],
-            (new SettingsRepository($this->pdo))->arSettings(), 'migration 075 defaults');
+        $this->assertSame(['radius_m' => 2000, 'radius_max_m' => 10000, 'max_pois' => 10, 'max_pois_limit' => 30, 'route_range_m' => 3000, 'route_range_max_m' => 10000],
+            (new SettingsRepository($this->pdo))->arSettings(), 'migration 075/076 defaults');
 
         $decoded = $this->decode($this->controller->updateAr(
             $this->request('PUT', '/api/v1/settings/ar', $this->authPayload($this->createUser(), ['is_admin' => true]),
-                ['radius_m' => 3000, 'radius_max_m' => '8000', 'max_pois' => 12, 'max_pois_limit' => 20]),
+                ['radius_m' => 3000, 'radius_max_m' => '8000', 'max_pois' => 12, 'max_pois_limit' => 20, 'route_range_m' => 5000, 'route_range_max_m' => 15000]),
             $this->response()
         ));
 
-        $expected = ['radius_m' => 3000, 'radius_max_m' => 8000, 'max_pois' => 12, 'max_pois_limit' => 20];
+        $expected = ['radius_m' => 3000, 'radius_max_m' => 8000, 'max_pois' => 12, 'max_pois_limit' => 20, 'route_range_m' => 5000, 'route_range_max_m' => 15000];
         $this->assertSame(200, $decoded['status']);
         $this->assertSame($expected, $decoded['data']);
         $this->assertSame($expected, (new SettingsRepository($this->pdo))->arSettings());
@@ -235,20 +235,22 @@ final class SettingsControllerTest extends ControllerTestCase
     {
         $decoded = $this->decode($this->controller->updateAr(
             $this->request('PUT', '/api/v1/settings/ar', $this->authPayload($this->createUser(), ['is_admin' => true]),
-                ['radius_m' => 9000, 'radius_max_m' => 999999, 'max_pois' => 40, 'max_pois_limit' => 0]),
+                ['radius_m' => 9000, 'radius_max_m' => 999999, 'max_pois' => 40, 'max_pois_limit' => 0, 'route_range_m' => 50, 'route_range_max_m' => 90000]),
             $this->response()
         ));
 
-        // limit 999999 m -> 50 km, default stays 9 km; POI limit 0 -> 1, default 40 -> lowered to the limit
-        $this->assertSame(['radius_m' => 9000, 'radius_max_m' => 50000, 'max_pois' => 1, 'max_pois_limit' => 1], $decoded['data']);
-        $this->assertSame(['radius_m' => 500, 'radius_max_m' => 500, 'max_pois' => 5, 'max_pois_limit' => 50],
-            SettingsRepository::clampAr(800, 500, 5, 60), 'default lowered to its limit');
+        // limit 999999 m -> 50 km, default stays 9 km; POI limit 0 -> 1, default 40 -> lowered to the limit;
+        // route range 50 m -> 200 m minimum, its limit 90 km -> 30 km
+        $this->assertSame(['radius_m' => 9000, 'radius_max_m' => 50000, 'max_pois' => 1, 'max_pois_limit' => 1, 'route_range_m' => 200, 'route_range_max_m' => 30000], $decoded['data']);
+        $this->assertSame(['radius_m' => 500, 'radius_max_m' => 500, 'max_pois' => 5, 'max_pois_limit' => 50, 'route_range_m' => 1000, 'route_range_max_m' => 1000],
+            SettingsRepository::clampAr(800, 500, 5, 60, 4000, 1000), 'default lowered to its limit');
     }
 
     public function testUpdateArRejectsMissingOrFractionalValuesAndNonAdmins(): void
     {
         $admin = $this->authPayload($this->createUser(), ['is_admin' => true]);
-        foreach ([['radius_m' => 2000, 'radius_max_m' => 10000, 'max_pois' => 10], ['radius_m' => 2000.5, 'radius_max_m' => 10000, 'max_pois' => 10, 'max_pois_limit' => 30]] as $body) {
+        $valid = ['radius_m' => 2000, 'radius_max_m' => 10000, 'max_pois' => 10, 'max_pois_limit' => 30, 'route_range_m' => 3000, 'route_range_max_m' => 10000];
+        foreach ([array_diff_key($valid, ['max_pois_limit' => 0]), array_diff_key($valid, ['route_range_max_m' => 0]), ['radius_m' => 2000.5] + $valid] as $body) {
             try {
                 $this->controller->updateAr($this->request('PUT', '/api/v1/settings/ar', $admin, $body), $this->response());
                 $this->fail('expected a ValidationException');
@@ -259,7 +261,7 @@ final class SettingsControllerTest extends ControllerTestCase
 
         $this->expectException(ForbiddenException::class);
         $this->controller->updateAr(
-            $this->request('PUT', '/api/v1/settings/ar', $this->authPayload(1, ['is_admin' => false]), ['radius_m' => 2000, 'radius_max_m' => 10000, 'max_pois' => 10, 'max_pois_limit' => 30]),
+            $this->request('PUT', '/api/v1/settings/ar', $this->authPayload(1, ['is_admin' => false]), $valid),
             $this->response()
         );
     }

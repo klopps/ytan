@@ -736,6 +736,8 @@ var settings = { // muss wegen JSON.stringify() ein Objekt sein
     windFillOpacity: 40, // percent, wind.js: opacity of the wind layer's colour fill (Preferences)
     arRadius: null, // m, ar-view.js: own AR radius (Preferences / AR view), null = the admin's default (window.YTAN_AR)
     arMaxPois: null, // ar-view.js: own number of POIs in the AR picture, null = the admin's default
+    arRouteRange: null, // m, ar-view.js: how far ahead the AR route mode draws the route, null = the admin's default
+    arRouteId: null, // ar-view.js: the route of the AR route mode (route context menu), null = none
     trackDistanceFilter: 'battery', // GPS track recording (native shell only, track-recorder.js)
     maptype: "hybrid",
     center: null,

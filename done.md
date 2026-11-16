@@ -1,5 +1,39 @@
 # Erledigt
 
+## AR-Routen-Modus
+
+~~In Ergänzung zum AR-Modus wird im AR-Routen-Modus auch eine vorher zu aktivierende Route überlagert. Der Benutzer sieht dann eine 3D-Darstellung der Route bis zu einer Entfernung von x-Kilometern. Die Linie wird mit zunehmender Entfernung vom aktuellen Standort immer dünner. So wie bei der App für die Garmin-Uhr soll die Richtung und Entfernung zum nächsten Wegpunkt angezeigt werden. Ein Pfeil soll anzeigen, wo dieser Punkt liegt. Wie im reinen AR-Modus sollen die POIs weiterhin angezeigt werden.~~
+
+Gelöst (2026-11-16): Die AR-Ansicht (`public/js/ar-view.js`) legt eine aktivierte Route als Linie auf die Wasseroberfläche des Kamerabilds. Die POIs bleiben sichtbar.
+
+- **Aktivieren** (User): Eintrag „AR-Navigation“ im Kontextmenü jeder sichtbaren Route, nur auf Geräten mit Kamera und Kompass.
+  - Die Wahl bleibt gespeichert (`settings.arRouteId`). Auch die Drawer-Zeile startet sie wieder, bis man sie mit dem x an der Navigationsleiste beendet.
+  - Eine gelöschte oder nicht mehr sichtbare Route wird still verworfen.
+  - Nur einzelne Routen. Touren stehen als „AR-Touren“ in todo.md.
+- **3D-Linie:**
+  - Jeder Routenpunkt wird als Punkt auf dem Wasser 1 m unter dem Auge in Kamerakoordinaten projiziert (`arProjectGround()`, `arCameraBasis()`) und an der Nahebene (2 m) abgeschnitten (`arClipSegment()`).
+  - Gezeichnet wird vom Fußpunkt auf dem aktuellen Teilstück bis zur Sichtweite entlang der Route, dazu blass ein Stück von 50 m dahinter.
+  - Die Strecke ist in 25-m-Stücke geteilt. Die Breite ist 120/Tiefe px (2 bis 18), die Deckkraft fällt zur Sichtweite hin.
+  - Farbe ist die Routenfarbe, mit dunklem Rand. Gezeichnet wird in ein Canvas unter den POI-Etiketten.
+  - **Befund beim Testen:** Aus 1 m Augenhöhe liegt Wasser in 56 m Entfernung nur etwa 1° unter dem Horizont. Eine Route, die nicht beim Nutzer beginnt, war deshalb nur ein dünner Strich am Horizont. Wer neben der Route oder vor ihrem Start ist, sieht jetzt zusätzlich eine blasse Verbindung vom eigenen Standort bis zur Route. Das ergibt die Perspektive vom Bildrand bis zum Horizont.
+- **Sichtweite:** wie Umkreis und Anzahl (User). Der Admin legt Vorgabe 3 km und Obergrenze 10 km fest (`app_settings.ar_route_range_m`/`_max_m`, Migration 076, Bereich 200 m bis 30 km, `PUT /settings/ar`). Jeder Nutzer wählt darunter per Schieberegler, in den Einstellungen und im AR-Bild.
+- **Nächster Wegpunkt wie die Uhr:** `arNextWaypoint()` übernimmt die Regeln von `YtanNavField.mc`:
+  - Start mit dem Wegpunkt hinter dem nächsten Teilstück. Bei Hin und zurück auf derselben Linie gilt der Hinweg.
+  - Ankunft im Radius von 50 m.
+  - Abkürzung über bis zu 10 Teilstücke voraus, wenn eines mindestens 50 m näher liegt.
+  - Ein erreichter Wegpunkt vibriert kurz, das Ziel zweimal.
+- **Anzeige:**
+  - Der nächste Wegpunkt ist ein nummerierter Ring im Bild.
+  - Die Navigationsleiste unten zeigt einen Pfeil, um Peilung minus Blickrichtung gedreht. Er zeigt auch dann zum Wegpunkt, wenn der außerhalb des Bilds liegt.
+  - Daneben stehen Peilung in °, Entfernung, „Wegpunkt n/Anzahl“ und der Rest bis zum Ziel. Am Ende steht „Ziel erreicht“.
+  - Die Infokarte eines POI rückt über die Leiste.
+- **Nebenbei behoben:** Die Warnung „Keine GPS-Position“ blieb stehen, obwohl weiter Positionen kamen. Jetzt räumt jeder gültige Fix eine GPS-Warnung ab, eine Zeitüberschreitung bei frischer Position warnt gar nicht, und Kompass- und GPS-Warnungen löschen sich nicht mehr gegenseitig.
+- **Tests:**
+  - e2e `ar-view.spec.js`: Start über das Kontextmenü, Linie im Canvas, Zähler und Peilung, Weiterschalten am Wegpunkt, senkrechte Linie in Fahrtrichtung, keine GPS-Warnung, Beenden.
+  - Reine Funktionen: Start mitten auf der Route, Ankunft, Hinweg, Abkürzung, Ziel, Bodenprojektion, Abschneiden.
+  - PHPUnit für die neuen Einstellungen.
+- **Nicht geprüft:** ein echtes Gerät auf dem Wasser, das testet der User.
+
 ## AR-Modus
 
 ~~Zur besseren Orientierung soll auf Smartphones eine AR-Funktion dienen. Im AR-Modus wird das Live-Bild der Smartphone-Kamera angezeigt und mit POIs überlagert. Es ist zu überlegen, wie nur die momentan relevanten POIs angezeigt werden und nur eine begrenzte Anzahl. Es dürfen aber nur POIs angezeigt werden, die innerhalb eines zu definierenden (konfigurierbar) Radius liegen.~~

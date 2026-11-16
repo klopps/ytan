@@ -150,6 +150,20 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
                 <label for="settingArMaxPoisLimit" class="form-label"><?= $t('admin.settings.ar_max_pois_limit') ?></label>
                 <input type="number" min="<?= \Ytan\Domain\Settings\SettingsRepository::AR_POIS_MIN ?>" max="<?= \Ytan\Domain\Settings\SettingsRepository::AR_POIS_MAX ?>" step="1" class="form-control" id="settingArMaxPoisLimit" value="<?= (int) $arSettings['max_pois_limit'] ?>">
             </div>
+            <div class="col-sm-6 col-lg-3">
+                <label for="settingArRouteRange" class="form-label"><?= $t('admin.settings.ar_route_range') ?></label>
+                <div class="input-group">
+                    <input type="number" min="<?= \Ytan\Domain\Settings\SettingsRepository::AR_ROUTE_RANGE_MIN_M ?>" max="<?= \Ytan\Domain\Settings\SettingsRepository::AR_ROUTE_RANGE_MAX_M ?>" step="100" class="form-control" id="settingArRouteRange" value="<?= (int) $arSettings['route_range_m'] ?>">
+                    <span class="input-group-text">m</span>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <label for="settingArRouteRangeMax" class="form-label"><?= $t('admin.settings.ar_route_range_max') ?></label>
+                <div class="input-group">
+                    <input type="number" min="<?= \Ytan\Domain\Settings\SettingsRepository::AR_ROUTE_RANGE_MIN_M ?>" max="<?= \Ytan\Domain\Settings\SettingsRepository::AR_ROUTE_RANGE_MAX_M ?>" step="100" class="form-control" id="settingArRouteRangeMax" value="<?= (int) $arSettings['route_range_max_m'] ?>">
+                    <span class="input-group-text">m</span>
+                </div>
+            </div>
         </div>
         <button type="button" class="btn btn-primary mt-3" id="settingArSaveBtn" data-on-click="saveArSettings();"><?= $t('common.save') ?></button>
     </div>

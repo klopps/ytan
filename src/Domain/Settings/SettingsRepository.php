@@ -168,15 +168,19 @@ final class SettingsRepository
     public const AR_RADIUS_MAX_M = 50000;
     public const AR_POIS_MIN = 1;
     public const AR_POIS_MAX = 50;
+    /** how far ahead the AR route mode draws the route, meters along it */
+    public const AR_ROUTE_RANGE_MIN_M = 200;
+    public const AR_ROUTE_RANGE_MAX_M = 30000;
 
     /**
-     * AR view (ar-view.js, migration 075): the admin's default and upper
-     * limit for the radius (m) and for the number of POIs in the camera
-     * picture - /admin/settings, injected into the SPA as window.YTAN_AR.
-     * Every user picks own values up to the limits (settings cookie). Read
-     * back clamped, so a hand-edited row can't break the view.
+     * AR view (ar-view.js, migrations 075/076): the admin's default and upper
+     * limit for the radius (m), for the number of POIs in the camera picture
+     * and for how far ahead the AR route mode draws the route (m) -
+     * /admin/settings, injected into the SPA as window.YTAN_AR. Every user
+     * picks own values up to the limits (settings cookie). Read back
+     * clamped, so a hand-edited row can't break the view.
      *
-     * @return array{radius_m: int, radius_max_m: int, max_pois: int, max_pois_limit: int}
+     * @return array{radius_m: int, radius_max_m: int, max_pois: int, max_pois_limit: int, route_range_m: int, route_range_max_m: int}
      */
     public function arSettings(): array
     {
@@ -187,14 +191,16 @@ final class SettingsRepository
             (int) ($row['ar_radius_max_m'] ?? 10000),
             (int) ($row['ar_max_pois'] ?? 10),
             (int) ($row['ar_max_pois_limit'] ?? 30),
+            (int) ($row['ar_route_range_m'] ?? 3000),
+            (int) ($row['ar_route_range_max_m'] ?? 10000),
         );
     }
 
-    /** @return array{radius_m: int, radius_max_m: int, max_pois: int, max_pois_limit: int} the values as stored */
-    public function setArSettings(int $radius, int $radiusMax, int $maxPois, int $maxPoisLimit): array
+    /** @return array{radius_m: int, radius_max_m: int, max_pois: int, max_pois_limit: int, route_range_m: int, route_range_max_m: int} the values as stored */
+    public function setArSettings(int $radius, int $radiusMax, int $maxPois, int $maxPoisLimit, int $routeRange, int $routeRangeMax): array
     {
-        $values = self::clampAr($radius, $radiusMax, $maxPois, $maxPoisLimit);
-        $this->write('UPDATE app_settings SET ar_radius_m = ?, ar_radius_max_m = ?, ar_max_pois = ?, ar_max_pois_limit = ? WHERE id = 1', array_values($values));
+        $values = self::clampAr($radius, $radiusMax, $maxPois, $maxPoisLimit, $routeRange, $routeRangeMax);
+        $this->write('UPDATE app_settings SET ar_radius_m = ?, ar_radius_max_m = ?, ar_max_pois = ?, ar_max_pois_limit = ?, ar_route_range_m = ?, ar_route_range_max_m = ? WHERE id = 1', array_values($values));
 
         return $values;
     }
@@ -202,18 +208,21 @@ final class SettingsRepository
     /**
      * Each value into its range, a default never above its limit.
      *
-     * @return array{radius_m: int, radius_max_m: int, max_pois: int, max_pois_limit: int}
+     * @return array{radius_m: int, radius_max_m: int, max_pois: int, max_pois_limit: int, route_range_m: int, route_range_max_m: int}
      */
-    public static function clampAr(int $radius, int $radiusMax, int $maxPois, int $maxPoisLimit): array
+    public static function clampAr(int $radius, int $radiusMax, int $maxPois, int $maxPoisLimit, int $routeRange = 3000, int $routeRangeMax = 10000): array
     {
         $radiusMax = max(self::AR_RADIUS_MIN_M, min(self::AR_RADIUS_MAX_M, $radiusMax));
         $maxPoisLimit = max(self::AR_POIS_MIN, min(self::AR_POIS_MAX, $maxPoisLimit));
+        $routeRangeMax = max(self::AR_ROUTE_RANGE_MIN_M, min(self::AR_ROUTE_RANGE_MAX_M, $routeRangeMax));
 
         return [
             'radius_m' => max(self::AR_RADIUS_MIN_M, min($radiusMax, $radius)),
             'radius_max_m' => $radiusMax,
             'max_pois' => max(self::AR_POIS_MIN, min($maxPoisLimit, $maxPois)),
             'max_pois_limit' => $maxPoisLimit,
+            'route_range_m' => max(self::AR_ROUTE_RANGE_MIN_M, min($routeRangeMax, $routeRange)),
+            'route_range_max_m' => $routeRangeMax,
         ];
     }
 

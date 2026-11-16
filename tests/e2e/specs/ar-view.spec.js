@@ -90,6 +90,109 @@ test.describe('on a phone', () => {
     expect(await page.evaluate(() => document.getElementById('arVideo').srcObject)).toBeNull();
   });
 
+  test('AR route mode: route on the water, next waypoint like the watch, nav bar', async ({ loggedInPage: page, request, context }) => {
+    const token = await apiToken(request);
+    const points = [
+      { lat: LAT + 0.0005, lng: LNG }, // ~56 m north of the position
+      { lat: LAT + 0.009, lng: LNG }, // ~1 km north
+      { lat: LAT + 0.009, lng: LNG + 0.016 }, // then ~1 km east
+    ];
+    await apiCreate(request, token, 'routes', { name: 'E2E AR Route', description: '', public: 0, length: 2000, points: JSON.stringify(points), color: '#BF409F' });
+    await reloadMap(page);
+    await page.waitForFunction(() => routes.some((r) => r && r.name === 'E2E AR Route'), null, { timeout: 20_000 });
+    await page.evaluate(() => { settings.arRouteId = null; settings.arRouteRange = 3000; });
+
+    // the route's context menu offers "AR navigation"
+    await page.evaluate(() => {
+      const i = routes.findIndex((r) => r && r.name === 'E2E AR Route');
+      showRouteContextMenu({ latLng: map.getCenter() }, i);
+    });
+    await page.locator('.contextMenuItem', { hasText: /AR-Navigation|AR navigation/ }).click();
+    await expect(page.locator('#arView')).toBeVisible();
+    await expect(page.locator('#arNavBar')).toBeVisible();
+
+    // looking north: the route is drawn, the first waypoint is next, straight ahead
+    await page.waitForFunction(() => {
+      window.dispatchEvent(new DeviceOrientationEvent('deviceorientationabsolute', { alpha: 0, beta: 90, gamma: 0, absolute: true }));
+      const canvas = document.getElementById('arRouteCanvas');
+      if (!canvas.width) {
+        return false;
+      }
+      const data = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+      let painted = 0;
+      for (let i = 3; i < data.length; i += 4 * 7) {
+        if (data[i] > 0) {
+          painted++;
+        }
+      }
+      return painted > 50;
+    }, null, { timeout: 10_000, polling: 200 });
+    await expect(page.locator('#arNavSub')).toContainText('1/3');
+    await expect(page.locator('#arNavMain')).toHaveText(/^0° · \d+m$/);
+    await expect(page.locator('#arTarget')).toBeVisible();
+    await expect(page.locator('#arTarget')).toHaveText('1');
+    expect(await page.evaluate(() => settings.arRouteId)).not.toBeNull();
+
+    // at the second waypoint the counter moves on (shortcut past the first, then arrival)
+    await context.setGeolocation({ latitude: LAT + 0.009, longitude: LNG, accuracy: 5 });
+    await expect(page.locator('#arNavSub')).toContainText(/[23]\/3/, { timeout: 10_000 });
+
+    // on the last leg looking east (along the route): the line runs from the bottom up to the horizon
+    await context.setGeolocation({ latitude: LAT + 0.009, longitude: LNG + 0.003, accuracy: 5 });
+    await page.waitForFunction(() => {
+      window.dispatchEvent(new DeviceOrientationEvent('deviceorientationabsolute', { alpha: 270, beta: 85, gamma: 0, absolute: true }));
+      const canvas = document.getElementById('arRouteCanvas');
+      const ctx = canvas.getContext('2d');
+      const column = ctx.getImageData(Math.round(canvas.width / 2), 0, 1, canvas.height).data;
+      let painted = 0;
+      for (let i = 3; i < column.length; i += 4) {
+        if (column[i] > 0) {
+          painted++;
+        }
+      }
+      return painted > canvas.height * 0.15; // a long vertical stretch in the middle of the picture
+    }, null, { timeout: 10_000, polling: 200 });
+    await expect(page.locator('#arNavSub')).toContainText('3/3');
+    await expect(page.locator('#arWarning')).toBeHidden();
+
+    // x ends the route mode, the view stays open
+    await page.locator('.ar-nav-close').click();
+    await expect(page.locator('#arNavBar')).toBeHidden();
+    await expect(page.locator('#arView')).toBeVisible();
+    expect(await page.evaluate(() => settings.arRouteId)).toBeNull();
+    await page.evaluate(() => stopArView());
+  });
+
+  test('pure route helpers: next waypoint like the watch, ground projection, clipping', async ({ loggedInPage: page }) => {
+    const r = await page.evaluate(() => {
+      const line = [55.50, 55.51, 55.52, 55.53].map((lat) => ({ lat, lng: 13.5 }));
+      const mid = arNextWaypoint({ next: -1 }, 55.515, 13.5, line);
+      const arrival = arNextWaypoint({ next: 2 }, 55.52, 13.5, line);
+      const outAndBack = [{ lat: 55.5, lng: 13.5 }, { lat: 55.51, lng: 13.5 }, { lat: 55.5, lng: 13.5001 }];
+      const onTheWayOut = arNextWaypoint({ next: -1 }, 55.5005, 13.5, outAndBack);
+      const u = [{ lat: 55.50, lng: 13.50 }, { lat: 55.52, lng: 13.50 }, { lat: 55.52, lng: 13.53 }, { lat: 55.50, lng: 13.53 }];
+      const shortcut = arNextWaypoint({ next: 1 }, 55.51, 13.53, u);
+      const finished = arNextWaypoint({ next: 3 }, 55.53, 13.5, line);
+      const ahead = arProjectGround(0, 100, [0, 1, 0], 50, 70, 400, 800);
+      const behind = arProjectGround(0, -100, [0, 1, 0], 50, 70, 400, 800);
+      const right = arProjectGround(50, 100, [0, 1, 0], 50, 70, 400, 800);
+      const clipped = arClipSegment([0, 0, -5], [0, 0, 10]);
+      const gone = arClipSegment([0, 0, -5], [0, 0, 1]);
+      return { mid: mid.next, arrival: arrival.next, out: onTheWayOut.next, shortcut: shortcut.next, finished: finished.done, ahead, behind, right, clipped, gone };
+    });
+    expect(r.mid).toBe(2);
+    expect(r.arrival).toBe(3);
+    expect(r.out).toBe(1); // starts on the way out, not on the way back
+    expect(r.shortcut).toBe(3);
+    expect(r.finished).toBe(true);
+    expect(r.ahead.x).toBeCloseTo(200, 3);
+    expect(r.ahead.y).toBeGreaterThan(400); // the water is below the horizon
+    expect(r.behind).toBeNull();
+    expect(r.right.x).toBeGreaterThan(200);
+    expect(r.clipped[0][2]).toBe(2);
+    expect(r.gone).toBeNull();
+  });
+
   test('pure geometry: projection, layout, camera direction', async ({ loggedInPage: page }) => {
     const result = await page.evaluate(() => {
       const centre = arProject(0, 0, 0, 50, 70, 400, 800);

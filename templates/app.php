@@ -392,6 +392,9 @@
           <p class="nav-field-label"><?= $t('ar.max_pois') ?>: <strong class="ar-max-pois-value"></strong></p>
           <input type="range" id="arMaxPois" class="nav-slider" min="1" max="<?= (int) $arSettings['max_pois_limit'] ?>" step="1" value="<?= (int) $arSettings['max_pois'] ?>"
                  data-on-input="previewArMaxPois(this.value)" data-on-change="editArMaxPois(this)">
+          <p class="nav-field-label"><?= $t('ar.route.range') ?>: <strong class="ar-route-range-value"></strong></p>
+          <input type="range" id="arRouteRange" class="nav-slider" min="200" max="<?= (int) $arSettings['route_range_max_m'] ?>" step="100" value="<?= (int) $arSettings['route_range_m'] ?>"
+                 data-on-input="previewArRouteRange(this.value)" data-on-change="editArRouteRange(this)">
           <p class="nav-field-label"><?= $t('app.preferences.language') ?></p>
           <form name="language">
             <div class="nav-segmented">
@@ -592,7 +595,9 @@
     <!-- AR VIEW (ar-view.js): camera picture with POI labels over it -->
     <div id="arView" class="ar-view" style="display:none;">
       <video id="arVideo" class="ar-video" playsinline muted autoplay></video>
+      <canvas id="arRouteCanvas" class="ar-route-canvas"></canvas>
       <div id="arLabels" class="ar-labels"></div>
+      <div id="arTarget" class="ar-target" hidden aria-hidden="true"></div>
       <div class="ar-top">
         <div class="ar-top-text">
           <div id="arStatus" class="ar-status" aria-live="polite"></div>
@@ -608,6 +613,17 @@
         <label for="arMaxPoisInView"><?= $t('ar.max_pois') ?>: <strong class="ar-max-pois-value"></strong></label>
         <input type="range" id="arMaxPoisInView" class="nav-slider" min="1" max="<?= (int) $arSettings['max_pois_limit'] ?>" step="1" value="<?= (int) $arSettings['max_pois'] ?>"
                data-on-input="previewArMaxPois(this.value)" data-on-change="editArMaxPois(this)">
+        <label for="arRouteRangeInView"><?= $t('ar.route.range') ?>: <strong class="ar-route-range-value"></strong></label>
+        <input type="range" id="arRouteRangeInView" class="nav-slider" min="200" max="<?= (int) $arSettings['route_range_max_m'] ?>" step="100" value="<?= (int) $arSettings['route_range_m'] ?>"
+               data-on-input="previewArRouteRange(this.value)" data-on-change="editArRouteRange(this)">
+      </div>
+      <div id="arNavBar" class="ar-nav" hidden>
+        <i id="arNavArrow" class="material-icons-round ar-nav-arrow" aria-hidden="true">navigation</i>
+        <div class="ar-nav-text" aria-live="polite">
+          <strong id="arNavMain"></strong>
+          <span id="arNavSub"></span>
+        </div>
+        <button type="button" class="ar-nav-close" data-on-click="arEndRoute();" title="<?= $t('ar.route.end') ?>" aria-label="<?= $t('ar.route.end') ?>"><i class="material-icons-round">close</i></button>
       </div>
       <div id="arEdgeLeft" class="ar-edge ar-edge-left" hidden aria-hidden="true"><i class="material-icons-round">chevron_left</i><span class="ar-edge-count"></span></div>
       <div id="arEdgeRight" class="ar-edge ar-edge-right" hidden aria-hidden="true"><span class="ar-edge-count"></span><i class="material-icons-round">chevron_right</i></div>

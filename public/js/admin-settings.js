@@ -97,7 +97,10 @@ function saveRouteAnimationSettings() {
 /** Default radius/POI count of the AR view and their upper limits; the fields show the values as stored (clamped). */
 function saveArSettings() {
     var btn = document.getElementById('settingArSaveBtn');
-    var fields = { radius_m: 'settingArRadius', radius_max_m: 'settingArRadiusMax', max_pois: 'settingArMaxPois', max_pois_limit: 'settingArMaxPoisLimit' };
+    var fields = {
+        radius_m: 'settingArRadius', radius_max_m: 'settingArRadiusMax', max_pois: 'settingArMaxPois', max_pois_limit: 'settingArMaxPoisLimit',
+        route_range_m: 'settingArRouteRange', route_range_max_m: 'settingArRouteRangeMax'
+    };
     var body = {};
     Object.keys(fields).forEach(function (key) {
         body[key] = parseInt(document.getElementById(fields[key]).value, 10);
