@@ -35,11 +35,12 @@ Im Infofenster stehen unten links **Zur Tour hinzufügen** und - wenn du eine Ga
 | **Mit anderer Route zusammenfügen** | Verbindet die Route mit einer zweiten, die du danach antippst, siehe [Anlegen und Bearbeiten](#chapter-anlegen-bearbeiten). |
 | **Teilen** | Erzeugt einen Link auf diese Route (nur bei öffentlichen Routen). |
 | **Zeige Routenanimation** | Spielt die Route als Kameraflug ab, siehe [Routen- und Tourenanimation](#chapter-animation). |
+| **AR-Navigation** | Zeigt die Route als Linie im Kamerabild und führt dich von Wegpunkt zu Wegpunkt, siehe [AR-Ansicht](#chapter-ar-ansicht). Geht mit jeder Route, die du siehst. Nur auf Smartphones und Tablets. |
 | **An Garmin-Uhr senden** | Schickt die Route auf deine Uhr, siehe [Garmin-Uhr](#chapter-garmin-uhr). Geht mit jeder Route, die du siehst, auch mit fremden. Nur sichtbar, wenn die Uhr eingerichtet ist. |
 | **Route exportieren (GPX 1.1)** | Lädt die Route als GPX-Datei herunter. |
 | **Route löschen** | Entfernt die Route. Gehört sie zu einer Tour, musst du das mit einer kleinen Rechenaufgabe bestätigen, und die Ersteller der Touren werden benachrichtigt. |
 
-Nicht angemeldet siehst du nur **Zeige Routenanimation** und **Route exportieren** (falls der Export für alle freigegeben ist). **Bearbeiten**, **Teilen** und **Löschen** erscheinen nur bei eigenen Routen (Administratoren dürfen alle).
+Nicht angemeldet siehst du nur **Zeige Routenanimation**, **AR-Navigation** und **Route exportieren** (falls der Export für alle freigegeben ist). **Bearbeiten**, **Teilen** und **Löschen** erscheinen nur bei eigenen Routen (Administratoren dürfen alle).
 
 ## POIs - Orte
 

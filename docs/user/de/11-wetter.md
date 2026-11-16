@@ -67,7 +67,7 @@ Die Winddaten stammen vom **Deutschen Wetterdienst** (Modelle ICON-D2, ICON-EU u
 | **Finnland** und **Åland** | Finnisches Meteorologisches Institut (FMI) |
 | alle anderen Orte | Open-Meteo (internationale Modelle) |
 | **Wellen** | Open-Meteo Marine |
-| **Gezeiten** | der nächste Gezeitenpegel eines nationalen Dienstes bis 15 km entfernt (BSH, DMI, Rijkswaterstaat, Marine Institute, UK Hydrographic Office, Kartverket, Instituto Hidrográfico), sonst Open-Meteo Marine |
+| **Gezeiten** | der nächste Gezeitenpegel eines nationalen Dienstes bis 15 km entfernt (BSH, DMI, Rijkswaterstaat, Marine Institute, UK Hydrographic Office, Kartverket, Instituto Hidrográfico, MeteoGalicia), sonst eine eigene Berechnung aus den Konstanten des nächsten Pegels der weltweiten Sammlung TICON-4, dann TidesAtlas (Frankreich), zuletzt Open-Meteo Marine |
 | Sonnenauf- und -untergang | Open-Meteo |
 | **Ortsname** in der Überschrift | OpenStreetMap / Nominatim |
 
@@ -76,6 +76,8 @@ YTAN wählt die Quelle automatisch nach dem Ort. Welche Quelle gerade verwendet 
 > **Hinweis:** Wellen- und Gezeitendaten gibt es nur auf dem Meer und in Küstennähe. An Binnengewässern steht dort „Hier keine Seegang-Daten verfügbar".
 
 Kommen die Gezeiten von einem Pegel, steht das hinter der Datenquelle, zum Beispiel **Gezeiten: Pegel Hamburg, St. Pauli, Elbe (©BSH)**. So gibt es auch in Flussmündungen und Häfen eine Gezeitenkurve, wo Open-Meteo keine Werte hat, etwa auf der Elbe in Hamburg. Die Kurve zeigt Hub und Zeiten, bezogen auf den mittleren Wasserstand, nicht den absoluten Pegelstand. An der Ostsee bleibt die Kurve von Open-Meteo: Die astronomische Tide ist dort kaum spürbar, Open-Meteos Wasserstand zeigt dagegen auch den Windstau.
+
+Stammt die Kurve von Open-Meteo, steht darunter **Gezeitenkurve aus einem Meeresmodell, Zeiten ungefähr**. Hoch- und Niedrigwasser kommen dort oft bis zu einer Stunde zu früh, in Flussmündungen und im Wattenmeer am stärksten.
 
 ## Die Darstellung
 

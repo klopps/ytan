@@ -17,6 +17,7 @@ Menü > **Einstellungen**. Alle Einstellungen gelten sofort und werden auf deine
 | **Routendarstellung** | Geglättet / Eckig | Zeichnet Routen als sanft verlaufende Kurve oder mit den echten Ecken der Wegpunkte. |
 | **Schriftgröße Entfernungsangaben** | Schieberegler | Größe der Entfernungen an den Wegpunkten einer Route. Die Grenzen legen die Administratoren fest. |
 | **Deckkraft Windfarbfläche** | Schieberegler 0-100 % | Wie kräftig die Farbfläche der Windebene die Karte einfärbt (Standard 40 %), siehe [Wetter](#chapter-wetter). Eine eingeblendete Windebene ändert sich sofort mit. |
+| **AR-Umkreis**, **AR: POIs im Bild höchstens**, **AR-Routen-Sichtweite** | Schieberegler | Umkreis, Anzahl der POIs und Sichtweite der Route in der [AR-Ansicht](#chapter-ar-ansicht). Höchstwerte legen die Administratoren fest. |
 | **Sprache** | Deutsch / English | Sprache der Oberfläche. Dieses Handbuch gibt es bisher nur auf Deutsch; bei Englisch zeigt YTAN es deshalb auf Deutsch an. |
 
 ## Kartendarstellung und POI-Filter
@@ -29,4 +30,4 @@ Im Menü unter **Cookies** erklärt YTAN, wofür es das Cookie verwendet, und du
 
 ## Über, Impressum, Datenschutz
 
-Ganz unten im Menü stehen **Über** (Hintergrund des Projekts), **Impressum** und **Datenschutzhinweis**. Daneben zeigt dir die **Versionsnummer**, welcher Stand der Anwendung läuft - nützlich, wenn du uns einen Fehler meldest.
+Ganz unten im Menü stehen **Über** (Hintergrund des Projekts), **Quellen** (woher Wetter-, Wind-, Radar-, Gezeiten- und Leuchtfeuerdaten stammen und unter welchen Lizenzen), **Impressum** und **Datenschutzhinweis**. Daneben zeigt dir die **Versionsnummer**, welcher Stand der Anwendung läuft - nützlich, wenn du uns einen Fehler meldest.

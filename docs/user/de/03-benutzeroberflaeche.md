@@ -26,10 +26,11 @@ Das Menü schiebt sich von links ins Bild. Oben wählst du die **Kartendarstellu
 - **GPX importieren** - Strecken aus einer GPX-Datei übernehmen.
 - **Teilen** - einen Link auf den aktuellen Kartenausschnitt weitergeben.
 - **Wetter** - klappt darunter ein Untermenü auf (nochmal antippen klappt es wieder zu): **Wetter für aktuellen Standort** (die Wetter-Zeitleiste für deine Position), **Regenradar ein-/ausblenden** und **Wind ein-/ausblenden**. Ein Eintrag schließt das Menü.
+- **AR-Ansicht** - POIs im Kamerabild, nur auf Smartphones und Tablets, siehe [AR-Ansicht](#chapter-ar-ansicht).
 - **Profil** - Anmeldung, Passwort, Standardgeschwindigkeit, Garmin-Uhr.
 - **Einstellungen** - Erscheinungsbild, Einheiten, Sprache und mehr.
 - **Administration** - nur für Administratoren.
-- Ganz unten: **Anleitung** (dieses Handbuch), **Über**, **Impressum**, **Datenschutzhinweis** und **Cookies**.
+- Ganz unten: **Anleitung** (dieses Handbuch), **Über**, **Quellen** (Datenquellen und Lizenzen), **Impressum**, **Datenschutzhinweis** und **Cookies**.
 
 In der Android-App kommen **Track aufzeichnen** und **Ausstehende Änderungen** hinzu.
 
@@ -54,7 +55,7 @@ Fast alles, was man mit der Karte und ihren Inhalten tun kann, steht im Kontextm
 - **Am Rechner:** rechte Maustaste.
 - **Auf dem Smartphone:** lange auf die Stelle drücken, bis das Menü erscheint.
 
-Auf einem leeren Kartenpunkt bietet das Menü **Wetterdaten für diesen Ort**, **Auf Windy öffnen**, **Regenradar auf Windy öffnen**, **Regenradar ein-/ausblenden**, **Wind ein-/ausblenden** und **POI erstellen**. Auf einer Route, einem POI oder einem Gebiet gibt es die passenden Aktionen - siehe [Karteninhalte](#chapter-karteninhalte).
+Auf einem leeren Kartenpunkt bietet das Menü **Wetterdaten für diesen Ort**, **Auf Windy öffnen**, **Regenradar auf Windy öffnen**, **Regenradar ein-/ausblenden**, **Wind ein-/ausblenden**, **POI erstellen** und auf Smartphones **AR-Ansicht (Kamera)**. Auf einer Route, einem POI oder einem Gebiet gibt es die passenden Aktionen - siehe [Karteninhalte](#chapter-karteninhalte).
 
 ## Helles und dunkles Erscheinungsbild
 
