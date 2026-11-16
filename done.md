@@ -95,7 +95,7 @@ Gelöst (2026-11-16): Der Schlüssel kam am 2026-11-16 per Mail (MeteoGalicia-We
 - Nur Galicien: Bilbao, Gijón, Porto, Cádiz, Brest und Kiel antworten mit Exception 217 („no information about tides“). Die Quelle fragt nur in der Box 41,8-43,9° N / 9,6-6,7° W; 217 wird wie Kartverkets `<nodata/>` 30 Tage gemerkt.
 - Alle Fehler kommen mit HTTP 200 und einem `exception`-Objekt (006 ungültiger Key, 213 Start vor heute, 215 Zeitraum zu lang). Start ist deshalb heute 00:00 Uhr Madrider Zeit, das Fenster 20 Tage (21 gingen, 30 nicht; ohne Zeiten liefert die API 5 Tage). Der Cache gilt bis zum letzten erhaltenen Ereignis (wie bei `GaugeTideSource`).
 - MeteoGalicia bittet, nicht unnötig oft zu fragen (die Modelle laufen einmal täglich). Gezeitenvorhersagen ändern sich kaum, daher die 30 Tage von `TideCache`.
-- Lizenz: Datensatz 0274 auf abertos.xunta.gal, CC BY-SA 4.0. Pflicht: „Fonte dos datos: Xunta de Galicia“ und ein Link auf abertos.xunta.gal - beides steht auf der Credits-Seite (`about.tide_text`, `meteogalicia_link`/`abertos_link`). Keine Logos der Xunta verwenden.
+- Lizenz: Datensatz 0274 auf abertos.xunta.gal, CC BY-SA 4.0. Pflicht: „Fonte dos datos: Xunta de Galicia“ und ein Link auf abertos.xunta.gal - beides steht auf der Credits-Seite (`about.tide_sources_text`, bis 2026-11-16 `about.tide_text`, `meteogalicia_link`/`abertos_link`). Keine Logos der Xunta verwenden.
 
 Tests: `NationalTideSourcesTest::testMeteoGalicia` und `testMeteoGaliciaNoTidesIsRememberedAndFailuresHideTheKey` (Parsen, Offset, Cache, Hafen zu weit, kein Key, außerhalb der Box, 217 gemerkt, Key nicht im Log). Live für Pontevedra geprüft: Hafen Pontevedra, 370 m, mittlerer Tidenhub 2,27 m.
 

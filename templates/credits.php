@@ -39,7 +39,8 @@
         'source_link' => '<a href="https://www.dwd.de/DE/leistungen/opendata/opendata.html" target="_blank" rel="noopener">' . htmlspecialchars($t('about.wind_source_name')) . '</a>',
     ]) ?></p>
     <h2><?= $t('about.tide_title') ?></h2>
-    <p><?= $t('about.tide_text', [
+    <?php /* renamed from about.tide_text 2026-11-16: merge-i18n keeps the server's value of an existing key, so a changed source list only reaches prod under a new key */ ?>
+    <p><?= $t('about.tide_sources_text', [
         'bsh_link' => '<a href="https://gezeiten.bsh.de/" target="_blank" rel="noopener">' . htmlspecialchars($t('about.tide_bsh_name')) . '</a>',
         'dmi_link' => '<a href="https://www.dmi.dk/friedata/" target="_blank" rel="noopener">DMI</a>',
         'rws_link' => '<a href="https://rijkswaterstaatdata.nl/" target="_blank" rel="noopener">Rijkswaterstaat</a>',
