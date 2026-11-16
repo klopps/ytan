@@ -266,6 +266,11 @@ function loadSettings() {
         document.getElementById('windFillOpacity').value = settings['windFillOpacity'];
         previewWindFillOpacity(settings['windFillOpacity']);
 
+        // AR view (ar-view.js): own radius/POI count, clamped to the admin's limits when read
+        if (typeof arSyncSliders === 'function') {
+            arSyncSliders();
+        }
+
         if (settings['theme'] === THEME_DARK) {
             document.documentElement.dataset.theme = THEME_DARK;
         } else {

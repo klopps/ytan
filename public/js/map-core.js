@@ -734,6 +734,8 @@ var settings = { // muss wegen JSON.stringify() ein Objekt sein
     detailwind: false, // Wind layer: particles + colour fill (wind.js)
     windGusts: false, // wind.js: colour the fill by gusts instead of the mean wind (when the data has gusts)
     windFillOpacity: 40, // percent, wind.js: opacity of the wind layer's colour fill (Preferences)
+    arRadius: null, // m, ar-view.js: own AR radius (Preferences / AR view), null = the admin's default (window.YTAN_AR)
+    arMaxPois: null, // ar-view.js: own number of POIs in the AR picture, null = the admin's default
     trackDistanceFilter: 'battery', // GPS track recording (native shell only, track-recorder.js)
     maptype: "hybrid",
     center: null,

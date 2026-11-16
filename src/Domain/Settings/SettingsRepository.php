@@ -163,6 +163,60 @@ final class SettingsRepository
         $this->write('UPDATE app_settings SET route_animation_color = ?, route_animation_line_width = ?, route_animation_zoom = ?, route_animation_end_delay_s = ?, route_animation_speed = ? WHERE id = 1', [$color, $lineWidth, $zoom, $endDelaySeconds, $speed]);
     }
 
+    /** limits of the AR settings: radius in meters, POIs in the picture */
+    public const AR_RADIUS_MIN_M = 100;
+    public const AR_RADIUS_MAX_M = 50000;
+    public const AR_POIS_MIN = 1;
+    public const AR_POIS_MAX = 50;
+
+    /**
+     * AR view (ar-view.js, migration 075): the admin's default and upper
+     * limit for the radius (m) and for the number of POIs in the camera
+     * picture - /admin/settings, injected into the SPA as window.YTAN_AR.
+     * Every user picks own values up to the limits (settings cookie). Read
+     * back clamped, so a hand-edited row can't break the view.
+     *
+     * @return array{radius_m: int, radius_max_m: int, max_pois: int, max_pois_limit: int}
+     */
+    public function arSettings(): array
+    {
+        $row = $this->row();
+
+        return self::clampAr(
+            (int) ($row['ar_radius_m'] ?? 2000),
+            (int) ($row['ar_radius_max_m'] ?? 10000),
+            (int) ($row['ar_max_pois'] ?? 10),
+            (int) ($row['ar_max_pois_limit'] ?? 30),
+        );
+    }
+
+    /** @return array{radius_m: int, radius_max_m: int, max_pois: int, max_pois_limit: int} the values as stored */
+    public function setArSettings(int $radius, int $radiusMax, int $maxPois, int $maxPoisLimit): array
+    {
+        $values = self::clampAr($radius, $radiusMax, $maxPois, $maxPoisLimit);
+        $this->write('UPDATE app_settings SET ar_radius_m = ?, ar_radius_max_m = ?, ar_max_pois = ?, ar_max_pois_limit = ? WHERE id = 1', array_values($values));
+
+        return $values;
+    }
+
+    /**
+     * Each value into its range, a default never above its limit.
+     *
+     * @return array{radius_m: int, radius_max_m: int, max_pois: int, max_pois_limit: int}
+     */
+    public static function clampAr(int $radius, int $radiusMax, int $maxPois, int $maxPoisLimit): array
+    {
+        $radiusMax = max(self::AR_RADIUS_MIN_M, min(self::AR_RADIUS_MAX_M, $radiusMax));
+        $maxPoisLimit = max(self::AR_POIS_MIN, min(self::AR_POIS_MAX, $maxPoisLimit));
+
+        return [
+            'radius_m' => max(self::AR_RADIUS_MIN_M, min($radiusMax, $radius)),
+            'radius_max_m' => $radiusMax,
+            'max_pois' => max(self::AR_POIS_MIN, min($maxPoisLimit, $maxPois)),
+            'max_pois_limit' => $maxPoisLimit,
+        ];
+    }
+
     /**
      * The POI types whose distance to water is computed and stored
      * (poi_water_distance, PoiWaterDistanceService) - /admin/settings.

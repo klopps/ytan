@@ -58,6 +58,13 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
+    <!-- AR view (public/js/ar-view.js): getUserMedia in the WebView -
+         Capacitor's BridgeWebChromeClient turns the page's VIDEO_CAPTURE
+         request into this runtime permission, which only works when it is
+         declared here. The camera is optional for installing the app. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
     <!-- In-app update (AppUpdatePlugin): lets the app hand a downloaded
          update APK to Android's installer. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />

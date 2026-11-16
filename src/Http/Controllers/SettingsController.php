@@ -139,4 +139,26 @@ final class SettingsController extends BaseController
 
         return $this->json($response, ['data' => ['color' => $color, 'line_width' => $lineWidth, 'zoom' => $zoom, 'end_delay_s' => $delay, 'speed' => $speed]]);
     }
+
+    /**
+     * PUT /settings/ar - the AR view's default radius/POI count and their
+     * upper limits (admin). Whole numbers required; out-of-range values are
+     * clamped (SettingsRepository::clampAr()), a default above its limit is
+     * lowered to it. Answers with the stored values.
+     */
+    public function updateAr(Request $request, Response $response): Response
+    {
+        $this->requireAdmin($request);
+        $body = $this->jsonBody($request);
+        $values = [];
+        foreach (['radius_m', 'radius_max_m', 'max_pois', 'max_pois_limit'] as $field) {
+            $value = filter_var($body[$field] ?? null, FILTER_VALIDATE_INT);
+            if ($value === false) {
+                throw new ValidationException("$field must be a whole number.");
+            }
+            $values[] = $value;
+        }
+
+        return $this->json($response, ['data' => $this->settings->setArSettings(...$values)]);
+    }
 }

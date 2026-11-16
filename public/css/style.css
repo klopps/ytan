@@ -2324,6 +2324,255 @@ img.wsi {
   font-size: 20px;
 }
 
+/* AR view (ar-view.js): the camera picture over the whole screen with POI
+   labels on it - same layer as the route animation (105). Labels sit on a
+   dark translucent chip so they read against a bright sky; the badges carry
+   their own colours (ar-icons.js). */
+.ar-view {
+  position: fixed;
+  inset: 0;
+  z-index: 105;
+  background-color: #000;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.ar-view [hidden] {
+  display: none !important;
+}
+
+.ar-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ar-labels {
+  position: absolute;
+  inset: 0;
+}
+
+.ar-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #fff;
+  font-family: var(--font-body);
+  cursor: pointer;
+  will-change: transform;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ar-label .ar-badge {
+  display: block;
+  flex: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+}
+
+.ar-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 160px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background-color: rgba(10, 20, 28, 0.62);
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.ar-chip b {
+  font-weight: 600;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ar-chip i {
+  font-style: normal;
+  opacity: 0.85;
+  font-variant-numeric: tabular-nums;
+}
+
+/* points from the label down to its real direction on the horizon */
+.ar-stem {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 2px;
+  margin-left: -1px;
+  background-color: rgba(255, 255, 255, 0.75);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+
+.ar-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) calc(12px + env(safe-area-inset-right, 0px)) 12px calc(12px + env(safe-area-inset-left, 0px));
+  background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0));
+  color: #fff;
+  z-index: 2000;
+}
+
+.ar-top-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: var(--font-body);
+  font-size: 13px;
+}
+
+.ar-warning {
+  align-self: flex-start;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background-color: rgba(176, 0, 32, 0.85);
+  font-weight: 600;
+}
+
+.ar-round-btn {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background-color: var(--color-bg-panel);
+  color: var(--color-text);
+  box-shadow: var(--shadow-panel);
+  cursor: pointer;
+}
+
+.ar-settings {
+  position: absolute;
+  top: calc(68px + env(safe-area-inset-top, 0px));
+  right: 12px;
+  left: 12px;
+  max-width: 360px;
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background-color: var(--color-bg-panel);
+  color: var(--color-text);
+  box-shadow: var(--shadow-panel);
+  font-family: var(--font-body);
+  font-size: 13px;
+  z-index: 2001;
+}
+
+.ar-edge {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  padding: 6px 4px;
+  border-radius: 12px;
+  background-color: rgba(10, 20, 28, 0.62);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  z-index: 1500;
+  pointer-events: none;
+}
+
+.ar-edge-left {
+  left: calc(4px + env(safe-area-inset-left, 0px));
+}
+
+.ar-edge-right {
+  right: calc(4px + env(safe-area-inset-right, 0px));
+}
+
+.ar-info {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  max-width: 480px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background-color: var(--color-bg-panel);
+  color: var(--color-text);
+  box-shadow: var(--shadow-panel);
+  font-family: var(--font-body);
+  z-index: 2002;
+}
+
+.ar-info-badge .ar-badge {
+  display: block;
+}
+
+.ar-info-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: 13px;
+}
+
+.ar-info-text strong {
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.ar-info-close {
+  align-self: start;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: none;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.ar-info-map {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  margin-top: 6px;
+  border: none;
+  border-radius: 12px;
+  background-color: var(--color-accent);
+  color: var(--color-on-accent, #fff);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 /* Route/tour animation (route-animation.js): its own tilted VECTOR map over
    the whole screen - above toolbars, badges and the drawer toggle, below the
    full-screen panels (110) and toasts. Fades in once the map has drawn, fades out at the end. */

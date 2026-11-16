@@ -295,6 +295,7 @@ Read by the SPA as `window.YTAN_ROUTE_ANIMATION` (`{color, line_width, zoom, end
 | Method | Path | Auth | Body / query | Notes |
 |---|---|---|---|---|
 | PUT | `/settings/route-merge` | admin | `midpoint_m` (whole meters 0-1000): merging two routes, joined end points closer than this become their midpoint; 0 = only identical points | `data`: `{midpoint_m}`; 422 for anything else |
+| PUT | `/settings/ar` | admin | `radius_m`, `radius_max_m` (AR view: default radius and its upper limit, meters), `max_pois`, `max_pois_limit` (default number of POIs in the camera picture and its upper limit) - all whole numbers; clamped to 100-50000 m / 1-50, a default above its limit is lowered to it | `data`: the stored values; 422 for a missing or fractional value. Injected into the SPA as `window.YTAN_AR` |
 | PUT | `/settings/route-animation` | admin | `color` (`#RRGGBB`), `line_width` (whole px 1-30), `zoom` (3-21, rounded to 0.1), `end_delay_s` (seconds 0-600, rounded to 0.01), `speed` (default playback speed, whole screen px per second at that zoom, 10-2000) | `data`: the stored values (colour upper-case); 422 for anything else |
 
 ## Log files (admin only)

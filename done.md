@@ -1,5 +1,43 @@
 # Erledigt
 
+## AR-Modus
+
+~~Zur besseren Orientierung soll auf Smartphones eine AR-Funktion dienen. Im AR-Modus wird das Live-Bild der Smartphone-Kamera angezeigt und mit POIs überlagert. Es ist zu überlegen, wie nur die momentan relevanten POIs angezeigt werden und nur eine begrenzte Anzahl. Es dürfen aber nur POIs angezeigt werden, die innerhalb eines zu definierenden (konfigurierbar) Radius liegen.~~
+
+Gelöst (2026-11-16): Neue AR-Ansicht (`public/js/ar-view.js`, Symbole in `public/js/ar-icons.js`) zeigt das Bild der Rückkamera und legt die POIs der Umgebung darüber, ausgerichtet nach GPS und Kompass.
+
+- **Einstieg:** Drawer-Zeile „AR-Ansicht“ und Eintrag im Kontextmenü der Karte. Beide sind nur sichtbar, wenn das Gerät Kamera-Zugriff, Lageereignisse und einen Touchscreen hat (`arSupported()`). Auf dem Desktop und über die LAN-IP mit HTTP (kein sicherer Kontext) erscheinen sie nicht.
+- **Sensoren:**
+  - Kamera über `getUserMedia` (Rückkamera).
+  - Die Blickrichtung ist die −Z-Achse des Geräts. `arCameraDirection()` rechnet sie aus alpha/beta/gamma, deshalb funktionieren Hoch- und Querformat gleich.
+  - Android liefert `deviceorientationabsolute`, iOS `webkitCompassHeading` nach `DeviceOrientationEvent.requestPermission()`. Diese Abfrage läuft noch im Tipp, vor jedem `await`.
+  - Die Richtung wird als Vektor geglättet, damit sie am Übergang 359→0° nicht springt.
+  - Position über `watchPosition`.
+- **Auswahl der POIs:**
+  - Kandidaten sind alle geladenen POIs sichtbarer Typen im Umkreis.
+  - Die Höchstzahl gilt für das aktuelle Bild, nicht für den ganzen Umkreis: die nächsten N im Sichtfeld. So verlangte es der User.
+  - Die übrigen Kandidaten zählt je ein Pfeil links und rechts.
+- **Kein POI-Chaos:**
+  - `arLayout()` setzt die Etiketten von nah nach fern.
+  - Der nähere POI liegt vorn (`z-index`).
+  - Ein fernerer, der überlappen würde, rückt stufenweise nach oben. Ein Strich zeigt weiter auf seine echte Richtung. Nach 4 Stufen fällt er weg.
+  - Die Positionen werden zwischen den Bildern gedämpft. Eine Stufe zurück gibt es erst bei 10 px Abstand, damit beim Drehen nichts springt.
+- **Symbole:** runde SVG-Plaketten in der bisherigen Typfarbe mit weißem Piktogramm, vom User freigegeben. Die Pin-PNGs der Karte waren auf Handydisplays unscharf.
+  - Das Piktogramm stammt aus Material Symbols Rounded.
+  - Eigene Zeichnungen gibt es für Shelter (Keil wie das alte Icon), Campingplatz (Zelt und Wohnwagen wie das übliche Schild) und Leuchtturm.
+- **Infokarte:** Ein Tipp auf ein Etikett zeigt Name, Typ, Entfernung und Richtung in Grad mit Himmelsrichtung. „Auf Karte zeigen“ schließt AR, zentriert die Karte und öffnet das POI-Infofenster.
+- **Einstellungen:**
+  - Der Admin legt auf /admin/settings Vorgabe und Obergrenze für Umkreis und Anzahl fest (`app_settings.ar_*`, Migration 075, `PUT /settings/ar`, `window.YTAN_AR`).
+  - Jeder Nutzer wählt darunter selbst, per Schieberegler in den Einstellungen und im AR-Bild (`settings.arRadius`/`arMaxPois`).
+  - Ohne eigenen Wert gilt die Vorgabe des Admins.
+- **Android-App:** Das Manifest hat jetzt die Berechtigung `CAMERA` (`uses-feature` ohne Pflicht). Das wirkt erst mit einem neu gebauten und veröffentlichten APK. Bis dahin meldet die App „App aktualisieren“.
+- **Ressourcen:** Die Kamera stoppt beim Schließen, bei Escape und sobald die Seite verdeckt wird.
+- **Tests:**
+  - PHPUnit: `SettingsControllerTest` für Klemmen, Pflichtfelder und Admin-Pflicht.
+  - e2e `ar-view.spec.js` mit Fake-Kamera, fester Position und künstlichen Lageereignissen, dazu die reinen Funktionen und der Desktop ohne Einstieg.
+  - Falle: Das aktuelle Chromium kennt `DeviceOrientationEvent.requestPermission`. Ohne die Berechtigungen `accelerometer`/`gyroscope`/`magnetometer` bleibt die Abfrage hängen.
+- **Nicht geprüft:** Ein echtes Gerät mit Kamera und Kompass, das testet der User. Das Sichtfeld ist eine Annahme (50° hoch, 65° quer). Bei ungewöhnlichen Kameras kann die Richtung leicht verschoben wirken.
+
 ## Deploy: geänderte Texte erreichen Prod
 
 ~~merge_i18n.php so ändern, dass ein Überschreiben der Texte auf Prod funktioniert.~~

@@ -600,6 +600,7 @@ final class App
         $app->put('/api/v1/settings/track-distance-filter', [SettingsController::class, 'updateTrackDistanceFilterPresets']);
         $app->put('/api/v1/settings/route-label-font-size-range', [SettingsController::class, 'updateRouteLabelFontSizeRange']);
         $app->put('/api/v1/settings/route-animation', [SettingsController::class, 'updateRouteAnimation']);
+        $app->put('/api/v1/settings/ar', [SettingsController::class, 'updateAr']);
         $app->put('/api/v1/settings/route-merge', [SettingsController::class, 'updateRouteMerge']);
         $app->get('/api/v1/settings/radar', [RadarSettingsController::class, 'show']);
         $app->put('/api/v1/settings/radar', [RadarSettingsController::class, 'update']);
@@ -646,6 +647,7 @@ final class App
             $trackDistanceFilterPresets = $c->get(SettingsRepository::class)->trackDistanceFilterPresets();
             $routeLabelFontSizeRange = $c->get(SettingsRepository::class)->routeLabelFontSizeRange();
             $routeAnimation = $c->get(SettingsRepository::class)->routeAnimationSettings();
+            $arSettings = $c->get(SettingsRepository::class)->arSettings();
             $routeCheckEnabled = $c->get(SettingsRepository::class)->aiSettings()['enabled'];
             $appVersion = 'dev';
             $versionFile = $rootDir . '/VERSION';
@@ -823,6 +825,7 @@ final class App
                 'routeLabelFontSizeRange' => $settings->routeLabelFontSizeRange(),
                 'routeAnimation' => $settings->routeAnimationSettings(),
                 'routeMergeMidpointMeters' => $settings->routeMergeMidpointMeters(),
+                'arSettings' => $settings->arSettings(),
                 'waterDistancePoiTypes' => $settings->waterDistancePoiTypes(),
             ]);
         });

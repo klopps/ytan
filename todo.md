@@ -1,12 +1,10 @@
 # Offene Punkte
 
-## AR-Modus
-
-Zur besseren Orientierung soll auf Smartphones eine AR-Funktion dienen. Im AR-Modus wird das Live-Bild der Smartphone-Kamera angezeigt und mit POIs überlagert. Es ist zu überlegen, wie nur die momentan relevanten POIs angezeigt werden und nur eine begrenzte Anzahl. Es dürfen aber nur POIs angezeigt werden, die innerhalb eines zu definierenden (konfigurierbar) Radius liegen.
-
 ## AR-Routen-Modus
 
 In Ergänzung zum AR-Modus wird im AR-Routen-Modus auch eine vorher zu aktivierende Route überlagert. Der Benutzer sieht dann eine überlagert eine 3D-Darstellung der Route bis zu einer Entfernung von x-Kilometern. Die Linie wird dünenr je weiter sie vom aktuellen Standort entfernt ist.
+
+Grundlage vorhanden (AR-Modus, done.md 2026-11-16): `ar-view.js` mit Kamera, Kompass, GPS und den reinen Funktionen `arProject()` (Peilung/Neigung → Bildschirm), `arCameraDirection()`, `arBearing()`, `arLayout()`.
 
 
 ## Code Check: Performance - Reste

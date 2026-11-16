@@ -125,6 +125,37 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
 </div>
 <div class="card mt-3">
     <div class="card-body">
+        <h2 class="h6"><?= $t('admin.settings.ar_title') ?></h2>
+        <p class="text-muted small"><?= $t('admin.settings.ar_hint') ?></p>
+        <div class="row g-3">
+            <div class="col-sm-6 col-lg-3">
+                <label for="settingArRadius" class="form-label"><?= $t('admin.settings.ar_radius') ?></label>
+                <div class="input-group">
+                    <input type="number" min="<?= \Ytan\Domain\Settings\SettingsRepository::AR_RADIUS_MIN_M ?>" max="<?= \Ytan\Domain\Settings\SettingsRepository::AR_RADIUS_MAX_M ?>" step="100" class="form-control" id="settingArRadius" value="<?= (int) $arSettings['radius_m'] ?>">
+                    <span class="input-group-text">m</span>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <label for="settingArRadiusMax" class="form-label"><?= $t('admin.settings.ar_radius_max') ?></label>
+                <div class="input-group">
+                    <input type="number" min="<?= \Ytan\Domain\Settings\SettingsRepository::AR_RADIUS_MIN_M ?>" max="<?= \Ytan\Domain\Settings\SettingsRepository::AR_RADIUS_MAX_M ?>" step="100" class="form-control" id="settingArRadiusMax" value="<?= (int) $arSettings['radius_max_m'] ?>">
+                    <span class="input-group-text">m</span>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <label for="settingArMaxPois" class="form-label"><?= $t('admin.settings.ar_max_pois') ?></label>
+                <input type="number" min="<?= \Ytan\Domain\Settings\SettingsRepository::AR_POIS_MIN ?>" max="<?= \Ytan\Domain\Settings\SettingsRepository::AR_POIS_MAX ?>" step="1" class="form-control" id="settingArMaxPois" value="<?= (int) $arSettings['max_pois'] ?>">
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <label for="settingArMaxPoisLimit" class="form-label"><?= $t('admin.settings.ar_max_pois_limit') ?></label>
+                <input type="number" min="<?= \Ytan\Domain\Settings\SettingsRepository::AR_POIS_MIN ?>" max="<?= \Ytan\Domain\Settings\SettingsRepository::AR_POIS_MAX ?>" step="1" class="form-control" id="settingArMaxPoisLimit" value="<?= (int) $arSettings['max_pois_limit'] ?>">
+            </div>
+        </div>
+        <button type="button" class="btn btn-primary mt-3" id="settingArSaveBtn" data-on-click="saveArSettings();"><?= $t('common.save') ?></button>
+    </div>
+</div>
+<div class="card mt-3">
+    <div class="card-body">
         <h2 class="h6"><?= $t('admin.settings.water_distance_title') ?></h2>
         <p class="text-muted small"><?= $t('admin.settings.water_distance_hint') ?></p>
         <div class="row g-1" id="settingWaterDistanceTypes">

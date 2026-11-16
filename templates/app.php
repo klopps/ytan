@@ -39,6 +39,7 @@
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_TRACK_DISTANCE_FILTER_PRESETS = <?= json_encode($trackDistanceFilterPresets, JSON_HEX_TAG) ?>;</script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_ROUTE_LABEL_FONT_SIZE_RANGE = <?= json_encode($routeLabelFontSizeRange, JSON_HEX_TAG) ?>;</script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_ROUTE_ANIMATION = <?= json_encode($routeAnimation, JSON_HEX_TAG) ?>;</script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_AR = <?= json_encode($arSettings, JSON_HEX_TAG) ?>;</script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_ROUTE_CHECK_ENABLED = <?= !empty($routeCheckEnabled) ? 'true' : 'false' ?>;</script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_LOCALE = "<?= htmlspecialchars($translator->locale(), ENT_QUOTES) ?>";</script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_TRANSLATIONS = <?= json_encode($translator->all(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;</script>
@@ -84,6 +85,8 @@
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/radar.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/radar.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/wind.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/wind.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/poi.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/poi.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/ar-icons.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/ar-icons.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/ar-view.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/ar-view.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/route.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/route.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/route-briefing.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/route-briefing.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/track-recorder.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/track-recorder.js') ?>"></script>
@@ -217,6 +220,9 @@
                  create/edit/delete (offline-sync.js) works in a plain
                  browser tab too, not just the native shell. -->
             <li id="pendingChangesMenuRow" style="display:none;"><button type="button" class="nav-menu-row" data-on-click="openPendingChangesScreen();"><i class="material-icons-round nav-menu-row-icon">sync</i><span class="nav-menu-row-labels"><?= $t('app.nav.pending_changes') ?><span class="nav-menu-row-sub" id="pendingChangesRowSub"></span></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
+            <!-- Phones/tablets with camera + compass only - shown by
+                 ar-view.js (arSupported()). -->
+            <li id="arMenuRow" style="display:none;"><button type="button" class="nav-menu-row" data-on-click="startArView();"><i class="material-icons-round nav-menu-row-icon">photo_camera</i><span class="nav-menu-row-labels"><?= $t('ar.menu') ?></span></button></li>
             <li><button type="button" class="nav-menu-row" data-on-click="shareMap();"><i class="material-icons-round nav-menu-row-icon">share</i><span class="nav-menu-row-labels"><?= $t('app.nav.share') ?></span></button></li>
             <!-- "Weather": expands a submenu below it (nav-menu.js's toggleWeatherMenu()), pushing the rest down;
                  any entry, or the row again, closes it. -->
@@ -379,6 +385,13 @@
           <p class="nav-field-label"><?= $t('app.preferences.wind_fill_opacity') ?>: <strong id="windFillOpacityValue">40 %</strong></p>
           <input type="range" id="windFillOpacity" class="nav-slider" min="0" max="100" step="5" value="40"
                  data-on-input="previewWindFillOpacity(this.value)" data-on-change="editWindFillOpacity(this)">
+          <!-- AR view (ar-view.js): max = the admin's limit, set by arSyncSliders() -->
+          <p class="nav-field-label"><?= $t('ar.radius') ?>: <strong class="ar-radius-value"></strong></p>
+          <input type="range" id="arRadius" class="nav-slider" min="100" max="<?= (int) $arSettings['radius_max_m'] ?>" step="100" value="<?= (int) $arSettings['radius_m'] ?>"
+                 data-on-input="previewArRadius(this.value)" data-on-change="editArRadius(this)">
+          <p class="nav-field-label"><?= $t('ar.max_pois') ?>: <strong class="ar-max-pois-value"></strong></p>
+          <input type="range" id="arMaxPois" class="nav-slider" min="1" max="<?= (int) $arSettings['max_pois_limit'] ?>" step="1" value="<?= (int) $arSettings['max_pois'] ?>"
+                 data-on-input="previewArMaxPois(this.value)" data-on-change="editArMaxPois(this)">
           <p class="nav-field-label"><?= $t('app.preferences.language') ?></p>
           <form name="language">
             <div class="nav-segmented">
@@ -573,6 +586,40 @@
       <div class="radar-controls-footer">
         <span id="windControlsStatus" class="radar-controls-status"></span>
         <a class="radar-controls-attribution" href="https://www.dwd.de/DE/leistungen/opendata/opendata.html" target="_blank" rel="noopener"><?= $t('wind.attribution') ?></a>
+      </div>
+    </div>
+
+    <!-- AR VIEW (ar-view.js): camera picture with POI labels over it -->
+    <div id="arView" class="ar-view" style="display:none;">
+      <video id="arVideo" class="ar-video" playsinline muted autoplay></video>
+      <div id="arLabels" class="ar-labels"></div>
+      <div class="ar-top">
+        <div class="ar-top-text">
+          <div id="arStatus" class="ar-status" aria-live="polite"></div>
+          <div id="arWarning" class="ar-warning" hidden></div>
+        </div>
+        <button type="button" class="ar-round-btn" data-on-click="arToggleSettings();" title="<?= $t('ar.settings') ?>" aria-label="<?= $t('ar.settings') ?>"><i class="material-icons-round">tune</i></button>
+        <button type="button" class="ar-round-btn" data-on-click="stopArView();" title="<?= $t('ar.close') ?>" aria-label="<?= $t('ar.close') ?>"><i class="material-icons-round">close</i></button>
+      </div>
+      <div id="arSettings" class="ar-settings" hidden>
+        <label for="arRadiusInView"><?= $t('ar.radius') ?>: <strong class="ar-radius-value"></strong></label>
+        <input type="range" id="arRadiusInView" class="nav-slider" min="100" max="<?= (int) $arSettings['radius_max_m'] ?>" step="100" value="<?= (int) $arSettings['radius_m'] ?>"
+               data-on-input="previewArRadius(this.value)" data-on-change="editArRadius(this)">
+        <label for="arMaxPoisInView"><?= $t('ar.max_pois') ?>: <strong class="ar-max-pois-value"></strong></label>
+        <input type="range" id="arMaxPoisInView" class="nav-slider" min="1" max="<?= (int) $arSettings['max_pois_limit'] ?>" step="1" value="<?= (int) $arSettings['max_pois'] ?>"
+               data-on-input="previewArMaxPois(this.value)" data-on-change="editArMaxPois(this)">
+      </div>
+      <div id="arEdgeLeft" class="ar-edge ar-edge-left" hidden aria-hidden="true"><i class="material-icons-round">chevron_left</i><span class="ar-edge-count"></span></div>
+      <div id="arEdgeRight" class="ar-edge ar-edge-right" hidden aria-hidden="true"><span class="ar-edge-count"></span><i class="material-icons-round">chevron_right</i></div>
+      <div id="arInfoCard" class="ar-info" hidden>
+        <div id="arInfoBadge" class="ar-info-badge"></div>
+        <div class="ar-info-text">
+          <strong id="arInfoName"></strong>
+          <span id="arInfoType"></span>
+          <span id="arInfoDistance"></span>
+        </div>
+        <button type="button" class="ar-info-close" data-on-click="arCloseInfo();" aria-label="<?= $t('ar.close') ?>"><i class="material-icons-round">close</i></button>
+        <button type="button" class="ar-info-map" data-on-click="arShowOnMap();"><i class="material-icons-round">map</i><?= $t('ar.show_on_map') ?></button>
       </div>
     </div>
 

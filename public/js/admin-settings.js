@@ -94,6 +94,30 @@ function saveRouteAnimationSettings() {
     });
 }
 
+/** Default radius/POI count of the AR view and their upper limits; the fields show the values as stored (clamped). */
+function saveArSettings() {
+    var btn = document.getElementById('settingArSaveBtn');
+    var fields = { radius_m: 'settingArRadius', radius_max_m: 'settingArRadiusMax', max_pois: 'settingArMaxPois', max_pois_limit: 'settingArMaxPoisLimit' };
+    var body = {};
+    Object.keys(fields).forEach(function (key) {
+        body[key] = parseInt(document.getElementById(fields[key]).value, 10);
+    });
+    btn.disabled = true;
+    Ytan.put('/settings/ar', body).then(function (answer) {
+        var stored = answer && answer.data ? answer.data : answer;
+        Object.keys(fields).forEach(function (key) {
+            if (stored && stored[key] !== undefined) {
+                document.getElementById(fields[key]).value = stored[key];
+            }
+        });
+        showAdminToast(t('common.saved'), 'success');
+    }).catch(function (err) {
+        showAdminToast(t('common.save_failed', { error: err.message }), 'error');
+    }).finally(function () {
+        btn.disabled = false;
+    });
+}
+
 /** The POI types whose distance to water is computed (poi_water_distance). */
 function saveWaterDistancePoiTypes() {
     var btn = document.getElementById('settingWaterDistanceSaveBtn');
