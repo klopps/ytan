@@ -1,5 +1,20 @@
 # Erledigt
 
+## Deploy: geänderte Texte erreichen Prod
+
+~~merge_i18n.php so ändern, dass ein Überschreiben der Texte auf Prod funktioniert.~~
+
+Gelöst (2026-11-16):
+- **Bisher:** `TranslationMerger` behielt auf dem Server den Wert jedes schon vorhandenen Schlüssels und übernahm nur neue Schlüssel. Gedacht war das, damit auf Prod bearbeitete Übersetzungen einen Deploy überleben. Die Folge: Ein im Repo geänderter Text kam nie an. Aufgefallen ist es an den Credits, deren Gezeitenquellen auf Prod alt geblieben waren, ohne die Pflichtangaben von MeteoGalicia und TICON. Behelfsweise wurde der Schlüssel in `about.tide_sources_text` umbenannt.
+- **Jetzt:** ein Dreiwegevergleich gegen die zuletzt deployten Dateien, die `bin/merge-i18n.php` auf dem Server unter `storage/i18n-baseline/{locale}.json` ablegt.
+  - Ein im Repo geänderter Text wird übernommen.
+  - Ein auf Prod bearbeiteter, im Repo unveränderter Text bleibt.
+  - Beidseitig geändert: der Repo-Text gewinnt, der Schlüssel wird in der Deploy-Ausgabe als Konflikt genannt.
+  - Ohne Basis, also beim ersten Deploy mit dem neuen Verfahren, gewinnt der Repo-Text.
+- `storage/` ist von jedem Deploy ausgeschlossen, die Basis bleibt also auf dem Server.
+- Die Deploy-Ausgabe zeigt jetzt `added/removed/updated/server edits kept`.
+- `TranslationMergerTest` deckt alle Fälle ab, auch zwei Deploys hintereinander.
+
 ## Routencheck: Gezeiten selbst aus TICON-4-Pegelkonstanten
 
 ~~Gezeiten selbst aus Pegelkonstanten rechnen (Idee 2026-11-16): TidesAtlas' Pegelvorhersagen beruhen auf TICON-4. Eine eigene harmonische Rechnung in PHP gäbe Pegelgenauigkeit ohne Schlüssel, Abruflimits und brechende Schnittstellen, auch außerhalb der eingebauten Länder. Vorher prüfen: Lizenz, Download, Abdeckung in Frankreich und Spanien, Mündungen nur wo Pegel liegen.~~

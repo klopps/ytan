@@ -60,7 +60,8 @@ if errorlevel 1 goto :error
 
 REM Locale files travel as resources\i18n-incoming so the upload never overwrites the
 REM server's resources\i18n; bin/merge-i18n.php merges them there (new keys in,
-REM removed keys out, existing values kept).
+REM removed keys out, texts changed in the repository updated, server edits kept -
+REM three-way against storage\i18n-baseline on the server).
 if exist "%BUILD_DIR%\resources\i18n" move "%BUILD_DIR%\resources\i18n" "%BUILD_DIR%\resources\i18n-incoming" >nul
 if errorlevel 1 goto :error
 

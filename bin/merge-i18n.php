@@ -6,8 +6,10 @@ declare(strict_types=1);
 // Run by the deploy scripts on the server after the upload: the package
 // carries the locale files as resources/i18n-incoming/ (so the upload never
 // overwrites resources/i18n/), this merges them into resources/i18n/ - new
-// keys added, removed keys dropped, existing values kept. See
-// TranslationMerger.
+// keys added, removed keys dropped, texts changed in the repository updated,
+// texts edited on the server (translation tool) kept unless the repository
+// changed them too. Three-way merge against the last deployed files in
+// storage/i18n-baseline/ (written here). See TranslationMerger.
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 
@@ -21,11 +23,14 @@ if (!is_dir($incoming)) {
 }
 
 try {
-    $report = TranslationMerger::mergeDirectory($incoming, $root . '/resources/i18n');
+    $report = TranslationMerger::mergeDirectory($incoming, $root . '/resources/i18n', $root . '/storage/i18n-baseline');
 } catch (RuntimeException $e) {
     fwrite(STDERR, 'i18n merge FAILED: ' . $e->getMessage() . "\n");
     exit(1);
 }
 foreach ($report as $locale => $r) {
-    echo "i18n $locale: {$r['added']} added, {$r['removed']} removed, {$r['kept']} kept\n";
+    echo "i18n $locale: {$r['added']} added, {$r['removed']} removed, {$r['updated']} updated, {$r['kept_server']} server edits kept\n";
+    if ($r['conflicts'] !== []) {
+        echo "i18n $locale: server edit overwritten (changed in the repository too): " . implode(', ', $r['conflicts']) . "\n";
+    }
 }
