@@ -17,6 +17,9 @@ use Ytan\Service\GeometryService;
  * Loire to Nantes and the Gironde to Bordeaux; Open-Meteo is 40-87 min early
  * there. Their terms neither allow nor forbid storing answers (done.md) - the
  * user decided to cache, without it 25 requests a day are nowhere near enough.
+ * Since TiconTideSource (same TICON-4 constants, computed by YTAN, 2-8 min
+ * from TidesAtlas' times) is asked first, this only answers for French
+ * places without a TICON gauge within the limit (Seine above Le Havre).
  *
  * GET /api/v1/tides?lat&lon&date&days (the docs say 1-14, the Free Web plan
  * refuses more than 7 with HTTP 403 - found live 2026-11-16) picks a calibrated gauge within

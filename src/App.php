@@ -379,8 +379,9 @@ final class App
             new SmhiWeatherProvider($c->get(CurlJsonHttpClient::class)),
             new \Ytan\Service\Weather\FmiWeatherProvider(new \Ytan\Service\Tide\CurlTideHttp()),
         ));
-        // tide times of the national services (DE, DK, NL, IE, UK, NO, PT, ES-Galicia, FR via TidesAtlas) - the
-        // Routencheck adds Open-Meteo as the last source, the weather
+        // tide times of the national services (DE, DK, NL, IE, UK, NO, PT, ES-Galicia), then YTAN's own harmonic
+        // prediction from TICON-4 gauge constants (worldwide), then TidesAtlas for French places TICON has no
+        // gauge near - the Routencheck adds Open-Meteo as the last source, the weather
         // timeline keeps Open-Meteo's own curve when none of them has a gauge
         $c->set('tides.national.sources', function ($c) use ($rootDir) {
             $tideCache = new \Ytan\Service\Tide\TideCache($rootDir . '/storage/tide-cache');
@@ -398,6 +399,8 @@ final class App
                 new \Ytan\Service\Tide\IhTideSource($tideCache, $tideHttp),
                 // ES, Galicia only: MeteoGalicia MeteoSIX v5, personal free key in .env
                 new \Ytan\Service\Tide\MeteoGaliciaTideSource((string) ($_ENV['METEOSIX_API_KEY'] ?? ''), $tideCache, $tideHttp),
+                // worldwide: own prediction from TICON-4 (CC BY 4.0, resources/tide/ticon4.json, bin/build-ticon.php)
+                new \Ytan\Service\Tide\TiconTideSource($rootDir . '/resources/tide/ticon4.json'),
                 // FR: TidesAtlas Free Web plan (25 requests/day, cached; user's decision 2026-11-16)
                 new \Ytan\Service\Tide\TidesAtlasTideSource((string) ($_ENV['TIDESATLAS_API_KEY'] ?? ''), $tideCache, $tideHttp),
             ];

@@ -1,5 +1,52 @@
 # Erledigt
 
+## Routencheck: Gezeiten selbst aus TICON-4-Pegelkonstanten
+
+~~Gezeiten selbst aus Pegelkonstanten rechnen (Idee 2026-11-16): TidesAtlas' Pegelvorhersagen beruhen auf TICON-4. Eine eigene harmonische Rechnung in PHP gäbe Pegelgenauigkeit ohne Schlüssel, Abruflimits und brechende Schnittstellen, auch außerhalb der eingebauten Länder. Vorher prüfen: Lizenz, Download, Abdeckung in Frankreich und Spanien, Mündungen nur wo Pegel liegen.~~
+
+Gelöst (2026-11-16): YTAN rechnet Hoch- und Niedrigwasser jetzt selbst aus den harmonischen Konstanten des nächsten Pegels, weltweit, ohne Schlüssel und Abruflimit.
+- **Daten:** TICON-4 (Hart-Davis, Dettmering, Seitz, DGFI-TUM; SEANOE, DOI 10.17882/109129, CC BY 4.0). Eine CSV mit 50 Konstanten (Amplitude, Greenwich-Phasenlage in UTC) für 4.838 Pegeldatensätze. Viele Pegel sind doppelt drin (REFMAR und CMEMS-Kopie, UHSLC schnell/geprüft). `bin/build-ticon.php` fasst Pegel im Umkreis von 500 m zusammen. Es behält den Datensatz mit den wenigsten Qualitätsvermerken, dann den nationalen Anbieter vor den Kopien (bessere Namen), dann die längste Reihe. Seepegel lässt es weg. Ergebnis: `resources/tide/ticon4.json`, 3.635 Pegel, 1,4 MB, eingecheckt. Neu bauen nur bei einem neuen TICON-Release.
+- **Abdeckung:** Frankreich hat 272 Datensätze, darunter die Mündungspegel der Loire (Saint-Nazaire, Donges, Paimboeuf, Cordemais, Le Pellerin, Nantes) und der Gironde (Royan, Pauillac, Bordeaux). Spanien hat 86 (Biskaya, Kantabrien, Andalusien), Belgien 6. Dazu kommen Island, das Mittelmeer und alles außerhalb Europas. Keine Pegel gibt es an der Seine oberhalb von Le Havre, an der Themse bei London Bridge, in Lissabon, im inneren Sognefjord und bei Antwerpen. Dort helfen die anderen Quellen oder Open-Meteo.
+- **Rechnung:** `HarmonicTide` nutzt die Doodson-Nummern aus Tabelle 1 des TICON-4-Handbuchs und die Knotenkorrekturen f/u nach Schureman/Foreman. Zusammengesetzte Konstanten wie M4, MS4 und 2MK5 bekommen ihre Korrektur aus den Bestandteilen. Die Phasen werden von einem Bezugszeitpunkt aus linear fortgeschrieben. Die Suche läuft mit 20-min-Schritten, jedes Extrem wird zweimal mit einer Parabel verfeinert. Ein „stehendes Hochwasser“ mit kleinem Zwischentief wird zu einem Hochwasser zusammengefasst. Laufzeit etwa 16 ms pro Abfrage, dazu etwa 65 ms für das erste Laden der JSON-Datei.
+- **Reihenfolge:** `TiconTideSource` steht nach den nationalen Diensten, die amtlich sind und örtliche Besonderheiten kennen. Sie steht vor TidesAtlas, das dieselben Konstanten nutzt. TidesAtlas antwortet damit nur noch an französischen Orten ohne TICON-Pegel im Umkreis, etwa an der Seine, und braucht kaum noch Abrufe aus dem Tageskontingent.
+- **Zwei Fallen beim Prüfen gegen die amtlichen Quellen:**
+  1. Die Lehrbuch-Vorzeichen der Phasenzuschläge für die eintägigen Gezeiten passten nicht. Brest lag abwechselnd 17 min zu spät und zu früh, die Tagesungleichheit war vertauscht. Mit K1/J1/OO1 −90° und O1/Q1/P1 usw. +90° (bei T = 15°·UT + 180°) stimmt es.
+  2. Alle deutschen WSV-Datensätze in TICON-4 sind in MEZ statt UTC gespeichert. Helgoland, Büsum, Bremerhaven, Bremen und Schulau lagen 60 bis 75 min zu spät, die CMEMS- und BfG-Kopien derselben Pegel dagegen richtig. Das Build-Skript verschiebt die WSV-Phasen um eine Stunde.
+  - Außerdem schreiben die Daten EPS2 und SIGMA1 als `EP2`/`SGM`.
+  - `HarmonicTideTest` sichert beides gegen echte Zeiten ab: Brest gegen TidesAtlas, Helgoland gegen BSH.
+- **Genauigkeit:** Gemessen am 2026-11-16, mittlere Abweichung der HW/NW-Zeiten über 3 bis 4 Tage:
+
+  | Vergleich | Orte | Abweichung |
+  |---|---|---|
+  | gegen TidesAtlas (dieselben Konstanten) | Brest, Saint-Malo, Le Havre, Royan, Pauillac, Bordeaux | 5 min |
+  |  | Arcachon | 2 min |
+  |  | Saint-Nazaire | 6 min |
+  |  | Paimboeuf | 8 min |
+  |  | Nantes | 13 min |
+  | gegen die nationalen Dienste | Vigo, A Coruña, Esbjerg, Dublin | 3 min |
+  |  | Pontevedra | 2 min |
+  |  | Galway, Ferrol | 4 min |
+  |  | Leixões | 6 min |
+  |  | Avonmouth | 8 min |
+  |  | Bergen, Vlissingen | 10 min |
+  |  | Dover | 14 min |
+  |  | Southampton | 19 min |
+  | Deutsche Bucht (gegen BSH) | Bremen | 8 min |
+  |  | Cuxhaven | 9 min |
+  |  | Helgoland | 10 min |
+  |  | Schulau | 13 min |
+  |  | Bremerhaven | 14 min |
+  |  | St. Pauli | 16 min |
+  |  | Büsum | 17 min |
+  | Flachwassertiden | Rotterdam | 26 min |
+  |  | Den Helder | 29 min |
+
+  Den Helder und Rotterdam haben Flachwassertiden, die 50 Konstanten nicht ganz abbilden. Dort und in der Deutschen Bucht gehen aber die nationalen Quellen vor.
+  - Honfleur bekommt mit 39 min einen 9 km entfernten Pegel (Balise Rouen). Das ist dieselbe 15-km-Regel wie bei den anderen Quellen.
+  - Zum Vergleich: Open-Meteo lag 13 bis 88 min daneben.
+- **Hub sehr klein:** In Ostsee und Mittelmeer liefert die Rechnung fast keinen Hub (Warnemünde 0,09 m, Marseille 0,15 m). Dort greifen wie bisher `tidal_min_range_m` und die Regel der Wetter-Zeitleiste, Open-Meteos Kurve mit Windstau zu behalten.
+- **Credits:** TICON-4 steht in den Credits mit Autoren, Lizenz und den vorgenommenen Änderungen, wie CC BY es verlangt. Quelle `ticon` in docs/API.md.
+
 ## Routencheck: Tidequelle Frankreich (TidesAtlas) und Vergleich der Quellen
 
 ~~TidesAtlas (kommerzieller Drittanbieter, freier Key, CC BY 4.0, eigenes Modell): für Frankreich vorbereitet. Einbauen, sobald `TIDESATLAS_API_KEY` in `.env` steht. Vorher prüfen, ob es in Loire, Gironde und Seine besser ist als Open-Meteo. Dazu: die nationalen Quellen mit Open-Meteo vergleichen.~~

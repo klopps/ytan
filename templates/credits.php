@@ -49,6 +49,7 @@
         'ih_link' => '<a href="https://www.hidrografico.pt/" target="_blank" rel="noopener">Instituto Hidrográfico</a>',
         'meteogalicia_link' => '<a href="https://www.meteogalicia.gal/" target="_blank" rel="noopener">MeteoGalicia</a>',
         'abertos_link' => '<a href="https://abertos.xunta.gal" target="_blank" rel="noopener" title="Abert@s: Portal Open Data da Xunta de Galicia">Abert@s</a>',
+        'ticon_link' => '<a href="https://doi.org/10.17882/109129" target="_blank" rel="noopener">TICON-4</a>',
         'tidesatlas_link' => '<a href="https://tidesatlas.com/" target="_blank" rel="noopener">TidesAtlas</a>',
         'openmeteo_link' => '<a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>',
     ]) ?></p>
