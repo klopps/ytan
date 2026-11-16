@@ -1,5 +1,57 @@
 # Erledigt
 
+## Routencheck: Tidequelle Frankreich (TidesAtlas) und Vergleich der Quellen
+
+~~TidesAtlas (kommerzieller Drittanbieter, freier Key, CC BY 4.0, eigenes Modell): für Frankreich vorbereitet. Einbauen, sobald `TIDESATLAS_API_KEY` in `.env` steht. Vorher prüfen, ob es in Loire, Gironde und Seine besser ist als Open-Meteo. Dazu: die nationalen Quellen mit Open-Meteo vergleichen.~~
+
+Gelöst (2026-11-16):
+
+**Vergleich nationale Quellen gegen Open-Meteo**, HW/NW der nächsten 3 Tage an 41 Orten, Open-Meteo so abgefragt wie in der App (Küstenpunkt aus `nearestSea()`, Extrema der Stundenwerte mit Parabel). Das Skript lag im Scratchpad, nicht im Repo.
+- Open-Meteo ist überall FRÜHER, nie später. Offene Küste: Helgoland Ø 13 min, Avonmouth 25, Vlissingen 26, Dublin 28, Bergen 30, Galicien 30-33 (A Coruña, Vigo, Ferrol, Pontevedra), Galway 36, Leixões 42. Wattenmeer und Mündungen: Dover 55, Bremerhaven 59, Lisboa 62, Esbjerg 72, Southampton 74, Den Helder 74, Cuxhaven 78, London Bridge 83, Rotterdam 88. Einzelwerte bis 145 min (Den Helder). An den Rohdaten von Vigo geprüft: Open-Meteo-Hochwasser ~06:30 UTC, MeteoGalicia 06:58 UTC; die Rasterzelle liegt vor der Ría (42,29/-8,79).
+- Tidenhub in Mündungen zu klein: London 2,56 statt 4,19 m, Büsum 1,55 statt 2,48 m, Bremerhaven 2,28 statt 2,96 m, Den Helder 0,72 statt 1,05 m, Southampton 0,55 statt 1,50 m.
+- Keine Open-Meteo-Daten: Wedel, Hamburg, Bremen, Flåm (inneres Sognefjord), Caudebec, Rouen, Bordeaux. Nantes bekam die Kurve vom Küstenpunkt bei Pornic (~45 km) - inzwischen durch die Abstandsgrenze ausgeschlossen (Eintrag „Open-Meteo-Gezeiten begrenzt und gekennzeichnet“).
+- Galicien: MeteoGalicia bringt rund 30 min genauere Zeiten; Ría innen (Pontevedra) und außen (Vigo) gleich. Ribadeo und Tui bekommen keine MeteoGalicia-Daten (kein Hafen innerhalb 15 km). Ohne Referenz: Antwerpen (RWS endet weiter flussab).
+
+**TidesAtlas** (nach Bestätigung der Kontomail; vorher HTTP 403 „Email not verified“): gegen die nationalen Quellen Ø 1-23 min mit kleinem Bias - Vigo 1 min, Vlissingen 5, Cuxhaven 7, Lisboa 7, Dover 14, London Bridge 17 (Bezugspegel Shadwell), Hamburg St. Pauli 23 -, Hub fast exakt (London 4,11 statt 4,12 m). Frankreich: eigene Pegel (`ticon/own_station/high`) in Brest, Saint-Malo, Le Havre, Saint-Nazaire, Paimboeuf, Nantes, Royan, Pauillac, Bordeaux; Honfleur und Arcachon über Bezugspegel (medium), Rouen nur `low/estuary`, Caudebec bekommt Berville-sur-Mer an der Mündung (~35 km, durch `tidal_station_km` ausgeschlossen). Open-Meteo liegt dort 40-87 min vor TidesAtlas.
+
+**Bedenken, vom User entschieden:** Die AGB (Stand 2026-11-16) regeln das Speichern von Antworten nicht (Art. 6/7: keine Vervielfältigung, keine Weitergabe von Rohdaten ohne Erlaubnis), schließen in Art. 4 „professional or recreational maritime navigation“ und „activities involving personal safety“ aus, und die Preisseite („Non-commercial“) widerspricht der FAQ („all plans allow commercial use“). Der User hat entschieden, trotzdem mit Cache einzubauen - ohne Cache reichen 25 Abrufe pro Tag nicht.
+
+**Umsetzung** `TidesAtlasTideSource` (letzte Quelle in `tides.national.sources`, also Routencheck und Wetter-Zeitleiste; nur Frankreich-Box 41,3-51,2° N / 5,3° W-9,7° O):
+- `GET https://tidesatlas.com/api/v1/tides?lat&lon&date&days=7`, Header `X-API-Key` und `Referer: https://ytan.pesr.org/`. Die Doku nennt 1-14 Tage, der Free-Web-Plan antwortet bei mehr als 7 mit HTTP 403 „returns up to 7 days per call“ (live gefunden).
+- Nur kalibrierte Pegel (`data_source` `ticon`); das FES2022-Modell, `confidence` `none` und `place_type` `inland` gelten als „keine Daten“. Pegel weiter als `tidal_station_km` → `null`. Doppelte Hoch-/Niedrigwasser werden wie bei UKHO zusammengefasst (`UkhoTideSource::merged()`). Eine `tide_source.attribution` (z. B. SHOM-korrigierte Häfen) wird an „TidesAtlas“ angehängt.
+- Zwei Cache-Stufen in `storage/tide-cache`: eine 0,05°-Zelle (~5 km) merkt sich den Stations-Slug (`ta-cell-*.json`), die Ereignisse liegen je Station (`ta-{slug}.json`, gültig bis zum letzten erhaltenen Ereignis) und werden über `?port=slug` erneuert. Ein Zähler je UTC-Tag (`tidesatlas-quota.json`) hält bei `DAILY_LIMIT` = 22 an, darüber gilt Open-Meteo. Fehler (auch 429) werden 1 h gemerkt, der Schlüssel steht nie im Log.
+- Credits: „Für Frankreich stammen sie von TidesAtlas (CC BY 4.0)“; die Pflichtzeile `tidesatlas-credit` bleibt unverändert.
+- Live: Nantes → Nantes Salorges, 1,1 km, mittlerer Hub 2,94 m, ein Abruf für zwei Abfragen.
+
+Tests: `NationalTideSourcesTest::testTidesAtlasStationCellAndSlugCache`, `testTidesAtlasTakesOnlyCalibratedGauges`, `testTidesAtlasStaysBelowTheDailyLimit`, `testTidesAtlasErrorIsRememberedWithoutTheKey`.
+
+## Routencheck: Open-Meteo-Gezeiten begrenzt und gekennzeichnet, Solent-Doppelhochwasser
+
+~~Maßnahmen aus dem Vergleich nationale Quellen gegen Open-Meteo (2026-11-16, Ergebnisse im Eintrag „Tidequelle Frankreich (TidesAtlas) und Vergleich der Quellen“): 1. Open-Meteo nur nah an der Küste verwenden, 2. Unsicherheit anzeigen, 3. Southampton prüfen.~~
+
+Gelöst (2026-11-16):
+1. **Abstandsgrenze:** `OpenMeteoTideSource` gibt `null` zurück, wenn der Küstenpunkt weiter als `tidal_station_km` (Standard 15 km) entfernt liegt. Anlass: Nantes bekam die Zeiten vom Küstenpunkt bei Pornic (~45 km), die Flut braucht bis Nantes aber Stunden. Ohne Zeiten bleibt es beim Hinweis `route_check.tidal`, die TidelessSeas-Prüfung entscheidet weiter, ob der Fluss als Tidefluss gilt. Keine Zeiten sind besser als um Stunden falsche.
+2. **Kennzeichnung als Modell:** Open-Meteo lag im Vergleich immer früher (13-42 min an offenen Küsten, 55-88 min in Mündungen und im Wattenmeer). `RouteBriefingBuilder::tideSummary()` setzt deshalb `model: true` für Quelle `open-meteo`. Das Sheet zeigt hinter der Quelle „Modell, Zeiten ungefähr (±1 h)“ (`route_check.tide_model`). Die KI bekommt `model_times_approximate` und die Regel, die Zeiten als ungefähr zu benennen, eine örtliche Gezeitentafel zu empfehlen und keine minutengenauen Zeiten daraus abzuleiten (`PROMPT_VERSION` 6, alte Texte im Cache werden damit nicht mehr verwendet). Die Wetter-Zeitleiste schreibt unter eine Open-Meteo-Gezeitenkurve „Gezeitenkurve aus einem Meeresmodell, Zeiten ungefähr (oft bis 1 Stunde zu früh)“ (`weather.timeline.tide_model`). Bei einer nationalen Quelle bleibt alles wie bisher.
+3. **Southampton:** UKHO hat die Station, `UkhoTideSource::alternates()` verwarf sie aber. Der Solent hat ein Doppelhochwasser (HW HW NW), das betraf auch Redbridge, Bursledon, Warsash, Calshot Castle und Cowes. `UkhoTideSource::merged()` fasst jetzt aufeinanderfolgende gleiche Ereignisse zu einem zusammen: Zeit in der Mitte (das Hochwasser „steht“ dort, die Strömung ist schwach), Höhe = das höhere Hoch- bzw. das tiefere Niedrigwasser. Reine Hochwasser-Listen wie Chepstow ergeben ein einziges Ereignis und fallen weiter durch `alternates()`. Danach live: Southampton, 1,3 km, Hub 1,50 m; Open-Meteo dort Ø 74 min zu früh, Hub 0,55 m.
+
+Tests: `TideModelTest::testACoastPointFartherThanTheStationLimitGivesNothing`, `NationalTideSourcesTest::testUkhoMergesTheSolentDoubleHighWater`, `RouteCheckTest::testOpenMeteoTideTimesAreMarkedAsAModel` und `model`-Prüfungen im bestehenden Tidetest.
+
+## Routencheck: Tidequelle Galicien (MeteoGalicia)
+
+~~Spanien, Galicien: MeteoGalicia MeteoSIX v5 `getTidesInfo` (HW/NW je Hafen), braucht einen kostenlosen API-Key. Am 2026-11-15 beantragt, sobald `METEOSIX_API_KEY` in `.env` steht, einbauen.~~
+
+Gelöst (2026-11-16): Der Schlüssel kam am 2026-11-16 per Mail (MeteoGalicia-Webadministration, dann `noreply.meteogalicia@xunta.es`). Er ist persönlich und an die Mailadresse gebunden; Missbrauch führt zur Sperre. Er steht als `METEOSIX_API_KEY` in `.env` (dev; auf prod von Hand eintragen) und wird nie geloggt - das Fehlerlabel von `TideCache::failed()` enthält nur die Position, nicht die URL.
+
+`MeteoGaliciaTideSource` (letzte Quelle in `tides.national.sources`, also Routencheck und Wetter-Zeitleiste) fragt `https://servizos.meteogalicia.gal/apiv5/getTidesInfo?coords=LNG,LAT&startTime&endTime&API_KEY`. Live geprüft am 2026-11-16:
+- Antwort GeoJSON, je Feature `port` (Name, Koordinaten) und `days[].variables[name=tides].summary[]` mit `state` „High tides“/„Low tides“, `timeInstant` mit Offset `+01` (PHP `strtotime()` versteht das) und `height`. Die 30-Minuten-`values` werden nicht genutzt.
+- Die API sucht den nächsten Hafen selbst (Tui → Vigo, offene See 50 km westlich → Corcubión). Deshalb ist wie bei Kartverket die Position der Cache-Schlüssel (0,02° gerundet, `mg-LAT_LNG.json`). Der Abstand zum gelieferten Hafen wird gegen `tidal_station_km` geprüft.
+- Nur Galicien: Bilbao, Gijón, Porto, Cádiz, Brest und Kiel antworten mit Exception 217 („no information about tides“). Die Quelle fragt nur in der Box 41,8-43,9° N / 9,6-6,7° W; 217 wird wie Kartverkets `<nodata/>` 30 Tage gemerkt.
+- Alle Fehler kommen mit HTTP 200 und einem `exception`-Objekt (006 ungültiger Key, 213 Start vor heute, 215 Zeitraum zu lang). Start ist deshalb heute 00:00 Uhr Madrider Zeit, das Fenster 20 Tage (21 gingen, 30 nicht; ohne Zeiten liefert die API 5 Tage). Der Cache gilt bis zum letzten erhaltenen Ereignis (wie bei `GaugeTideSource`).
+- MeteoGalicia bittet, nicht unnötig oft zu fragen (die Modelle laufen einmal täglich). Gezeitenvorhersagen ändern sich kaum, daher die 30 Tage von `TideCache`.
+- Lizenz: Datensatz 0274 auf abertos.xunta.gal, CC BY-SA 4.0. Pflicht: „Fonte dos datos: Xunta de Galicia“ und ein Link auf abertos.xunta.gal - beides steht auf der Credits-Seite (`about.tide_text`, `meteogalicia_link`/`abertos_link`). Keine Logos der Xunta verwenden.
+
+Tests: `NationalTideSourcesTest::testMeteoGalicia` und `testMeteoGaliciaNoTidesIsRememberedAndFailuresHideTheKey` (Parsen, Offset, Cache, Hafen zu weit, kein Key, außerhalb der Box, 217 gemerkt, Key nicht im Log). Live für Pontevedra geprüft: Hafen Pontevedra, 370 m, mittlerer Tidenhub 2,27 m.
+
 ## e2e-Tests: Bearbeiten/Löschen, Fotos, Abmelden, Offline, geteilte Links
 
 ~~Reichen die 31 e2e-Tests? (Nein: 13 davon galten der Windkarte; Bearbeiten, Löschen, Fotos, Abmelden, Offline und geteilte Links waren gar nicht abgedeckt.) Punkte 1-5 ergänzen.~~

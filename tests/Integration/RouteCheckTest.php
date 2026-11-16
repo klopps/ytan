@@ -336,13 +336,13 @@ final class RouteCheckTest extends ControllerTestCase
     }
 
     /** Tidal river with tide times: low water 07:00, high water 13:00, low water 19:00 tomorrow (UTC = local). */
-    private function tidalRiverWithTimes(float $meanRange = 3.8): void
+    private function tidalRiverWithTimes(float $meanRange = 3.8, string $source = 'bsh'): void
     {
         $date = gmdate('Y-m-d', strtotime('+1 day'));
         $this->flow = fn (float $lat, float $lng, int $maxMeters) => ['kind' => 'river', 'bearing' => 180.0, 'distance' => 10];
         $this->sea = fn (float $lat, float $lng, int $maxMeters) => ['distance' => 21000, 'lat' => 53.581, 'lng' => 9.658];
         $this->tide = fn (float $lat, float $lng, ?array $coast, int $from, int $to, int $maxStation) => [
-            'station' => 'Hamburg, St. Pauli, Elbe', 'source' => 'bsh', 'attribution' => '©BSH',
+            'station' => 'Hamburg, St. Pauli, Elbe', 'source' => $source, 'attribution' => '©BSH',
             'lat' => 53.54556, 'lng' => 9.97, 'distance_m' => 300, 'mean_range_m' => $meanRange,
             'events' => [
                 ['time' => strtotime("$date 07:00:00 UTC"), 'type' => 'NW', 'height_m' => 3.5],
@@ -383,6 +383,20 @@ final class RouteCheckTest extends ControllerTestCase
         $this->assertEquals(3.0, $context['route']['assumed_max_tidal_current_kmh']);
         $this->assertSame(['NW 07:00', 'HW 13:00', 'NW 19:00'], $context['tides'][0]['high_low_water']);
         $this->assertSame('ebb', $context['sections'][0]['tide_phase']);
+        $this->assertFalse($flood['current']['tides'][0]['model'], 'a gauge');
+        $this->assertArrayNotHasKey('model_times_approximate', $context['tides'][0]);
+    }
+
+    public function testOpenMeteoTideTimesAreMarkedAsAModel(): void
+    {
+        $userId = $this->createUser(['ai_use' => 1]);
+        $routeId = $this->route($userId);
+        $this->tidalRiverWithTimes(3.8, 'open-meteo');
+
+        $result = $this->check($userId, $routeId, ['ai_use' => true], ['text' => false, 'speed_kmh' => 6])['data'];
+
+        $this->assertTrue($result['current']['tides'][0]['model']);
+        $this->assertTrue(RouteBriefingBuilder::aiContext($result)['tides'][0]['model_times_approximate']);
     }
 
     public function testThePaddlerCanChangeTheTidalCurrent(): void

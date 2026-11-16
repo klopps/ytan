@@ -325,7 +325,8 @@ function routeCheckTideHtml(result) {
         }).join(" · ") || t("route_check.tide_none_today");
         html += "<div class=\"rc-note\"><i class=\"material-icons-round\">waves</i> " +
             t("route_check.tide_line", { station: escapeText(tide.station), events: events }) +
-            " <span class=\"rc-muted rc-small\">" + escapeHTML(tide.attribution) + "</span></div>";
+            " <span class=\"rc-muted rc-small\">" + escapeHTML(tide.attribution) +
+            (tide.model ? " · " + t("route_check.tide_model") : "") + "</span></div>";
     });
     return html + "<div class=\"rc-chips\">" +
         "<button type=\"button\" class=\"rc-chip\" aria-label=\"" + escapeHTML(t("route_check.tidal_less")) + "\" data-on-click=\"routeCheckShiftTidal(-0.5);\">&minus;</button>" +

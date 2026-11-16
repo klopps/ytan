@@ -142,8 +142,8 @@ rules' window), `pois` (`[{id, name, type, type_label, role
 2 km), `sun {sunrise, sunset}`, `weather {source, model, generated_at, sources, marine}` (source/model/generated_at of the first sample point; `sources` = every weather source along the route in route order, each once, e.g. `["DWD", "DMI"]`; `marine` = waves from Open-Meteo Marine were used; `null` when no forecast could be fetched),
 `thresholds` (wind/gust/wave/current for this level), `current {on_river,
 on_canal, on_tidal, river_kmh, default_kmh, tidal_kmh, tidal_default_kmh,
-tides: [{station, source (bsh|open-meteo), attribution, distance_m,
-mean_range_m, events: [{time HH:MM local, type HW|NW, height_m}]}]}` (the
+tides: [{station, source (bsh|dmi|rws|imi|ukho|kartverket|ih|meteogalicia|tidesatlas|open-meteo), attribution, distance_m,
+mean_range_m, model (true = Open-Meteo, times approximate), events: [{time HH:MM local, type HW|NW, height_m}]}]}` (the
 river current used and the admin's default; the page offers its -/+ chips
 only when `on_river` - a tidal river does not count -; `tides` = the gauges
 whose high/low waters of the day drive the tidal current, `tidal_kmh` null

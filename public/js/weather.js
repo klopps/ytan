@@ -476,7 +476,9 @@ function renderWeatherTimeline(data, preserveScroll) {
 
     document.getElementById('weatherTimelineFetchedAt').textContent =
         weatherFormatFetchedAt(data.fetched_at, data.utc_offset_seconds, data.source, data.model) +
-        (data.tide_source ? ' ' + t('weather.timeline.tide_from', { station: data.tide_source.station, attribution: data.tide_source.attribution }) : '');
+        (data.tide_source ? ' ' + t('weather.timeline.tide_from', { station: data.tide_source.station, attribution: data.tide_source.attribution })
+            // Open-Meteo's own curve: a coarse model, times often 15-90 min early (done.md, comparison 2026-11-16)
+            : (tidePoints.length > 1 ? ' ' + t('weather.timeline.tide_model') : ''));
 
     startWeatherNowLineRefresh();
 }

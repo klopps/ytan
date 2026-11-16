@@ -52,13 +52,27 @@ final class TideModelTest extends TestCase
             return self::payload();
         });
 
-        $tide = $source->tide(53.54, 9.97, ['lat' => 53.87, 'lng' => 8.70], 0, PHP_INT_MAX, 15000);
+        $tide = $source->tide(53.87, 8.80, ['lat' => 53.87, 'lng' => 8.70], 0, PHP_INT_MAX, 15000);
 
         $this->assertSame([[53.87, 8.70]], $asked);
         $this->assertSame('open-meteo', $tide['source']);
         $this->assertEqualsWithDelta(3.0, $tide['mean_range_m'], 0.1);
-        $this->assertGreaterThan(80000, $tide['distance_m']);
+        $this->assertEqualsWithDelta(6600, $tide['distance_m'], 200);
         $this->assertNull($source->tide(53.54, 9.97, null, 0, 1, 15000), 'no coast, nothing to ask');
+    }
+
+    public function testACoastPointFartherThanTheStationLimitGivesNothing(): void
+    {
+        $asked = 0;
+        $source = new OpenMeteoTideSource(function () use (&$asked) {
+            $asked++;
+
+            return self::payload();
+        });
+
+        // Hamburg with the coast point at Cuxhaven (~90 km): the tide arrives hours later there
+        $this->assertNull($source->tide(53.54, 9.97, ['lat' => 53.87, 'lng' => 8.70], 0, PHP_INT_MAX, 15000));
+        $this->assertSame(0, $asked, 'not even asked');
     }
 
     public function testNoSeaLevelInAnEstuaryMeansNoData(): void

@@ -22,7 +22,7 @@ use Ytan\Service\Log\LogWriter;
 final class RouteBriefingService
 {
     /** Bump when the prompt changes, so cached texts of the old prompt are not reused. */
-    public const PROMPT_VERSION = 5;
+    public const PROMPT_VERSION = 6;
     private const MAX_TOKENS = 3000;
 
     public function __construct(
@@ -152,7 +152,9 @@ Rules:
   (tides: gauge, high_low_water HW/NW in local time) the current there is the tidal current: tide_phase flood (runs
   up the river), ebb (down the river) or slack, current_kmh from an ASSUMED maximum
   (route.assumed_max_tidal_current_kmh) - recommend paddling with it and say that it is an estimate. Without tide
-  times no current was computed; tell the paddler to plan with the tide times.
+  times no current was computed; tell the paddler to plan with the tide times. A tides entry with
+  model_times_approximate comes from a coarse ocean model, not a gauge (often 15-90 minutes early): say the tide
+  times are approximate, recommend checking a local tide table, and give no minute-exact timing from them.
 - Mention when parts have no data (grey) and what that means.
 - The assessment is a planning aid, not a safety guarantee; the paddler decides on the water.
 

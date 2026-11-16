@@ -282,6 +282,28 @@ final class NationalTideSourcesTest extends TestCase
         $this->assertSame('Beachley', $tide['station']);
     }
 
+    public function testUkhoMergesTheSolentDoubleHighWater(): void
+    {
+        $this->http->on(UkhoTideSource::BASE_URL . '/0062/TidalEvents', json_encode([
+            ['EventType' => 'HighWater', 'DateTime' => '2026-11-15T02:08:00', 'Height' => 3.90],
+            ['EventType' => 'HighWater', 'DateTime' => '2026-11-15T05:04:00', 'Height' => 3.91],
+            ['EventType' => 'LowWater', 'DateTime' => '2026-11-15T08:08:00', 'Height' => 2.08],
+            ['EventType' => 'HighWater', 'DateTime' => '2026-11-15T14:20:00', 'Height' => 3.75],
+            ['EventType' => 'HighWater', 'DateTime' => '2026-11-15T17:20:00', 'Height' => 3.80],
+            ['EventType' => 'LowWater', 'DateTime' => '2026-11-15T20:30:00', 'Height' => 2.00],
+        ]));
+        $this->http->on(UkhoTideSource::BASE_URL, json_encode(['features' => [
+            ['geometry' => ['coordinates' => [-1.4, 50.883333]], 'properties' => ['Id' => '0062', 'Name' => 'SOUTHAMPTON']],
+        ]]));
+
+        $tide = (new UkhoTideSource('k', $this->http))->tide(50.895, -1.395, null, $this->from, $this->to, 15000);
+
+        $this->assertSame('SOUTHAMPTON', $tide['station']);
+        $this->assertSame(['HW', 'NW', 'HW', 'NW'], array_column($tide['events'], 'type'));
+        $this->assertSame(strtotime('2026-11-15 03:36:00 UTC'), $tide['events'][0]['time'], 'halfway between the two high waters');
+        $this->assertSame(3.91, $tide['events'][0]['height_m'], 'the higher one');
+    }
+
     public function testInstitutoHidrograficoAndTheReallyCoveredWindow(): void
     {
         $this->http->on(IhTideSource::BASE_URL . '/tides/', json_encode(['type' => 'FeatureCollection', 'features' => [
@@ -311,6 +333,174 @@ final class NationalTideSourcesTest extends TestCase
         $this->assertCount($count, $this->http->requests, 'inside the covered window: from the cache');
         (new IhTideSource($this->cache(), $this->http))->tide(38.70, -9.17, null, $this->from + 3 * 86400, $this->from + 4 * 86400, 15000);
         $this->assertCount($count + 1, $this->http->requests, 'beyond the last event: asked again');
+    }
+
+    private function meteoGaliciaAnswer(): string
+    {
+        return (string) json_encode(['type' => 'FeatureCollection', 'features' => [[
+            'type' => 'Feature',
+            'geometry' => ['type' => 'Point', 'coordinates' => [-8.75, 42.22]],
+            'properties' => [
+                'port' => ['id' => '3', 'name' => 'Vigo', 'geometry' => ['type' => 'Point', 'coordinates' => [-8.71667, 42.23333]]],
+                'referencePort' => ['id' => '3', 'name' => 'Vigo'],
+                'days' => [
+                    ['variables' => [['name' => 'tides', 'units' => 'm', 'summary' => [
+                        ['id' => '0', 'state' => 'Low tides', 'timeInstant' => '2026-11-15T01:52:00+01', 'height' => 1.5],
+                        ['id' => '1', 'state' => 'High tides', 'timeInstant' => '2026-11-15T08:19:00+01', 'height' => 3.1],
+                        ['id' => '2', 'state' => 'Low tides', 'timeInstant' => '2026-11-15T14:42:00+01', 'height' => 1.5],
+                    ], 'values' => [['timeInstant' => '2026-11-15T00:00:00+01', 'height' => 1.84]]]]],
+                    ['variables' => [['name' => 'tides', 'summary' => [
+                        ['id' => '0', 'state' => 'High tides', 'timeInstant' => '2026-11-16T20:55:00+01', 'height' => 2.8],
+                    ]]]],
+                ],
+            ],
+        ]]]);
+    }
+
+    private function meteoGalicia(string $key = 'secret-key'): \Ytan\Service\Tide\MeteoGaliciaTideSource
+    {
+        return new \Ytan\Service\Tide\MeteoGaliciaTideSource($key, $this->cache(), $this->http, fn () => $this->from + 3600);
+    }
+
+    public function testMeteoGalicia(): void
+    {
+        $this->http->on(\Ytan\Service\Tide\MeteoGaliciaTideSource::BASE_URL, $this->meteoGaliciaAnswer());
+
+        $tide = $this->meteoGalicia()->tide(42.22, -8.75, null, $this->from, $this->to, 15000);
+
+        $this->assertSame('Vigo', $tide['station']);
+        $this->assertSame('meteogalicia', $tide['source']);
+        $this->assertSame(['NW', 'HW', 'NW', 'HW'], array_column($tide['events'], 'type'));
+        $this->assertSame(strtotime('2026-11-15 07:19:00 UTC'), $tide['events'][1]['time'], 'offset +01 understood');
+        $this->assertEqualsWithDelta(1.5, $tide['mean_range_m'], 0.01);
+        $this->assertEqualsWithDelta(3100, $tide['distance_m'], 200, 'the port, not the asked point');
+        $url = $this->http->requests[0]['url'];
+        $this->assertStringContainsString('coords=-8.7600%2C42.2200', $url);
+        $this->assertStringContainsString('startTime=2026-11-15T00%3A00%3A00', $url, 'today 00:00 Madrid');
+        $this->assertStringContainsString('API_KEY=secret-key', $url);
+
+        $this->meteoGalicia()->tide(42.22, -8.75, null, $this->from, $this->from + 86400, 15000);
+        $this->assertCount(1, $this->http->requests, 'from the cache');
+        $this->assertNull($this->meteoGalicia()->tide(42.22, -8.75, null, $this->from, $this->from + 86400, 2000), 'port too far');
+        $this->assertNull($this->meteoGalicia('')->tide(42.22, -8.75, null, $this->from, $this->to, 15000), 'no key, no source');
+        $this->assertNull($this->meteoGalicia()->tide(43.33, -2.93, null, $this->from, $this->to, 15000), 'Bilbao is outside');
+        $this->assertCount(1, $this->http->requests);
+    }
+
+    public function testMeteoGaliciaNoTidesIsRememberedAndFailuresHideTheKey(): void
+    {
+        $this->http->on(\Ytan\Service\Tide\MeteoGaliciaTideSource::BASE_URL, '{"exception":{"code":"217","message":"There is no information about tides for the selected location."}}');
+        $this->assertNull($this->meteoGalicia()->tide(43.0, -7.5, null, $this->from, $this->to, 15000));
+        $this->assertNull($this->meteoGalicia()->tide(43.0, -7.5, null, $this->from, $this->to, 15000));
+        $this->assertCount(1, $this->http->requests, 'no tides there - remembered');
+
+        $this->http->on(\Ytan\Service\Tide\MeteoGaliciaTideSource::BASE_URL, '{"exception":{"code":"006","message":"Supplied API Key is invalid."}}');
+        $log = (string) tempnam(sys_get_temp_dir(), 'log');
+        $previous = ini_set('error_log', $log);
+        try {
+            $this->assertNull($this->meteoGalicia()->tide(42.5, -8.9, null, $this->from, $this->to, 15000));
+            $written = (string) file_get_contents($log);
+        } finally {
+            ini_set('error_log', (string) $previous);
+            @unlink($log);
+        }
+        $this->assertStringContainsString('MeteoGalicia', $written);
+        $this->assertStringNotContainsString('secret-key', $written);
+    }
+
+    private function tidesAtlasAnswer(string $slug = 'nantes-salorges', string $dataSource = 'ticon', array $tideSource = ['type' => 'own_station', 'confidence' => 'high']): string
+    {
+        return (string) json_encode([
+            'port' => ['name' => 'Nantes Salorges', 'slug' => $slug, 'lat' => 47.2097, 'lon' => -1.5717, 'timezone' => 'Europe/Paris'],
+            'data_source' => $dataSource,
+            'tide_source' => $tideSource,
+            'date' => '2026-11-15', 'days' => 7, 'count' => 3,
+            'extremes' => [
+                ['datetime' => '2026-11-15T04:14:17+01:00', 'timestamp' => strtotime('2026-11-15 03:14:17 UTC'), 'height_m' => 5.6, 'type' => 'high'],
+                ['datetime' => '2026-11-15T11:02:00+01:00', 'timestamp' => strtotime('2026-11-15 10:02:00 UTC'), 'height_m' => 3.1, 'type' => 'low'],
+                ['datetime' => '2026-11-17T16:40:00+01:00', 'timestamp' => strtotime('2026-11-17 15:40:00 UTC'), 'height_m' => 5.5, 'type' => 'high'],
+            ],
+        ]);
+    }
+
+    private function tidesAtlas(string $key = 'ta-key'): \Ytan\Service\Tide\TidesAtlasTideSource
+    {
+        return new \Ytan\Service\Tide\TidesAtlasTideSource($key, $this->cache(), $this->http, fn () => $this->from + 3600);
+    }
+
+    public function testTidesAtlasStationCellAndSlugCache(): void
+    {
+        $this->http->on(\Ytan\Service\Tide\TidesAtlasTideSource::BASE_URL, $this->tidesAtlasAnswer());
+
+        $tide = $this->tidesAtlas()->tide(47.21, -1.56, null, $this->from, $this->to, 15000);
+
+        $this->assertSame('Nantes Salorges', $tide['station']);
+        $this->assertSame('tidesatlas', $tide['source']);
+        $this->assertSame('TidesAtlas', $tide['attribution']);
+        $this->assertSame(['HW', 'NW', 'HW'], array_column($tide['events'], 'type'));
+        $this->assertSame(strtotime('2026-11-15 03:14:17 UTC'), $tide['events'][0]['time']);
+        $request = $this->http->requests[0];
+        $this->assertStringContainsString('lat=47.2&lon=-1.55', $request['url']);
+        $this->assertStringContainsString('days=7', $request['url'], 'the Free Web plan refuses more');
+        $this->assertContains('X-API-Key: ta-key', $request['headers']);
+        $this->assertContains('Referer: https://ytan.pesr.org/', $request['headers']);
+
+        // same cell: from the cache; the station is refreshed by its slug when the window runs out
+        $this->tidesAtlas()->tide(47.21, -1.56, null, $this->from, $this->from + 86400, 15000);
+        $this->assertCount(1, $this->http->requests);
+        $this->tidesAtlas()->tide(47.21, -1.56, null, $this->from, $this->from + 5 * 86400, 15000);
+        $this->assertCount(2, $this->http->requests);
+        $this->assertStringContainsString('port=nantes-salorges', $this->http->requests[1]['url']);
+
+        $this->assertNull($this->tidesAtlas()->tide(47.21, -1.56, null, $this->from, $this->from + 86400, 500), 'gauge too far');
+        $this->assertNull($this->tidesAtlas('')->tide(47.21, -1.56, null, $this->from, $this->to, 15000), 'no key');
+        $this->assertNull($this->tidesAtlas()->tide(53.55, 9.97, null, $this->from, $this->to, 15000), 'outside France');
+        $this->assertCount(2, $this->http->requests);
+    }
+
+    public function testTidesAtlasTakesOnlyCalibratedGauges(): void
+    {
+        $this->http->on(\Ytan\Service\Tide\TidesAtlasTideSource::BASE_URL, $this->tidesAtlasAnswer('x', 'fes2022', ['type' => 'model_point', 'confidence' => 'medium']));
+        $this->assertNull($this->tidesAtlas()->tide(46.0, -2.0, null, $this->from, $this->to, 15000));
+        $this->assertNull($this->tidesAtlas()->tide(46.0, -2.0, null, $this->from, $this->to, 15000));
+        $this->assertCount(1, $this->http->requests, 'remembered for the cell');
+
+        $this->http->on(\Ytan\Service\Tide\TidesAtlasTideSource::BASE_URL, $this->tidesAtlasAnswer('y', 'ticon', ['type' => 'reference_port', 'confidence' => 'none', 'place_type' => 'inland']));
+        $this->assertNull($this->tidesAtlas()->tide(47.5, 0.5, null, $this->from, $this->to, 15000), 'inland guess');
+
+        $this->http->on(\Ytan\Service\Tide\TidesAtlasTideSource::BASE_URL, $this->tidesAtlasAnswer('z', 'ticon', ['type' => 'official_data', 'confidence' => 'high', 'attribution' => 'Shom']));
+        $this->assertSame('TidesAtlas / Shom', $this->tidesAtlas()->tide(47.21, -1.56, null, $this->from, $this->to, 15000)['attribution']);
+    }
+
+    public function testTidesAtlasStaysBelowTheDailyLimit(): void
+    {
+        $this->http->on(\Ytan\Service\Tide\TidesAtlasTideSource::BASE_URL, $this->tidesAtlasAnswer());
+        for ($i = 0; $i < \Ytan\Service\Tide\TidesAtlasTideSource::DAILY_LIMIT + 5; $i++) {
+            // every call a new cell, each costs a request
+            $this->tidesAtlas()->tide(43.0 + $i * 0.1, 3.5, null, $this->from, $this->to, 500000);
+        }
+        $this->assertCount(\Ytan\Service\Tide\TidesAtlasTideSource::DAILY_LIMIT, $this->http->requests);
+
+        $nextDay = new \Ytan\Service\Tide\TidesAtlasTideSource('ta-key', $this->cache(), $this->http, fn () => $this->from + 86400 + 60);
+        $nextDay->tide(50.5, 1.6, null, $this->from, $this->to, 500000);
+        $this->assertCount(\Ytan\Service\Tide\TidesAtlasTideSource::DAILY_LIMIT + 1, $this->http->requests, 'a new UTC day');
+    }
+
+    public function testTidesAtlasErrorIsRememberedWithoutTheKey(): void
+    {
+        $this->http->on(\Ytan\Service\Tide\TidesAtlasTideSource::BASE_URL, '{"error":true,"message":"Email not verified.","status":403}');
+        $log = (string) tempnam(sys_get_temp_dir(), 'log');
+        $previous = ini_set('error_log', $log);
+        try {
+            $this->assertNull($this->tidesAtlas()->tide(47.21, -1.56, null, $this->from, $this->to, 15000));
+            $this->assertNull($this->tidesAtlas()->tide(47.21, -1.56, null, $this->from, $this->to, 15000));
+            $written = (string) file_get_contents($log);
+        } finally {
+            ini_set('error_log', (string) $previous);
+            @unlink($log);
+        }
+        $this->assertCount(1, $this->http->requests, 'a failure waits an hour');
+        $this->assertStringNotContainsString('ta-key', $written);
     }
 
     public function testTypedAndMeanRange(): void

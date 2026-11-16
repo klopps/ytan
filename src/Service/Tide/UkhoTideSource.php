@@ -61,7 +61,7 @@ final class UkhoTideSource implements TideSource
                 error_log('YTAN: UKHO tidal events for ' . $station['id'] . ' could not be loaded');
                 continue;
             }
-            $events = self::parseEvents($json);
+            $events = self::merged(self::parseEvents($json));
             if (!self::alternates($events)) {
                 // secondary ports like Chepstow list only high waters - no tidal phase without the lows
                 continue;
@@ -100,6 +100,55 @@ final class UkhoTideSource implements TideSource
         }
 
         return true;
+    }
+
+    /**
+     * Consecutive events of the same type as ONE event (found 2026-11-16: the
+     * Solent - Southampton, Redbridge, Bursledon, Warsash, Calshot, Cowes - has
+     * a double high water, HW HW LW, and alternates() dropped all of them).
+     * The merged event lies halfway between (the high water "stands" there,
+     * the current is weak), height = the higher high / lower low water. A
+     * station with high waters only (Chepstow) becomes a single event and is
+     * still dropped by alternates().
+     *
+     * @param list<array{time: int, type: string, height_m: ?float}> $events sorted
+     * @return list<array{time: int, type: string, height_m: ?float}>
+     */
+    public static function merged(array $events): array
+    {
+        $merged = [];
+        $run = [];
+        foreach ($events as $event) {
+            if ($run !== [] && $run[0]['type'] !== $event['type']) {
+                $merged[] = self::mergeRun($run);
+                $run = [];
+            }
+            $run[] = $event;
+        }
+        if ($run !== []) {
+            $merged[] = self::mergeRun($run);
+        }
+
+        return $merged;
+    }
+
+    /**
+     * @param non-empty-list<array{time: int, type: string, height_m: ?float}> $run
+     * @return array{time: int, type: string, height_m: ?float}
+     */
+    private static function mergeRun(array $run): array
+    {
+        if (count($run) === 1) {
+            return $run[0];
+        }
+        $heights = array_values(array_filter(array_column($run, 'height_m'), static fn ($h) => $h !== null));
+        $first = $run[0];
+
+        return [
+            'time' => (int) round(($first['time'] + $run[count($run) - 1]['time']) / 2),
+            'type' => $first['type'],
+            'height_m' => $heights === [] ? null : ($first['type'] === 'HW' ? max($heights) : min($heights)),
+        ];
     }
 
     /** @return list<array{id: string, name: string, lat: float, lng: float}>|null */

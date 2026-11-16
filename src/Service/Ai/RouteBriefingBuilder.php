@@ -292,7 +292,7 @@ final class RouteBriefingBuilder
      * high/low waters of the day in local time.
      *
      * @param array<string, mixed> $tide
-     * @return array{station: string, source: string, attribution: string, distance_m: int, mean_range_m: ?float, events: list<array{time: string, type: string, height_m: ?float}>}
+     * @return array{station: string, source: string, attribution: string, distance_m: int, mean_range_m: ?float, model: bool, events: list<array{time: string, type: string, height_m: ?float}>}
      */
     private static function tideSummary(array $tide, string $date, DateTimeZone $timezone): array
     {
@@ -310,6 +310,8 @@ final class RouteBriefingBuilder
             'attribution' => (string) $tide['attribution'],
             'distance_m' => (int) $tide['distance_m'],
             'mean_range_m' => $tide['mean_range_m'],
+            // Open-Meteo: a coarse ocean model, times often 15-90 min early (done.md, comparison 2026-11-16)
+            'model' => $tide['source'] === 'open-meteo',
             'events' => $events,
         ];
     }
@@ -385,6 +387,7 @@ final class RouteBriefingBuilder
                 'gauge' => $t['station'],
                 'distance_km' => round($t['distance_m'] / 1000, 1),
                 'mean_range_m' => $t['mean_range_m'],
+            ] + (!empty($t['model']) ? ['model_times_approximate' => true] : []) + [
                 'high_low_water' => array_map(static fn (array $e) => $e['type'] . ' ' . $e['time'], $t['events']),
             ], $result['current']['tides'] ?? []) ?: null,
             'overall_rating' => $rating($result['rating']),

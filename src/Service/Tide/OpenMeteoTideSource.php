@@ -11,7 +11,14 @@ namespace Ytan\Service\Tide;
  * water = the local maxima and minima of that curve, refined with a parabola
  * through the three hours around each. Only the open sea has values - in the
  * estuaries Open-Meteo answers null (Elbe at Wedel and Glückstadt), then this
- * source has nothing (null).
+ * source has nothing (null); likewise when the coast point is farther than
+ * $maxStationMeters (tidal_station_km).
+ *
+ * Accuracy (compared with the national sources 2026-11-16, see done.md "Tidequelle Frankreich (TidesAtlas) und Vergleich der Quellen"):
+ * always EARLY, 13-42 min on open coasts, 55-88 min in estuaries and the
+ * Wadden Sea, single events up to 145 min; ranges too small in estuaries.
+ * Hence the Routencheck marks source 'open-meteo' as `model` (sheet + AI:
+ * approximate times) and the weather timeline says so for its curve.
  *
  * The forecast is a closure (WeatherService::getForecast(), cached 30 min)
  * so tests need no network.
@@ -30,6 +37,13 @@ final class OpenMeteoTideSource implements TideSource
     public function tide(float $lat, float $lng, ?array $coast, int $from, int $to, int $maxStationMeters): ?array
     {
         if ($coast === null) {
+            return null;
+        }
+        // A coast point far away has the tide of somewhere else: up a river the
+        // tide arrives hours later (Nantes got Pornic's times, 45 km away -
+        // comparison 2026-11-16). No times beat wrong times.
+        $distance = (int) round(self::haversine($lat, $lng, (float) $coast['lat'], (float) $coast['lng']));
+        if ($distance > $maxStationMeters) {
             return null;
         }
         try {
@@ -54,7 +68,7 @@ final class OpenMeteoTideSource implements TideSource
             'attribution' => self::ATTRIBUTION,
             'lat' => (float) $coast['lat'],
             'lng' => (float) $coast['lng'],
-            'distance_m' => (int) round(self::haversine($lat, $lng, (float) $coast['lat'], (float) $coast['lng'])),
+            'distance_m' => $distance,
             'mean_range_m' => self::meanRange($events),
             'events' => BshTideSource::window($events, $from, $to),
         ];
