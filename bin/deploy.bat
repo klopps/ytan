@@ -11,11 +11,16 @@ REM part of the upload. The upload is tar.exe piped into PuTTY's plink.exe;
 REM connection settings and the password file come from bin\ssh-setup.bat
 REM (shared with the publish scripts).
 REM
-REM The remote .env is never touched: it's excluded from the package, and
-REM this script never deletes anything on the remote side (except docs/user,
-REM see below), it only extracts on top of what's already there. That also
-REM means files removed locally are NOT removed from the remote - this is a
-REM simple "copy newer files over", not a mirror.
+REM The remote .env is never touched: it's excluded from the package. The
+REM upload is extracted on top of what's already there; afterwards
+REM bin/deploy-prune.sh (on the server) deletes the files an EARLIER deploy
+REM uploaded that this one no longer contains (removed/renamed in the
+REM repository, dropped Composer packages). It compares the file list tar
+REM prints while extracting with the one kept from the last deploy in
+REM .deploy-manifest - anything no deploy ever uploaded (storage, .env,
+REM public/.user.ini, public/app, caches, venvs) is never in that list and so
+REM never deleted. Until 2026-11-17 nothing was deleted at all and leftovers
+REM piled up on the servers.
 REM
 REM Only what the PHP app actually needs at runtime is uploaded: the list of
 REM what stays local is bin\deploy-excludes.txt (one tar pattern per line) -
@@ -70,10 +75,11 @@ echo ==^> Installing production dependencies (composer install --no-dev)
 if errorlevel 1 goto :error
 
 echo ==^> Uploading to %DEPLOY_USER%@%DEPLOY_HOST%:%DEPLOY_PATH% and running migrations
-REM docs/user is removed first: tar only adds/overwrites, so a renamed or
-REM deleted chapter (e.g. the renumbering of 2026-11-10) would otherwise stay
-REM on the server and show up twice in the user guide.
-tar -C "%BUILD_DIR%" -cf - . | "%DEPLOY_SSH_CLIENT%" %SSH_TARGET% "mkdir -p '%DEPLOY_PATH%' && rm -rf '%DEPLOY_PATH%/docs/user' && tar -C '%DEPLOY_PATH%' -xf - && cd '%DEPLOY_PATH%' && %REMOTE_PHP% bin/merge-i18n.php && %REMOTE_PHP% bin/migrate.php"
+REM tar -v lists every extracted path into .deploy-upload.list, which
+REM bin/deploy-prune.sh turns into the new .deploy-manifest (deleting what
+REM dropped out since the last deploy - e.g. renamed user guide chapters, which
+REM used to need an rm -rf of docs/user before every upload).
+tar -C "%BUILD_DIR%" -cf - . | "%DEPLOY_SSH_CLIENT%" %SSH_TARGET% "mkdir -p '%DEPLOY_PATH%' && tar -C '%DEPLOY_PATH%' -xvf - > '%DEPLOY_PATH%/.deploy-upload.list' && cd '%DEPLOY_PATH%' && sh bin/deploy-prune.sh .deploy-upload.list && %REMOTE_PHP% bin/merge-i18n.php && %REMOTE_PHP% bin/migrate.php"
 if errorlevel 1 goto :error
 
 echo ==^> Deploy finished.

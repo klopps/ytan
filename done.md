@@ -1,5 +1,15 @@
 # Erledigt
 
+## Deploy räumt überflüssige Dateien ab
+
+~~Wie kann der deploy-Vorgang verbessert werden, so dass überflüssige Dateien und Verzeichnisse auf PROD und TEST gelöscht werden?~~
+
+Gelöst (2026-11-17): `bin\deploy.bat` entpackte das Paket nur über den Bestand und löschte nichts. Deshalb lagen auf PROD noch Dateien, die im Repo längst gelöscht oder umbenannt waren, z. B. `templates/impressum.php`, `public/lib/markerWithLabel/` und `bin/cron.sh`. Die wurden einmalig von Hand entfernt. Jetzt schreibt der Server beim Entpacken die Liste aller entpackten Pfade mit (`tar -xvf - > .deploy-upload.list`). Das neue `bin/deploy-prune.sh` (POSIX sh, auf PROD ist `sh` = dash) vergleicht sie mit `.deploy-manifest` vom letzten Deploy, löscht die herausgefallenen Dateien und danach leer gewordene Verzeichnisse. Anschließend wird die neue Liste zum Manifest.
+
+Gelöscht werden kann nur, was ein früherer Deploy selbst hochgeladen hat. `storage/`, `.env`, `public/.user.ini`, `public/app/`, der WSI-Cache und `tools/.venv` stehen nie im Manifest und sind zusätzlich per Name geschützt. `resources/i18n-incoming/` bleibt außen vor, das verarbeitet `merge-i18n.php`.
+
+Beim ersten Lauf wird nur aufgezeichnet. Eine Liste mit weniger als der Hälfte der vorigen Einträge wird abgelehnt, dann wird nichts gelöscht. Das frühere `rm -rf docs/user` vor jedem Upload ist entfallen, umbenannte Anleitungskapitel räumt jetzt das Manifest ab. Getestet in einer lokalen Sandbox: erster Lauf, gelöschte Dateien, leere Verzeichnisse, geschützte Pfade.
+
 ## AR-Routen-Modus
 
 ~~In Ergänzung zum AR-Modus wird im AR-Routen-Modus auch eine vorher zu aktivierende Route überlagert. Der Benutzer sieht dann eine 3D-Darstellung der Route bis zu einer Entfernung von x-Kilometern. Die Linie wird mit zunehmender Entfernung vom aktuellen Standort immer dünner. So wie bei der App für die Garmin-Uhr soll die Richtung und Entfernung zum nächsten Wegpunkt angezeigt werden. Ein Pfeil soll anzeigen, wo dieser Punkt liegt. Wie im reinen AR-Modus sollen die POIs weiterhin angezeigt werden.~~
