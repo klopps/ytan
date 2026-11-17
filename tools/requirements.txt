@@ -1,7 +1,7 @@
 # The ONE Python environment of YTAN's scheduled jobs (tools/.venv): the job
 # runner tools/ytan_jobs.py, the YTAN worker tools/ytan_worker.py, the rain
 # radar (tools/radar) and the wind job (tools/wind). tools/water has its own.
-# Setup: tools/radar/README.md. Until 2026-11-15 this lived in tools/radar/.
+# Setup: tools/README.md. Until 2026-11-15 this lived in tools/radar/.
 #
 # Rain radar tile job. Only packages with binary wheels for
 # manylinux/cp313: the production host has no C compiler (which is also why

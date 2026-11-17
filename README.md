@@ -86,10 +86,10 @@ A Garmin ConnectIQ app that provides navigation assistance on routes to the next
 - **Database**: MySQL/MariaDB, schema in `database/migrations/*.sql`,
   applied with `bin/migrate.php` (no external migration tool required).
 - **Rain radar job**: Python 3 (`tools/radar/`, numpy/h5py/pyproj/OpenCV),
-  run by cron every 5 minutes, writes the radar tiles to `storage/radar/` -
+  run every 5 minutes, writes the radar tiles to `storage/radar/` -
   see [tools/radar/README.md](tools/radar/README.md).
 - **Wind job**: Python 3 in the same venv (`tools/wind/`, own GRIB2 reader),
-  run by cron every 15 minutes, writes the wind data blocks to `storage/wind/` -
+  run every 15 minutes, writes the wind data blocks to `storage/wind/` -
   see [tools/wind/README.md](tools/wind/README.md).
 - **Android app**: a [Capacitor 8](https://capacitorjs.com/) shell
   (`android/`, plus the repo-root `package.json`/`capacitor.config.json`)

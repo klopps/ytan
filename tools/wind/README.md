@@ -56,7 +56,7 @@ degrees, all on one global grid (origin -90 / -180).
 ## Setup
 
 It uses the jobs' shared Python environment (`tools/.venv`, see
-`tools/radar/README.md`); the only extra package is `imagecodecs` (CCSDS
+`tools/README.md`); the only extra package is `imagecodecs` (CCSDS
 decoding for ICON-EU), already in `tools/requirements.txt`:
 
 ```bash
@@ -65,7 +65,7 @@ tools/.venv/bin/python tools/wind/wind_job.py -v   # first run: ~25 s, ~200 MB d
 ```
 
 Scheduling: no cron entry of its own. `tools/ytan_jobs.py` (the one cron entry, every
-5 minutes, see `tools/radar/README.md`) runs this job after the rain radar job, at the
+5 minutes, see `tools/README.md`) runs this job after the rain radar job, at the
 first tick of every quarter hour (the job only computes when a model run it hasn't
 processed is complete, otherwise it ends within a second). Started by hand it runs on
 its own:

@@ -35,57 +35,33 @@ Output in `storage/radar/` (see `job.py`'s docstring): `manifest.json`,
 
 ## Setup
 
-The production host has Python 3.13 but no pip, no `ensurepip` and no C
-compiler, and `/tmp` is `noexec` - hence a venv without pip, bootstrapped
-with `get-pip.py`, and only packages with binary wheels (no pysteps):
+The job runs in the jobs' shared Python environment `tools/.venv` (setup,
+cron entry, logs and scheduling: `tools/README.md`). Its packages are in
+`tools/requirements.txt` - only ones with binary wheels, the production host has
+no compiler (hence no pysteps). First run by hand:
 
 ```bash
-cd /path/to/ytan
-python3 -m venv --without-pip tools/.venv
-curl -sSo tools/.venv/get-pip.py https://bootstrap.pypa.io/get-pip.py
-tools/.venv/bin/python tools/.venv/get-pip.py
-tools/.venv/bin/python -m pip install --only-binary=:all: -r tools/requirements.txt
 tools/.venv/bin/python tools/radar/radar_job.py   # first run: ~2 min (13 observations)
 ```
-
-Locally (Windows): `python -m venv tools/.venv` and
-`tools/.venv/Scripts/python -m pip install -r tools/requirements.txt`.
-
-`tools/.venv` is the ONE environment of all scheduled jobs (`ytan_jobs.py`, the
-YTAN worker, radar, wind); `tools/requirements.txt` lists every job's packages.
-Until 2026-11-15 both lived in `tools/radar/`. An existing `tools/radar/.venv`
-can simply be moved (`mv tools/radar/.venv tools/.venv`): the jobs call
-`.venv/bin/python` directly, which finds its environment from its own location
-(only pip's own launcher scripts keep the old path - use `python -m pip`).
 
 /admin/radar can pause the job (15/30/60 minutes or for good: `paused_until` /
 `paused_forever` in config.json, the run then ends at once with outcome
 `paused`) and start a run by hand ("Jetzt aktualisieren": `--force`,
 ignores the fetch interval; refused while `storage/radar/.lock` is held).
 
-Cron, every 5 minutes - ONE entry for all of YTAN's jobs, `tools/ytan_jobs.py`
-(it runs this job and, in its quarter-hour slot, the wind job, one after the
-other; see "Scheduling" below). The number of rendering processes comes from the
-admin setting; `--workers N` overrides it for one run (`1` = sequential). On
-Linux they share the reprojection lookup via fork, on Windows (spawn) each
-builds its own (~5 s, and needs the regions too):
-
-```
-*/5 * * * * /path/to/ytan/tools/.venv/bin/python /path/to/ytan/tools/ytan_jobs.py >> /path/to/ytan/storage/logs/console.log 2>&1
-```
-
-The jobs write their logs themselves (`tools/ytanlog.py`: `storage/logs/jobs.log`,
-`radar.log`, `wind.log`; date and time in front of every line, the oldest 1000
-lines moved to `NAME.N.log` once a file has more than 2000). `console.log` only
-catches what goes wrong before that, e.g. a missing package. An old cron line
-that still redirects into `radar.log` does no harm (nothing is printed when the
-output is not a terminal).
+It has no cron entry of its own: `tools/ytan_jobs.py` (see `tools/README.md`)
+runs it on every tick and writes its log to `storage/logs/radar.log`. The number
+of rendering processes comes from the admin setting; `--workers N` overrides it
+for one run (`1` = sequential). On Linux they share the reprojection lookup via
+fork, on Windows (spawn) each builds its own (~5 s, and needs the regions too).
 
 `radar_job.py` itself stays runnable by hand (and is what /admin/radar's "update
-now" starts); overlapping runs skip themselves via `storage/radar/.lock`.
+now" starts); overlapping runs skip themselves via `storage/radar/.lock`, and it
+never runs together with the wind job (`storage/.jobs.lock`, see "Scheduling" in
+`tools/README.md`).
 
-The deploy scripts upload `tools/` but neither `tools/.venv` nor
-`storage/radar`.
+The deploy scripts don't upload `storage/radar`. Everything in it is rebuilt by
+the job (the reprojection cache `reproject-*/` too), so it need not be backed up.
 
 ## Numbers (measured 2026-10-17, frontal rain over DK/DE)
 
@@ -98,15 +74,3 @@ The deploy scripts upload `tools/` but neither `tools/.venv` nor
   110 s with 4 workers; locally 120 s -> 75 s (downloads stay sequential).
 - Verification (`verify.csv`, CSI at 1 mm/h): +15 min 0.68 vs. 0.51 for
   persistence, +30 min 0.58 vs. 0.42.
-
-## Scheduling
-
-`tools/ytan_jobs.py` is the only cron entry. Each tick takes `storage/.jobs.lock`
-(a tick that finds it taken - the previous one still working, or a job started by
-hand - just ends) and runs the due jobs one after the other, each in its own
-process: this job on every tick, the wind job once per quarter-hour slot (decided
-from `storage/wind/status.json`). A failing job does not stop the next one. The
-single jobs take the same lock themselves when started by hand or from
-/admin/radar, unless `YTAN_JOBS_LOCK_HELD=1` says the dispatcher holds it - so
-they never run together (the radar needs up to ~1 GB). Tests:
-`python -m unittest discover -s tools/tests`.
