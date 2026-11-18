@@ -1248,6 +1248,7 @@ function initMap() {
         initTrackRecorder(); // track-recorder.js - no-op outside the native Capacitor shell
     }
     initOfflineSync(); // offline-sync.js - unlike track-recorder.js, not native-only
+    initLiveSync(); // live-sync.js - changes made elsewhere appear without a reload
 
     // Landing here from a shareTour() link (tour-admin.js) - fetch the tour
     // directly by id rather than waiting on tours[] (still loading async

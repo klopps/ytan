@@ -65,7 +65,7 @@ final class PoiController extends BaseController
      * @param array<string, mixed> $poi
      * @return array<string, mixed>
      */
-    private static function packWaterDistances(array $poi): array
+    public static function packWaterDistances(array $poi): array
     {
         $water = [];
         foreach (['water_sea_m', 'water_river_m', 'water_lake_m'] as $column) {

@@ -266,6 +266,12 @@ final class App
             )
         ));
         $c->set(AreaController::class, fn ($c) => new AreaController($c->get(AreaRepository::class), $c->get('images.area')));
+        $c->set(\Ytan\Http\Controllers\MapChangesController::class, fn ($c) => new \Ytan\Http\Controllers\MapChangesController(
+            new \Ytan\Domain\MapChangeRepository($pdo),
+            $c->get(PoiRepository::class),
+            $c->get(RouteRepository::class),
+            $c->get(AreaRepository::class),
+        ));
         $c->set(LighthouseImportController::class, fn ($c) => new LighthouseImportController(
             $c->get(LighthouseImportRepository::class),
             new LighthouseImportService($c->get(LighthouseImportRepository::class), $c->get(PoiRepository::class), $pdo),
@@ -554,6 +560,7 @@ final class App
         $app->post('/api/v1/gpx/preview', [GpxImportController::class, 'preview']);
         $app->post('/api/v1/gpx/import', [GpxImportController::class, 'import']);
 
+        $app->get('/api/v1/map/changes', [\Ytan\Http\Controllers\MapChangesController::class, 'changes']);
         $app->get('/api/v1/areas', [AreaController::class, 'index']);
         $app->get('/api/v1/areas/{id}', [AreaController::class, 'show']);
         $app->post('/api/v1/areas', [AreaController::class, 'create']);

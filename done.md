@@ -1,5 +1,25 @@
 # Erledigt
 
+## Automatische Update bei Veränderungen
+
+~~Nimmt ein Benutzer an der Karte Veränderungen vor, die auch für andere Benutzer sichtbar sind, so werden diese bei aktuell angemeldeten Benutzern die den gleichen Kartenausschnitt betrachten nicht sofort angezeigt, sondern erst wenn diese einen Reload machen. Es sollen aber Änderungen (Neu, Ändern, Löschen), aber sofort (oder sehr zeitnah) automatisch auch bei den anderen Benutzern (oder dem gleichen Benutzer, wenn er mit mehreren Instanzen, z. B. Desktop und mobil gleichzeitig arbeitet) sichtbar werden.~~
+
+Gelöst (2026-11-18): Neue, geänderte und gelöschte POIs, Routen und Gebiete erscheinen auf jeder offenen Karte nach spätestens etwa 15 Sekunden, ohne Reload. Das gilt für andere Benutzer und für denselben Benutzer auf einem zweiten Gerät.
+
+- **Verfahren: Abfragen statt Push.** `public/js/live-sync.js` fragt `GET /api/v1/map/changes?since=…` ab (`MapChangesController`), solange die Seite sichtbar ist. Beim Zurückkehren zur Seite und wenn die Verbindung zurückkommt, fragt es sofort. Takt nach Untätigkeit (`LIVE_SYNC_STEPS`, Akku): 15 s bei Benutzung, 60 s nach 2 min und 180 s nach 10 min ohne Berührung/Taste/Mausrad; die erste Berührung nach einer Pause fragt sofort ab. Hintergrund: Jede Abfrage hält das Mobilfunkmodem einige Sekunden wach - bei festen 15 s geschätzt 1,5–3 % Akku pro Stunde im Mobilfunk, Daten nur etwa 0,1–1,5 MB pro Stunde. WebSocket oder Server-Sent Events gehen auf dem Produktions-Hosting nicht sinnvoll: Es gibt keine dauerhaft laufenden Prozesse, und jede offene Karte würde einen PHP-FPM-Worker dauerhaft belegen.
+- **Änderungen erkennen:** Migration 077 gibt `poi`, `route` und `area` eine Spalte `changed_at` (Millisekunden, `ON UPDATE CURRENT_TIMESTAMP(3)`, mit Index). Die Datenbank setzt sie bei jedem Schreiben selbst, egal über welchen Weg. `updated_at` taugt dafür nicht: Es hat nur Sekunden-Auflösung, dient der Konfliktprüfung und wird von manchen Massen-Updates bewusst nicht verändert.
+- **Löschungen:** Die drei Repositories schreiben beim Löschen einen Eintrag in die neue Tabelle `map_deletion` (`MapChangeRepository`). Einträge älter als einen Tag werden dabei gleich mit entfernt.
+- **Antwort des Servers:** alle seit dem Cursor geschriebenen Zeilen, die der Aufrufer sehen darf (öffentlich oder eigene), in derselben Form wie die Einzelabfragen; bei Routen sind die Aufnahme-Angaben wie dort ausgeblendet. Dazu die Ids, die verschwinden müssen: gelöscht oder privat geworden. Mehr als 300 Änderungen einer Art (Import) oder ein Cursor älter als 23 Stunden ergeben `reload`; dann lädt der Client diese Liste komplett neu, höchstens einmal pro Minute.
+- **Cursor:** Datenbankzeit minus 30 Sekunden. Eine Transaktion, die erst nach dem Abfragen festgeschrieben wird, geht dadurch nicht verloren. Bereits bekannte Stände (gleiches `changed_at`) überspringt der Client.
+- **Client:** Jede Änderung wird einzeln am selben Array-Platz eingebaut: Marker, WSI-Symbol, Portage-Linie, Sektorfeuer und Info-Fenster bei POIs, Linien und Entfernungsbeschriftungen bei Routen, Polygone bei Gebieten. Die ganze Sammlung wird nicht neu aufgebaut.
+- **Zurückgehalten** werden Änderungen an dem, woran der Benutzer gerade arbeitet: ein POI im Bearbeiten- oder Verschieben-Modus, die Route bzw. das Gebiet in `measureTool`, Einträge in der Offline-Warteschlange. Sie werden nachgeholt, sobald das vorbei ist.
+- **Tour-Modus:** Routen der Tour werden aktualisiert, neue Routen kommen nicht hinzu.
+- **Nicht live:** Touren selbst und die Offline-Kopie in IndexedDB.
+- **Nebenbei behoben:**
+  - `openOfflineCacheDb()` öffnete bei gleichzeitigen Aufrufen je eine eigene Verbindung und merkte sich nur die letzte. Die übrigen blieben offen und blockierten das Löschen der Datenbank; `offline.spec.js` wurde dadurch rot.
+  - `removeAreaOverlayAt()` meldete das Polygon nicht beim Long-Press ab.
+- **Tests:** PHPUnit `MapChangesControllerTest` (8 Tests: Sichtbarkeit, privat gewordene Einträge, Löschungen, Ausblenden der Aufnahme-Angaben, `reload`, ungültiger Cursor, Aufräumen) und e2e `live-sync.spec.js` (Anlegen, Ändern, Löschen per API kommen auf der offenen Karte an; ein POI im Bearbeiten-Modus behält seinen Stand bis zum Abbrechen).
+
 ## Anleitung: Bild unter „Profil“ zeigte den Garmin-Schlüssel-Dialog
 
 ~~Das Bild unter "14 Profil" zeigt einen Hinweis in Bezug auf die Garmin-Uhr. Es muss ersetzt werden.~~

@@ -112,7 +112,7 @@ final class AreaRepository
         $this->assertValidColor($data);
 
         $stmt = $this->db->prepare(
-            'UPDATE area SET name=?, description=?, public=?, points=?, color=?, opacity=?, zindex=?, updated_at=NOW() WHERE id=?'
+            'UPDATE area SET name=?, description=?, public=?, points=?, color=?, opacity=?, zindex=?, updated_at=NOW(), changed_at=NOW(3) WHERE id=?'
         );
         $stmt->execute([
             $data['name'],
@@ -133,6 +133,19 @@ final class AreaRepository
         $existing = $this->findById($id); // 404s if missing
         $this->assertNotStale($existing, $expectedUpdatedAt);
         $this->db->prepare('DELETE FROM area WHERE id = ?')->execute([$id]);
+        (new \Ytan\Domain\MapChangeRepository($this->db))->recordDeletion('area', $id);
+    }
+
+    /**
+     * Every area written since `$since` (DATETIME(3) string), visible or not -
+     * the live map's change feed (MapChangesController) sorts them out.
+     */
+    public function findChangedSince(string $since): array
+    {
+        $stmt = $this->db->prepare('SELECT * FROM area WHERE changed_at >= ? ORDER BY id');
+        $stmt->execute([$since]);
+
+        return $stmt->fetchAll();
     }
 
     /**

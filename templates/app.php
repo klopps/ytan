@@ -91,6 +91,7 @@
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/route-briefing.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/route-briefing.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/track-recorder.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/track-recorder.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/area.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/area.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/live-sync.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/live-sync.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/tour.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/tour.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/route-animation.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/route-animation.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/tour-admin.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/tour-admin.js') ?>"></script>

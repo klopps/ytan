@@ -1,9 +1,5 @@
 # Offene Punkte
 
-## Automatische Update bei Veränderungen
-
-Nimmt ein Benutzer an der Karte Veränderungen vor, die auch für andere Benutzer sichtbar sind, so werden diese bei aktuell angemeldeten Benutzern die den gleichen Kartenausschnitt betrachten nicht sofort angezeigt, sondern erst wenn diese einen Reload machen. Es sollen aber Änderungen (Neu, Ändern, Löschen), aber sofort (oder sehr zeitnah) automatisch auch bei den anderen Benutzern (oder dem gleichen Benutzer, wenn er mit mehreren Instanzen, z. B. Desktop und mobil gleichzeitig arbeitet) sichtbar werden.
-
 ## Code Check: Performance - Reste
 
 Aus Phase B des Code Checks (done.md „Code Check: Performance (Phase B)“) zurückgestellt, jeweils mit Grund:

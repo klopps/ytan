@@ -21,6 +21,7 @@ final class PoiRepository
         SELECT
             p.id, p.poitype_id, p.user_id, p.name, p.description, p.public,
             p.latitude, p.longitude, p.url, p.updated_at,
+            p.changed_at,
             wsi.direction,
             por.path AS portage_path,
             lh.characteristic, lh.sector_characteristic, lh.international_id, lh.imported_at,
@@ -108,6 +109,18 @@ final class PoiRepository
     public function countAll(): int
     {
         return (int) $this->db->query('SELECT COUNT(*) FROM poi')->fetchColumn();
+    }
+
+    /**
+     * Every POI written since `$since` (DATETIME(3) string), visible or not -
+     * the live map's change feed (MapChangesController) sorts them out.
+     */
+    public function findChangedSince(string $since): array
+    {
+        $stmt = $this->db->prepare(self::BASE_SELECT . ' WHERE p.changed_at >= ? ORDER BY p.id');
+        $stmt->execute([$since]);
+
+        return $stmt->fetchAll();
     }
 
     /**
@@ -206,7 +219,7 @@ final class PoiRepository
         $this->assertNotStale($existing, $data['expected_updated_at'] ?? null);
 
         $stmt = $this->db->prepare(
-            'UPDATE poi SET poitype_id=?, name=?, description=?, public=?, latitude=?, longitude=?, url=?, updated_at=NOW() WHERE id=?'
+            'UPDATE poi SET poitype_id=?, name=?, description=?, public=?, latitude=?, longitude=?, url=?, updated_at=NOW(), changed_at=NOW(3) WHERE id=?'
         );
         $stmt->execute([
             $data['poitype_id'],
@@ -232,6 +245,7 @@ final class PoiRepository
         $this->db->prepare('DELETE FROM windshelter WHERE poi_id = ?')->execute([$id]);
         $this->db->prepare('DELETE FROM lighthouse WHERE poi_id = ?')->execute([$id]);
         $this->db->prepare('DELETE FROM poi WHERE id = ?')->execute([$id]);
+        (new \Ytan\Domain\MapChangeRepository($this->db))->recordDeletion('poi', $id);
     }
 
     private function assertNotStale(array $existing, ?string $expectedUpdatedAt): void

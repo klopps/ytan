@@ -397,6 +397,7 @@ function removeAreaOverlayAt(i) {
         return;
     }
     google.maps.event.clearInstanceListeners(areaPolygons[i]);
+    detachLongPressCandidate(areaPolygons[i]);
     areaPolygons[i].setMap(null);
     delete areaPolygons[i];
 }

@@ -32,12 +32,20 @@ const OFFLINE_SYNC_STORE = 'pendingChanges';
 const OFFLINE_CACHE_PUBLIC_USER_KEY = 'public';
 
 let offlineCacheDb = null;
+// The open request in flight: callers arriving before it finishes (the four
+// collection loaders, live-sync.js) share it. Each used to open a connection of
+// its own, and only the last one was kept in offlineCacheDb - the others stayed
+// open for good (and blocked deleting the database).
+let offlineCacheDbOpening = null;
 
 function openOfflineCacheDb() {
     if (offlineCacheDb) {
         return Promise.resolve(offlineCacheDb);
     }
-    return new Promise(function (resolve, reject) {
+    if (offlineCacheDbOpening) {
+        return offlineCacheDbOpening;
+    }
+    offlineCacheDbOpening = new Promise(function (resolve, reject) {
         const request = indexedDB.open(OFFLINE_CACHE_DB_NAME, OFFLINE_CACHE_DB_VERSION);
         request.onupgradeneeded = function () {
             const upgradeDb = request.result;
@@ -55,7 +63,10 @@ function openOfflineCacheDb() {
         request.onerror = function () {
             reject(request.error);
         };
+    }).finally(function () {
+        offlineCacheDbOpening = null;
     });
+    return offlineCacheDbOpening;
 }
 
 /**

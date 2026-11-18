@@ -109,6 +109,33 @@ route is public, or has
 (`GpxExportController`).
 Area body: `name, description, public, points (JSON-encoded array of {lat,lng}), color, opacity, zindex`.
 
+## Live map changes
+
+`GET /map/changes[?since=CURSOR]` (`MapChangesController`, public; signed in
+= the caller's own rows too, like `scope=mine_public`). Polled by
+`public/js/live-sync.js` while the page is visible (15 s while in use, 60 s / 180 s after 2 / 10 min untouched).
+
+- Without `since`: `{"data": {"cursor": "2026-11-18 21:40:01.123"}}`.
+- With `since` (a cursor from an earlier answer; anything else = 422):
+  ```json
+  {"data": {
+    "cursor": "...",
+    "pois": [ /* rows written since, same shape as GET /pois/{id} */ ],
+    "routes": [ /* same as GET /routes/{id}, recording info redacted the same way */ ],
+    "areas": [ /* same as GET /areas/{id} */ ],
+    "removed": {"pois": [12], "routes": [], "areas": []},
+    "reload": []
+  }}
+  ```
+  `removed` = deleted, or changed into a row the caller may not see (made
+  private). `reload` lists the kinds with more than 300 changes or deletions
+  (an import) - fetch that list again instead; all three when `since` is
+  older than 23 h (deletion tombstones live a day). Every row carries
+  `changed_at` (DATETIME(3), bumped by the database on every write); the
+  returned cursor is the database clock minus 30 s, so the last 30 s come
+  again on the next poll (late commits) - skip rows whose `changed_at` you
+  already have.
+
 ## Routencheck (route check, AI)
 
 `POST /routes/{id}/briefing` (signed in; 403 `route_check.disabled` while

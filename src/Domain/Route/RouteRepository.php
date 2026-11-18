@@ -168,7 +168,7 @@ final class RouteRepository
         // this SET clause would silently null them out on every routine
         // rename/re-describe of an already-recorded route.
         $stmt = $this->db->prepare(
-            'UPDATE route SET name=?, description=?, public=?, length=?, points=?, color=?, updated_at=NOW() WHERE id=?'
+            'UPDATE route SET name=?, description=?, public=?, length=?, points=?, color=?, updated_at=NOW(), changed_at=NOW(3) WHERE id=?'
         );
         $stmt->execute([
             $data['name'],
@@ -188,6 +188,19 @@ final class RouteRepository
         $existing = $this->findById($id); // 404s if missing
         $this->assertNotStale($existing, $expectedUpdatedAt);
         $this->db->prepare('DELETE FROM route WHERE id = ?')->execute([$id]);
+        (new \Ytan\Domain\MapChangeRepository($this->db))->recordDeletion('route', $id);
+    }
+
+    /**
+     * Every route written since `$since` (DATETIME(3) string), visible or not -
+     * the live map's change feed (MapChangesController) sorts them out.
+     */
+    public function findChangedSince(string $since): array
+    {
+        $stmt = $this->db->prepare(self::SELECT_WITH_RECORDER . ' WHERE route.changed_at >= ? ORDER BY route.id');
+        $stmt->execute([$since]);
+
+        return $stmt->fetchAll();
     }
 
     /* ---------------------------------------------------------- Images */
