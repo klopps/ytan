@@ -11,7 +11,7 @@
  * campsite sign; 1 keeps the tent alone), 14 lighthouse.
  */
 
-/* exported AR_ICONS, arBadgeSvg, arTypeName */
+/* exported AR_ICONS, arBadgeSvg, arLightSvg, arTypeName */
 
 const AR_ICONS = {
     0: { color: '#309010', d: 'M280-400v240q0 17-11.5 28.5T240-120q-17 0-28.5-11.5T200-160v-600q0-17 11.5-28.5T240-800h287q14 0 25 9t14 23l10 48h184q17 0 28.5 11.5T800-680v320q0 17-11.5 28.5T760-320H553q-14 0-25-9t-14-23l-10-48H280Z' },
@@ -39,6 +39,37 @@ function arBadgeSvg(type, size) {
     return '<svg class="ar-badge" width="' + size + '" height="' + size + '" viewBox="0 0 48 48" aria-hidden="true">'
         + '<circle cx="24" cy="24" r="22" fill="' + icon.color + '" stroke="#fff" stroke-width="3"/>'
         + '<svg x="11" y="11" width="26" height="26" viewBox="0 -960 960 960"><path fill="#fff" fill-rule="' + (icon.rule || 'nonzero') + '" d="' + icon.d + '"/></svg></svg>';
+}
+
+/**
+ * Mark of a lighthouse in the AR view (todo.md "Anzeige von Leuchtfeuern im AR-Modus",
+ * design approved 2026-11-18): a small tower with a lantern on top. The lantern's glass
+ * keeps a faint fill in the light's colour, so the mark still reads as a light during the
+ * dark phases; the group .ar-light-flash (glow rings, glass, rays - all currentColor) is
+ * what ar-view.js blinks with the characteristic's keyframes. state 'dark' = the observer
+ * is in no sector of a sector light: grey, no flash group.
+ * color is one of AR_LIGHT_COLORS (a fixed, trusted string - no user data in it).
+ */
+function arLightSvg(state, color, size) {
+    const dark = state === 'dark';
+    const glass = dark ? '#8a8a8a' : color;
+    const rim = dark ? '#b0b0b0' : '#fff';
+    let svg = '<svg class="ar-light' + (dark ? ' ar-light--dark' : '') + '" width="' + size + '" height="' + size + '" viewBox="0 0 48 48" aria-hidden="true">'
+        // tower + gallery
+        + '<path d="M19.5 46 21.5 26h5l2 20Z" fill="' + (dark ? '#606060' : '#303030') + '" stroke="' + rim + '" stroke-width="2" stroke-linejoin="round"/>'
+        + '<path d="M17 26h14" stroke="' + rim + '" stroke-width="2.5" stroke-linecap="round"/>'
+        // lantern: dark glass with a faint fill in the light's colour
+        + '<circle cx="24" cy="17" r="6.5" fill="#202020" stroke="' + rim + '" stroke-width="1.5"/>'
+        + '<circle cx="24" cy="17" r="5" fill="' + glass + '" fill-opacity="' + (dark ? '0.6' : '0.3') + '"/>';
+    if (!dark) {
+        svg += '<g class="ar-light-flash" style="color:' + color + '">'
+            + '<circle cx="24" cy="17" r="15" fill="currentColor" fill-opacity="0.16"/>'
+            + '<circle cx="24" cy="17" r="10.5" fill="currentColor" fill-opacity="0.3"/>'
+            + '<circle cx="24" cy="17" r="5.5" fill="currentColor"/>'
+            + '<path d="M2 17h5M41 17h5M8 3l4.5 4.5M40 3l-4.5 4.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>'
+            + '</g>';
+    }
+    return svg + '</svg>';
 }
 
 /** Singular type name for the info card (literal keys for the translation scanner). */

@@ -1,9 +1,5 @@
 # Offene Punkte
 
-## AR-Touren
-
-Folgepunkt zum AR-Routen-Modus (done.md 2026-11-16): Ist eine Tour aktiv, soll die AR-Navigation über alle ihre Routen in Tour-Reihenfolge laufen, als eine Strecke mit durchgehendem Wegpunktzähler. Dafür würden die Punkte der Routen aneinandergehängt (`arLoadRoute()` in `ar-view.js`); die Logik des nächsten Wegpunkts (`arNextWaypoint()`) bleibt gleich. Offen: Was zwischen zwei Routen passiert, wenn ihr Ende und der nächste Anfang auseinanderliegen.
-
 ## Automatische Update bei Veränderungen
 
 Nimmt ein Benutzer an der Karte Veränderungen vor, die auch für andere Benutzer sichtbar sind, so werden diese bei aktuell angemeldeten Benutzern die den gleichen Kartenausschnitt betrachten nicht sofort angezeigt, sondern erst wenn diese einen Reload machen. Es sollen aber Änderungen (Neu, Ändern, Löschen), aber sofort (oder sehr zeitnah) automatisch auch bei den anderen Benutzern (oder dem gleichen Benutzer, wenn er mit mehreren Instanzen, z. B. Desktop und mobil gleichzeitig arbeitet) sichtbar werden.

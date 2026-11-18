@@ -1,6 +1,6 @@
 ---
 title: AR-Ansicht
-keywords: AR, Augmented Reality, Kamera, Kompass, Umkreis, POIs im Kamerabild, AR-Navigation, Route im Kamerabild, Sichtweite, Wegpunkt, Navigationsleiste, Kalibrieren
+keywords: AR, Augmented Reality, Kamera, Kompass, Umkreis, POIs im Kamerabild, AR-Navigation, Route im Kamerabild, Sichtweite, Wegpunkt, Navigationsleiste, Kalibrieren, Leuchtfeuer, Kennung, Sektorenfeuer, Reichweite
 ---
 
 Die AR-Ansicht legt die POIs um dich herum über das Bild der Kamera. Hältst du das Smartphone in eine Richtung, siehst du, welcher Zeltplatz, Anleger oder Leuchtturm dort liegt und wie weit er entfernt ist. Mit **AR-Navigation** zeigt sie dazu eine Route als Linie auf dem Wasser und führt dich von Wegpunkt zu Wegpunkt.
@@ -30,6 +30,18 @@ Das **×** oben rechts schließt die Ansicht wieder.
 
 Tippst du auf eine Plakette, öffnet sich unten eine **Infokarte** mit Name, Typ, Entfernung und Richtung. **Auf Karte zeigen** schließt die AR-Ansicht und öffnet das Infofenster des POIs auf der Karte.
 
+## Leuchtfeuer
+
+Ein Leuchtfeuer mit eingetragener Kennung erscheint nicht als Plakette, sondern als **kleiner Turm mit Laterne**. Die Laterne leuchtet in der Farbe des Feuers und blinkt in seinem Rhythmus, zum Beispiel dreimal kurz bei „Fl(3) G 10s“. Zwischen den Blitzen bleibt das Glas schwach in der Lichtfarbe sichtbar. Der Rhythmus läuft nicht im Takt mit dem echten Feuer.
+
+Unter dem Namen steht immer die vollständige Kennung, davor ein Punkt in der Farbe, die du von deiner Position aus siehst.
+
+- **Sektorenfeuer:** Laterne und Farbpunkt zeigen die Farbe des Sektors, in dem du gerade stehst. Wechselst du den Sektor, wechselt auch die Farbe.
+- **Kein Sektor:** Liegt deine Position in keinem Sektor, ist das Feuer von dort nicht zu sehen. Es erscheint **grau** mit dem Hinweis „von hier nicht sichtbar“.
+- **Reichweite:** Ein Feuer mit Reichweite erscheint nur, wenn du innerhalb dieser Reichweite bist. Bei Sektorenfeuern gilt die Reichweite deines Sektors. Zusätzlich muss es im **AR-Umkreis** liegen. Ohne Reichweite gilt nur der AR-Umkreis.
+
+Die Infokarte eines Leuchtfeuers nennt die Kennung und die Reichweite von deiner Position aus.
+
 ## Umkreis und Anzahl einstellen
 
 Das Symbol mit den Schiebereglern oben in der AR-Ansicht öffnet drei Regler. Dieselben Regler findest du auch unter Menü > **Einstellungen**:
@@ -54,7 +66,7 @@ Vorgabe und Höchstwert legen die Administratoren fest. Unterhalb des Höchstwer
 
 Der Wegpunkt schaltet weiter, sobald du ihm auf 50 m nahe kommst. Kürzt du ab, springt er auf den Wegpunkt, der vor dir liegt. Das funktioniert wie beim [Garmin-Datenfeld](#chapter-garmin-uhr). Bist du weit von der Route entfernt, führt eine blasse Linie von dir zur Route. Am letzten Wegpunkt zeigt die Leiste **Ziel erreicht**.
 
-Die gewählte Route bleibt gespeichert. Öffnest du die AR-Ansicht später wieder, ist sie noch dabei. Das **×** an der Navigationsleiste beendet die Routen-Navigation. Die POIs bleiben sichtbar.
+Das **×** an der Navigationsleiste beendet die Routen-Navigation. Die POIs bleiben sichtbar. Öffnest du die AR-Ansicht später über das Menü oder das Kontextmenü der Karte, zeigt sie nur die POIs. Die Route erscheint nur, wenn du **AR-Navigation** im Kontextmenü einer Route wählst.
 
 ## Wenn etwas nicht stimmt
 

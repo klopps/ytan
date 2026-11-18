@@ -1,5 +1,30 @@
 # Erledigt
 
+## Anzeige von Leuchtfeuern im AR-Modus
+
+~~Im AR-Modus und AR-Routen-Modus sollen die Leuchtfeuer nicht durch das Leuchtfeuer-Symbol dargestellt werden, sondern in Abhängigkeit ihrer Farbe. Dabei soll die Lichtcharakteristik (Farbe, Blinkrhythmus) dargestellt werden. Bei Leuchtfeuern mit Sektor-Kennung sollen Farbe und Reichweite in Abhängigkeit vom Blickwinkel (Entfernung und Winkel von der aktuellen Position zum Leuchfeuer) berücksichigt werden. Leuchtfeuer mit angebener Reichtweite dürfen also nur dargestellt werden, wenn sie innerhalb der Darstellungsreichweite des AR-Modus sind. Ist keine Reichweite hinterlegt, soll das Leuchtfeuer immer angezeigt werden, wenn es in der Darstellungsreichweite des AR-Modus liegt. Mache einen Vorschlag für die grafische Gestaltung, bevor mit der Umsetzung begonnen wird.~~
+
+Gelöst (2026-11-18). Gestaltung mit dem User abgestimmt:
+- **Marke:** Ein Leuchtfeuer (Typ 14 mit Kennung oder Sektoren) erscheint als kleiner Turm mit Laterne (`arLightSvg()` in `ar-icons.js`, 1,3× so groß wie eine Plakette).
+- **Blinken:** In der Hellphase leuchtet die Laterne in der Lichtfarbe, mit Glow-Ringen und Strahlen (`.ar-light-flash`). In der Dunkelphase bleibt das Glas schwach (30 %) in der Lichtfarbe. Das war der Wunsch des Users, damit das Feuer auch dann als Leuchtfeuer erkennbar bleibt.
+- **Rhythmus:** Er kommt aus der vorhandenen `LightCharacteristic`-Bibliothek. Ihr Parser wurde aus `animateElement()` in `buildFromCode()` herausgelöst, die neue Methode `keyframes(code)` liefert die relativen Keyframes für ein beliebiges Element. Die Debug-Ausgaben und das kaputte, ungenutzte `getAnimation()` sind entfernt. `arAnimateLight()` setzt die Keyframes als `opacity` + `color` (currentColor im SVG) um.
+- **Ohne lesbaren Rhythmus** (z. B. „F G“) leuchtet die Laterne dauerhaft.
+
+Logik `arLightAt()` (rein, in `ar-view.js`):
+- Grundlage ist die Peilung **vom Nutzer zum Feuer**. Sie entspricht der „von See“-Angabe der Listen, Sektoren über 0° eingeschlossen.
+- **In einem Sektor:** dessen Farbe und Reichweite. Laterne und Farbpunkt im Chip nehmen die Sektorfarbe an. Die Kennung im Chip steht dagegen **immer vollständig wie eingetragen** (Vorgabe des User): Die auf die Sektorfarbe gekürzte Kennung (`arSectorCode()`: „Iso G 6s“ aus „Iso WRG 6s“) dient nur intern als Blinkrhythmus.
+- **In keinem Sektor:** grau, „von hier nicht sichtbar“ (Entscheidung des Users: anzeigen statt ausblenden).
+- **Außerhalb der Reichweite** des Feuers bzw. des eigenen Sektors: nicht angezeigt. Der AR-Radius gilt zusätzlich (Entscheidung des Users: „beides muss passen“). Ohne Reichweite (auch `?M`) gilt nur der AR-Radius.
+- Neu berechnet wird bei jedem GPS-Fix bzw. alle 2 s, ein Sektorwechsel wechselt also die Farbe.
+
+Weitere Teile:
+- **Neuaufbau:** Ein Label baut seine Marke nur neu, wenn sich Zustand, Code oder Farbe ändern (`markKey`). Sonst würde das Blinken bei jeder Aktualisierung neu starten. Eine neue Größe ändert nur die SVG-Attribute.
+- **Infokarte:** Kennung und Reichweite von hier (`#arInfoLight`, i18n `ar.light.*`). Das Badge steht dort auf dunklem Grund, damit ein weißes Licht auf dem hellen Panel sichtbar bleibt.
+- **Anleitung:** Kapitel AR-Ansicht, Abschnitt „Leuchtfeuer“.
+- **e2e** (`ar-view.spec.js`):
+  - Ein Sektorenfeuer aus vier Positionen: weiß + blinkend + Infokarte, rot, grau im Dunkelsektor, außerhalb der 1-sm-Reichweite nicht da. In jeder Position steht die Kennung vollständig im Chip.
+  - Reine Tests für `arLightAt()`/`arSectorCode()`.
+
 ## AR-Ansicht: Route nur bei ausdrücklich gestarteter AR-Navigation
 
 ~~Wenn ich die AR-Ansicht starte, werden mir auch die Routen eingeblendet. Ich will die AR-Routen-Ansicht aber nur haben, wenn ich diese explizit aktiviert habe. Wenn nicht, sollen mir nur die POIs angezeigt werden. Und es soll auch die EINE angewählte Route dargestellt werden, nicht alle, die in Sichtweite liegen.~~

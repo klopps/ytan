@@ -25,6 +25,16 @@
  *   AR_LEVEL_HYSTERESIS px room, so nothing jumps while turning.
  * - arProject()/arLayout()/arCameraDirection() are pure functions - tested by
  *   the e2e spec.
+ * - Lighthouses (type 14, 2026-11-18): drawn as their light, not as a badge -
+ *   arLightSvg() (tower + lantern, the lantern blinking with the
+ *   characteristic's keyframes from LightCharacteristic.keyframes(),
+ *   arAnimateLight()). arLightAt() decides from the user's bearing to the light:
+ *   the sector it lies in gives colour + range (the lantern and the chip's
+ *   dot take that colour; the characteristic in the chip always stays complete
+ *   as entered - user requirement), no sector
+ *   = grey "not visible from here", beyond the light's/sector's range = not
+ *   shown at all; without a range only the AR radius counts. A mark is only
+ *   rebuilt when what it shows changes, so the blinking doesn't restart.
  * - AR route mode (2026-11-16): a route picked in its context menu ("AR
  *   navigation", settings.arRouteId, kept until ended with the x on the nav
  *   bar or until the AR view is opened the plain way - drawer row / map context
@@ -64,6 +74,11 @@ const AR_LINE_K = 120; // line width px = AR_LINE_K / depth in m, clamped to AR_
 const AR_LINE_MIN = 2;
 const AR_LINE_MAX = 18;
 const AR_ROUTE_DEFAULT_COLOR = '#BF409F';
+const AR_LIGHTHOUSE_TYPE = 14;
+const AR_LIGHT_SCALE = 1.3;
+// light colours = LightCharacteristic's (lightcharacteristic.js), so the chip dot matches the blinking mark
+const AR_LIGHT_COLORS = { W: '#FFFFCC', R: 'red', G: '#00FF00', Y: 'yellow', BU: 'blue', B: 'blue', AM: '#FFBF00', OR: 'orange', VI: '#CC66FF', V: '#CC66FF' };
+const AR_LIGHT_COLOR_TOKEN = /^(?:Bu|Vi|Or|Am|W|R|G|B|Y|V)+$/i;
 
 const ar = {
     active: false,
@@ -221,6 +236,98 @@ function arLayout(items, previous) {
         placed.push(Object.assign(rect, { id: item.id, level: level, rank: placed.length }));
     });
     return placed;
+}
+
+/* ---------- lights (pure) ---------- */
+
+/**
+ * Sectors of a lighthouse's sector_characteristic ("G 8M 350.7-352.2", one per line or
+ * separated by ";"), like SectorLightOverlay reads them. nm = null for a range given as "?M"
+ * or missing. Bearings are the lists' "from seaward" = the bearing FROM the observer TO the
+ * light. Unreadable lines are skipped.
+ */
+function arParseSectors(text) {
+    const sectors = [];
+    String(text || '').split(/[\n;]+/).forEach((line) => {
+        const parts = line.replace(/\s+/g, ' ').trim().split(' ');
+        if (parts.length < 2) {
+            return;
+        }
+        const color = parts[0].toUpperCase();
+        if (!AR_LIGHT_COLORS[color]) {
+            return;
+        }
+        const angles = parts[parts.length - 1].split('-');
+        const from = parseFloat(angles[0]);
+        const to = parseFloat(angles[1]);
+        if (angles.length !== 2 || !Number.isFinite(from) || !Number.isFinite(to)) {
+            return;
+        }
+        const range = parts.length > 2 ? /^(\d*\.?\d+)M$/.exec(parts[1]) : null;
+        sectors.push({ color: color, nm: range ? parseFloat(range[1]) : null, from: from, to: to });
+    });
+    return sectors;
+}
+
+/** True when the bearing lies in the sector (clockwise from..to, across 360/0 too). */
+function arInSector(bearing, sector) {
+    const b = ((bearing % 360) + 360) % 360;
+    const from = ((sector.from % 360) + 360) % 360;
+    const to = ((sector.to % 360) + 360) % 360;
+    return from <= to ? b >= from && b <= to : b >= from || b <= to;
+}
+
+/** Colour letters of a characteristic's colour token ("Iso WRG 6s" -> ['W', 'R', 'G']), [] without one. */
+function arCodeColors(code) {
+    const token = String(code || '').split(' ')[1] || '';
+    if (!AR_LIGHT_COLOR_TOKEN.test(token)) {
+        return [];
+    }
+    return (token.match(/Bu|Vi|Or|Am|W|R|G|B|Y|V/gi) || []).map((c) => c.toUpperCase());
+}
+
+/** The characteristic as seen in one sector: its colour token replaced by that sector's colour. */
+function arSectorCode(code, color) {
+    const parts = String(code || '').replace(/\s+/g, ' ').trim().split(' ').filter((p) => p !== '');
+    if (parts.length === 0) {
+        return '';
+    }
+    const letter = color === 'BU' ? 'Bu' : color;
+    if (parts.length > 1 && AR_LIGHT_COLOR_TOKEN.test(parts[1])) {
+        parts[1] = letter;
+    } else {
+        parts.splice(1, 0, letter);
+    }
+    return parts.join(' ');
+}
+
+/**
+ * What an observer sees of a light: state 'lit' (code = the characteristic as seen from
+ * here, color = its colour, rangeM = its range or null), 'dark' (a sector light with no
+ * sector covering this bearing - shown grey) or 'out' (beyond the range of the light or of
+ * the sector the observer is in - not shown). bearing = from the observer to the light.
+ */
+function arLightAt(characteristic, sectorText, bearing, distance) {
+    const code = String(characteristic || '').replace(/\s+/g, ' ').trim();
+    const sectors = arParseSectors(sectorText);
+    if (sectors.length > 0) {
+        const sector = sectors.find((s) => arInSector(bearing, s));
+        if (!sector) {
+            return { state: 'dark', code: code, color: null, rangeM: null };
+        }
+        const rangeM = sector.nm === null ? null : sector.nm * 1852;
+        const state = rangeM !== null && distance > rangeM ? 'out' : 'lit';
+        return { state: state, code: arSectorCode(code, sector.color), color: AR_LIGHT_COLORS[sector.color], rangeM: rangeM };
+    }
+    const range = /(?:^| )(\d*\.?\d+)M(?: |$)/.exec(code);
+    const rangeM = range ? parseFloat(range[1]) * 1852 : null;
+    const colors = arCodeColors(code);
+    return {
+        state: rangeM !== null && distance > rangeM ? 'out' : 'lit',
+        code: code,
+        color: AR_LIGHT_COLORS[colors[0] || 'W'],
+        rangeM: rangeM
+    };
 }
 
 /** Position relative to an origin in meters [east, north] (flat - fine within the route range). */
@@ -653,9 +760,21 @@ function arCandidates() {
         if (distance > radius) {
             return;
         }
+        const type = Number(poi.poitype_id);
+        const bearing = arBearing(here.lat, here.lng, lat, lng);
+        // lighthouses: shown as their light - colour/range from the sector the user is in
+        // (beyond the range = not shown at all, in no sector = grey); none without any light data
+        let lightSeen = null;
+        if (type === AR_LIGHTHOUSE_TYPE && (String(poi.characteristic || '').trim() !== '' || String(poi.sector_characteristic || '').trim() !== '')) {
+            lightSeen = arLightAt(poi.characteristic, poi.sector_characteristic, bearing, distance);
+            if (lightSeen.state === 'out') {
+                return;
+            }
+        }
         list.push({
-            id: poi.id, index: index, type: Number(poi.poitype_id), name: poi.name,
-            lat: lat, lng: lng, distance: distance, bearing: arBearing(here.lat, here.lng, lat, lng)
+            id: poi.id, index: index, type: type, name: poi.name,
+            lat: lat, lng: lng, distance: distance, bearing: bearing,
+            light: lightSeen, characteristic: lightSeen ? String(poi.characteristic || '').trim() : ''
         });
     });
     list.sort((a, b) => a.distance - b.distance);
@@ -675,24 +794,81 @@ function arBadgeSize(distance, radius) {
     return Math.round(44 - 16 * Math.min(1, distance / Math.max(1, radius)));
 }
 
+/**
+ * Blinks a lighthouse mark's flash group with the characteristic's keyframes
+ * (LightCharacteristic, map-core.js's global `light`). An unreadable code or one without a
+ * period (e.g. "F G") leaves it lit steadily. Not in phase with the real light - there is
+ * no phase data.
+ */
+function arAnimateLight(el, code) {
+    if (!el || !code || typeof light === 'undefined') {
+        return;
+    }
+    let frames;
+    let duration;
+    try {
+        [frames, duration] = light.keyframes(code);
+    } catch (e) {
+        return;
+    }
+    if (!Number.isFinite(duration) || duration <= 0) {
+        return;
+    }
+    el.animate(frames.map((f) => ({ offset: f.offset, opacity: f.opacity, color: f.backgroundColor, easing: f.easing })), {
+        duration: duration,
+        iterations: Infinity
+    });
+}
+
+/**
+ * Chip line of a lighthouse: colour dot (the colour seen from here) + the characteristic
+ * exactly as entered - never shortened to the sector's colour (user requirement 2026-11-18) -,
+ * or "not visible from here" in a dark sector.
+ */
+function arLightChipText(candidate) {
+    const seen = candidate.light;
+    const code = candidate.characteristic !== '' ? escapeText(candidate.characteristic) + ' · ' : '';
+    if (seen.state === 'dark') {
+        return code + escapeHTML(t('ar.light.not_visible')) + ' · ';
+    }
+    return '<span class="ar-light-dot" style="background-color:' + seen.color + '"></span>' + code;
+}
+
 function arLabelElement(candidate, radius) {
     let entry = ar.labels.get(candidate.id);
-    const size = arBadgeSize(candidate.distance, radius);
-    const distanceText = arRadiusLabel(candidate.distance);
+    const seen = candidate.light;
+    // a light's lantern is only the upper third of its mark - drawn larger than a badge
+    const size = Math.round(arBadgeSize(candidate.distance, radius) * (seen ? AR_LIGHT_SCALE : 1));
     if (!entry) {
         const el = document.createElement('button');
         el.type = 'button';
         el.className = 'ar-label';
         el.setAttribute('data-on-click', 'arSelectPoi(' + Number(candidate.id) + ')');
-        entry = { el: el, x: null, top: null, size: null, text: null };
+        el.innerHTML = '<span class="ar-stem"></span><span class="ar-mark"></span><span class="ar-chip"></span>';
+        entry = { el: el, mark: el.querySelector('.ar-mark'), chip: el.querySelector('.ar-chip'), x: null, top: null, size: null, markKey: null, text: null };
         ar.labels.set(candidate.id, entry);
         document.getElementById('arLabels').appendChild(el);
     }
-    if (entry.size !== size || entry.text !== distanceText) {
-        entry.el.innerHTML = '<span class="ar-stem"></span>' + arBadgeSvg(candidate.type, size)
-            + '<span class="ar-chip"><b>' + escapeText(candidate.name) + '</b><i>' + escapeHTML(distanceText) + '</i></span>';
+    // the mark is only rebuilt when what it shows changes (a lighthouse's blinking would restart
+    // otherwise) - a new size just resizes it
+    const markKey = seen ? seen.state + '|' + seen.code + '|' + seen.color : 'type' + candidate.type;
+    if (entry.markKey !== markKey) {
+        entry.mark.innerHTML = seen ? arLightSvg(seen.state, seen.color, size) : arBadgeSvg(candidate.type, size);
+        if (seen && seen.state === 'lit') {
+            arAnimateLight(entry.mark.querySelector('.ar-light-flash'), seen.code);
+        }
+        entry.markKey = markKey;
         entry.size = size;
-        entry.text = distanceText;
+    } else if (entry.size !== size) {
+        const svg = entry.mark.firstElementChild;
+        svg.setAttribute('width', String(size));
+        svg.setAttribute('height', String(size));
+        entry.size = size;
+    }
+    const text = '<b>' + escapeText(candidate.name) + '</b><i>' + (seen ? arLightChipText(candidate) : '') + escapeHTML(arRadiusLabel(candidate.distance)) + '</i>';
+    if (entry.text !== text) {
+        entry.chip.innerHTML = text;
+        entry.text = text;
     }
     return entry;
 }
@@ -1082,9 +1258,32 @@ function arFillInfo(candidate) {
     if (!candidate) {
         return;
     }
-    document.getElementById('arInfoBadge').innerHTML = arBadgeSvg(candidate.type, 44);
+    const seen = candidate.light;
+    const badge = document.getElementById('arInfoBadge');
+    const badgeKey = candidate.id + '|' + (seen ? seen.state + '|' + seen.code + '|' + seen.color : 'type' + candidate.type);
+    if (badge.dataset.key !== badgeKey) { // refilled every 2 s - don't restart a light's blinking
+        badge.innerHTML = seen ? arLightSvg(seen.state, seen.color, 44) : arBadgeSvg(candidate.type, 44);
+        if (seen && seen.state === 'lit') {
+            arAnimateLight(badge.querySelector('.ar-light-flash'), seen.code);
+        }
+        badge.dataset.key = badgeKey;
+    }
     document.getElementById('arInfoName').textContent = decodeHtmlEntities(String(candidate.name ?? ''));
     document.getElementById('arInfoType').textContent = arTypeName(candidate.type);
+    const lightLine = document.getElementById('arInfoLight');
+    const lines = [];
+    if (seen) {
+        if (candidate.characteristic !== '') {
+            lines.push(t('ar.light.characteristic', { code: decodeHtmlEntities(candidate.characteristic) }));
+        }
+        if (seen.state === 'dark') {
+            lines.push(t('ar.light.not_visible'));
+        } else if (seen.rangeM !== null) {
+            lines.push(t('ar.light.range', { range: formatDistance(seen.rangeM, settings.unit) }));
+        }
+    }
+    lightLine.textContent = lines.join(' · ');
+    lightLine.hidden = lines.length === 0;
     document.getElementById('arInfoDistance').textContent = t('ar.info_distance', {
         distance: arRadiusLabel(candidate.distance),
         bearing: Math.round(candidate.bearing),

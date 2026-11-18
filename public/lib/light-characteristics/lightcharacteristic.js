@@ -61,7 +61,27 @@ class LightCharacteristic {
     * @param {*} elementId id of HTML element to animate
     */
    animateElement(code, elementId) {
-   
+        this.animate(this.buildFromCode(code), elementId);
+   }
+
+    /**
+     * Relative keyframes (offset 0..1, opacity + backgroundColor) and the period in ms of a
+     * characteristic, for Element.animate() on any element (AR view, ar-view.js). Throws like
+     * animateElement() when the code can't be read.
+     *
+     * @param string code light characteristic abbreviation, e.g. "Fl(3) G 9s"
+     * @returns {[Array, number]} [keyframes, duration]
+     */
+    keyframes(code) {
+        const [keyframes, duration] = this.buildFromCode(code);
+        return [this.convertToRelativeKeyFrames(keyframes, duration), duration];
+    }
+
+    /**
+     * Animation ([absolute keyframes, duration]) of a characteristic code
+     */
+    buildFromCode(code) {
+
         // "Gr" for Groups is not supported
 
         // expected format: [class]{(x{+y})} [color] {period} {height} {range}
@@ -147,7 +167,6 @@ class LightCharacteristic {
         // Get optional period, height and range
         if (arrCode.length > 2) {
             for (var x=2; x < arrCode.length; x++) {
-                console.log('arrcode[' + x + ']: ' + arrCode[x]);
 
                 // period, e.g. "10s" or "4.5s"
                 //if (arrCode[x].match(/^\d+s$/) !== null) {
@@ -167,22 +186,7 @@ class LightCharacteristic {
             }
         }
 
-        // DEBUG CODE
-        console.log('-----------------------');
-        console.log('code: ' + code);
-        console.log('ElementID: ' + elementId);
-        console.log('Class: ' + lcClass);
-        console.log('Group: ' + lcGroup);
-        console.log('Interrupted: ' + lcInterrupted);
-        console.log('Color: ' + lcColor);
-        console.log('Colors: ' + lcColors);
-        console.log('Period: ' + lcPeriod);
-        console.log('Height: ' + lcHeight);
-        console.log('Range: ' + lcRange);
-        
-   
-       
-       // parameters determined - let's start
+        // parameters determined - let's start
         // "Al.Fl", "Al.Oc", "Al.Fl(2)" ...: the base characteristic with the colours taking turns;
         // the period covers one cycle through all colours.
         var animation;
@@ -201,9 +205,8 @@ class LightCharacteristic {
         } else {
             animation = this.buildAnimation(lcClass, lcGroup, lcInterrupted, lcLongFlash, lcPeriod, lcColors[0]);
         }
-        this.animate(animation, elementId);
-
-   }
+        return animation;
+    }
 
     /**
      * Animation ([keyframes, duration]) of one single-colour characteristic
@@ -300,12 +303,6 @@ class LightCharacteristic {
         });
     }
     
-    getAnimation([keyframes, duration]) {
-        return this.convertToRelativeKeyFrames(keyframes, duration), {
-            duration: duration,
-            iterations: Infinity
-        };
-    }        
     
     
 

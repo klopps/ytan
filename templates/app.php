@@ -632,6 +632,7 @@
         <div class="ar-info-text">
           <strong id="arInfoName"></strong>
           <span id="arInfoType"></span>
+          <span id="arInfoLight" class="ar-info-light" hidden></span>
           <span id="arInfoDistance"></span>
         </div>
         <button type="button" class="ar-info-close" data-on-click="arCloseInfo();" aria-label="<?= $t('ar.close') ?>"><i class="material-icons-round">close</i></button>

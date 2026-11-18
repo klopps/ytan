@@ -176,6 +176,95 @@ test.describe('on a phone', () => {
     await page.evaluate(() => stopArView());
   });
 
+  test('lighthouses are drawn as their light: sector colour, dark sector grey, beyond the range hidden', async ({ loggedInPage: page, request, context }) => {
+    const L = 56.2; // own spot, away from the other specs' POIs
+    const G = 12.0;
+    const NAME = 'E2E AR Leuchtfeuer';
+    const token = await apiToken(request);
+    await apiCreate(request, token, 'pois', {
+      poitype_id: 14, name: NAME, description: '', public: 0, latitude: L, longitude: G, url: '',
+      characteristic: 'Fl(2) WRG 10s', sector_characteristic: 'W 5M 350-010\nR 5M 010-120\nG 1M 270-350',
+    });
+    await reloadMap(page);
+    await page.waitForFunction((n) => pois.some((p) => p && p.name === n), NAME, { timeout: 20_000 });
+    await page.evaluate(() => { settings.arRadius = 5000; settings.arMaxPois = 10; settings.arRouteId = null; });
+    const label = page.locator('.ar-label', { hasText: NAME });
+    // looks along this bearing until the label's colour dot has the expected colour (null = dark sector)
+    const lookAt = async (bearing, colour) => {
+      await page.waitForFunction(([b, name, expected]) => {
+        window.dispatchEvent(new DeviceOrientationEvent('deviceorientationabsolute', { alpha: (360 - b) % 360, beta: 90, gamma: 0, absolute: true }));
+        const el = [...document.querySelectorAll('.ar-label')].find((l) => l.textContent.includes(name));
+        if (!el) {
+          return false;
+        }
+        const dot = el.querySelector('.ar-light-dot');
+        return expected === null ? el.querySelector('.ar-light--dark') !== null : dot !== null && getComputedStyle(dot).backgroundColor === expected;
+      }, [bearing, NAME, colour], { timeout: 10_000, polling: 200 });
+    };
+
+    // 1 km south of it, looking north: white sector, blinking; the characteristic always complete
+    await context.setGeolocation({ latitude: L - 0.009, longitude: G, accuracy: 5 });
+    await page.evaluate(() => startArPoiView());
+    await expect(page.locator('#arView')).toBeVisible();
+    await lookAt(0, 'rgb(255, 255, 204)');
+    await expect(label).toContainText('Fl(2) WRG 10s');
+    await expect(label.locator('.ar-light')).toHaveCount(1);
+    await expect(label.locator('.ar-badge')).toHaveCount(0);
+    expect(await label.locator('.ar-light-flash').evaluate((el) => el.getAnimations().length)).toBeGreaterThan(0);
+    await label.click();
+    await expect(page.locator('#arInfoLight')).toContainText('Fl(2) WRG 10s');
+    await page.evaluate(() => arCloseInfo());
+
+    // west of it, looking east: red sector, the characteristic unchanged
+    await context.setGeolocation({ latitude: L, longitude: G - 0.016, accuracy: 5 });
+    await lookAt(90, 'rgb(255, 0, 0)');
+    await expect(label).toContainText('Fl(2) WRG 10s');
+    await expect(label.locator('.ar-light-flash')).toHaveCount(1);
+
+    // north of it, looking south: in no sector -> grey, not blinking
+    await context.setGeolocation({ latitude: L + 0.009, longitude: G, accuracy: 5 });
+    await lookAt(180, null);
+    await expect(label).toContainText(/nicht sichtbar|not visible/);
+    await expect(label).toContainText('Fl(2) WRG 10s');
+    await expect(label.locator('.ar-light--dark')).toHaveCount(1);
+    await expect(label.locator('.ar-light-flash')).toHaveCount(0);
+
+    // east of it, 2.5 km away: in the green sector, but beyond its 1 nm -> not shown
+    await context.setGeolocation({ latitude: L - 0.002, longitude: G + 0.04, accuracy: 5 });
+    await page.waitForFunction(() => {
+      window.dispatchEvent(new DeviceOrientationEvent('deviceorientationabsolute', { alpha: 85, beta: 90, gamma: 0, absolute: true }));
+      return /· 0 POI/.test(document.getElementById('arStatus').textContent);
+    }, null, { timeout: 10_000, polling: 200 });
+    await expect(label).toHaveCount(0);
+    await page.evaluate(() => stopArView());
+  });
+
+  test('pure light helpers: sectors, dark sector, range', async ({ loggedInPage: page }) => {
+    const r = await page.evaluate(() => {
+      const sectors = 'W 5M 350-010;R ?M 010-120;G 1M 270-350';
+      return {
+        white: arLightAt('Iso WRG 6s', sectors, 0, 1000),
+        across: arLightAt('Iso WRG 6s', sectors, 355, 1000),
+        unknownRange: arLightAt('Iso WRG 6s', sectors, 60, 50000),
+        dark: arLightAt('Iso WRG 6s', sectors, 200, 100),
+        out: arLightAt('Iso WRG 6s', sectors, 300, 2000),
+        plain: arLightAt('Fl(3) G 10s 12m 8M', '', 123, 10000),
+        plainOut: arLightAt('Fl(3) G 10s 12m 8M', '', 123, 20000),
+        noRange: arLightAt('Oc R 4s', null, 0, 99999),
+        noColour: arSectorCode('Fl 5s', 'G'),
+      };
+    });
+    expect(r.white).toMatchObject({ state: 'lit', code: 'Iso W 6s', color: '#FFFFCC', rangeM: 5 * 1852 });
+    expect(r.across.code).toBe('Iso W 6s');
+    expect(r.unknownRange).toMatchObject({ state: 'lit', code: 'Iso R 6s', rangeM: null });
+    expect(r.dark.state).toBe('dark');
+    expect(r.out.state).toBe('out');
+    expect(r.plain).toMatchObject({ state: 'lit', code: 'Fl(3) G 10s 12m 8M', color: '#00FF00', rangeM: 8 * 1852 });
+    expect(r.plainOut.state).toBe('out');
+    expect(r.noRange).toMatchObject({ state: 'lit', color: 'red', rangeM: null });
+    expect(r.noColour).toBe('Fl G 5s');
+  });
+
   test('pure route helpers: next waypoint like the watch, ground projection, clipping', async ({ loggedInPage: page }) => {
     const r = await page.evaluate(() => {
       const line = [55.50, 55.51, 55.52, 55.53].map((lat) => ({ lat, lng: 13.5 }));
