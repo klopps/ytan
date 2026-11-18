@@ -252,6 +252,8 @@ test.describe('on a phone', () => {
         plainOut: arLightAt('Fl(3) G 10s 12m 8M', '', 123, 20000),
         noRange: arLightAt('Oc R 4s', null, 0, 99999),
         noColour: arSectorCode('Fl 5s', 'G'),
+        // typed in capitals (seen on prod 2026-11-18: "ISO GR 4s" stayed lit instead of blinking)
+        upperCase: light.keyframes(arLightAt('ISO GR 4s', 'G 4M 0-180\nR 4M 181-359', 90, 1000).code)[1],
       };
     });
     expect(r.white).toMatchObject({ state: 'lit', code: 'Iso W 6s', color: '#FFFFCC', rangeM: 5 * 1852 });
@@ -263,6 +265,7 @@ test.describe('on a phone', () => {
     expect(r.plainOut.state).toBe('out');
     expect(r.noRange).toMatchObject({ state: 'lit', color: 'red', rangeM: null });
     expect(r.noColour).toBe('Fl G 5s');
+    expect(r.upperCase).toBe(4000);
   });
 
   test('pure route helpers: next waypoint like the watch, ground projection, clipping', async ({ loggedInPage: page }) => {

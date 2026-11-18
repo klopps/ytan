@@ -41,6 +41,11 @@ class LightCharacteristic {
     ULTRA_QUICK_FLASH_DURATION = 60*1000.0 / 160.0;
     DIT_DURATION = 200;
 
+    // lower-case class name -> the spelling buildAnimation() switches on
+    CLASS_NAMES = {
+        'f': 'F', 'iso': 'Iso', 'oc': 'Oc', 'fl': 'Fl', 'lfl': 'LFl', 'q': 'Q', 'vq': 'VQ', 'uq': 'UQ', 'ffl': 'FFl', 'mo': 'Mo'
+    }
+
     MORSE_ALPHABET = {
         'a': '.-',    'b': '-...',  'c': '-.-.', 'd': '-..',
         'e': '.',     'f': '..-.',  'g': '--.',  'h': '....',
@@ -193,14 +198,14 @@ class LightCharacteristic {
         if (lcClass.substring(0, 3).toLowerCase() == 'al.') {
             var baseClass = lcClass.substring(3);
             var colorPeriod = lcPeriod / lcColors.length;
-            if (baseClass == "F") { // Al.F: fixed, only the colour changes
+            if (baseClass.toUpperCase() == "F") { // Al.F: fixed, only the colour changes
                 animation = this.alternating(lcPeriod, lcColors);
             } else {
                 animation = this.combine(
                     ...lcColors.map(color => this.buildAnimation(baseClass, lcGroup, lcInterrupted, lcLongFlash, colorPeriod, color))
                 );
             }
-        } else if (lcClass == "Al") {
+        } else if (lcClass.toLowerCase() == "al") {
             animation = this.alternating(lcPeriod, lcColors); // Al
         } else {
             animation = this.buildAnimation(lcClass, lcGroup, lcInterrupted, lcLongFlash, lcPeriod, lcColors[0]);
@@ -213,6 +218,8 @@ class LightCharacteristic {
      */
     buildAnimation(cls, group, interrupted, longFlash, period, color) {
         const single = group != null && group.length == 1 ? group[0] : null;
+        // class names in any letter case ("ISO GR 4s", "FL(3) W 10s" - typed by hand like that)
+        cls = this.CLASS_NAMES[String(cls).toLowerCase()] || cls;
 
         switch (cls) {
             case "F":       // F - Fixed

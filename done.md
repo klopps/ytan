@@ -9,6 +9,7 @@ Gelöst (2026-11-18). Gestaltung mit dem User abgestimmt:
 - **Blinken:** In der Hellphase leuchtet die Laterne in der Lichtfarbe, mit Glow-Ringen und Strahlen (`.ar-light-flash`). In der Dunkelphase bleibt das Glas schwach (30 %) in der Lichtfarbe. Das war der Wunsch des Users, damit das Feuer auch dann als Leuchtfeuer erkennbar bleibt.
 - **Rhythmus:** Er kommt aus der vorhandenen `LightCharacteristic`-Bibliothek. Ihr Parser wurde aus `animateElement()` in `buildFromCode()` herausgelöst, die neue Methode `keyframes(code)` liefert die relativen Keyframes für ein beliebiges Element. Die Debug-Ausgaben und das kaputte, ungenutzte `getAnimation()` sind entfernt. `arAnimateLight()` setzt die Keyframes als `opacity` + `color` (currentColor im SVG) um.
 - **Ohne lesbaren Rhythmus** (z. B. „F G“) leuchtet die Laterne dauerhaft.
+- **Großschreibung:** Auf Prod blinkten zwei Test-Feuer mit „ISO GR 4s“ nicht, die Farbe stimmte aber. Der Parser kannte die Klassen nur in genau einer Schreibweise („Iso“), warf bei „ISO“ einen Fehler, und die Laterne blieb dauerhaft an. Seit dem Fix liest `LightCharacteristic` die Klassen ohne Rücksicht auf Groß-/Kleinschreibung (`CLASS_NAMES`, auch „Al“). Das hilft ebenso der Animation im Infofenster der Karte.
 
 Logik `arLightAt()` (rein, in `ar-view.js`):
 - Grundlage ist die Peilung **vom Nutzer zum Feuer**. Sie entspricht der „von See“-Angabe der Listen, Sektoren über 0° eingeschlossen.
