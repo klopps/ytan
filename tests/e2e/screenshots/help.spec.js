@@ -91,6 +91,40 @@ async function resetMap(page) {
 
 test.describe.configure({ mode: 'serial' });
 
+// AR view picture: Chromium's fake camera so getUserMedia succeeds (its test pattern is
+// hidden behind a drawn scene, see arScene()).
+test.use({ launchOptions: { args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] } });
+
+/**
+ * The "camera picture" of the AR screenshot: sky, water and the edge of an island
+ * on the left whose tip lies on the right, as an SVG data URL. The horizon is at the
+ * middle of the screen (phone held upright, beta 90), where the AR labels' stems end.
+ */
+function arScene(width, height) {
+  const h = height / 2;
+  const waves = [];
+  for (let i = 0; i < 26; i++) {
+    const y = h + 6 + Math.pow(i / 25, 1.7) * (height - h - 10);
+    const x = (i * 97) % width;
+    const len = 18 + i * 3;
+    waves.push(`<path d="M${x - len} ${y.toFixed(1)} q${len / 2} -${2 + i / 6} ${len} 0" stroke="#d6e8f2" stroke-opacity="${(0.18 + i / 90).toFixed(2)}" stroke-width="${(1 + i / 12).toFixed(1)}" fill="none"/>`);
+  }
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+    <defs>
+      <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6f9fca"/><stop offset="1" stop-color="#d7e7f1"/></linearGradient>
+      <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5d8aa3"/><stop offset="1" stop-color="#1d4258"/></linearGradient>
+    </defs>
+    <rect width="${width}" height="${h}" fill="url(#sky)"/>
+    <rect y="${h}" width="${width}" height="${height - h}" fill="url(#sea)"/>
+    <path d="M0 ${h - 52} C30 ${h - 64} 60 ${h - 58} 90 ${h - 50} C120 ${h - 60} 150 ${h - 46} 185 ${h - 40} C215 ${h - 44} 245 ${h - 28} 275 ${h - 18} C290 ${h - 12} 305 ${h - 6} 318 ${h} L0 ${h} Z" fill="#3c5a32"/>
+    <path d="M0 ${h - 30} C60 ${h - 34} 140 ${h - 24} 200 ${h - 20} C240 ${h - 14} 285 ${h - 8} 318 ${h} L0 ${h} Z" fill="#4e6e3c"/>
+    <path d="M0 ${h - 5} C80 ${h - 7} 200 ${h - 4} 318 ${h} L0 ${h} Z" fill="#d9c79a"/>
+    <path d="M0 ${h} C70 ${h + 2} 180 ${h + 1.5} 330 ${h} " stroke="#eef5f8" stroke-opacity="0.7" stroke-width="1.5" fill="none"/>
+    ${waves.join('')}
+  </svg>`;
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+
 test('user guide screenshots', async ({ loggedInPage: page, request, credentials }) => {
   fs.mkdirSync(OUT, { recursive: true });
   const login = await request.post('/api/v1/auth/login', { data: { username: credentials.username, password: credentials.password } });
@@ -279,6 +313,14 @@ test('user guide screenshots', async ({ loggedInPage: page, request, credentials
   await page.evaluate(() => showWatchSection());
   await page.waitForTimeout(1200);
   await page.getByText('Uhr-Schlüssel erzeugen').first().click();
+  // The e2e user keeps its key from earlier runs, so the button is "Neuen
+  // Uhr-Schlüssel erzeugen" and asks first - confirm it, or the dialog stays
+  // open on this shot AND on the login shot below.
+  const regenerate = page.locator('.confirm-dialog .startbtn');
+  if (await regenerate.waitFor({ state: 'visible', timeout: 1500 }).then(() => true, () => false)) {
+    await regenerate.click();
+  }
+  await expect(page.locator('.confirm-dialog-overlay')).toHaveCount(0);
   await page.waitForTimeout(1500);
   await shot(page, 'profil-uhr', { settle: 600 });
   await page.evaluate(() => { logoutUser(); });
@@ -287,4 +329,60 @@ test('user guide screenshots', async ({ loggedInPage: page, request, credentials
   await shot(page, 'anmeldung', { settle: 900 });
 
   expect(demo.route.id).toBeGreaterThan(0);
+});
+
+test.describe('AR view', () => {
+  // The observer floats off an island, looking north: a landing site and a camp on its shore,
+  // a lighthouse on its tip whose red sector the observer is in.
+  const HERE = { lat: 54.6000, lng: 10.6000 };
+  test.use({
+    permissions: ['geolocation', 'camera', 'accelerometer', 'gyroscope', 'magnetometer'],
+    geolocation: { latitude: HERE.lat, longitude: HERE.lng, accuracy: 4 },
+  });
+
+  test('user guide AR screenshot', async ({ loggedInPage: page, request, credentials }) => {
+    const login = await request.post('/api/v1/auth/login', { data: { username: credentials.username, password: credentials.password } });
+    const token = (await login.json()).token;
+    const headers = { Authorization: 'Bearer ' + token };
+    // bearing (degrees from north) + distance (m) -> position, flat (fine for 1 km)
+    const at = (bearing, meters) => ({
+      latitude: HERE.lat + (meters * Math.cos(bearing * Math.PI / 180)) / 111320,
+      longitude: HERE.lng + (meters * Math.sin(bearing * Math.PI / 180)) / (111320 * Math.cos(HERE.lat * Math.PI / 180)),
+    });
+    for (const [type, name, bearing, meters, extra] of [
+      [2, 'Anleger Inselhafen', -15, 300, {}],
+      [1, 'Zeltplatz Westerstrand', -5, 600, { direction: '2222221000000122' }],
+      [14, 'Leuchtturm Inselspitze', 12, 1200, { characteristic: 'Iso WRG 6s', sector_characteristic: 'W 10M 330-005\nR 8M 005-060\nG 8M 060-120' }],
+    ]) {
+      const response = await request.post('/api/v1/pois', { headers, data: { poitype_id: type, name, description: '', public: 1, url: '', ...at(bearing, meters), ...extra } });
+      expect(response.ok(), await response.text()).toBeTruthy();
+    }
+    await page.reload();
+    await page.waitForFunction(() => typeof mapInitialized !== 'undefined' && mapInitialized === true, null, { timeout: 20_000 });
+    await page.waitForFunction(() => pois.some((p) => p && p.name === 'Leuchtturm Inselspitze'), null, { timeout: 20_000 });
+    await page.evaluate(() => { settings.arRadius = 2000; settings.arMaxPois = 10; settings.arRouteId = null; });
+
+    await page.evaluate(() => startArPoiView());
+    await page.waitForFunction(() => document.getElementById('arVideo').srcObject !== null, null, { timeout: 10_000 });
+    // the drawn scene instead of the fake camera's test pattern
+    await page.evaluate((scene) => {
+      document.getElementById('arVideo').style.visibility = 'hidden';
+      const view = document.getElementById('arView');
+      view.style.backgroundImage = 'url("' + scene + '")';
+      view.style.backgroundSize = '100% 100%';
+    }, arScene(390, 760));
+    // looking north, phone upright
+    await page.waitForFunction(() => {
+      window.dispatchEvent(new DeviceOrientationEvent('deviceorientationabsolute', { alpha: 0, beta: 90, gamma: 0, absolute: true }));
+      return document.querySelectorAll('.ar-label').length >= 3;
+    }, null, { timeout: 15_000, polling: 200 });
+    await page.waitForTimeout(1500); // label easing settles
+    // the moment the lighthouse is lit (Iso 6s: 3 s on, 3 s off)
+    await page.waitForFunction(() => {
+      const flash = document.querySelector('.ar-light-flash');
+      return flash && Number(getComputedStyle(flash).opacity) > 0.9;
+    }, null, { timeout: 10_000, polling: 50 });
+    await shot(page, 'ar-ansicht', { settle: 50 });
+    await page.evaluate(() => stopArView());
+  });
 });

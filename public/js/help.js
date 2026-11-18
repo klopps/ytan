@@ -172,8 +172,29 @@
         }
     });
 
-    // Lazy images below the fold are not loaded when the browser lays out the
-    // page for printing: load them all first.
+    // Print button: load every lazy image and wait for it BEFORE the print
+    // dialog lays out the page - switching them to eager in 'beforeprint'
+    // alone comes too late, the printout then had empty figures. At most
+    // 20 s, then it prints with whatever has arrived.
+    window.helpPrint = function helpPrint() {
+        var pending = Array.prototype.map.call(document.querySelectorAll('.help-content img'), function (img) {
+            img.loading = 'eager';
+            if (img.complete) {
+                return Promise.resolve();
+            }
+            return new Promise(function (resolve) {
+                img.addEventListener('load', resolve, { once: true });
+                img.addEventListener('error', resolve, { once: true });
+            });
+        });
+        var timeout = new Promise(function (resolve) { setTimeout(resolve, 20000); });
+        Promise.race([Promise.all(pending), timeout]).then(function () {
+            window.print();
+        });
+    };
+
+    // Fallback for Ctrl+P / the browser menu (may still be too late for
+    // images that were never on screen; the print button is reliable).
     window.addEventListener('beforeprint', function () {
         Array.prototype.forEach.call(document.querySelectorAll('img[loading="lazy"]'), function (img) {
             img.loading = 'eager';

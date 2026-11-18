@@ -53,7 +53,7 @@ $title = $t('help.title');
             <button type="button" id="helpSearchClear" class="help-search-clear" title="<?= $e($t('help.search_clear')) ?>" aria-label="<?= $e($t('help.search_clear')) ?>" hidden><i class="material-icons-round">close</i></button>
         </div>
         <button type="button" id="helpTocToggle" class="help-icon-btn help-toc-toggle" aria-expanded="false" aria-controls="helpToc" title="<?= $e($t('help.toc_toggle')) ?>" aria-label="<?= $e($t('help.toc_toggle')) ?>"><i class="material-icons-round">menu_book</i></button>
-        <button type="button" class="help-icon-btn" data-on-click="printPage();" title="<?= $e($t('help.print')) ?>" aria-label="<?= $e($t('help.print')) ?>"><i class="material-icons-round">print</i></button>
+        <button type="button" class="help-icon-btn" data-on-click="helpPrint();" title="<?= $e($t('help.print')) ?>" aria-label="<?= $e($t('help.print')) ?>"><i class="material-icons-round">print</i></button>
     </header>
 
     <div class="help-layout">
@@ -81,15 +81,18 @@ $title = $t('help.title');
             <?php endif; ?>
 
             <div class="help-cover">
-                <div class="help-cover-logo"></div>
-                <h1><?= $e($title) ?></h1>
-                <p class="help-cover-sub"><?= $e($appName) ?></p>
+                <?php /* a real image, not a CSS mask: backgrounds are only printed with "background graphics" on */ ?>
+                <img class="help-cover-logo" src="<?= $baseUrl ?>/images/ytan.svg?v=<?= $assetV('/images/ytan.svg') ?>" alt="YTAN">
+
+                <?php /* the big logo already says YTAN - title without it, no sub line */ ?>
+                <h1><?= $e($t('page_title.help')) ?></h1>
                 <h2 class="help-cover-contents"><?= $e($t('help.contents')) ?></h2>
+                <?php /* links: Chrome keeps in-document links in the printed PDF */ ?>
                 <ol class="help-cover-toc">
                     <?php foreach ($chapters as $chapter): ?>
-                        <li><?= $e($chapter['title']) ?></li>
+                        <li><a href="#chapter-<?= $e($chapter['slug']) ?>"><?= $e($chapter['title']) ?></a></li>
                     <?php endforeach; ?>
-                    <li><?= $e($t('help.keyword_index')) ?></li>
+                    <li><a href="#keyword-index"><?= $e($t('help.keyword_index')) ?></a></li>
                 </ol>
             </div>
 

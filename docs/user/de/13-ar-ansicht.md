@@ -22,6 +22,8 @@ Das **×** oben rechts schließt die Ansicht wieder.
 
 ## Was du siehst
 
+![Die AR-Ansicht: Anleger und Zeltplatz am Ufer einer Insel, an ihrer Spitze ein Leuchtfeuer, das von hier aus rot leuchtet](ar-ansicht.jpg)
+
 - **POIs** erscheinen als runde Plaketten in der Farbe ihres Typs mit Name und Entfernung. Ein Stiel zeigt auf die Stelle am Horizont, wo der POI liegt.
 - Es werden nur POIs der Typen gezeigt, die du unter Menü > **POIs** eingeschaltet hast, und nur innerhalb des **Umkreises** (siehe unten).
 - Damit das Bild übersichtlich bleibt, zeigt YTAN höchstens so viele POIs, wie unter **POIs im Bild höchstens** eingestellt ist - die nächsten im Blickfeld. Ein näherer POI liegt vor einem weiter entfernten. Liegen zwei in derselben Richtung, rückt der fernere nach oben.

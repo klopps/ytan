@@ -518,8 +518,34 @@ html.help-page body {
 /* ---- print: cover, table of contents, one chapter per page --------------- */
 
 @media print {
+  /* Page numbers as page-margin boxes (Chrome/Edge 131+). A page with its
+     own margin boxes also suppresses the browser's header/footer (date,
+     title, URL), even when they are switched on in the print dialog.
+     var() is not resolved here, hence the literal font/colour. The cover
+     counts but shows no number. Page numbers in the cover's table of
+     contents (target-counter()) are not supported by Chrome. */
   @page {
     margin: 18mm 16mm;
+    /* footer: "YTAN" left, page number right (user requirement 2026-11-18) */
+    @bottom-left {
+      content: "YTAN";
+      font: 600 9pt "Barlow", sans-serif;
+      color: #666;
+    }
+    @bottom-right {
+      content: counter(page) " / " counter(pages);
+      font: 9pt "Roboto Flex", sans-serif;
+      color: #666;
+    }
+  }
+
+  @page :first {
+    @bottom-left {
+      content: none;
+    }
+    @bottom-right {
+      content: none;
+    }
   }
 
   html.help-page,
@@ -559,29 +585,24 @@ html.help-page body {
 
   .help-cover {
     display: block;
-    padding-top: 40mm;
+    padding-top: 6mm;
     break-after: page;
   }
 
   .help-cover-logo {
-    width: 60mm;
+    display: block;
+    width: 110mm;
+    max-width: 100%;
+    height: auto;
     aspect-ratio: 1873 / 1349;
-    margin-bottom: 14mm;
-    background-color: #000;
-    -webkit-mask: url("../images/ytan.svg") no-repeat center / contain;
-    mask: url("../images/ytan.svg") no-repeat center / contain;
+    margin: 0 auto 12mm;
   }
 
   .help-cover h1 {
-    margin: 0;
+    margin: 0 0 14mm;
+    text-align: center;
     font-family: var(--font-display);
     font-size: 30pt;
-  }
-
-  .help-cover-sub {
-    margin: 4pt 0 24mm;
-    color: #555;
-    font-size: 14pt;
   }
 
   .help-cover-contents {
@@ -597,6 +618,12 @@ html.help-page body {
 
   .help-cover-toc li {
     margin-bottom: 5pt;
+  }
+
+  /* clickable in the PDF, but not looking like links (user requirement) */
+  .help-cover-toc a {
+    color: inherit;
+    text-decoration: none;
   }
 
   .help-chapter,
@@ -638,6 +665,30 @@ html.help-page body {
   .help-chip {
     border-color: #999;
     background: none;
+  }
+
+  /* keyword index: two columns, small, keywords as plain text (user requirement 2026-11-18) */
+  .help-index-list {
+    columns: 2;
+    column-gap: 10mm;
+    font-size: 8.5pt;
+  }
+
+  .help-index-row {
+    margin-top: 3pt;
+    break-inside: avoid;
+  }
+
+  .help-index-list .help-chip {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    font-size: 8.5pt;
+    font-weight: 600;
+  }
+
+  .help-index-list dd {
+    font-size: 8.5pt;
   }
 }
 

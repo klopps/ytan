@@ -1,5 +1,59 @@
 # Erledigt
 
+## Anleitung: Bild unter „Profil“ zeigte den Garmin-Schlüssel-Dialog
+
+~~Das Bild unter "14 Profil" zeigt einen Hinweis in Bezug auf die Garmin-Uhr. Es muss ersetzt werden.~~
+
+Gelöst (2026-11-18): Betroffen waren `anmeldung.jpg` (Kapitel Profil) und `profil-uhr.jpg` (Kapitel Garmin-Uhr). Der e2e-Benutzer behält seinen Uhr-Schlüssel von früheren Läufen. Deshalb klickte der Screenshot-Test (`tests/e2e/screenshots/help.spec.js`) auf „Neuen Uhr-Schlüssel erzeugen“, und YTAN fragte erst nach („Ein neuer Schlüssel macht den bisherigen ungültig ...“). Der Dialog blieb offen und lag über beiden Aufnahmen. Der Test bestätigt diese Frage jetzt mit OK, falls sie erscheint, und prüft danach, dass kein Dialog mehr offen ist. Alle Bilder des Haupttests wurden neu erzeugt. Sie zeigen damit auch die neuen Schriften. `profil-uhr.jpg` zeigt jetzt den erzeugten Schlüssel mit der Schaltfläche für die Einstellungsdatei, `anmeldung.jpg` die Anmeldemaske ohne Dialog.
+
+## Anleitung als PDF: Seitenzahlen
+
+~~Können im Dokument Seitenzahlen eingefügt werden? Außerdem sollen die Seitenzahlen rechtsbündig stehen. Linksbündig "YTAN".~~
+
+Gelöst (2026-11-18): Im `@media print`-Block von `public/css/help.css` bilden zwei `@page`-Randboxen die Fußzeile. `@bottom-left` zeigt „YTAN“ (Barlow 600, 9pt, grau). `@bottom-right` zeigt die Seitenzahl als `counter(page) " / " counter(pages)` (Roboto Flex, 9pt, grau), z. B. „2 / 74“. Das Deckblatt wird mitgezählt, zeigt aber keine Zahl (`@page :first` mit `content: none`). Chrome und Edge unterstützen solche Randboxen ab Version 131. Hat eine Seite eigene Randboxen, druckt Chrome seine eigene Kopf- und Fußzeile mit Datum, Titel und URL nicht mehr, auch wenn sie im Druckdialog eingeschaltet ist. So gibt es keine doppelten Zahlen. Firefox kennt Randboxen noch nicht und zeigt nur seine eigene Fußzeile. Seitenzahlen im Inhaltsverzeichnis des Deckblatts (`target-counter()`) sind nicht möglich, weil Chrome das nicht kann. Die Kapitel bleiben dort Links. Geprüft wurde mit einem von Playwright erzeugten PDF: Seite 1 ohne Fußzeile, ab Seite 2 „YTAN“ und die Seitenzahl.
+
+## Anleitung als PDF: Bilder fehlten
+
+~~Jetzt fehlen die Bilder.~~
+
+Gelöst (2026-11-18): Die Bilder der Anleitung tragen `loading="lazy"` (`UserGuideService`). Bilder, die nie im sichtbaren Bereich waren, sind deshalb beim Drucken noch nicht geladen. `help.js` stellte sie zwar im `beforeprint`-Ereignis auf `eager` um, aber das kommt zu spät: Der Druckdialog setzt die Seiten sofort und lädt nicht nach. Die Abbildungen blieben leer. Der Druckknopf ruft jetzt `helpPrint()` auf (`public/js/help.js`, statt `printPage()` in `templates/help.php`). Die Funktion stellt alle Bilder in `.help-content` auf `eager`, wartet auf `load`/`error` jedes Bildes, höchstens 20 s, und ruft erst dann `window.print()` auf. Das Bildschirm-Laden bleibt lazy, für Handys im App-Panel sind das 4,3 MB weniger. Die `beforeprint`-Umschaltung bleibt als Rückfall für Strg+P, ist dort aber nicht verlässlich. Geprüft mit Playwright (Druckknopf, `window.print` abgefangen): Vorher waren 2 von 29 Bildern geladen, danach alle 29. Im erzeugten PDF sind 28 Bilddateien, ein Bild kommt zweimal vor.
+
+## Anleitung als PDF: Logo auf dem Deckblatt immer drucken
+
+~~Druck: Das YTAN-Logo auf der ersten Seite wird nur dargestellt, wenn im Druckdialog "Hintergrundgrafiken" aktiviert ist. Es soll immer gedruckt werden.~~
+
+Gelöst (2026-11-18): Das Logo war ein leeres `<div>` mit dem SVG als `mask-image` und der Farbe als `background-color`. Hintergründe druckt der Browser nur, wenn „Hintergrundgrafiken“ eingeschaltet ist. In `templates/help.php` ist das Logo jetzt ein echtes `<img class="help-cover-logo" src=".../images/ytan.svg?v=...">`, und in `help.css` sind Maske und Hintergrund entfernt (Breite 110 mm, `height: auto`). Das SVG ist ohnehin schwarz, und Papier ist weiß. Ein Bild wird immer gedruckt.
+
+## Anleitung als PDF: Stichwortverzeichnis zweispaltig, klein, ohne Rahmen
+
+~~Das Stichwortverzeichnis soll zweispaltig gestaltet werden. Die Stichwörter sollen nicht mehr umrahmt werden. Die Schriftgröße soll kleiner werden.~~
+
+Gelöst (2026-11-18) im `@media print`-Teil von `public/css/help.css`:
+- **Zwei Spalten:** `.help-index-list` hat `columns: 2`, und ein Eintrag bricht nicht über die Spalte (`break-inside: avoid`).
+- **Schrift:** 8,5 pt.
+- **Stichwörter:** Die Chips (`.help-chip` im Verzeichnis) stehen ohne Rahmen und Polster als fetter Text da.
+- **Bildschirm:** Die Online-Ansicht bleibt unverändert, dort sind die Chips weiter Suchknöpfe.
+
+## Anleitung als PDF: Deckblatt mit großem Logo und anklickbarem Inhaltsverzeichnis
+
+~~Wenn man die Anleitung als PDF druckt, so erhält man auf der ersten Seite ein Inhaltsverzeichnis. Auf dieser Seite soll das YTAN-Logo groß dargestellt werden, "YTAN-Anleitung" nur noch "Anleitung" lauten, "YTAN" unter der Überschrift "Anleitung" entfallen, die Kapitel anklickbar sein und zu den Kapiteln führen. Diese Links sollen NICHT unterstrichen sein.~~
+
+Gelöst (2026-11-18) in `templates/help.php` und im `@media print`-Teil von `public/css/help.css`:
+- **Logo:** 110 mm breit und zentriert statt 60 mm.
+- **Überschrift:** `page_title.help` („Anleitung“ / „User guide“) statt `help.title` („YTAN-Anleitung“). Die Kopfzeile der Online-Seite bleibt unverändert.
+- **Unterzeile:** Die Zeile „YTAN“ darunter entfällt, das Logo nennt den Namen schon.
+- **Inhaltsverzeichnis:** Jeder Eintrag ist ein Link `#chapter-{slug}` bzw. `#keyword-index`. Chrome übernimmt Links innerhalb des Dokuments beim Drucken als PDF, geprüft mit einem per `page.pdf()` erzeugten PDF (23 Link-Annotationen auf den ersten Seiten). Die Links sind nicht unterstrichen und haben die Textfarbe (`.help-cover-toc a`).
+
+## Anleitung: Beispielbild der AR-Ansicht, Kapitel vor „Profil“
+
+~~Füge eine beispielhafte Grafik zur Darstellung des AR-Modus inkl. Wasser, dem Rand einer Insel, jeweils einem POI des Typs Anlegestelle, Zeltplatz und Leuchtturm (rot leuchtend, Kennung ISO WRG 6s) zur Anleitung hinzu. Verschiebe in der Anleitung das Kapitel "AR-Ansicht" vor das Kapitel "Profil".~~
+
+Gelöst (2026-11-18):
+- **Bild:** `public/images/help/ar-ansicht.jpg` steht im Kapitel AR-Ansicht unter „Was du siehst“. Es zeigt die echte AR-Ansicht mit Anleger (300 m), Zeltplatz (600 m) und Leuchtturm „Iso WRG 6s“ (1,2 km), dessen roter Sektor den Betrachter trifft.
+- **Hintergrund:** Die Fake-Kamera von Chromium liefert nur ein Testbild. Deshalb liegt hinter den Labels eine gezeichnete Szene aus Himmel, Wasser mit Wellen und einer Insel mit Strand, deren Spitze rechts ausläuft (`arScene()` in `tests/e2e/screenshots/help.spec.js`, als Hintergrund von `#arView`, das Video ist ausgeblendet).
+- **Erzeugung:** Ein eigener Test im Screenshot-Lauf legt die drei POIs nach Peilung und Entfernung um den Betrachter an und blickt nach Norden. Ausgelöst wird erst, wenn die Laterne gerade leuchtet.
+- **Kapitelfolge:** AR-Ansicht ist jetzt Kapitel 13, vor Profil. Die Dateien sind umbenannt (`13-ar-ansicht.md`, `14-profil.md`, `15-einstellungen.md`, `16-android-app.md`, `17-garmin-uhr.md`). Interne Links nutzen den Namen ohne Nummer und bleiben gültig. Die alten Dateinamen räumt `deploy-prune.sh` auf dem Server ab.
+
 ## Anzeige von Leuchtfeuern im AR-Modus
 
 ~~Im AR-Modus und AR-Routen-Modus sollen die Leuchtfeuer nicht durch das Leuchtfeuer-Symbol dargestellt werden, sondern in Abhängigkeit ihrer Farbe. Dabei soll die Lichtcharakteristik (Farbe, Blinkrhythmus) dargestellt werden. Bei Leuchtfeuern mit Sektor-Kennung sollen Farbe und Reichweite in Abhängigkeit vom Blickwinkel (Entfernung und Winkel von der aktuellen Position zum Leuchfeuer) berücksichigt werden. Leuchtfeuer mit angebener Reichtweite dürfen also nur dargestellt werden, wenn sie innerhalb der Darstellungsreichweite des AR-Modus sind. Ist keine Reichweite hinterlegt, soll das Leuchtfeuer immer angezeigt werden, wenn es in der Darstellungsreichweite des AR-Modus liegt. Mache einen Vorschlag für die grafische Gestaltung, bevor mit der Umsetzung begonnen wird.~~
