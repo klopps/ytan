@@ -222,7 +222,7 @@
             <li id="pendingChangesMenuRow" style="display:none;"><button type="button" class="nav-menu-row" data-on-click="openPendingChangesScreen();"><i class="material-icons-round nav-menu-row-icon">sync</i><span class="nav-menu-row-labels"><?= $t('app.nav.pending_changes') ?><span class="nav-menu-row-sub" id="pendingChangesRowSub"></span></span><i class="material-icons-round nav-menu-row-chevron">chevron_right</i></button></li>
             <!-- Phones/tablets with camera + compass only - shown by
                  ar-view.js (arSupported()). -->
-            <li id="arMenuRow" style="display:none;"><button type="button" class="nav-menu-row" data-on-click="startArView();"><i class="material-icons-round nav-menu-row-icon">photo_camera</i><span class="nav-menu-row-labels"><?= $t('ar.menu') ?></span></button></li>
+            <li id="arMenuRow" style="display:none;"><button type="button" class="nav-menu-row" data-on-click="startArPoiView();"><i class="material-icons-round nav-menu-row-icon">photo_camera</i><span class="nav-menu-row-labels"><?= $t('ar.menu') ?></span></button></li>
             <li><button type="button" class="nav-menu-row" data-on-click="shareMap();"><i class="material-icons-round nav-menu-row-icon">share</i><span class="nav-menu-row-labels"><?= $t('app.nav.share') ?></span></button></li>
             <!-- "Weather": expands a submenu below it (nav-menu.js's toggleWeatherMenu()), pushing the rest down;
                  any entry, or the row again, closes it. -->

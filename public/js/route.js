@@ -861,7 +861,7 @@ function showRouteLabels(i) {
             clickable: false,
             draggable: false,
             map: map,
-            labelContent: '<span style="color: green">' + formatDistance(routes[i].length, settings.unit) + ' </span> | <span style="color: red">0m</span>',
+            labelContent: '<span style="color: green">' + formatDistance(routes[i].length, settings.unit) + ' </span> | <span style="color: red">' + formatDistance(0.1, settings.unit) + '</span>',
             labelClass: "routeLabel",
         });
         // See the identical comment at the other MarkerWithLabel call above
@@ -1295,7 +1295,7 @@ function showRouteInfoWindow(event, i) {
 
     var content =
         '<h3>' + escapeText(routes[i]['name']) + '</h3>' +
-        '<div class="infoWindowElement">' + t('route.info.length', { length: length }) + '</div>';
+        '<div class="infoWindowElement infoWindowLength">' + t('route.info.length', { length: length }) + '</div>';
 
     // Recording metadata (when/by whom/how long) is only ever present on a
     // GPS-recorded route (track-recorder.js) in the first place, but is

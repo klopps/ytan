@@ -37,8 +37,8 @@
   --shadow-soft: 0 2px 10px rgba(0,0,0,0.15);
   --color-overlay: rgba(0,0,0,0.2);
   --color-overlay-strong: rgba(0,0,0,0.35);
-  --font-display: 'Sora', sans-serif;
-  --font-body: 'Plus Jakarta Sans', sans-serif;
+  --font-display: 'Barlow', sans-serif;
+  --font-body: 'Roboto Flex', sans-serif;
   --font-condensed: 'Barlow Condensed', sans-serif;
   --color-location: #ff0000;
   --color-location-pulse: #ffffff;
@@ -678,6 +678,20 @@ img.wsi {
    elsewhere in this file. !important since Google's rules load after ours. */
 .gm-ui-hover-effect:focus {
   outline: none !important;
+}
+
+/* Google's InfoWindow stylesheet sets its own font (Roboto, weight 300) on
+   the bubble, so without this the POI/route/area windows and every context
+   menu showed neither of our fonts. Headings inside take the display font. */
+.gm-style .gm-style-iw-c,
+.gm-style .gm-style-iw-d {
+  font-family: var(--font-body) !important;
+  font-weight: 400 !important;
+}
+
+.gm-style .gm-style-iw-d h3,
+.gm-style .contextMenuHeading {
+  font-family: var(--font-display);
 }
 
 :root[data-theme="dark"] .gm-style-iw-c {
@@ -4118,20 +4132,20 @@ div.infoWindowCoordinates {
   margin: -10px 0px 12px 0px;
   width:100%;
   color: var(--color-text-secondary);
-  font-size: 10px;
+  font-size: 13px;
 }
 
 div.infoWindowWater {
   margin: -6px 0px 12px 0px;
   width:100%;
   color: var(--color-text-secondary);
-  font-size: 10px;
+  font-size: 13px;
 }
 
 div.poiEditWindowCoordinates {
   width:100%;
   color: var(--color-text-secondary);
-  font-size: 10px;
+  font-size: 13px;
 }
 
 
@@ -4194,6 +4208,10 @@ div.infoWindowElement .button {
   flex-wrap: wrap; /* narrow phones: move, info, sector light and edit don't fit in one row */
   align-items: center;
   gap: 8px 16px;
+  /* keep the move icon (bottom left) and the edit icon (bottom right) off
+     the bubble's edge */
+  padding: 0;
+  box-sizing: border-box;
 }
 
 .poiInfoBottom .lefthalf {
@@ -4577,6 +4595,40 @@ p.LighthouseCharacteristic {
   font-weight: 600;
   color: var(--color-text);
   max-width: 220px;
+}
+
+/* Touch screens: menu entries big enough for a finger (40 px, user's choice -
+   a bit below the 44/48 px Apple/Material guidance, so long menus need less
+   scrolling). The compact desktop sizes above made context menu items
+   ~20 px high on phones. */
+@media (pointer: coarse) {
+  .contextMenuItem {
+    min-height: 36px;
+    gap: 12px;
+    padding: 0 8px;
+    font-size: 15px;
+  }
+
+  .contextMenuItem .material-icons-round {
+    font-size: 20px;
+  }
+
+  .contextMenuHeading,
+  .contextMenuTitle {
+    font-size: 15px;
+    padding: 6px 6px 6px 6px;
+  }
+
+  .nav-menu-row {
+    min-height: 36px;
+  }
+
+  .addToTourMenuItem {
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+  }
 }
 
 
@@ -6024,4 +6076,23 @@ input[type="color"] {
   .route-check-sheet.expanded { max-height: none; }
   .rc-handle { display: none; }
   .rc-head { touch-action: auto; cursor: auto; }
+}
+
+/* Technical values - coordinates, distances, lengths, weather numbers - in
+   Barlow Condensed (--font-condensed); running text stays Roboto Flex,
+   headings Barlow (fonts.css). Kept at the END of the file on purpose: these
+   selectors must win over the rules above that set --font-display/--font-body
+   at the same specificity. A new place that shows such a value goes here. */
+div.infoWindowCoordinates,
+div.infoWindowWater,
+div.poiEditWindowCoordinates,
+div.infoWindowLength,
+.weather-timeline-coords,
+.weather-timeline-hour-col,
+.weather-timeline-hour-col .r-temp .t-main,
+.weather-timeline-day-glance-cell .hi,
+.weather-timeline-tide-label,
+.routeLabel,
+.nav-example-card .nav-example-value {
+  font-family: var(--font-condensed);
 }

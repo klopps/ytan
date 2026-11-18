@@ -3,56 +3,59 @@
 * YTAN Fonts
 */
 
-/* plus-jakarta-sans-400 - latin */
+/* Two families since 2026-11-18 (before: Sora + Plus Jakarta Sans + Barlow
+   Condensed): Roboto Flex for running text (--font-body, best legibility),
+   Barlow for headings (--font-display) and Barlow Condensed for technical
+   values - coordinates, distances, weather numbers (--font-condensed).
+   Barlow and Barlow Condensed are one superfamily. */
+
+/* roboto-flex - latin, variable: wght 100-1000, opsz 8-144 (applied
+   automatically from the font size); normal width only */
 @font-face {
-    font-family: 'Plus Jakarta Sans';
+    font-family: 'Roboto Flex';
     font-style: normal;
-    font-weight: 400;
-    src: url('../fonts/plus-jakarta-sans-v12-latin-400.woff2') format('woff2');
-}
-/* plus-jakarta-sans-500 - latin */
-@font-face {
-    font-family: 'Plus Jakarta Sans';
-    font-style: normal;
-    font-weight: 500;
-    src: url('../fonts/plus-jakarta-sans-v12-latin-500.woff2') format('woff2');
-}
-/* plus-jakarta-sans-600 - latin */
-@font-face {
-    font-family: 'Plus Jakarta Sans';
-    font-style: normal;
-    font-weight: 600;
-    src: url('../fonts/plus-jakarta-sans-v12-latin-600.woff2') format('woff2');
-}
-/* plus-jakarta-sans-700 - latin */
-@font-face {
-    font-family: 'Plus Jakarta Sans';
-    font-style: normal;
-    font-weight: 700;
-    src: url('../fonts/plus-jakarta-sans-v12-latin-700.woff2') format('woff2');
+    font-weight: 100 1000;
+    src: url('../fonts/roboto-flex-v31-latin-opsz-wght.woff2') format('woff2');
 }
 
-/* barlow-condensed-600 - latin (weather timeline's wind-direction abbreviations) */
+/* barlow-600/700 - latin (headings) */
+@font-face {
+    font-family: 'Barlow';
+    font-style: normal;
+    font-weight: 600;
+    src: url('../fonts/barlow-v13-latin-600.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'Barlow';
+    font-style: normal;
+    font-weight: 700;
+    src: url('../fonts/barlow-v13-latin-700.woff2') format('woff2');
+}
+
+/* barlow-condensed-400/500/600/700 - latin (technical values) */
+@font-face {
+    font-family: 'Barlow Condensed';
+    font-style: normal;
+    font-weight: 400;
+    src: url('../fonts/barlow-condensed-v13-latin-400.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'Barlow Condensed';
+    font-style: normal;
+    font-weight: 500;
+    src: url('../fonts/barlow-condensed-v13-latin-500.woff2') format('woff2');
+}
 @font-face {
     font-family: 'Barlow Condensed';
     font-style: normal;
     font-weight: 600;
     src: url('../fonts/barlow-condensed-v13-latin-600.woff2') format('woff2');
 }
-
-/* sora-600 - latin */
 @font-face {
-    font-family: 'Sora';
-    font-style: normal;
-    font-weight: 600;
-    src: url('../fonts/sora-v17-latin-600.woff2') format('woff2');
-}
-/* sora-700 - latin */
-@font-face {
-    font-family: 'Sora';
+    font-family: 'Barlow Condensed';
     font-style: normal;
     font-weight: 700;
-    src: url('../fonts/sora-v17-latin-700.woff2') format('woff2');
+    src: url('../fonts/barlow-condensed-v13-latin-700.woff2') format('woff2');
 }
 
 

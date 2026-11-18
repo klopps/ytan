@@ -1,5 +1,17 @@
 # Erledigt
 
+## AR-Ansicht: Route nur bei ausdrücklich gestarteter AR-Navigation
+
+~~Wenn ich die AR-Ansicht starte, werden mir auch die Routen eingeblendet. Ich will die AR-Routen-Ansicht aber nur haben, wenn ich diese explizit aktiviert habe. Wenn nicht, sollen mir nur die POIs angezeigt werden. Und es soll auch die EINE angewählte Route dargestellt werden, nicht alle, die in Sichtweite liegen.~~
+
+Gelöst (2026-11-18): Ursache war `settings.arRouteId` - im Einstellungs-Cookie gespeichert und nur über das x der Navigationsleiste gelöscht. Wer die AR-Ansicht nach einer AR-Navigation ohne dieses x geschlossen hatte, bekam die alte Route bei jedem späteren Öffnen über Menü oder Karten-Kontextmenü wieder eingeblendet. Neuer Einstieg `startArPoiView()` (`ar-view.js`) für Menüzeile `#arMenuRow` und Karten-Kontextmenü: löscht eine gespeicherte Route und zeigt nur POIs; nur das Routen-Kontextmenü "AR-Navigation" (`startArRoute(id)`) schaltet den Routenmodus ein. Gezeichnet wird ohnehin nur diese eine Route (`ar.route`, `arDrawRoute()`), andere Routen in Sichtweite nie. e2e `ar-view.spec.js` prüft: Routenmodus gestartet, Ansicht geschlossen, über den normalen Einstieg geöffnet = keine Navigationsleiste, `arRouteId` null.
+
+## Schriften: Roboto Flex + Barlow statt drei Familien
+
+~~Derzeit werden drei verschiedene Fonts verwendet. Es sollte in Zukunft nur ein Font verwendet werden, der für alle Anwendungsfälle einen passenden Schnitt hat (u.a. auch Condensed).~~
+
+Gelöst (2026-11-18): Vergleichs-Screenshots (Playwright, mobil 390×660, Schriften per eingespieltem CSS) von Ist-Zustand, Roboto Flex, Barlow, Fira Sans, Archivo, einer auf Barlow-Condensed-Laufweite verengten Roboto Flex (wdth 25 + XTRA 382 - die Breitenachse allein reicht nicht) und Kombinationen. Entscheidung des Benutzers: Barlow/Barlow Condensed für Überschriften und technische Werte, Roboto Flex (normale Breite) für Fließtext, weil deutlich besser lesbar. Umsetzung: `--font-display` = Barlow 600/700, `--font-body` = Roboto Flex (eine variable Datei, 85 KB, wght + opsz), `--font-condensed` = Barlow Condensed 400-700; Sora und Plus Jakarta Sans entfernt. Technische Werte (POI-Koordinaten/Wasserabstände, Routenlänge - neue Klasse `infoWindowLength` -, Zahlen der Wetter-Zeitleiste, Routen-Distanzlabels, Einheiten-Beispiel) stehen in einer gemeinsamen Regel am Ende von `style.css`. Befund dabei: Googles InfoWindow-CSS setzte in allen InfoWindows und Kontextmenüs Roboto 300 - jetzt mit `.gm-style .gm-style-iw-c/-d` überschrieben. Außerdem im POI-InfoWindow: Verschieben- und Bearbeiten-Symbol 8 px vom Rand (vorher direkt am Rand), Koordinaten und Entfernungen 13 px statt 10 px.
+
 ## Deploy räumt überflüssige Dateien ab
 
 ~~Wie kann der deploy-Vorgang verbessert werden, so dass überflüssige Dateien und Verzeichnisse auf PROD und TEST gelöscht werden?~~

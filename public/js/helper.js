@@ -218,8 +218,12 @@ function getDistance(p1, p2) {
  */
 function formatDistance(distance, unit = 'metric') {
 
+    // Always a space between value and unit ("12.4 km") - a no-break space,
+    // so a line break never separates the unit from its value.
+    var sp = ' ';
+
     if (distance == 0) {
-        return unit == 'nautical' ? '0.0nm' : '0.0km';
+        return unit == 'nautical' ? '0.0' + sp + 'nm' : '0.0' + sp + 'km';
     }
 
     if (unit == 'nautical') {
@@ -227,16 +231,16 @@ function formatDistance(distance, unit = 'metric') {
         var nm = distance / 1852;
 
         if (nm >= 1) {
-            return Number.parseFloat(nm).toFixed(1) + 'nm';
+            return Number.parseFloat(nm).toFixed(1) + sp + 'nm';
         } else {
-            return Number.parseFloat(nm).toFixed(3) + 'nm';
+            return Number.parseFloat(nm).toFixed(3) + sp + 'nm';
         }
     } else {
         // Metric
         if (distance >= 1000) {
-            return Number.parseFloat(distance / 1000).toFixed(1) + 'km';
+            return Number.parseFloat(distance / 1000).toFixed(1) + sp + 'km';
         } else {
-            return Number.parseInt(distance) + 'm';
+            return Number.parseInt(distance) + sp + 'm';
         }
     }
 }

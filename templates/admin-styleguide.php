@@ -212,11 +212,12 @@
         <!-- TYPOGRAFIE -->
         <section class="styleguide-section" id="sg-typography">
             <h2><?= $t('admin.styleguide.section_typography') ?></h2>
-            <p class="styleguide-source"><?= $t('admin.styleguide.source_label') ?> <code>--font-display</code> ('Sora'), <code>--font-body</code> ('Plus Jakarta Sans') - <code>public/css/style.css</code>, kein durchgängiges h1-h6-Regelwerk (Überschriften werden je Panel einzeln gesetzt, z.B. <code>.cm-panel-title</code>).</p>
-            <h1 style="font-family:var(--font-display);">H1 - Sora</h1>
-            <h2 style="font-family:var(--font-display);">H2 - Sora</h2>
-            <h3 style="font-family:var(--font-display);">H3 - Sora</h3>
-            <p style="font-family:var(--font-body);">Fließtext in Plus Jakarta Sans (--font-body). Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+            <p class="styleguide-source"><?= $t('admin.styleguide.source_label') ?> <code>--font-display</code> ('Barlow'), <code>--font-body</code> ('Roboto Flex'), <code>--font-condensed</code> ('Barlow Condensed', technische Werte) - <code>public/css/style.css</code>, kein durchgängiges h1-h6-Regelwerk (Überschriften werden je Panel einzeln gesetzt, z.B. <code>.cm-panel-title</code>).</p>
+            <h1 style="font-family:var(--font-display);">H1 - Barlow</h1>
+            <h2 style="font-family:var(--font-display);">H2 - Barlow</h2>
+            <h3 style="font-family:var(--font-display);">H3 - Barlow</h3>
+            <p style="font-family:var(--font-body);">Fließtext in Roboto Flex (--font-body). Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+            <p style="font-family:var(--font-condensed); font-size:13px; color:var(--color-text-secondary);">Technische Werte in Barlow Condensed (--font-condensed): 54.33000° N, 10.15000° O · Länge 16,23 km · Meer 30 m</p>
             <p style="font-family:var(--font-body); font-size:13px; color:var(--color-text-secondary);">Kleinerer Sekundärtext (13px, --color-text-secondary), z.B. in Listen/Untertiteln.</p>
         </section>
 

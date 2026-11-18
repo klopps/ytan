@@ -128,7 +128,7 @@ test.describe('on a phone', () => {
       return painted > 50;
     }, null, { timeout: 10_000, polling: 200 });
     await expect(page.locator('#arNavSub')).toContainText('1/3');
-    await expect(page.locator('#arNavMain')).toHaveText(/^0° · \d+m$/);
+    await expect(page.locator('#arNavMain')).toHaveText(/^0° · \d+\s?m$/);
     await expect(page.locator('#arTarget')).toBeVisible();
     await expect(page.locator('#arTarget')).toHaveText('1');
     expect(await page.evaluate(() => settings.arRouteId)).not.toBeNull();
@@ -159,6 +159,19 @@ test.describe('on a phone', () => {
     await page.locator('.ar-nav-close').click();
     await expect(page.locator('#arNavBar')).toBeHidden();
     await expect(page.locator('#arView')).toBeVisible();
+    expect(await page.evaluate(() => settings.arRouteId)).toBeNull();
+    await page.evaluate(() => stopArView());
+
+    // the plain entry (drawer row) shows POIs only, even after a route mode that was never ended
+    await page.evaluate(() => {
+      const route = routes.find((r) => r && r.name === 'E2E AR Route');
+      startArRoute(route.id);
+    });
+    await expect(page.locator('#arNavBar')).toBeVisible();
+    await page.evaluate(() => stopArView());
+    await page.evaluate(() => startArPoiView());
+    await expect(page.locator('#arView')).toBeVisible();
+    await expect(page.locator('#arNavBar')).toBeHidden();
     expect(await page.evaluate(() => settings.arRouteId)).toBeNull();
     await page.evaluate(() => stopArView());
   });

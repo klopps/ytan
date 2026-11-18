@@ -27,7 +27,8 @@
  *   the e2e spec.
  * - AR route mode (2026-11-16): a route picked in its context menu ("AR
  *   navigation", settings.arRouteId, kept until ended with the x on the nav
- *   bar) is drawn on the water surface (eye AR_EYE_HEIGHT_M above it) from the
+ *   bar or until the AR view is opened the plain way - drawer row / map context
+ *   menu, startArPoiView() = POIs only) is drawn on the water surface (eye AR_EYE_HEIGHT_M above it) from the
  *   current position up to the range (admin default/limit + user slider,
  *   arRouteRange()), thinner with depth, into #arRouteCanvas under the POI
  *   labels; the next waypoint follows the Garmin data field's rules
@@ -808,6 +809,23 @@ function startArRoute(routeId) {
     }
 }
 
+/**
+ * Plain AR entry (drawer row, map context menu): POIs only. A route from an
+ * earlier "AR navigation" is dropped - the route mode only runs when it was
+ * started explicitly from a route's context menu (user requirement 2026-11-18).
+ */
+function startArPoiView() {
+    if (settings.arRouteId !== null && settings.arRouteId !== undefined) {
+        settings.arRouteId = null;
+        saveSettings();
+    }
+    if (ar.active) {
+        arLoadRoute();
+    } else {
+        startArView();
+    }
+}
+
 /** Ends the route mode (x on the nav bar); the POIs stay. */
 function arEndRoute() {
     settings.arRouteId = null;
@@ -1106,7 +1124,7 @@ function arShowOnMap() {
 
 if (arSupported()) {
     registerMapContextMenuItem('photo_camera', 'ar.context_menu', function () {
-        startArView();
+        startArPoiView();
     });
 }
 
