@@ -70,9 +70,11 @@ const AR_EYE_HEIGHT_M = 1.0; // eye above the water in a kayak - the route is dr
 const AR_NEAR_M = 2; // ground points closer than this along the view axis are clipped
 const AR_ROUTE_PIECE_M = 25; // pieces the route is cut into so the line can taper smoothly
 const AR_ROUTE_BEHIND_M = 50; // faint bit of route behind the position
-const AR_LINE_K = 120; // line width px = AR_LINE_K / depth in m, clamped to AR_LINE_MIN..AR_LINE_MAX
+// line width px at a depth d (m): AR_LINE_MIN + (AR_LINE_MAX - AR_LINE_MIN) / (1 + (d / AR_LINE_D0)^2) -
+// smooth, no clamp kink; computed per piece END so neighbouring pieces meet with the same width (no steps)
+const AR_LINE_MAX = 44;
 const AR_LINE_MIN = 2;
-const AR_LINE_MAX = 18;
+const AR_LINE_D0 = 10;
 const AR_ROUTE_DEFAULT_COLOR = '#BF409F';
 const AR_LIGHTHOUSE_TYPE = 14;
 const AR_LIGHT_SCALE = 1.3;
@@ -1094,6 +1096,12 @@ function arUpdateNavBar(heading) {
     }));
 }
 
+/** Route line width in px at a camera depth in m (pure; smooth, thick close by, thin far away). */
+function arLineWidth(depth) {
+    const k = Math.max(0, depth) / AR_LINE_D0;
+    return AR_LINE_MIN + (AR_LINE_MAX - AR_LINE_MIN) / (1 + k * k);
+}
+
 /**
  * Draws the route ahead into the canvas: from the foot point on the current
  * segment along the route up to the range (plus a faint bit behind), cut in
@@ -1173,9 +1181,12 @@ function arDrawRoute(basis, fovH, fovV, width, height) {
             break;
         }
     }
-    // far to near, so the near pieces lie on top; dark outline first, colour on top
+    // each piece is a trapezoid whose width at either end comes from that end's own depth, so the line
+    // narrows continuously with distance; round joints close the gaps at bends. All pieces of one kind go
+    // into ONE path (same winding everywhere, nonzero fill), so overlaps never darken: faint first, then
+    // the route; a dark outline under each.
     const eye = -AR_EYE_HEIGHT_M;
-    const drawn = [];
+    const drawn = { faint: [], main: [] };
     pieces.forEach((piece) => {
         const clipped = arClipSegment(arToCamera([piece.a[0], piece.a[1], eye], basis), arToCamera([piece.b[0], piece.b[1], eye], basis));
         if (!clipped) {
@@ -1186,32 +1197,45 @@ function arDrawRoute(basis, fovH, fovV, width, height) {
         if (!p || !q) {
             return;
         }
-        const depth = (clipped[0][2] + clipped[1][2]) / 2;
-        drawn.push({
-            p: p, q: q, depth: depth,
-            width: Math.max(AR_LINE_MIN, Math.min(AR_LINE_MAX, AR_LINE_K / depth)),
-            alpha: piece.faint ? 0.35 : 1 - 0.5 * Math.min(1, piece.along / range)
+        (piece.faint ? drawn.faint : drawn.main).push({
+            p: p, q: q, wp: arLineWidth(clipped[0][2]), wq: arLineWidth(clipped[1][2])
         });
     });
-    drawn.sort((x, y) => y.depth - x.depth);
-    ctx.lineCap = 'round';
-    drawn.forEach((d) => {
-        ctx.globalAlpha = d.alpha * 0.55;
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = d.width + 3;
+    const fillPieces = (list, extra) => {
         ctx.beginPath();
-        ctx.moveTo(d.p.x, d.p.y);
-        ctx.lineTo(d.q.x, d.q.y);
-        ctx.stroke();
-    });
-    drawn.forEach((d) => {
-        ctx.globalAlpha = d.alpha;
-        ctx.strokeStyle = route.color;
-        ctx.lineWidth = d.width;
-        ctx.beginPath();
-        ctx.moveTo(d.p.x, d.p.y);
-        ctx.lineTo(d.q.x, d.q.y);
-        ctx.stroke();
+        list.forEach((d) => {
+            const hp = d.wp / 2 + extra;
+            const hq = d.wq / 2 + extra;
+            const dx = d.q.x - d.p.x;
+            const dy = d.q.y - d.p.y;
+            const len = Math.hypot(dx, dy);
+            if (len > 0.01) {
+                const nx = -dy / len;
+                const ny = dx / len;
+                // order chosen so the winding matches arc()'s clockwise circles
+                ctx.moveTo(d.p.x - nx * hp, d.p.y - ny * hp);
+                ctx.lineTo(d.q.x - nx * hq, d.q.y - ny * hq);
+                ctx.lineTo(d.q.x + nx * hq, d.q.y + ny * hq);
+                ctx.lineTo(d.p.x + nx * hp, d.p.y + ny * hp);
+                ctx.closePath();
+            }
+            ctx.moveTo(d.p.x + hp, d.p.y);
+            ctx.arc(d.p.x, d.p.y, hp, 0, Math.PI * 2);
+            ctx.moveTo(d.q.x + hq, d.q.y);
+            ctx.arc(d.q.x, d.q.y, hq, 0, Math.PI * 2);
+        });
+        ctx.fill('nonzero');
+    };
+    [[drawn.faint, 0.35], [drawn.main, 0.9]].forEach(([list, alpha]) => {
+        if (!list.length) {
+            return;
+        }
+        ctx.globalAlpha = alpha * 0.55;
+        ctx.fillStyle = '#000';
+        fillPieces(list, 1.5);
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = route.color;
+        fillPieces(list, 0);
     });
     ctx.globalAlpha = 1;
 
