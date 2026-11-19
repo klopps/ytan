@@ -39,6 +39,8 @@ final class RouteCheckTest extends ControllerTestCase
     private ?\Closure $sea = null;
     /** @var (\Closure(float, float, ?array, int, int, int): ?array)|null tide source handed to the builder */
     private ?\Closure $tide = null;
+    /** @var (\Closure(float, float, int): ?array)|null river gauge lookup handed to the builder */
+    private ?\Closure $gauge = null;
     /** @var (\Closure(float, float): array)|null replaces forecast() when set (may throw) */
     private ?\Closure $forecastAt = null;
 
@@ -80,6 +82,7 @@ final class RouteCheckTest extends ControllerTestCase
             $this->flow,
             $this->sea,
             $this->tide,
+            $this->gauge,
         );
         $service = new RouteBriefingService($builder, $this->ai, new AiTextCache($this->cacheDir), $this->usage, $this->settings);
 
@@ -305,6 +308,119 @@ final class RouteCheckTest extends ControllerTestCase
         $this->assertNotContains('current', array_column($none['reasons'], 'criterion'));
         $this->assertGreaterThan($none['end'], $default['end'], 'against the current takes longer');
         $this->assertEquals(2.0, RouteBriefingBuilder::aiContext($default)['route']['assumed_river_current_kmh']);
+    }
+
+    /** @return array{station: string, water: string, distance_m: int, value_cm: float, time: int, mhw: ?string, hsw: ?string} */
+    private function gaugeReading(?string $mhw, ?string $hsw = 'normal'): array
+    {
+        return ['station' => 'Hitzacker', 'water' => 'Elbe', 'distance_m' => 4200, 'value_cm' => 512.0, 'time' => time() - 600, 'mhw' => $mhw, 'hsw' => $hsw];
+    }
+
+    public function testHighWaterAtARiverGaugeMakesTheRouteYellow(): void
+    {
+        $userId = $this->createUser(['ai_use' => 1]);
+        $routeId = $this->route($userId);
+        $this->flow = fn (float $lat, float $lng, int $maxMeters) => ['kind' => 'river', 'bearing' => 0.0, 'distance' => 10];
+        $asked = [];
+        $this->gauge = function (float $lat, float $lng, int $maxMeters) use (&$asked) {
+            $asked[] = $maxMeters;
+
+            return $this->gaugeReading('high');
+        };
+
+        $result = $this->check($userId, $routeId, ['ai_use' => true], ['text' => false, 'speed_kmh' => 6])['data'];
+
+        $this->assertSame(20000, $asked[0]);
+        $this->assertSame(1, $result['rating'], 'calm weather, with the current - only the gauge');
+        $this->assertSame(['criterion' => 'river_high_water', 'value' => 'Hitzacker', 'threshold' => null, 'level' => 1], $result['reasons'][0]);
+        $this->assertCount(1, $result['current']['gauges'], 'one station, however many sections');
+        $this->assertSame('high', $result['current']['gauges'][0]['state']);
+        $this->assertSame('Elbe', $result['current']['gauges'][0]['water']);
+        $this->assertTrue($result['current']['gauges_rated']);
+        $this->assertSame(1, min(array_column($result['windows'], 'rating')), 'every start hour at least yellow (dark ones stay red)');
+
+        $context = RouteBriefingBuilder::aiContext($result);
+        $this->assertSame([['gauge' => 'Hitzacker', 'water' => 'Elbe', 'distance_km' => 4.2, 'level_cm' => 510, 'state' => 'high']], $context['river_gauges']);
+        $this->assertArrayNotHasKey('river_gauges_measured_days_before', $context['route']);
+    }
+
+    public function testAGaugeAboveTheHighestNavigableLevelMakesItRed(): void
+    {
+        $userId = $this->createUser(['ai_use' => 1]);
+        $routeId = $this->route($userId);
+        $this->flow = fn (float $lat, float $lng, int $maxMeters) => ['kind' => 'river', 'bearing' => 0.0, 'distance' => 10];
+        $this->gauge = fn () => $this->gaugeReading('high', 'high');
+
+        $result = $this->check($userId, $routeId, ['ai_use' => true], ['text' => false, 'speed_kmh' => 6])['data'];
+
+        $this->assertSame(2, $result['rating']);
+        $this->assertSame('river_hsw', $result['reasons'][0]['criterion']);
+        $this->assertSame('hsw', $result['current']['gauges'][0]['state']);
+    }
+
+    public function testForALaterDayTheGaugeIsShownButDoesNotRate(): void
+    {
+        $userId = $this->createUser(['ai_use' => 1]);
+        $routeId = $this->route($userId);
+        $this->flow = fn (float $lat, float $lng, int $maxMeters) => ['kind' => 'river', 'bearing' => 0.0, 'distance' => 10];
+        $this->gauge = fn () => $this->gaugeReading('high', 'high');
+
+        $result = $this->check($userId, $routeId, ['ai_use' => true], ['text' => false, 'speed_kmh' => 6, 'date' => gmdate('Y-m-d', strtotime('+3 days'))])['data'];
+
+        $this->assertSame(0, $result['rating']);
+        $this->assertSame('hsw', $result['current']['gauges'][0]['state']);
+        $this->assertFalse($result['current']['gauges_rated']);
+        $this->assertTrue(RouteBriefingBuilder::aiContext($result)['route']['river_gauges_measured_days_before']);
+    }
+
+    public function testGaugesOfASideWaterAreDroppedAndAtMostThreeShown(): void
+    {
+        $userId = $this->createUser(['ai_use' => 1]);
+        $routeId = $this->route($userId);
+        $this->flow = fn (float $lat, float $lng, int $maxMeters) => ['kind' => 'river', 'bearing' => 0.0, 'distance' => 10];
+        // a different gauge for every lookup: 5 on the Elbe, 1 on a canal (in high water)
+        $n = 0;
+        $this->gauge = function () use (&$n) {
+            $n++;
+            $reading = $this->gaugeReading('normal');
+            $reading['station'] = 'P' . $n;
+            $reading['distance_m'] = [1 => 900, 2 => 300, 3 => 5000, 4 => 100, 5 => 700, 6 => 50][$n] ?? 9000;
+            if ($n === 6) {
+                $reading['water'] = 'Müritz-Elde-Wasserstrasse';
+                $reading['mhw'] = 'high';
+            }
+
+            return $n <= 6 ? $reading : null;
+        };
+        $route = json_encode(array_map(fn ($k) => ['lat' => 56.0 + $k * 0.02, 'lng' => 10.0], range(0, 10)));
+        $this->pdo->exec('UPDATE route SET points = ' . $this->pdo->quote($route) . ' WHERE id = ' . $routeId);
+
+        $result = $this->check($userId, $routeId, ['ai_use' => true], ['text' => false, 'speed_kmh' => 6])['data'];
+
+        $this->assertSame(['P2', 'P4', 'P5'], array_column($result['current']['gauges'], 'station'), 'Elbe only, the 3 closest, in route order');
+        $this->assertNotContains('river_high_water', array_column($result['reasons'], 'criterion'));
+    }
+
+    public function testNoGaugeOffTheRiverAndAFailingLookupIsHarmless(): void
+    {
+        $userId = $this->createUser(['ai_use' => 1]);
+        $routeId = $this->route($userId);
+        $calls = 0;
+        $this->gauge = function () use (&$calls) {
+            $calls++;
+            throw new \RuntimeException('down');
+        };
+
+        $offRiver = $this->check($userId, $routeId, ['ai_use' => true], ['text' => false])['data'];
+        $this->assertSame(0, $calls, 'no river section, no lookup');
+        $this->assertSame([], $offRiver['current']['gauges']);
+        $this->assertArrayNotHasKey('river_gauges', array_filter(RouteBriefingBuilder::aiContext($offRiver), fn ($v) => $v !== null));
+
+        $this->flow = fn (float $lat, float $lng, int $maxMeters) => ['kind' => 'river', 'bearing' => 0.0, 'distance' => 10];
+        $onRiver = @$this->check($userId, $routeId, ['ai_use' => true], ['text' => false])['data'];
+        $this->assertGreaterThan(0, $calls);
+        $this->assertSame(0, $onRiver['rating']);
+        $this->assertSame([], $onRiver['current']['gauges']);
     }
 
     public function testNearTheCoastOfATidalSeaTheRiverGetsNoCurrentButAHint(): void

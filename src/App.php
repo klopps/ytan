@@ -384,6 +384,7 @@ final class App
             new OpenMeteoWeatherProvider($c->get(CurlJsonHttpClient::class)),
             new SmhiWeatherProvider($c->get(CurlJsonHttpClient::class)),
             new \Ytan\Service\Weather\FmiWeatherProvider(new \Ytan\Service\Tide\CurlTideHttp()),
+            new \Ytan\Service\Weather\WeatherFailureMemory($rootDir . '/storage/weather-failures'),
         ));
         // tide times of the national services (DE, DK, NL, IE, UK, NO, PT, ES-Galicia), then YTAN's own harmonic
         // prediction from TICON-4 gauge constants (worldwide), then TidesAtlas for French places TICON has no
@@ -426,9 +427,20 @@ final class App
             $pois = $c->get(PoiRepository::class);
             $weather = $c->get(WeatherService::class);
             $typeLabel = fn (int $type) => $translator->t('app.poitype.' . $type);
+            // river gauges of the German federal waterways (high water hint)
+            $gauges = new \Ytan\Service\River\PegelonlineGauges(
+                new \Ytan\Service\Tide\CurlTideHttp(),
+                new \Ytan\Service\Tide\TideCache($rootDir . '/storage/tide-cache'),
+            );
             // tide times: national sources first, Open-Meteo everywhere else
             $tides = new \Ytan\Service\Tide\TideService([
                 ...$c->get('tides.national.sources'),
+                // FR model (Licence Ouverte): only where no gauge source answered; 2-10 s per
+                // request, times approximate - so not in the weather timeline's list
+                new \Ytan\Service\Tide\IfremerMarsTideSource(
+                    new \Ytan\Service\Tide\TideCache($rootDir . '/storage/tide-cache'),
+                    new \Ytan\Service\Tide\CurlTideHttp(),
+                ),
                 new \Ytan\Service\Tide\OpenMeteoTideSource(fn (float $lat, float $lng) => $weather->getForecast($lat, $lng)),
             ]);
 
@@ -443,6 +455,7 @@ final class App
                     fn (float $lat, float $lng, int $maxMeters) => $water->flowAt($lat, $lng, $maxMeters),
                     fn (float $lat, float $lng, int $maxMeters) => $water->nearestSea($lat, $lng, $maxMeters),
                     fn (float $lat, float $lng, ?array $coast, int $from, int $to, int $maxStation) => $tides->tide($lat, $lng, $coast, $from, $to, $maxStation),
+                    fn (float $lat, float $lng, int $maxMeters) => $gauges->nearest($lat, $lng, $maxMeters),
                 ),
                 $c->get(\Ytan\Service\Ai\AiClient::class),
                 new \Ytan\Service\Ai\AiTextCache($rootDir . '/storage/ai-cache'),

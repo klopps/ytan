@@ -12,6 +12,7 @@ use Ytan\Exception\ApiException;
 use Ytan\Service\Weather\FmiWeatherProvider;
 use Ytan\Service\Weather\OpenMeteoWeatherProvider;
 use Ytan\Service\Weather\SmhiWeatherProvider;
+use Ytan\Service\Weather\WeatherFailureMemory;
 use Ytan\Service\Weather\WeatherProviderResult;
 use Ytan\Service\Weather\WeatherRegion;
 use Ytan\Service\Weather\WeatherRegionResolver;
@@ -68,6 +69,8 @@ final class WeatherService
         private readonly SmhiWeatherProvider $smhiProvider,
         // Finland/Åland; null (tests, or not wired) = Open-Meteo for them
         private readonly ?FmiWeatherProvider $fmiProvider = null,
+        // remembers failed points for a few minutes; null = no memory (tests)
+        private readonly ?WeatherFailureMemory $failures = null,
     ) {
     }
 
@@ -93,8 +96,19 @@ final class WeatherService
             return $cached['payload'];
         }
 
+        if ($this->failures?->recentlyFailed($roundedLat, $roundedLng)) {
+            throw new ApiException('Weather data is currently unavailable.', 503, 'weather.unavailable');
+        }
+
         $region = $this->regionResolver->resolve($roundedLat, $roundedLng);
-        $data = $this->fetchAndCombine($roundedLat, $roundedLng, $region);
+        try {
+            $data = $this->fetchAndCombine($roundedLat, $roundedLng, $region);
+        } catch (ApiException $e) {
+            if ($e->getErrorCode() === 'weather.unavailable') {
+                $this->failures?->remember($roundedLat, $roundedLng);
+            }
+            throw $e;
+        }
 
         $this->forecasts->upsert(
             $roundedLat,

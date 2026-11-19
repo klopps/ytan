@@ -22,7 +22,7 @@ use Ytan\Service\Log\LogWriter;
 final class RouteBriefingService
 {
     /** Bump when the prompt changes, so cached texts of the old prompt are not reused. */
-    public const PROMPT_VERSION = 6;
+    public const PROMPT_VERSION = 7;
     private const MAX_TOKENS = 3000;
 
     public function __construct(
@@ -155,6 +155,12 @@ Rules:
   times no current was computed; tell the paddler to plan with the tide times. A tides entry with
   model_times_approximate comes from a coarse ocean model, not a gauge (often 15-90 minutes early): say the tide
   times are approximate, recommend checking a local tide table, and give no minute-exact timing from them.
+  river_gauges: the LATEST measurement at official river gauges near the route (not a forecast), state = low,
+  normal, high (above mean high water) or hsw (above the highest navigable water level - shipping is stopped).
+  Reason codes river_high_water (yellow: the current is stronger than the assumed one, more drift wood) and
+  river_hsw (red: flood - strong current, debris, flooded banks and landing places). With
+  route.river_gauges_measured_days_before the trip is later than tomorrow: the gauges did not change the colours,
+  say that the water level may change until then.
 - Mention when parts have no data (grey) and what that means.
 - The assessment is a planning aid, not a safety guarantee; the paddler decides on the water.
 

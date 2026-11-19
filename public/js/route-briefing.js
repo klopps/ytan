@@ -335,6 +335,43 @@ function routeCheckTideHtml(result) {
         "</div>";
 }
 
+/** Literal keys (the translation tool finds usages by scanning). */
+function routeCheckGaugeState(state) {
+    switch (state) {
+    case 'hsw': return t('route_check.gauge_state.hsw');
+    case 'high': return t('route_check.gauge_state.high');
+    case 'normal': return t('route_check.gauge_state.normal');
+    case 'low': return t('route_check.gauge_state.low');
+    default: return t('route_check.gauge_state.unknown');
+    }
+}
+
+/**
+ * River gauges (PEGELONLINE) near the route: latest water level and the
+ * WSV's classification; for a trip later than tomorrow a note that the
+ * level did not change the traffic light.
+ */
+function routeCheckGaugeHtml(result) {
+    var current = result.current;
+    if (!current || !current.gauges || current.gauges.length === 0) {
+        return "";
+    }
+    var html = "";
+    current.gauges.forEach(function (gauge) {
+        var alarm = gauge.state === "hsw" || gauge.state === "high";
+        html += "<div class=\"rc-note\"><i class=\"material-icons-round\">" + (alarm ? "warning" : "straighten") + "</i> " +
+            t("route_check.gauge_line", {
+                station: escapeText(gauge.station),
+                water: escapeText(gauge.water),
+                value: routeCheckNumber(gauge.value_cm),
+                state: routeCheckGaugeState(gauge.state),
+                time: escapeHTML(String(gauge.time).slice(11, 16))
+            }) + "</div>";
+    });
+    return html + "<div class=\"rc-muted rc-small\">" +
+        (current.gauges_rated ? "" : t("route_check.gauge_not_rated") + " ") + "WSV, PEGELONLINE</div>";
+}
+
 function routeCheckToggleReverse() {
     routeCheck.reverse = !routeCheck.reverse;
     routeCheckLoad();
@@ -397,6 +434,8 @@ function routeCheckReasonText(reason) {
     case 'offshore': return t('route_check.reason.offshore', vars);
     case 'beam_sea': return t('route_check.reason.beam_sea', vars);
     case 'current': return t('route_check.reason.current', vars);
+    case 'river_high_water': return t('route_check.reason.river_high_water', vars);
+    case 'river_hsw': return t('route_check.reason.river_hsw', vars);
     default: return escapeHTML(String(reason.criterion));
     }
 }
@@ -495,6 +534,7 @@ function routeCheckRender() {
         '</div>' +
         routeCheckCurrentChipsHtml(result) +
         routeCheckTideHtml(result) +
+        routeCheckGaugeHtml(result) +
         '<div class="rc-chips">' + ROUTE_CHECK_LEVELS.map(function (level) {
             return '<button type="button" class="rc-chip' + (level === routeCheck.level ? ' active' : '') + '" data-on-click="routeCheckSetLevel(\'' + level + '\');">' + routeCheckLevelLabel(level) + '</button>';
         }).join('') + '</div>' +

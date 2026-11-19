@@ -52,6 +52,8 @@ function showUserWindow() {
                 profileSubRowHtml('userEditProfileBtn', 'showEditProfileForm();', 'edit', t('user.edit_profile_button')) +
                 profileSubRowHtml('userChangePasswordBtn', 'showChangePasswordForm();', 'lock', t('user.change_password_button')) +
                 profileSubRowHtml('userDefaultSpeedBtn', 'showDefaultSpeedForm();', 'speed', t('user.default_speed_button')) +
+                (typeof canRouteCheck === 'function' && canRouteCheck()
+                    ? profileSubRowHtml('userPaddleLevelBtn', 'showPaddleLevelForm();', 'rowing', t('user.paddle_level_button')) : '') +
                 profileSubRowHtml('userWatchBtn', 'showWatchSection();', 'watch', t('watch.title')) +
                 profileSubRowHtml('userDeleteAccountBtn', 'showAccountDeletion();', 'delete_forever', t('account_deletion.button')) +
             '</ul>' +
@@ -214,6 +216,46 @@ function submitDefaultSpeed() {
         showDefaultSpeedForm();
     }).catch(err => {
         showToast(apiErrorMessage(err), 'error');
+    });
+}
+
+/**
+ * The Routencheck's experience level (beginner / experienced / expert = a
+ * factor on the thresholds), the same value the chips in the Routencheck
+ * sheet change (PUT /auth/paddle-level). Saved on tap.
+ */
+const PADDLE_LEVELS = ['beginner', 'experienced', 'expert'];
+
+function showPaddleLevelForm() {
+    var title = t('user.paddle_level_button');
+    openProfileSub(title, '<div class="nav-form-message">' + t('watch.loading') + '</div>' + navCancelButtonHtml());
+
+    Ytan.get('/auth/paddle-level').then(answer => {
+        var current = answer.data.paddle_level;
+        var options = PADDLE_LEVELS.map(function (level) {
+            return '<input type="radio" id="userPaddleLevel-' + level + '" name="userPaddleLevel" value="' + level + '"' +
+                (level === current ? ' checked' : '') + ' data-on-change="submitPaddleLevel(this.value);">' +
+                '<label for="userPaddleLevel-' + level + '">' + routeCheckLevelLabel(level) + '</label>';
+        }).join('');
+        openProfileSub(title,
+            '<p class="nav-field-label">' + t('user.paddle_level_label') + '</p>' +
+            '<div class="nav-segmented">' + options + '</div>' +
+            '<div class="nav-form-message">' + t('user.paddle_level_hint') + '</div>' +
+            navCancelButtonHtml());
+    }).catch(err => {
+        openProfileSub(title, '<div class="nav-form-message">' + apiErrorMessage(err) + '</div>' + navCancelButtonHtml());
+    });
+}
+
+function submitPaddleLevel(level) {
+    if (PADDLE_LEVELS.indexOf(level) === -1) {
+        return;
+    }
+    Ytan.put('/auth/paddle-level', { paddle_level: level }).then(() => {
+        showToast(t('user.paddle_level_saved'), 'success');
+    }).catch(err => {
+        showToast(apiErrorMessage(err), 'error');
+        showPaddleLevelForm();
     });
 }
 

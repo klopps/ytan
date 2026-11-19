@@ -28,6 +28,10 @@ final class RouteBriefingBuilder
     private const WEATHER_MAX_SAMPLES = 5;
     private const FLOW_SAMPLE_SPACING_M = 200;
     private const FLOW_MAX_SAMPLES = 40;
+    /** River gauges (PEGELONLINE): within this distance of a river section; candidates looked at, gauges shown. */
+    private const GAUGE_MAX_M = 20000;
+    private const GAUGE_CANDIDATES = 8;
+    private const GAUGE_MAX_COUNT = 3;
 
     /**
      * @param \Closure(float, float): array $forecast WeatherService::getForecast()
@@ -36,6 +40,7 @@ final class RouteBriefingBuilder
      * @param (\Closure(float, float, int): ?array{kind: string, bearing: float})|null $flow river/canal at a position within a distance (WaterDistanceService::flowAt()); null = no current
      * @param (\Closure(float, float, int): ?array{distance: int, lat: float, lng: float})|null $sea nearest sea coastline point within a distance (WaterDistanceService::nearestSea()); null = no tide check
      * @param (\Closure(float, float, ?array, int, int, int): ?array)|null $tide tide data for a position (TideService::tide(): lat, lng, coast, from, to, max station metres); null = only the coastline rule
+     * @param (\Closure(float, float, int): ?array)|null $gauge nearest river gauge with its latest measurement (PegelonlineGauges::nearest()); null = none
      */
     public function __construct(
         private readonly \Closure $forecast,
@@ -44,6 +49,7 @@ final class RouteBriefingBuilder
         private readonly ?\Closure $flow = null,
         private readonly ?\Closure $sea = null,
         private readonly ?\Closure $tide = null,
+        private readonly ?\Closure $gauge = null,
     ) {
     }
 
@@ -66,7 +72,9 @@ final class RouteBriefingBuilder
      * section; a section is ~3 km, fine enough for a tidal limit.
      *
      * @param array<string, mixed> $rules
-     * @return array{river_along: float, river_share: float, canal_share: float, tidal_share: float, tidal_along: float, tide: ?int}|null null = no flow lookup
+     * river_at = the first river sample of a non-tidal section (where its river gauge is looked up), null otherwise.
+     *
+     * @return array{river_along: float, river_share: float, canal_share: float, tidal_share: float, tidal_along: float, tide: ?int, river_at: ?array{0: float, 1: float}}|null null = no flow lookup
      */
     private function sectionFlow(RouteGeometry $geometry, array $section, array $rules, int $from, int $to): ?array
     {
@@ -102,11 +110,11 @@ final class RouteBriefingBuilder
         $tidal = $firstRiver !== null ? $this->tidal($firstRiver[0], $firstRiver[1], $rules, $from, $to) : null;
         if ($tidal !== null) {
             return ['river_along' => 0.0, 'river_share' => 0.0, 'canal_share' => $canal / $count,
-                'tidal_share' => $river / $count, 'tidal_along' => $along / $count, 'tide' => $tidal['tide']];
+                'tidal_share' => $river / $count, 'tidal_along' => $along / $count, 'tide' => $tidal['tide'], 'river_at' => null];
         }
 
         return ['river_along' => $along / $count, 'river_share' => $river / $count, 'canal_share' => $canal / $count,
-            'tidal_share' => 0.0, 'tidal_along' => 0.0, 'tide' => null];
+            'tidal_share' => 0.0, 'tidal_along' => 0.0, 'tide' => null, 'river_at' => $firstRiver];
     }
 
     /**
@@ -228,6 +236,27 @@ final class RouteBriefingBuilder
             $this->tides, $tidalKmh, (int) round((float) $rules['tidal_lag_min'] * 60));
         $start = new DateTimeImmutable(sprintf('%s %02d:00:00', $options['date'], $options['start_hour']), $timezone);
         $assessment = $rating->assess($start, $options['speed_kmh']);
+        $windows = $rating->windows($options['date'], $options['speed_kmh']);
+
+        // River gauges: the measurement is "now", so it only changes the
+        // traffic light for today and tomorrow; later dates just show it.
+        $gauges = $this->riverGauges($sections);
+        $today = new DateTimeImmutable('now', $timezone);
+        $gaugesRated = in_array($options['date'], [$today->format('Y-m-d'), $today->modify('+1 day')->format('Y-m-d')], true);
+        $gaugeReasons = $gaugesRated ? self::gaugeReasons($gauges) : [];
+        if ($gaugeReasons !== []) {
+            $top = $gaugeReasons[0]['level'];
+            $assessment['rating'] = max($assessment['rating'] ?? 0, $top);
+            $assessment['reasons'] = array_merge($gaugeReasons, $assessment['reasons']);
+            usort($assessment['reasons'], static fn ($a, $b) => $b['level'] <=> $a['level']);
+            foreach ($windows as $w => $window) {
+                if ($top > ($window['rating'] ?? -1)) {
+                    $windows[$w]['rating'] = $top;
+                    $windows[$w]['reason'] = $gaugeReasons[0]['criterion'];
+                }
+            }
+        }
+
         foreach ($assessment['sections'] as $i => $section) {
             $assessment['sections'][$i]['points'] = array_map(
                 static fn (array $p) => [round($p[0], 6), round($p[1], 6)],
@@ -252,7 +281,7 @@ final class RouteBriefingBuilder
             'partial' => $assessment['partial'],
             'reasons' => $assessment['reasons'],
             'sections' => $assessment['sections'],
-            'windows' => $rating->windows($options['date'], $options['speed_kmh']),
+            'windows' => $windows,
             'pois' => $this->nearbyPois($geometry, $options['user_id'] ?? null),
             'sun' => [
                 'sunrise' => $sun !== null && $sun['sunrise'] !== null ? $sun['sunrise']->format('H:i') : null,
@@ -283,8 +312,113 @@ final class RouteBriefingBuilder
                 'tidal_kmh' => $onTidalWithTimes ? round($tidalKmh, 1) : null,
                 'tidal_default_kmh' => (float) $rules['tidal_current_kmh'],
                 'tides' => array_map(fn (array $tide) => self::tideSummary($tide, $options['date'], $timezone), $this->tides),
+                // river gauges (PEGELONLINE): latest measurement, rated = it changed the traffic light
+                'gauges' => array_map(static fn (array $g) => [
+                    'station' => $g['station'],
+                    'water' => $g['water'],
+                    'distance_m' => $g['distance_m'],
+                    'value_cm' => $g['value_cm'],
+                    'time' => (new DateTimeImmutable('@' . $g['time']))->setTimezone($timezone)->format('Y-m-d H:i'),
+                    'state' => self::gaugeState($g),
+                ], $gauges),
+                'gauges_rated' => $gaugesRated,
             ],
         ];
+    }
+
+    /**
+     * The nearest river gauge of every non-tidal river section, each station
+     * once. The water index knows no river names, so a gauge on a side water
+     * can be the nearest one (Elbe at Dömitz: "Dömitz Up" on the
+     * Müritz-Elde-Wasserstraße) - only the gauges of the water most of them
+     * are on are kept (all of them on a tie), then the GAUGE_MAX_COUNT closest
+     * to the river, in route order. Never fails the Routencheck.
+     *
+     * @param list<array<string, mixed>> $sections with 'flow'
+     * @return list<array<string, mixed>>
+     */
+    private function riverGauges(array $sections): array
+    {
+        if ($this->gauge === null) {
+            return [];
+        }
+        $gauges = [];
+        foreach ($sections as $section) {
+            $at = $section['flow']['river_at'] ?? null;
+            if ($at === null) {
+                continue;
+            }
+            try {
+                $found = ($this->gauge)($at[0], $at[1], self::GAUGE_MAX_M);
+            } catch (Throwable $e) {
+                error_log('YTAN Routencheck: river gauge near ' . $at[0] . ',' . $at[1] . ' failed: ' . $e->getMessage());
+                $found = null;
+            }
+            if ($found !== null && !isset($gauges[$found['station']])) {
+                $gauges[$found['station']] = $found;
+                if (count($gauges) >= self::GAUGE_CANDIDATES) {
+                    break;
+                }
+            }
+        }
+        $gauges = array_values($gauges);
+        $waters = array_count_values(array_map(static fn (array $g) => (string) $g['water'], $gauges));
+        arsort($waters);
+        $counts = array_values($waters);
+        if (count($counts) > 1 && $counts[0] > $counts[1]) {
+            $main = (string) array_key_first($waters);
+            $gauges = array_values(array_filter($gauges, static fn (array $g) => (string) $g['water'] === $main));
+        }
+        if (count($gauges) > self::GAUGE_MAX_COUNT) {
+            $closest = $gauges;
+            usort($closest, static fn ($a, $b) => $a['distance_m'] <=> $b['distance_m']);
+            $keep = array_column(array_slice($closest, 0, self::GAUGE_MAX_COUNT), 'station');
+            $gauges = array_values(array_filter($gauges, static fn (array $g) => in_array($g['station'], $keep, true)));
+        }
+
+        return $gauges;
+    }
+
+    /** hsw = above the highest navigable water level, high = above mean high water, normal, low; null = unknown */
+    private static function gaugeState(array $gauge): ?string
+    {
+        return match (true) {
+            $gauge['hsw'] === 'high' => 'hsw',
+            $gauge['mhw'] !== null => $gauge['mhw'],
+            default => null,
+        };
+    }
+
+    /**
+     * river_hsw (red) / river_high_water (yellow) per gauge, highest first;
+     * value = the gauge's name.
+     *
+     * @param list<array<string, mixed>> $gauges
+     * @return list<array{criterion: string, value: string, threshold: null, level: int}>
+     */
+    private static function gaugeReasons(array $gauges): array
+    {
+        $reasons = [];
+        foreach ($gauges as $gauge) {
+            $state = self::gaugeState($gauge);
+            if ($state === 'hsw') {
+                $reasons[] = ['criterion' => 'river_hsw', 'value' => $gauge['station'], 'threshold' => null, 'level' => 2];
+            } elseif ($state === 'high') {
+                $reasons[] = ['criterion' => 'river_high_water', 'value' => $gauge['station'], 'threshold' => null, 'level' => 1];
+            }
+        }
+        usort($reasons, static fn ($a, $b) => $b['level'] <=> $a['level']);
+        // one reason per criterion (the first, i.e. any gauge)
+        $seen = [];
+
+        return array_values(array_filter($reasons, static function (array $r) use (&$seen) {
+            if (isset($seen[$r['criterion']])) {
+                return false;
+            }
+            $seen[$r['criterion']] = true;
+
+            return true;
+        }));
     }
 
     /**
@@ -310,8 +444,9 @@ final class RouteBriefingBuilder
             'attribution' => (string) $tide['attribution'],
             'distance_m' => (int) $tide['distance_m'],
             'mean_range_m' => $tide['mean_range_m'],
-            // Open-Meteo: a coarse ocean model, times often 15-90 min early (done.md, comparison 2026-11-16)
-            'model' => $tide['source'] === 'open-meteo',
+            // Open-Meteo: a coarse ocean model, times often 15-90 min early (done.md, comparison 2026-11-16);
+            // Ifremer MARS2D: 15-70 min off in estuaries, ranges ~35 % too small (comparison 2026-11-19)
+            'model' => in_array($tide['source'], ['open-meteo', 'ifremer'], true),
             'events' => $events,
         ];
     }
@@ -382,7 +517,8 @@ final class RouteBriefingBuilder
             ] + (!empty($result['current']['on_river']) ? ['assumed_river_current_kmh' => $result['current']['river_kmh']] : [])
               + (!empty($result['current']['on_canal']) ? ['partly_on_canal' => true] : [])
               + (!empty($result['current']['on_tidal']) ? ['partly_on_tidal_river' => true] : [])
-              + (isset($result['current']['tidal_kmh']) ? ['assumed_max_tidal_current_kmh' => $result['current']['tidal_kmh']] : []),
+              + (isset($result['current']['tidal_kmh']) ? ['assumed_max_tidal_current_kmh' => $result['current']['tidal_kmh']] : [])
+              + (!empty($result['current']['gauges']) && empty($result['current']['gauges_rated']) ? ['river_gauges_measured_days_before' => true] : []),
             'tides' => array_map(static fn (array $t) => [
                 'gauge' => $t['station'],
                 'distance_km' => round($t['distance_m'] / 1000, 1),
@@ -390,6 +526,13 @@ final class RouteBriefingBuilder
             ] + (!empty($t['model']) ? ['model_times_approximate' => true] : []) + [
                 'high_low_water' => array_map(static fn (array $e) => $e['type'] . ' ' . $e['time'], $t['events']),
             ], $result['current']['tides'] ?? []) ?: null,
+            'river_gauges' => array_map(static fn (array $g) => [
+                'gauge' => $g['station'],
+                'water' => $g['water'],
+                'distance_km' => round($g['distance_m'] / 1000, 1),
+                'level_cm' => (int) round($g['value_cm'] / 5) * 5,
+                'state' => $g['state'],
+            ], $result['current']['gauges'] ?? []) ?: null,
             'overall_rating' => $rating($result['rating']),
             'partly_without_data' => $result['partial'],
             'reasons' => $reasons($result['reasons']),

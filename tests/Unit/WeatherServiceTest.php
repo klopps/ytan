@@ -10,6 +10,7 @@ use Ytan\Service\GeocodingService;
 use Ytan\Service\Weather\FmiWeatherProvider;
 use Ytan\Service\Weather\OpenMeteoWeatherProvider;
 use Ytan\Service\Weather\SmhiWeatherProvider;
+use Ytan\Service\Weather\WeatherFailureMemory;
 use Ytan\Service\Weather\WeatherRegionResolver;
 use Ytan\Service\WeatherService;
 use Ytan\Tests\Fixtures\FakeJsonHttpClient;
@@ -214,6 +215,57 @@ final class WeatherServiceTest extends TestCase
             $this->assertSame(503, $e->getStatusCode());
             $this->assertSame('weather.unavailable', $e->getErrorCode());
         }
+    }
+
+    public function testAFailedPointIsRememberedAndFailsAtOnceUntilTheMemoryExpires(): void
+    {
+        $dir = sys_get_temp_dir() . '/ytan-weather-failures-' . uniqid();
+        $now = 1_000_000;
+        $service = new WeatherService(
+            $this->forecasts,
+            new WeatherRegionResolver(new GeocodingService($this->geocodingCacheDir, $this->httpClient, 'en')),
+            new OpenMeteoWeatherProvider($this->httpClient),
+            new SmhiWeatherProvider($this->httpClient),
+            null,
+            new WeatherFailureMemory($dir, function () use (&$now) {
+                return $now;
+            }),
+        );
+        $this->httpClient->setResponseFor(self::FORECAST_URL, null);
+
+        try {
+            $service->getForecast(54.30, 10.15);
+            $this->fail('Expected ApiException.');
+        } catch (ApiException) {
+        }
+        $callsAfterFailure = $this->httpClient->callCount();
+
+        // the provider answers again, but the point is remembered as failed: no request
+        $this->httpClient->setResponseFor(self::FORECAST_URL, [
+            'hourly' => [
+                'time' => ['2026-09-12T00:00'],
+                'temperature_2m' => [15.7], 'apparent_temperature' => [14.9],
+                'wind_speed_10m' => [10.0], 'wind_gusts_10m' => [18.0], 'wind_direction_10m' => [193],
+                'precipitation' => [0.0], 'weather_code' => [3],
+            ],
+        ]);
+        try {
+            $service->getForecast(54.30, 10.15);
+            $this->fail('Expected ApiException.');
+        } catch (ApiException $e) {
+            $this->assertSame('weather.unavailable', $e->getErrorCode());
+        }
+        $this->assertSame($callsAfterFailure, $this->httpClient->callCount());
+
+        // once the memory has expired the point is fetched again
+        $now += WeatherFailureMemory::TTL_SECONDS;
+        $this->assertSame(15.7, $service->getForecast(54.30, 10.15)['hourly'][0]['temperature']);
+        $this->assertGreaterThan($callsAfterFailure, $this->httpClient->callCount());
+
+        foreach (glob($dir . '/*') ?: [] as $file) {
+            unlink($file);
+        }
+        @rmdir($dir);
     }
 
     public function testASecondCallForTheSameCoordinatesWithinTheTtlDoesNotRefetch(): void
