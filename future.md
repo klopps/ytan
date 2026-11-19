@@ -2,6 +2,39 @@
 
 Punkte, die bewusst zurückgestellt sind - weder offen (todo.md) noch erledigt (done.md). Ein Punkt wandert zurück nach todo.md, sobald er angegangen wird.
 
+## Datenbank-Index auf `public` (aus der Performance-Analyse vom 2026-10-16)
+
+Die Indizes reichen bei der aktuellen Datenmenge (1,8 k POIs). `public` hat keinen Index, `WHERE user_id = ? OR public = 1` liest die Tabelle ganz - bei dieser Größe Bruchteile einer Millisekunde. Ein Index schadet kaum (Pflege bei jedem Schreiben, wenige KB), nützt aber wenig: `public` hat nur 0/1, bei vielen öffentlichen Zeilen nimmt MariaDB ohnehin den Tabellenscan, beim `OR` höchstens per index_merge union (wenn `user_id` auch indiziert ist). Zurückgestellt am 2026-11-19; erst bei einigen Zehntausend Zeilen mit `EXPLAIN` messen, statt auf Verdacht anzulegen.
+
+## Windkarte: Tests auf dem Gerät, Verkehr, kleine Verbesserungen
+
+Aus „Windkarte mit animierten Partikeln“ (todo.md, dort bleibt nur Phase 6) am 2026-11-19 hierher verschoben (User):
+- **In der Android-App testen** (Akku, Frame-Zeit bei 2.000 Partikeln, Geste Ziehen/Zoomen).
+- **Messung am echten Handy:** Zeit pro Frame und für den Raster-Neuaufbau (Ziel < 3 ms / < 30 ms; im Desktop-Chromium: 0,1-0,3 ms pro Frame ohne Rasterisierung).
+- **Verkehr entscheiden.** Gemessen 2026-11-15: Der Wind läuft auf dem YTAN-Worker (`external_jobs: ["wind"]`), Gebiet „Ganze Welt“, +48 h, 20 Veröffentlichungen pro Tag (13. und 14.11.). Ein Lauf dauert 869 s, lädt ~603 MB vom DWD und schreibt ~469 MB, die per rsync auf Prod gehen (~9 GB pro Tag); `storage/wind` hat 0,95-1,2 GB. Falls das zu viel ist: auf vollständige Sätze warten (EU+D2 desselben Termins zusammen) oder `run_interval_hours` 6. Vor dem Fix vom 2026-11-06 (done.md „Regenradar: Messung nach drei Wochen Betrieb“) waren es 35-37 Veröffentlichungen pro Tag (~21 GB Verkehr/Tag).
+- **Möglich:** Naht ICON-D2/ICON-EU weich überblenden (jetzt harter Wechsel), Stunden zwischen den 3-h-Schritten von ICON-EU nach +78 h interpolieren, Böen auch im Stundenverlauf.
+
+## Tourcheck (Routencheck für eine ganze Tour)
+
+Aus „Routencheck: KI-Einschätzung einer Route für einen Tag“ (todo.md) am 2026-11-19 hierher verschoben (User). Idee aus der Planung (routencheck.md): derselbe Check für alle Routen einer Tour, Name „Tourcheck“. Offen wäre vor allem, wie die Tage verteilt werden (eine Route pro Tag? Startzeit je Tag?), wie die Ampel über mehrere Tage zusammengefasst wird, und dass die Wettervorhersage nur ~7 Tage reicht. Der Routencheck selbst (Backend `RouteBriefingBuilder`/`RouteRating`, Sheet `route-briefing.js`) ließe sich je Route wiederverwenden; KI-Kosten wachsen mit der Zahl der Routen.
+
+## Routencheck: Tidequellen weiterer Länder, Bäche im Wasserindex
+
+Rest von „Routencheck: Tidegewässer und Strömung aus Messdaten“ (am 2026-11-19 von todo.md hierher verschoben; Hochwasserhinweis aus PEGELONLINE und Ifremer MARS2D sind erledigt, done.md „Routencheck: Hochwasserhinweis (PEGELONLINE) und Tidequelle Ifremer MARS2D“).
+- **Tidequellen für die übrigen Länder.** Eingebaut sind DE, DK, NL, IE, UK, NO, PT, ES-Galicien und FR (TidesAtlas, Ifremer), dazu weltweit die eigene TICON-4-Rechnung; nur wo kein Pegel in der Nähe liegt, gilt Open-Meteo. Kostenpflichtige Quellen scheiden aus (User, 2026-11-15). Geprüft und nicht eingebaut:
+  - SHOM (FR): Vorhersagen kostenpflichtig lizenziert (api.data.shom.fr nur mit gekauftem Abo-Schlüssel „SUP Marée“/„SAPM“), offen sind nur Messwerte; die interne Schnittstelle von maree.shom.fr liefert dieselben lizenzierten Daten.
+  - Puertos del Estado (ES): keine öffentliche API gefunden, nur Website, App „Imar“ und Widgets.
+  - Belgien: Meetnet Vlaamse Banken (Konto in `.env` als `MVB_USERNAME`/`MVB_PASSWORD`, Token über `POST https://api.meetnetvlaamsebanken.be/Token`, geprüft 2026-11-15) liefert nur MESSWERTE („Tide TAW“ alle 5 Minuten an 11 Orten, Wellen, Wind, Strömung), keine Vorhersage. Der CC0-Datensatz „Getijtafels Vlaamse kust“ (marineinfo.org Dataset 5185) hat keinen Download-Link. Die Schelde bis Antwerpen-Prosperpolder deckt Rijkswaterstaat ab, die offene Küste die TICON-4-Rechnung (Oostende, Zeebrugge, Nieuwpoort, Blankenberge). Registrierung `https://meetnetvlaamsebanken.be/account/register` nur in einem breiten Fenster, sonst Umleitung auf `/Simple`.
+  - Verworfen: Tidemodell lokal rechnen (EOT20/FES2022/TPXO mit pyTMD) und kommerzielle Anbieter (WorldTides, Stormglass).
+- **Bäche (`waterway=stream`) sind nicht im Wasserindex.** Aufnehmen hieße `tools/water/build_index.py` erweitern und den Index aus den ~30 GB PBFs neu bauen (Stunden), Index-Datei und Testdaten wachsen deutlich, danach `bin\publish-water.bat`.
+
+## Code Check: Duplikate - Reste
+
+Aus Phase C des Code Checks (done.md „Code Check: Duplikate, CSS und Tests (Phase C)“) zurückgestellt, jeweils mit Grund und Auslöser (am 2026-11-19 von todo.md hierher verschoben; der vierte Teil, die Browser-Prüfung der Admin-Seiten, ist erledigt - done.md „Admin-Seiten nach der Escape-Umstellung im Browser geprüft“):
+- **Staging-Import-Familie** (Shelter/Camping/Vereine/Leuchtfeuer: Controller, Repository, `*ImportFile`, `*OsmImportService`): gemeinsam ist nur das Gerüst (Transferformat, Version, Eintragsgrenze, Upsert-Zählung); Felder, Längen, Prüfungen und Filter sind je Quelle verschieden. Eine Basisklasse hieße alle vier Admin-Werkzeuge umbauen und neu testen, für wenig gesparten Code. **Auslöser:** ein fünftes Import-Werkzeug.
+- **Logik aus `RouteMergeController`/`RouteSplitController`/`GpxImportController` in Services**: funktioniert und ist getestet; ein Umzug brächte nur Struktur. **Auslöser:** der nächste größere Eingriff dort. Ihre Transaktionsblöcke (und der in `LighthouseDuplicateService`) bleiben explizit: sie setzen viele Variablen für danach und räumen kopierte Fotos im Fehlerfall auf - als `Transaction::run()`-Closure bräuchten sie 5-8 Referenzen.
+- **Panel-Öffnen/Schließen-Paare und Routen-Label-HTML mit Inline-Farben** (`route.js`, `map-core.js`): kleine, verteilte Stellen mit je eigenem Verhalten; Gewinn gering. **Auslöser:** ein Umbau, der diese Stellen ohnehin anfasst.
+
 ## Ortsnamen (place_names.py) für alle europäischen Länder
 
 Was würde es bedeuten, die Ortsnamen (Schutzgebiet, sonst nächster Ort) für alle 44 Länder des Gewässer-Index zu hinterlegen statt nur für DK/NO/SE/FI?
