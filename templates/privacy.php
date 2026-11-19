@@ -101,7 +101,7 @@
     <p>Einige Stellen in YTAN verlinken auf fremde Websites, zum Beispiel auf das Regenradar von Windy. Erst wenn Sie einen solchen Link öffnen, erhält der jeweilige Anbieter Daten von Ihnen. Für dessen Datenverarbeitung ist er selbst verantwortlich.</p>
 
     <h2>§ 10 Routencheck (KI-Einschätzung einer Route)</h2>
-    <p>Angemeldete Nutzer mit der entsprechenden Berechtigung können eine Route für einen Tag einschätzen lassen (Routencheck). Die Bewertung selbst (Ampel) errechnet unser Server. Den erläuternden Text erzeugt ein KI-Dienst der Anthropic, PBC, San Francisco, USA (Sprachmodell „Claude“).</p>
+    <p>Angemeldete Nutzer mit der entsprechenden Berechtigung können eine Route für einen Tag einschätzen lassen (Routencheck). Die Bewertung selbst (Ampel) errechnet unser Server. Den erläuternden Text erzeugt ein KI-Dienst von Anthropic (Sprachmodell „Claude“, Anbieter siehe unten).</p>
     <p>An Anthropic übertragen wird je Anfrage:</p>
     <ul>
         <li>Datum, Start- und Endzeit, Länge der Route, angenommene Geschwindigkeit, gewählte Erfahrungsstufe und Fahrtrichtung</li>
@@ -110,7 +110,9 @@
         <li>Name, Art und Lage (Kilometer entlang der Route, Abstand) von Orten in der Nähe der Route. Dazu gehören öffentliche Orte und Ihre eigenen, auch privaten Orte.</li>
     </ul>
     <p>Nicht übertragen werden Ihr Name, Ihr Benutzername, Ihre E-Mail-Adresse, Ihre IP-Adresse, der Name und die Beschreibung der Route sowie Koordinaten. Die Anfrage stellt unser Server, nicht Ihr Gerät. Namen Ihrer privaten Orte werden jedoch mitgesendet. Geben Sie Orten deshalb keine Namen, die Rückschlüsse auf Personen zulassen, wenn Sie den Routencheck nutzen.</p>
-    <p>Anthropic verarbeitet die Daten auf Servern in den USA. Weitere Informationen: <a href="https://www.anthropic.com/legal/privacy" target="_blank" rel="nofollow noopener">https://www.anthropic.com/legal/privacy</a>.</p>
+    <p><strong>Anbieter und Auftragsverarbeitung:</strong> Vertragspartner für den KI-Dienst ist die Anthropic Ireland, Limited, Dublin, Irland. Anthropic verarbeitet die übertragenen Daten ausschließlich in unserem Auftrag und nach unseren Weisungen. Grundlage ist ein Vertrag zur Auftragsverarbeitung nach Art. 28 DSGVO (Data Processing Addendum von Anthropic). Die Verarbeitung findet auch bei der Muttergesellschaft Anthropic, PBC, San Francisco, USA, und auf Servern in den USA statt.</p>
+    <p><strong>Übermittlung in die USA:</strong> Die Anthropic, PBC ist nach dem EU-U.S. Data Privacy Framework zertifiziert. Die Übermittlung stützt sich daher auf den Angemessenheitsbeschluss der Europäischen Kommission (Art. 45 DSGVO). Endet die Zertifizierung oder der Beschluss, gelten die im Vertrag vereinbarten Standardvertragsklauseln der Europäischen Kommission (Art. 46 Abs. 2 lit. c DSGVO).</p>
+    <p><strong>Keine Nutzung zum Training, Speicherdauer bei Anthropic:</strong> Anthropic verwendet die über die Programmierschnittstelle (API) übermittelten Daten nicht zum Training seiner KI-Modelle. Anfragen und erzeugte Texte werden bei Anthropic spätestens nach 30 Tagen gelöscht. Eine Ausnahme gilt, wenn eine Anfrage gegen die Nutzungsrichtlinien von Anthropic verstößt; dann kann Anthropic sie zur Prüfung länger aufbewahren. Weitere Informationen: <a href="https://www.anthropic.com/legal/privacy" target="_blank" rel="nofollow noopener">https://www.anthropic.com/legal/privacy</a>.</p>
     <p>Auf unserem Server speichern wir zu jeder Anfrage Zeitpunkt, Benutzerkonto, Route und die Zahl der verbrauchten Recheneinheiten (Tokens), um die Kosten zu kontrollieren und ein Tageslimit je Nutzer einzuhalten. Der erzeugte Text wird ohne Bezug zu Ihrer Person für höchstens 24 Stunden zwischengespeichert und kann in dieser Zeit für eine inhaltlich gleiche Anfrage wiederverwendet werden. Ihre Erfahrungsstufe speichern wir in Ihrem Nutzerkonto.</p>
     <p>Vor der ersten Nutzung weisen wir Sie auf die Übertragung hin. Die Verarbeitung erfolgt gemäß Art. 6 Abs. 1 lit. b DSGVO, um Ihnen die von Ihnen angeforderte Funktion bereitzustellen, die Verbrauchsaufzeichnung gemäß Art. 6 Abs. 1 lit. f DSGVO. Der Routencheck ist eine Planungshilfe. Er trifft keine Entscheidung mit rechtlicher Wirkung im Sinne von Art. 22 DSGVO.</p>
 
@@ -135,7 +137,7 @@
         <li>Google, wenn Sie Google Maps aktiviert haben (§ 5)</li>
         <li>Anthropic, wenn Sie den Routencheck nutzen, im dort beschriebenen Umfang (§ 10)</li>
     </ul>
-    <p>Google und Anthropic verarbeiten Daten auch in den USA. Die Übermittlung stützt sich auf den Angemessenheitsbeschluss der Europäischen Kommission für die USA (EU-U.S. Data Privacy Framework), soweit der Anbieter danach zertifiziert ist, andernfalls auf Standardvertragsklauseln nach Art. 46 Abs. 2 lit. c DSGVO.</p>
+    <p>Google und Anthropic verarbeiten Daten auch in den USA. Die Übermittlung stützt sich auf den Angemessenheitsbeschluss der Europäischen Kommission für die USA (EU-U.S. Data Privacy Framework), soweit der Anbieter danach zertifiziert ist, andernfalls auf Standardvertragsklauseln nach Art. 46 Abs. 2 lit. c DSGVO. Anthropic ist für uns als Auftragsverarbeiter tätig (§ 10).</p>
     <p>Darüber hinaus geben wir Daten nur weiter, wenn wir gesetzlich dazu verpflichtet sind oder Sie ausdrücklich eingewilligt haben.</p>
 
     <h2>§ 14 Verschlüsselung (SSL/TLS)</h2>
@@ -149,7 +151,7 @@
         <li>Bestätigungscodes aus E-Mails: bis zu ihrem Ablauf oder ihrer Verwendung</li>
         <li>Verbrauchsaufzeichnung des Routenchecks: bis zur Löschung des Nutzerkontos, danach nur noch mit dem Benutzernamen zum Zeitpunkt der Anfrage</li>
         <li>Zwischengespeicherte Texte des Routenchecks: höchstens 24 Stunden</li>
-        <li>Protokolldateien von YTAN: ohne feste Frist. Ältere Einträge werden archiviert und von uns gelöscht, sobald sie zur Aufklärung von Störungen nicht mehr gebraucht werden.</li>
+        <li>Protokolldateien von YTAN: 12 Monate. Ältere Einträge werden täglich automatisch gelöscht.</li>
         <li>Server-Logfiles des Hosting-Dienstleisters: nach dessen Vorgaben</li>
         <li>Cookies: 12 Monate, sofern Sie sie nicht vorher löschen</li>
     </ul>
@@ -231,7 +233,7 @@
     </p>
 
     <h2>§ 17 Gültigkeit und Änderung dieser Datenschutzerklärung</h2>
-    <p>Diese Datenschutzerklärung tritt am 13.11.2026 in Kraft. Wir behalten uns vor, diese Erklärung bei Bedarf und unter Einhaltung der geltenden Datenschutzgesetze zu ändern. Dies kann beispielsweise erforderlich sein, um neuen rechtlichen Anforderungen gerecht zu werden oder um Änderungen an unserer Website oder neuen, über unsere Website angebotenen Diensten zu berücksichtigen. Die jeweils aktuelle Version der Datenschutzerklärung, die zum Zeitpunkt Ihres Besuchs auf unserer Website abrufbar ist, ist bindend.</p>
+    <p>Diese Datenschutzerklärung tritt am 19.11.2026 in Kraft. Wir behalten uns vor, diese Erklärung bei Bedarf und unter Einhaltung der geltenden Datenschutzgesetze zu ändern. Dies kann beispielsweise erforderlich sein, um neuen rechtlichen Anforderungen gerecht zu werden oder um Änderungen an unserer Website oder neuen, über unsere Website angebotenen Diensten zu berücksichtigen. Die jeweils aktuelle Version der Datenschutzerklärung, die zum Zeitpunkt Ihres Besuchs auf unserer Website abrufbar ist, ist bindend.</p>
     <p>Im Falle von Änderungen an dieser Datenschutzerklärung werden wir diese auf dieser Seite veröffentlichen, um Sie umfassend darüber zu informieren, welche personenbezogenen Daten wir erfassen, wie wir sie verarbeiten und unter welchen Bedingungen wir sie gegebenenfalls weitergeben.</p>
 </body>
 </html>

@@ -64,6 +64,12 @@ def _next_archive_number(path: str) -> int:
     # NAME.N.log, and NAME.A-B.zip of packed ones: numbering never starts again after compact()
     pattern = re.compile(re.escape(stem) + r"\.(?:\d+-)?(\d+)\.(?:log|zip)$")
     numbers = [int(m.group(1)) for m in (pattern.match(f) for f in os.listdir(folder or ".")) if m]
+    # the highest number of archives deleted after 12 months (PHP LogRetention), so counting goes on
+    try:
+        with open(os.path.join(folder or ".", "." + stem + ".archive-counter"), encoding="ascii") as handle:
+            numbers.append(int(handle.read().strip() or 0))
+    except (OSError, ValueError):
+        pass
     return max(numbers, default=0) + 1
 
 

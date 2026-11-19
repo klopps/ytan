@@ -19,6 +19,7 @@ declare(strict_types=1);
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 
+use Ytan\Service\Log\LogRetention;
 use Ytan\Service\Log\LogRotation;
 use Ytan\Service\Log\LogWriter;
 use Ytan\Service\FileCacheCleanupService;
@@ -57,3 +58,18 @@ if (is_file($errorLog)) {
         ? 'storage/logs/error.log: nothing to rotate.'
         : 'storage/logs/error.log: rotated into ' . implode(', ', array_map('basename', $archives)) . '.');
 }
+
+// Retention: nothing in storage/logs is kept longer than 12 months (privacy
+// note, operator's decision 2026-11-19) - old archives are deleted, old lines
+// at the start of the current logs removed. storage/logs/worker/ is left out:
+// it only mirrors the YTAN worker's current logs, the next upload would bring
+// the lines back.
+$retention = LogRetention::purge($root . '/storage/logs', time());
+$log->line('Log retention (12 months): ' . count($retention['archives']) . ' archive(s) deleted'
+    . ($retention['archives'] === [] ? '' : ' (' . implode(', ', $retention['archives']) . ')')
+    . ', old lines removed from ' . count($retention['trimmed']) . ' log(s)'
+    . ($retention['trimmed'] === [] ? '' : ' (' . implode(', ', array_map(
+        static fn (string $file, int $lines) => "$file: $lines",
+        array_keys($retention['trimmed']),
+        $retention['trimmed']
+    )) . ')') . '.');

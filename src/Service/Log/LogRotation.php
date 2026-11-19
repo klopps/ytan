@@ -156,6 +156,11 @@ final class LogRotation
                 $max = max($max, (int) $m[1]);
             }
         }
+        // the highest number of archives deleted after 12 months (LogRetention), so counting goes on
+        $counter = @file_get_contents(LogRetention::counterFile(dirname($path), $stem));
+        if ($counter !== false) {
+            $max = max($max, (int) trim($counter));
+        }
 
         return $max + 1;
     }

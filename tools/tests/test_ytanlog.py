@@ -107,6 +107,13 @@ class CompactTest(unittest.TestCase):
         write(self.path, 1, 2001)
         self.assertEqual(["job.31.log"], [os.path.basename(a) for a in ytanlog.rotate(self.path)])
 
+    def test_archives_deleted_after_12_months_number_follows_the_counter(self) -> None:
+        # written by PHP's LogRetention when it deleted job.1-40.zip
+        with open(os.path.join(self.dir, ".job.archive-counter"), "w", encoding="ascii") as handle:
+            handle.write("40")
+        write(self.path, 1, 2001)
+        self.assertEqual(["job.41.log"], [os.path.basename(a) for a in ytanlog.rotate(self.path)])
+
     def test_existing_zip_kept_and_nothing_deleted(self) -> None:
         self.archives(1, 21)
         with open(os.path.join(self.dir, "job.1-11.zip"), "wb") as handle:
