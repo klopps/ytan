@@ -54,6 +54,9 @@ function windModelRunsLabel(proc) {
     if (proc.d2_run) {
         parts.push('ICON-D2 ' + windRunLabel(proc.d2_run));
     }
+    if (proc.meps_run) {
+        parts.push('MEPS ' + windRunLabel(proc.meps_run));
+    }
     if (proc.gl_run) {
         parts.push('ICON global ' + windRunLabel(proc.gl_run));
     }
@@ -185,6 +188,7 @@ function saveWindSettings() {
         gusts: document.getElementById('windGusts').checked,
         fine: document.getElementById('windFine').checked,
         world: document.getElementById('windWorld').checked,
+        meps: document.getElementById('windMeps').checked,
         regions: windRegionsForSave()
     };
     btn.disabled = true;

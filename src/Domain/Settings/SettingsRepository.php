@@ -320,7 +320,7 @@ final class SettingsRepository
     /**
      * Wind job settings (WindConfig); a row that was never saved has the column defaults.
      *
-     * @return array{enabled: bool, horizon_hours: int, run_interval_hours: int, gusts: bool, fine: bool, world: bool, regions: array|null}
+     * @return array{enabled: bool, horizon_hours: int, run_interval_hours: int, gusts: bool, fine: bool, world: bool, meps: bool, regions: array|null}
      */
     public function windSettings(): array
     {
@@ -333,6 +333,7 @@ final class SettingsRepository
             'enabled' => (bool) $row['wind_enabled'], 'horizon_hours' => (int) $row['wind_horizon_hours'],
             'run_interval_hours' => (int) $row['wind_run_interval_hours'],
             'gusts' => (bool) $row['wind_gusts'], 'fine' => (bool) $row['wind_fine'], 'world' => (bool) $row['wind_world'],
+            'meps' => (bool) $row['wind_meps'],
             'regions' => $row['wind_regions'] === null ? null : (json_decode((string) $row['wind_regions'], true) ?: null),
         ];
     }
@@ -402,8 +403,8 @@ final class SettingsRepository
     /** @param array<string, mixed> $config normalized by WindConfig::normalize() */
     public function setWindSettings(array $config): void
     {
-        $this->write('UPDATE app_settings SET wind_enabled = ?, wind_horizon_hours = ?, wind_run_interval_hours = ?, wind_gusts = ?, wind_fine = ?, wind_world = ?, wind_regions = ? WHERE id = 1', [
-            (int) $config['enabled'], $config['horizon_hours'], $config['run_interval_hours'], (int) $config['gusts'], (int) $config['fine'], (int) $config['world'],
+        $this->write('UPDATE app_settings SET wind_enabled = ?, wind_horizon_hours = ?, wind_run_interval_hours = ?, wind_gusts = ?, wind_fine = ?, wind_world = ?, wind_meps = ?, wind_regions = ? WHERE id = 1', [
+            (int) $config['enabled'], $config['horizon_hours'], $config['run_interval_hours'], (int) $config['gusts'], (int) $config['fine'], (int) $config['world'], (int) $config['meps'],
             $config['regions'] === null ? null : json_encode($config['regions'], JSON_UNESCAPED_UNICODE),
         ]);
     }

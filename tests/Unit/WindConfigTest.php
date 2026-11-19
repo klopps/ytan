@@ -12,7 +12,7 @@ final class WindConfigTest extends TestCase
 {
     private function valid(array $override = []): array
     {
-        return $override + ['enabled' => true, 'horizon_hours' => 72, 'run_interval_hours' => 6, 'gusts' => false, 'fine' => true, 'world' => true, 'regions' => null];
+        return $override + ['enabled' => true, 'horizon_hours' => 72, 'run_interval_hours' => 6, 'gusts' => false, 'fine' => true, 'world' => true, 'meps' => true, 'regions' => null];
     }
 
     public function testNormalizeAcceptsValidInput(): void
@@ -40,7 +40,7 @@ final class WindConfigTest extends TestCase
 
     public static function invalidInputs(): array
     {
-        $ok = ['enabled' => true, 'horizon_hours' => 48, 'run_interval_hours' => 3, 'gusts' => false, 'fine' => true, 'world' => true];
+        $ok = ['enabled' => true, 'horizon_hours' => 48, 'run_interval_hours' => 3, 'gusts' => false, 'fine' => true, 'world' => true, 'meps' => true];
 
         return [
             'horizon not offered' => [['horizon_hours' => 36] + $ok, 'wind.settings_invalid_horizon'],
@@ -49,6 +49,7 @@ final class WindConfigTest extends TestCase
             'flag as string' => [['gusts' => 'yes'] + $ok, 'wind.settings_invalid_flag'],
             'flag missing' => [array_diff_key($ok, ['fine' => 1]), 'wind.settings_invalid_flag'],
             'world missing' => [array_diff_key($ok, ['world' => 1]), 'wind.settings_invalid_flag'],
+            'meps missing' => [array_diff_key($ok, ['meps' => 1]), 'wind.settings_invalid_flag'],
             'regions empty' => [['regions' => []] + $ok, 'wind.settings_invalid_regions'],
             'regions not a list' => [['regions' => ['a' => self::rect()]] + $ok, 'wind.settings_invalid_regions'],
             'region south above north' => [['regions' => [['south' => 10, 'north' => 5] + self::rect()]] + $ok, 'wind.settings_invalid_regions'],

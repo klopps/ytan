@@ -993,6 +993,8 @@ function updateWindControls() {
         ? t('wind.stale')
         : t('wind.as_of', { time: modelTime.toLocaleTimeString(windLocale(), { hour: '2-digit', minute: '2-digit' }) });
     status.classList.toggle('radar-controls-status-stale', stale);
+    // MET Norway's MEPS is credited only while its data is part of the run (CC BY 4.0)
+    document.getElementById('windAttributionMeps').style.display = windManifest.sources.meps ? '' : 'none';
     const gustBtn = document.getElementById('windGustBtn');
     gustBtn.style.display = windManifest.channels > 2 ? '' : 'none';
     gustBtn.classList.toggle('wind-gust-btn-on', !!settings.windGusts);

@@ -37,6 +37,7 @@ class WindSettings:
     gusts: bool = False          # third channel from vmax_10m
     fine: bool = True            # ICON-D2 (0.02 degrees) as the L2 level
     world: bool = True           # ICON global (0.25 degrees, <= 72 h) outside ICON-EU's coverage
+    meps: bool = True            # MET Norway MEPS (2.5 km) as an L2 source around Scandinavia and the Baltic
     workers: int = 4             # parallel hours (download + decode + write)
 
     def padded_regions(self) -> list[dict]:
@@ -53,7 +54,7 @@ class WindSettings:
 
     def signature(self) -> str:
         """Everything but the model runs that changes the output."""
-        return f"{regions_hash(self.regions)}:box{PAD_DEGREES:g}:{self.horizon_hours}:{self.channels}:{int(self.fine)}:{int(self.world)}"
+        return f"{regions_hash(self.regions)}:box{PAD_DEGREES:g}:{self.horizon_hours}:{self.channels}:{int(self.fine)}:{int(self.world)}:{int(self.meps)}"
 
 
 def _valid_wind_region(r) -> bool:
@@ -111,5 +112,6 @@ def load_settings(radar_storage: str) -> WindSettings:
         gusts=w.get("gusts") is True,
         fine=w.get("fine") is not False,
         world=w.get("world") is not False,
+        meps=w.get("meps") is not False,
         workers=workers,
     )

@@ -1,5 +1,11 @@
 # Erledigt
 
+## Windkarte Phase 6: MET Norway MEPS als feine Quelle
+
+~~Phase 6: MET Norway MEPS (2,5 km) und AROME als weitere L2-Quellen.~~ (MEPS erledigt, AROME bleibt in todo.md.)
+
+Gelöst (2026-11-19): `tools/wind/ytanwind/meps.py` holt MEPS über OPeNDAP von `thredds.met.no` (NetCDF, kein GRIB2): `x_wind_10m`/`y_wind_10m` (bei Böen `wind_speed_of_gust`) je Stunde nur als Ausschnitt der Regionen (`.dods`-Antwort wird von `parse_dods()` selbst gelesen, kein NetCDF/HDF5), projiziert die eigenen 0,02°-Punkte in den Lambert-Kegel der Datei (Kugel, 63,3° N, 15° O - die x/y-Achsen stimmen auf 0,1 m), interpoliert bilinear und dreht die gitterbezogenen Komponenten um n·(λ−15°) nach Ost/Nord. Rangfolge in L2: ICON-D2 → MEPS → ICON-EU/global; von MEPS bleiben die äußeren 10 Zellen (Relaxationszone) und das Gebiet von ICON-D2 ausgespart. Der Lauf kommt ~2,5 h nach Laufzeit in `mepslatest/catalog.xml`; der Job nimmt den neuesten der letzten drei, dessen letzter Schritt geschrieben ist (`latest_complete_run()`), und `key.meps`/`sources.meps` stehen im Manifest. Fällt MET Norway aus (Katalog, ein Schritt), kostet das nur Auflösung - die Stunde entsteht aus ICON; die MEPS-Störung der Vortage („datasetTracker_2“ HTTP 500) war nachmittags vorbei. Einstellung `wind.meps` (Standard an, Migration 079, Checkbox auf /admin/wind, `WindConfig`/`SettingsRepository`), das Bedienfeld nennt „MET Norway (MEPS)“ nur, wenn MEPS im Lauf steckt, die Credits-Seite hat einen Absatz (CC BY 4.0). Fallen: die Arrays kommen in DDS-Reihenfolge, nicht in Anfragereihenfolge (erst Lat/Lon vertauscht gelesen); Parser liest nach Namen. Gemessen (Südnorwegen, 6 h): Gesamtlauf 38 MB, 31 s; gegen rohes ICON-EU: Ost-Komponente im Mittel gleich, Korrelation 0,75; gegen das `wind_direction` der Datei Median 0,27° Abweichung. Tests: 7 neue Python-Tests (Parser, Projektion, Rotation, Fenster, Lauf gegen ein Fake-THREDDS, Abschalten, Ausfall, unfertiger Lauf), PHPUnit `WindConfigTest`/`WindSettingsControllerTest` angepasst. Offen: Rechenzeit/Verkehr je Quelle in `status.json`.
+
 ## e2e-Tests als normaler Benutzer (PaulPaddler) statt als Admin
 
 ~~Den auf DEV angelegten Benutzer PaulPaddler (alle Rechte außer Admin, Zugangsdaten in `.env` `E2E_TEST_USERNAME`/`E2E_TEST_PASSWORD`) für künftige e2e-Tests nutzen.~~

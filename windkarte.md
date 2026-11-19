@@ -243,11 +243,11 @@ Phase 1 bis 5 sind gebaut und lokal getestet (28 Python-Tests, PHPUnit 711 Tests
 
 Stufe L2 bekommt weitere Quellen. Alle werden im Job auf dasselbe 0,02°-Gitter umgerechnet, damit der Client unverändert bleibt; wo sich Quellen überlappen, gilt eine feste Rangfolge (ICON-D2 vor MEPS vor AROME), Lücken füllt wie bisher ICON-EU.
 
-- [ ] **MET Norway MEPS** (2,5 km, Skandinavien, Dänemark, Ostsee, Norddeutschland; CC BY 4.0): NetCDF über THREDDS, Ausschnitt nach Region und Variable schon beim Server (OPeNDAP/NCSS). Lambert-Gitter, die Längen/Breiten stehen in der Datei; Windkomponenten können gitterbezogen sein und müssen dann nach Nord/Ost gedreht werden. NetCDF4 ist HDF5, `h5py` ist schon im venv. Prüfen: Lauftakt, Verzögerung, Dateigröße des Ausschnitts.
+- [x] **MET Norway MEPS** (2026-11-19, `ytanwind/meps.py`; 2,5 km, Skandinavien, Ostsee, Nordsee; CC BY 4.0): OPeNDAP von `thredds.met.no` (`.dods`, DAP2-Binärantwort wird selbst gelesen, kein NetCDF/HDF5), nur der Ausschnitt der Regionen je Stunde. Gemessen: Lauf erscheint ~2,5 h nach Laufzeit im Katalog (alle 3 h, 67 Stunden), Lambert-Kegel auf der Kugel (63,3° N, 15° O, R 6371 km; die x/y-Achsen sind die projizierten Meter auf 0,1 m genau), Windkomponenten gitterbezogen und um n·(λ−15°) nach Ost/Nord gedreht (gegen das `wind_direction` der Datei: Median 0,27° Abweichung), die Reihenfolge der Arrays folgt der DDS, nicht der Anfrage. Vergleich mit rohem ICON-EU über Südnorwegen: Ost-Komponente im Mittel gleich, Korrelation 0,75. Details: `tools/wind/README.md`.
 - [ ] **Météo-France AROME** (Frankreich und Grenzraum, 0,01°/0,025°): Open Data von Météo-France, GRIB2. Prüfen: Zugang (Schlüssel?), Lizenz, Packung (der Decoder kennt bisher nur 5.0 und 5.42).
-- [ ] Umrechnung auf 0,02° (bilinear, `scipy.ndimage.map_coordinates`, wie beim Radar), Rangfolge, Rand jeder Quelle verwerfen wie bei D2.
-- [ ] Manifest: `sources` je Quelle mit Laufzeit; die Quellenangabe im Bedienfeld nennt alle verwendeten Modelle.
-- [ ] Rechenzeit und Verkehr je Quelle in `status.json`; je Quelle in der Admin-Karte abschaltbar.
+- [x] Umrechnung auf 0,02° (bilinear, `scipy.ndimage.map_coordinates`), Rangfolge ICON-D2 → MEPS → ICON-EU/global, Rand (10 Zellen Relaxationszone) und ICON-D2-Gebiet bei MEPS ausgespart.
+- [x] Manifest: `sources.meps`; die Quellenangabe im Bedienfeld nennt MEPS nur, wenn es im Lauf steckt (Credits-Seite: eigener Absatz `about.wind_meps_text`).
+- [ ] Rechenzeit und Verkehr je Quelle in `status.json` (bisher nur Summe, `meps_run` steht drin); MEPS ist in der Admin-Karte abschaltbar (`wind.meps`, Migration 079), AROME wird es auch.
 
 ## Entscheidungen (2026-10-18)
 

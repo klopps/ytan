@@ -12,6 +12,7 @@ and decisions: `windkarte.md` in the repo root.
 wind_job.py               cron entry point (lock, logging)
 ytanwind/grib2.py         GRIB2 reader (simple packing 5.0, CCSDS 5.42, bitmap) - no eccodes
 ytanwind/icon_global.py   ICON global's icosahedral grid -> 0.25 degree field (KD tree, index cached)
+ytanwind/meps.py          MET Norway MEPS (2.5 km) over OPeNDAP: Lambert grid -> 0.02 degree fields, wind rotated to east/north
 ytanwind/dwd.py           file names, run listings ("is this run complete?"), download
 ytanwind/blocks.py        levels L0/L1/L2, sampling, region mask, uint8 encoding
 ytanwind/job.py           one run: plan, hours in parallel, manifest, cleanup, status
@@ -29,6 +30,22 @@ with it. The model runs every 6 hours. Measured 2026-10-19 (72 h, Australia): 52
 30 s, 2.5 MB written; Canaries/Morocco (EU + global): 470 MB, 30 s, 5 MB. Compared with ICON-EU over
 Germany: correlation 0.98, bias 0.0 m/s, rmse 0.6 m/s (so the u/v are east/north components).
 If the global files fail for an hour and ICON-EU has the hour, the hour is shown without the fallback.
+
+**MET Norway MEPS** (`meps.py`, 2026-11-19, CC BY 4.0) is an extra L2 source around Scandinavia, the Baltic and
+the North Sea (`meps.AREA`), on by default (`wind.meps`, checkbox on /admin/wind, migration 079). Order at a
+point: ICON-D2, MEPS, ICON-EU (global). It is NetCDF behind THREDDS, not GRIB2, so the job asks OPeNDAP
+(`thredds.met.no/thredds/dodsC/mepslatest/meps_det_2_5km_YYYYMMDDTHHZ.ncml.dods?...`) for the cut-out of
+`x_wind_10m`/`y_wind_10m` (`wind_speed_of_gust`) one hour at a time and reads the DAP2 binary answer itself
+(`parse_dods()`, no netCDF/HDF5 library). A run exists in `mepslatest/catalog.xml` ~2.5 h after its run time
+(every 3 h, 67 hourly steps); the job takes the newest of the last three whose last step is written
+(`latest_complete_run()`). Traps: the arrays come in the DDS's order, not the order asked for, so they are read
+by name; the grid is Lambert conformal conic on a sphere (63.3 N twice, 15 E, R 6,371 km) whose x/y axes equal
+the projected metres to 0.1 m, so the job projects its own 0.02 degree points; the wind components are along the
+grid axes and rotated by n*(lon-15 E) to east/north (against the file's own `wind_direction`: median 0.27 degrees
+off); the outer 10 cells (relaxation zone) are not used, and where ICON-D2 runs its area is left out. A MEPS
+failure (catalog, outage, a step) only costs resolution: the hour is built from ICON. Measured 2026-11-19 (southern
+Norway, 6 h): ~1 MB of OPeNDAP data per hour for the cut-out, whole run 38 MB incl. ICON, 31 s; MEPS against raw
+ICON-EU over southern Norway: east component identical on average, correlation 0.75 (terrain detail).
 
 The area: the rain radar's regions by default, or - `wind.regions` in the same file, set on /admin/wind (up to 10
 rectangles anywhere on the globe, the whole world included - measured 570 MB download and 480 MB written for the world at 72 h, 4-5 minutes - migration 050) - the wind layer's own.

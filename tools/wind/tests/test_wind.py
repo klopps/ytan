@@ -6,18 +6,19 @@ import bz2
 import gzip
 import json
 import os
+import re
 import struct
 import sys
 import tempfile
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest import mock
 
 import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from ytanwind import blocks, dwd, grib2, icon_global  # noqa: E402
+from ytanwind import blocks, dwd, grib2, icon_global, meps  # noqa: E402
 import threading  # noqa: E402
 import time  # noqa: E402
 import wind_job  # noqa: E402
@@ -403,6 +404,12 @@ class JobTest(unittest.TestCase):
 
     NOW = datetime(2026, 10, 18, 21, 30, tzinfo=timezone.utc)
 
+    def setUp(self):
+        # no test may reach MET Norway: MEPS has its own tests (MepsJobTest)
+        patch = mock.patch.object(meps, "latest_complete_run", lambda *a, **k: None)
+        patch.start()
+        self.addCleanup(patch.stop)
+
     def fake_http(self, url: str, timeout: int = 60, tries: int = 3) -> bytes:
         self.requested.append(url)
         if "icon-eu" in url:
@@ -425,7 +432,7 @@ class JobTest(unittest.TestCase):
             info = job.run()
             self.assertEqual(job.read_status()["last_run"]["outcome"], "processed")
             m = job.read_manifest()
-            self.assertEqual(m["sources"], {"eu": "2026101821", "d2": "2026101821", "gl": None})
+            self.assertEqual(m["sources"], {"eu": "2026101821", "d2": "2026101821", "gl": None, "meps": None})
             self.assertTrue(all("icon_global" not in u for u in self.requested))  # inside Europe: no global files
             self.assertEqual(len(m["hours"]), 4)  # window 20:00-24:00, the run starts at 21: 21, 22, 23, 00
             self.assertEqual(m["channels"], 2)
@@ -479,7 +486,7 @@ class JobTest(unittest.TestCase):
             job = self.run_world(sydney, d)
             self.assertEqual(job.read_status()["last_run"]["outcome"], "processed")
             m = job.read_manifest()
-            self.assertEqual(m["sources"], {"eu": None, "d2": None, "gl": "2026101818"})
+            self.assertEqual(m["sources"], {"eu": None, "d2": None, "gl": "2026101818", "meps": None})
             self.assertEqual(len(m["hours"]), 5)  # the 18 UTC run: 20, 21, 22, 23, 00
             self.assertTrue(all("icon-eu" not in u and "icon-d2" not in u for u in self.requested))
             self.assertGreaterEqual(len(m["levels"]["L1"]["blocks"]), 1)
@@ -556,6 +563,164 @@ class JobTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d, mock.patch.object(dwd, "listed_steps", lambda m, r, v: set()):
             self.assertIsNone(Job(d, settings, now=self.NOW).run())
             self.assertEqual(Job(d, settings).read_status()["last_run"]["outcome"], "no_data")
+
+
+def make_dods(arrays: dict[str, np.ndarray]) -> bytes:
+    """A DAP2 binary response: DDS text, "Data:", XDR arrays in the order given."""
+    names = {np.dtype(np.float32): "Float32", np.dtype(np.float64): "Float64"}
+    dds = "Dataset {\n"
+    body = b""
+    for name, a in arrays.items():
+        dims = "".join(f"[d{k} = {n}]" for k, n in enumerate(a.shape))
+        dds += f"    {names[a.dtype]} {name}{dims};\n"
+        body += struct.pack(">II", a.size, a.size) + a.astype(a.dtype.newbyteorder(">")).tobytes()
+    return (dds + "} x.ncml;\n\nData:\n").encode() + body
+
+
+class MepsTest(unittest.TestCase):
+    def test_parse_dods_reads_by_name_and_keeps_shapes(self):
+        raw = make_dods({"time": np.arange(3, dtype=np.float64),
+                         "y": np.arange(4, dtype=np.float32),
+                         "wind": np.arange(6, dtype=np.float32).reshape(2, 3)})
+        got = meps.parse_dods(raw)
+        self.assertEqual(list(got), ["time", "y", "wind"])
+        self.assertEqual(got["wind"].shape, (2, 3))
+        self.assertEqual(float(got["wind"][1, 2]), 5.0)
+        self.assertEqual(float(got["time"][2]), 2.0)
+
+    def test_parse_dods_refuses_a_truncated_or_error_answer(self):
+        raw = make_dods({"a": np.arange(4, dtype=np.float32)})
+        with self.assertRaises(ValueError):
+            meps.parse_dods(raw[:-4])
+        with self.assertRaises(ValueError):
+            meps.parse_dods(b"Error { code = 500; }")
+
+    def test_projection_matches_the_files_axes(self):
+        # the projection's origin (63.3 N, 15 E) is x = y = 0; the cell grid of the real file (checked 2026-11-19
+        # against its 2D latitude/longitude arrays to 0.1 m) runs from x = -1,060,084 m, y = -1,332,517.9 m in 2.5 km steps
+        px, py = meps.project(np.array(63.3), np.array(15.0))
+        self.assertAlmostEqual(float(px), 0.0, delta=0.01)
+        self.assertAlmostEqual(float(py), 0.0, delta=0.01)
+        px, py = meps.project(np.array(63.3), np.array(25.0))   # 10 degrees east on the standard parallel
+        self.assertGreater(float(px), 4.0e5)
+        self.assertGreater(float(py), 0.0)                       # parallels are arcs around the pole: they rise to the east
+
+    def test_rotation_to_east_north(self):
+        lon = np.array([15.0, 25.0])
+        u, v = meps.to_east_north(np.array([6.0, 6.0]), np.array([0.0, 0.0]), lon)
+        self.assertAlmostEqual(float(u[0]), 6.0, places=5)   # on the central meridian grid north = north
+        self.assertAlmostEqual(float(v[0]), 0.0, places=5)
+        self.assertLess(float(v[1]), 0.0)                    # east of it grid north points to the west of north
+        self.assertAlmostEqual(float(np.hypot(u[1], v[1])), 6.0, places=5)
+
+    def test_window_covers_the_regions_and_leaves_out_the_edge_and_d2(self):
+        x = np.arange(949, dtype=np.float32) * 2500 - 1060084.0
+        y = np.arange(1069, dtype=np.float32) * 2500 - 1332517.9
+        box = {"south": 55.0, "west": 5.0, "north": 60.0, "east": 12.0}
+        w = meps.plan_window(x, y, box)
+        self.assertTrue(w.valid.any())
+        self.assertGreaterEqual(w.i1 - w.i0, 10)
+        self.assertEqual(w.fi.shape, w.valid.shape)
+        d2 = (55.0, 5.0, 57.0, 8.0)
+        w2 = meps.plan_window(x, y, box, d2)
+        self.assertLess(int(w2.valid.sum()), int(w.valid.sum()))
+        self.assertIsNone(meps.plan_window(x, y, {"south": -35.0, "west": 150.0, "north": -33.0, "east": 152.0}))
+        # a box on the domain's edge only keeps what is at least EDGE_CELLS inside
+        edge = meps.plan_window(x, y, {"south": 49.0, "west": -19.0, "north": 50.5, "east": -17.0})
+        self.assertTrue(edge is None or not edge.valid[0, 0])
+
+
+class MepsJobTest(unittest.TestCase):
+    """A whole run with MEPS as an extra source, against a fake THREDDS."""
+
+    NOW = datetime(2026, 11, 19, 13, 30, tzinfo=timezone.utc)
+    RUN = datetime(2026, 11, 19, 9, tzinfo=timezone.utc)
+    REGION = [{"name": "t", "south": 60.0, "west": 8.0, "north": 62.0, "east": 12.0}]  # south Norway: north of ICON-D2
+
+    def setUp(self):
+        self.fetched = []
+        self.x = np.arange(949, dtype=np.float32) * 2500 - 1060084.0
+        self.y = np.arange(1069, dtype=np.float32) * 2500 - 1332517.9
+        self.times = np.array([(self.RUN + timedelta(hours=k) - datetime(1970, 1, 1, tzinfo=timezone.utc)).total_seconds()
+                               for k in range(67)])
+
+    def fake_fetch(self, run, constraint, stats=None):
+        self.fetched.append(constraint)
+        if constraint == "x,y,time":
+            return {"x": self.x, "y": self.y, "time": self.times}
+        if constraint == "x,y":
+            return {"x": self.x, "y": self.y}
+        if constraint.startswith("x_wind_10m.x_wind_10m[66]"):
+            return {"x_wind_10m": np.zeros((1, 1, 1, 1), np.float32)}
+        out = {}
+        for part in constraint.split(","):
+            name = part.split(".")[0]
+            m = re.search(r"\[(\d+):1:(\d+)\]\[(\d+):1:(\d+)\]$", part)
+            nj, ni = int(m.group(2)) - int(m.group(1)) + 1, int(m.group(4)) - int(m.group(3)) + 1
+            out[name] = np.full((nj, ni), {"x_wind_10m": 6.0, "y_wind_10m": 0.0}.get(name, 9.0), np.float32)
+        return out
+
+    def run_job(self, directory: str, **kw) -> Job:
+        steps = set(range(0, 49))
+        settings = WindSettings(regions=self.REGION, horizon_hours=3, workers=1, **kw)
+        with mock.patch.object(dwd, "http_get", JobTest.fake_http.__get__(self)), \
+                mock.patch.object(dwd, "listed_steps", lambda m, r, v: steps), \
+                mock.patch.object(meps, "listed_runs", lambda: [self.RUN]), \
+                mock.patch.object(meps, "fetch", self.fake_fetch):
+            job = Job(directory, settings, now=self.NOW)
+            job.run()
+        return job
+
+    requested: list
+
+    def test_meps_fills_l2_where_icon_d2_has_no_data(self):
+        self.requested = []
+        with tempfile.TemporaryDirectory() as d:
+            job = self.run_job(d)
+            m = job.read_manifest()
+            self.assertEqual(m["sources"]["meps"], "2026111909")
+            self.assertIn("meps", m["key"])
+            self.assertGreaterEqual(len(m["levels"]["L2"]["blocks"]), 1)  # without MEPS there would be none here
+            run_dir = os.path.join(d, "runs", m["run"])
+            block = m["levels"]["L2"]["blocks"][0]
+            raw = np.frombuffer(gzip.decompress(
+                open(os.path.join(run_dir, "L2", "000", block + ".bin.gz"), "rb").read()), np.uint8)
+            u = raw.reshape(blocks.SIZE, blocks.SIZE, 2)[..., 0]
+            self.assertTrue((u != blocks.NODATA).any())
+            self.assertEqual(job.read_status()["last_processing"]["meps_run"], "2026111909")
+
+    def test_meps_switch_off_does_not_ask_met_norway(self):
+        self.requested = []
+        with tempfile.TemporaryDirectory() as d:
+            job = self.run_job(d, meps=False)
+            self.assertIsNone(job.read_manifest()["sources"]["meps"])
+            self.assertEqual(job.read_manifest()["levels"]["L2"]["blocks"], [])
+        self.assertEqual(self.fetched, [])
+
+    def test_a_meps_outage_only_costs_resolution(self):
+        self.requested = []
+        steps = set(range(0, 49))
+        settings = WindSettings(regions=self.REGION, horizon_hours=3, workers=1)
+
+        def down(*a, **k):
+            raise OSError("500 datasetTracker_2")
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(dwd, "http_get", JobTest.fake_http.__get__(self)), \
+                mock.patch.object(dwd, "listed_steps", lambda m, r, v: steps), \
+                mock.patch.object(meps, "listed_runs", down):
+            job = Job(d, settings, now=self.NOW)
+            job.run()
+            self.assertEqual(job.read_status()["last_run"]["outcome"], "processed")
+            self.assertIsNone(job.read_manifest()["sources"]["meps"])
+
+    def test_a_run_whose_last_step_is_not_written_is_skipped(self):
+        def unfinished(run, constraint, stats=None):
+            if constraint.startswith("x_wind_10m.x_wind_10m[66]"):
+                return {"x_wind_10m": np.full((1, 1, 1, 1), 9.96921e36, np.float32)}
+            return self.fake_fetch(run, constraint, stats)
+        with mock.patch.object(meps, "listed_runs", lambda: [self.RUN]), mock.patch.object(meps, "fetch", unfinished):
+            first = self.NOW - timedelta(hours=1)
+            self.assertIsNone(meps.latest_complete_run(self.NOW, first, first + timedelta(hours=4)))
 
 
 if __name__ == "__main__":

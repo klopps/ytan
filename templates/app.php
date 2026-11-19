@@ -590,7 +590,7 @@
       <div id="windLegend" class="radar-legend"></div>
       <div class="radar-controls-footer">
         <span id="windControlsStatus" class="radar-controls-status"></span>
-        <a class="radar-controls-attribution" href="https://www.dwd.de/DE/leistungen/opendata/opendata.html" target="_blank" rel="noopener"><?= $t('wind.attribution') ?></a>
+        <span><a class="radar-controls-attribution" href="https://www.dwd.de/DE/leistungen/opendata/opendata.html" target="_blank" rel="noopener"><?= $t('wind.attribution') ?></a><a id="windAttributionMeps" class="radar-controls-attribution" href="https://www.met.no/en/free-meteorological-data" target="_blank" rel="noopener" style="display:none;"> &middot; <?= $t('wind.attribution_meps') ?></a></span>
       </div>
     </div>
 

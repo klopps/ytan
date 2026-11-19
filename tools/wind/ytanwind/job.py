@@ -27,7 +27,7 @@ from datetime import datetime, timedelta, timezone
 
 import numpy as np
 
-from . import blocks, dwd, grib2, icon_global
+from . import blocks, dwd, grib2, icon_global, meps
 from .settings import WindSettings
 from ytanjob import directory_size, write_json_atomic  # tools/ytanjob.py (path set in __init__.py)
 
@@ -71,6 +71,7 @@ class Hour:
     eu: int | None = None   # forecast hour of the model's run, None = this model has no data for the hour
     d2: int | None = None
     gl: int | None = None
+    meps: int | None = None  # index into the MEPS run's time axis (hourly from the run time)
 
 
 @dataclass
@@ -79,6 +80,7 @@ class Plan:
     d2_run: datetime | None
     gl_run: datetime | None
     hours: list[Hour]
+    meps_run: datetime | None = None
 
 
 class Job:
@@ -91,6 +93,7 @@ class Job:
         os.makedirs(self.runs_dir, exist_ok=True)
         self.stats = {"bytes_downloaded": 0, "files": 0}
         self.gl_index = None  # regridding index of ICON global, loaded when a run needs it
+        self.meps_source: meps.Source | None = None  # set by _run when the plan has a MEPS run
 
     # -- planning ---------------------------------------------------------
 
@@ -124,11 +127,20 @@ class Job:
         timeline = [(eu_run + timedelta(hours=s)) for s in eu_steps] if eu_run else                    [(gl_run + timedelta(hours=s)) for s in gl_steps] if gl_run else []
         if not timeline:
             return None
+        meps_run, meps_steps = None, []
+        if self.s.meps and intersects(meps.AREA, regions):
+            found = meps.latest_complete_run(self.now, first, last, interval)
+            if found is not None:
+                meps_run, meps_steps = found
         d2_by_valid = {d2_run + timedelta(hours=s): s for s in d2_steps} if d2_run else {}
         gl_by_valid = {gl_run + timedelta(hours=s): s for s in gl_steps} if gl_run else {}
         eu_by_valid = {eu_run + timedelta(hours=s): s for s in eu_steps} if eu_run else {}
-        hours = [Hour(v, eu_by_valid.get(v), d2_by_valid.get(v), gl_by_valid.get(v)) for v in timeline]
-        return Plan(eu_run, d2_run, gl_run, hours)
+        meps_by_valid = {meps_run + timedelta(hours=s): s for s in meps_steps} if meps_run else {}
+        hours = [Hour(v, eu_by_valid.get(v), d2_by_valid.get(v), gl_by_valid.get(v), meps_by_valid.get(v))
+                 for v in timeline]
+        if not any(h.meps is not None for h in hours):
+            meps_run = None
+        return Plan(eu_run, d2_run, gl_run, hours, meps_run)
 
     # -- one hour ---------------------------------------------------------
 
@@ -160,6 +172,12 @@ class Job:
                 d2 = [blocks.trim_d2(f) for f in self.fetch_channels(dwd.ICON_D2, plan.d2_run, hour.d2)]
             except Exception as e:  # a missing fine field only costs resolution for this hour
                 log.warning("ICON-D2 step %d unusable (%s), using ICON-EU for this hour", hour.d2, e)
+        mp = None
+        if hour.meps is not None and self.meps_source is not None:
+            try:
+                mp = self.meps_source.fields(hour.meps, self.s.gusts)
+            except Exception as e:
+                log.warning("MEPS step %d unusable (%s), using ICON for this hour", hour.meps, e)
         gl = None
         if hour.gl is not None and plan.gl_run is not None:
             try:
@@ -173,7 +191,9 @@ class Job:
         channels = len((eu or gl))
         # per channel the fields in order of preference: the finer model wins where it has a value
         l1_sources = [[f for f in ((eu[k] if eu else None), (gl[k] if gl else None)) if f is not None] for k in range(channels)]
-        l2_sources = [[f for f in ((d2[k] if d2 else None),) if f is not None] + l1_sources[k] for k in range(channels)]
+        # L2: ICON-D2, then MEPS (its window leaves out what D2 covers anyway), then the L1 models
+        l2_sources = [[f for f in ((d2[k] if d2 else None), (mp[k] if mp else None)) if f is not None] + l1_sources[k]
+                      for k in range(channels)]
         regions = self.s.padded_regions()
         written = 0
         meta = None
@@ -231,6 +251,7 @@ class Job:
         key = {"eu": f"{plan.eu_run:%Y%m%d%H}" if plan.eu_run else None,
                "d2": f"{plan.d2_run:%Y%m%d%H}" if plan.d2_run else None,
                "gl": f"{plan.gl_run:%Y%m%d%H}" if plan.gl_run else None,
+               "meps": f"{plan.meps_run:%Y%m%d%H}" if plan.meps_run else None,
                "signature": self.s.signature()}
         # The hours are not part of the key: the window moves on every full hour,
         # which made the job redo the whole area (~600 MB download) hourly without
@@ -238,7 +259,7 @@ class Job:
         # the rain radar's ticks). The app shows the current hour of the manifest
         # itself; until the next model run the horizon only shrinks by its interval.
         if not self.force and manifest and manifest.get("key") == key:
-            log.info("runs unchanged (EU %s, D2 %s, global %s)", key["eu"], key["d2"], key["gl"])
+            log.info("runs unchanged (EU %s, D2 %s, MEPS %s, global %s)", key["eu"], key["d2"], key["meps"], key["gl"])
             self.cleanup(manifest)
             return "unchanged", None
 
@@ -254,8 +275,19 @@ class Job:
             self.gl_index = icon_global.load_index(self.storage)
         l1 = blocks.block_points(blocks.L1, WORLD_AREA if plan.gl_run else EU_AREA, self.s.padded_regions())
         l2 = blocks.block_points(blocks.L2, D2_AREA, self.s.padded_regions()) if plan.d2_run else []
-        log.info("EU %s, D2 %s, global %s, %d hours, %d L1 and %d L2 candidate blocks",
-                 key["eu"], key["d2"], key["gl"], len(plan.hours), len(l1), len(l2))
+        self.meps_source = None
+        if plan.meps_run:
+            # MEPS leaves out what ICON-D2 covers (D2 wins there anyway) - only when D2 is really in this run
+            exclude = D2_AREA if plan.d2_run else None
+            src = meps.Source(plan.meps_run, self.s.padded_regions()[0], exclude, self.stats)
+            cov = src.coverage()
+            if cov is not None:
+                self.meps_source = src
+                box = (cov.lat0, cov.lon0, cov.lat1, cov.lon0 + (cov.values.shape[1] - 1) * cov.dlon)
+                l2 = sorted(set(l2) | set(blocks.block_points(blocks.L2, box, self.s.padded_regions())))
+        log.info("EU %s, D2 %s, MEPS %s, global %s, %d hours, %d L1 and %d L2 candidate blocks",
+                 key["eu"], key["d2"], key["meps"] if self.meps_source else None, key["gl"],
+                 len(plan.hours), len(l1), len(l2))
 
         def task(item):
             i, hour = item
@@ -273,7 +305,7 @@ class Job:
                   "L2": {"res": blocks.L2.deg, "size": blocks.SIZE, "blocks": self.present(tmp, "L2", l2)}}
         new_manifest = {
             "run": run_id, "generated": iso(self.now), "key": key,
-            "sources": {"eu": key["eu"], "d2": key["d2"], "gl": key["gl"]},
+            "sources": {"eu": key["eu"], "d2": key["d2"], "gl": key["gl"], "meps": key["meps"] if self.meps_source else None},
             "hours": [iso(h.valid) for h in plan.hours],
             "scale": {"uv": list(blocks.UV_RANGE), "gust": list(blocks.GUST_RANGE), "nodata": blocks.NODATA},
             "channels": self.s.channels, "levels": levels,
@@ -286,7 +318,8 @@ class Job:
         self.write_manifest(new_manifest)
         self.cleanup(new_manifest)
         elapsed = time.monotonic() - t0
-        info = {"eu_run": key["eu"], "d2_run": key["d2"], "gl_run": key["gl"], "hours": len(plan.hours),
+        info = {"eu_run": key["eu"], "d2_run": key["d2"], "gl_run": key["gl"],
+                "meps_run": key["meps"] if self.meps_source else None, "hours": len(plan.hours),
                 "seconds": round(elapsed, 1), "bytes_downloaded": self.stats["bytes_downloaded"],
                 "files_downloaded": self.stats["files"], "bytes_written": sum(r["bytes"] for r in results),
                 "regions": [r.get("name", "") for r in self.s.regions]}

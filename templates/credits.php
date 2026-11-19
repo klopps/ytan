@@ -38,6 +38,10 @@
     <p><?= $t('about.wind_text', [
         'source_link' => '<a href="https://www.dwd.de/DE/leistungen/opendata/opendata.html" target="_blank" rel="noopener">' . htmlspecialchars($t('about.wind_source_name')) . '</a>',
     ]) ?></p>
+    <p><?= $t('about.wind_meps_text', [
+        'source_link' => '<a href="https://www.met.no/en/free-meteorological-data" target="_blank" rel="noopener">Norwegian Meteorological Institute (MET Norway)</a>',
+        'license_link' => '<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>',
+    ]) ?></p>
     <h2><?= $t('about.tide_title') ?></h2>
     <?php /* renamed from about.tide_text 2026-11-16: merge-i18n keeps the server's value of an existing key, so a changed source list only reaches prod under a new key */ ?>
     <p><?= $t('about.tide_sources_text', [
