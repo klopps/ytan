@@ -1031,15 +1031,18 @@ function initMap() {
         saveSettings();
     });
 
-    // POI markers are only shown (and built) around the visible area
-    // (applyPoiTypeVisibility(), poi.js) - refresh after every pan/zoom once
-    // zoomed in past the clustering threshold.
+    // POI markers and cluster bubbles are only shown (and built) around the
+    // visible area (applyPoiTypeVisibility()/showPoiClusters(), poi.js) -
+    // refresh after every pan/zoom.
     map.addListener('idle', () => {
-        if (poiClusteringPending) {
+        if (typeof pois === 'undefined' || !pois.length) {
+            poiClusteringPending = false;
+            return;
+        }
+        if (poiClusteringPending || map.getZoom() < POI_CLUSTER_ZOOM_THRESHOLD) {
             poiClusteringPending = false;
             updatePoiClustering();
-        }
-        if (map.getZoom() >= POI_CLUSTER_ZOOM_THRESHOLD && typeof pois !== 'undefined' && pois.length) {
+        } else {
             applyPoiTypeVisibility();
         }
     });

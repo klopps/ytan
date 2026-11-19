@@ -219,12 +219,10 @@ function updatePoiClustering() {
         return;
     }
 
-    clearPoiClusterMarkers();
-
     if (map.getZoom() < POI_CLUSTER_ZOOM_THRESHOLD) {
-        setMapOnAllMarkers(null);
         showPoiClusters(projection);
     } else {
+        clearPoiClusterMarkers();
         applyPoiTypeVisibility();
     }
 }
@@ -397,17 +395,60 @@ function showPoiClusters(projection) {
         group.maxLng = Math.max(group.maxLng, bucket.maxLng);
     });
 
+    // Only the groups around the visible area get a marker (2026-11-19,
+    // todo.md "Long Tasks beim Laden"): the grouping above is cheap, but
+    // every bubble/POI marker costs - at zoom 7 on the dev data 116 bubbles
+    // and 51 POI markers were built (~230 ms of 250 ms, 4x throttled) while
+    // 14 bubbles were on screen. The grid is fixed in world pixels, so a
+    // group doesn't change when the map pans - the 'idle' handler
+    // (map-core.js) re-runs this below the threshold, and bubbles that stay
+    // are kept (same zoom, position and count), not rebuilt.
+    var area = paddedMapBounds(0.5);
+    var zoom = map.getZoom();
+    var keepBubbles = {};
+    var showPoiIds = {};
     Object.keys(groups).forEach(function (key) {
         var group = groups[key];
+        var lat = group.sumLat / group.count;
+        var lng = group.sumLng / group.count;
+        if (area === null || !area.contains({ lat: lat, lng: lng })) {
+            return;
+        }
 
         // A group representing just one POI is shown as that POI's own
         // marker (with its actual icon and click behavior) instead of a
         // count bubble - a "cluster of one" isn't a cluster.
         if (group.count === 1 && group.soloPoiId !== null && markers[group.soloPoiId]) {
-            markers[group.soloPoiId].setMap(map);
+            showPoiIds[group.soloPoiId] = true;
             return;
         }
 
+        var bubbleKey = zoom + '|' + lat.toFixed(6) + '|' + lng.toFixed(6) + '|' + group.count;
+        keepBubbles[bubbleKey] = group;
+    });
+
+    // POI markers: only touch the ones whose state changes
+    markers.forEach(function (marker, id) {
+        if (!marker) {
+            return;
+        }
+        var target = (showPoiIds[id] && id !== poiHiddenForEditId) ? map : null;
+        if ((marker.getMap() || null) !== target) {
+            marker.setMap(target);
+        }
+    });
+
+    // Bubbles: drop the ones no longer wanted, add the missing ones
+    poiClusterMarkers = poiClusterMarkers.filter(function (marker) {
+        if (keepBubbles[marker.clusterKey]) {
+            delete keepBubbles[marker.clusterKey];
+            return true;
+        }
+        marker.setMap(null);
+        return false;
+    });
+    Object.keys(keepBubbles).forEach(function (bubbleKey) {
+        var group = keepBubbles[bubbleKey];
         var bounds = new google.maps.LatLngBounds(
             new google.maps.LatLng(group.minLat, group.minLng),
             new google.maps.LatLng(group.maxLat, group.maxLng)
@@ -416,7 +457,7 @@ function showPoiClusters(projection) {
             new google.maps.LatLng(group.sumLat / group.count, group.sumLng / group.count),
             group.count,
             bounds
-        );
+        ).clusterKey = bubbleKey;
     });
 }
 
@@ -529,6 +570,7 @@ function addPoiClusterMarker(position, count, bounds) {
     });
 
     poiClusterMarkers.push(marker);
+    return marker;
 }
 
 function clearPoiClusterMarkers() {

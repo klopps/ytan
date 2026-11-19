@@ -413,15 +413,30 @@ function smoothRoutePoints(
     var phantomEnd = mirrorPoint(deduped[deduped.length - 1], deduped[deduped.length - 2]);
     var extended = [phantomStart].concat(deduped, [phantomEnd]);
 
+    // Distances in a flat local metric instead of getDistance()'s haversine
+    // (2026-11-19, todo.md "Long Tasks beim Laden"): one cos() per route
+    // instead of sin/cos/atan2 for every segment and every added point. Over
+    // the few metres to kilometres of a route segment the difference is far
+    // below a metre - and only the curve's knot spacing and the deviation cap
+    // use these, never a displayed length. Each segment's length is computed
+    // once (it is the next segment's p0-p1 distance too).
+    var metric = flatMetric(deduped);
+    var lengths = new Array(extended.length - 1);
+    var knots = new Array(extended.length - 1);
+    for (var j = 0; j < extended.length - 1; j++) {
+        lengths[j] = metric(extended[j], extended[j + 1]);
+        knots[j] = alpha === 0.5 ? Math.sqrt(lengths[j]) : Math.pow(lengths[j], alpha);
+    }
+
     var smoothed = [];
     for (var i = 0; i < extended.length - 3; i++) {
         var p0 = extended[i], p1 = extended[i + 1], p2 = extended[i + 2], p3 = extended[i + 3];
 
-        var segmentLength = getDistance(p1, p2);
+        var segmentLength = lengths[i + 1];
         var t0 = 0;
-        var t1 = t0 + Math.pow(getDistance(p0, p1), alpha);
-        var t2 = t1 + Math.pow(segmentLength, alpha);
-        var t3 = t2 + Math.pow(getDistance(p2, p3), alpha);
+        var t1 = t0 + knots[i];
+        var t2 = t1 + knots[i + 1];
+        var t3 = t2 + knots[i + 2];
 
         var pieces = smoothingPieces(segmentLength, segmentsPerPoint);
         for (var s = 0; s < pieces; s++) {
@@ -433,7 +448,7 @@ function smoothRoutePoints(
                 // die Position auf der direkten Geraden zwischen ihnen, an
                 // derselben Stelle t wie curvePoint auf der Kurve.
                 var straightPoint = lerpPoint(p1, p2, t1, t2, t);
-                curvePoint = clampDeviation(curvePoint, straightPoint, maxDeviationMeters);
+                curvePoint = clampDeviation(curvePoint, straightPoint, maxDeviationMeters, metric);
             }
             smoothed.push(curvePoint);
         }
@@ -457,6 +472,26 @@ function smoothingPieces(segmentLength, segmentsPerPoint) {
     return Math.max(1, Math.min(segmentsPerPoint, Math.ceil(segmentLength / ROUTE_SMOOTHING_METERS_PER_PIECE)));
 }
 
+/**
+ * Distance function (metres) in a flat projection around the points' middle
+ * latitude - same earth radius as getDistance(). Good to well below a metre
+ * for segments up to a few kilometres away from the poles; meant for local
+ * geometry like the smoothing, not for lengths shown to the user.
+ *
+ * @param {Array<{lat:number,lng:number}>} points
+ * @returns {function({lat:number,lng:number}, {lat:number,lng:number}): number}
+ */
+function flatMetric(points) {
+    var metersPerDegree = 6378137 * Math.PI / 180;
+    var mid = points[Math.floor(points.length / 2)];
+    var kx = metersPerDegree * Math.cos(rad(mid.lat));
+    return function (p, q) {
+        var dx = (q.lng - p.lng) * kx;
+        var dy = (q.lat - p.lat) * metersPerDegree;
+        return Math.sqrt(dx * dx + dy * dy);
+    };
+}
+
 function mirrorPoint(p, neighbor) {
     return { lat: 2 * p.lat - neighbor.lat, lng: 2 * p.lng - neighbor.lng };
 }
@@ -466,8 +501,8 @@ function mirrorPoint(p, neighbor) {
 // harten Sprungs zurück auf die Gerade, da nur der Teil oberhalb der
 // Grenze abgeschnitten wird. Wird nur aufgerufen, wenn maxDeviationMeters
 // endlich ist (Infinity/Default = kein Aufruf, kein Zusatzaufwand).
-function clampDeviation(curvePoint, straightPoint, maxMeters) {
-    var deviation = getDistance(curvePoint, straightPoint);
+function clampDeviation(curvePoint, straightPoint, maxMeters, metric) {
+    var deviation = (metric || getDistance)(curvePoint, straightPoint);
     if (deviation <= maxMeters) {
         return curvePoint;
     }
