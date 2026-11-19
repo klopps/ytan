@@ -57,6 +57,9 @@ function windModelRunsLabel(proc) {
     if (proc.meps_run) {
         parts.push('MEPS ' + windRunLabel(proc.meps_run));
     }
+    if (proc.arome_run) {
+        parts.push('AROME ' + windRunLabel(proc.arome_run));
+    }
     if (proc.gl_run) {
         parts.push('ICON global ' + windRunLabel(proc.gl_run));
     }
@@ -189,6 +192,7 @@ function saveWindSettings() {
         fine: document.getElementById('windFine').checked,
         world: document.getElementById('windWorld').checked,
         meps: document.getElementById('windMeps').checked,
+        arome: document.getElementById('windArome').checked,
         regions: windRegionsForSave()
     };
     btn.disabled = true;

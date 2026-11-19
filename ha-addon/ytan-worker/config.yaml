@@ -20,6 +20,8 @@ options:
   workers: 2
   tick_minutes: 5
   host_name: homeassistant
+  # Météo-France AROME API key (wind job, tools/wind/ytanwind/arome.py); empty = the job goes on without AROME
+  arome_api_key: ""
 schema:
   server_host: str
   server_user: str
@@ -27,6 +29,7 @@ schema:
   workers: int(1,8)
   tick_minutes: int(1,60)
   host_name: str
+  arome_api_key: password?
 # the job output (several GB, recomputed at any time) stays out of Home Assistant's backups;
 # the SSH key and known_hosts in /data/ssh are kept
 backup_exclude:

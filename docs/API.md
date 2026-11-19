@@ -511,7 +511,7 @@ off (the client then says "no wind data").
 {
   "run": "202610182145",
   "generated": "2026-10-18T21:45Z",
-  "sources": {"eu": "2026101818", "d2": "2026101818", "gl": null, "meps": null},
+  "sources": {"eu": "2026101818", "d2": "2026101818", "gl": null, "meps": null, "arome": null},
   "hours": ["2026-10-18T20:00Z", "2026-10-18T21:00Z", "..."],
   "scale": {"uv": [-40, 40], "gust": [0, 60], "nodata": 255},
   "channels": 2,
@@ -524,8 +524,8 @@ off (the client then says "no wind data").
 ```
 
 `sources` are the model runs (YYYYMMDDHH, UTC; `d2` null without the fine
-grid, `gl` = ICON global, `meps` = MET Norway MEPS, null when that model is not
-part of the run - the client credits MEPS only when it is), `hours` the valid times (the index is the `{hour}` below; ICON-EU
+grid, `gl` = ICON global, `meps` = MET Norway MEPS, `arome` = Météo-France AROME, null
+when that model is not part of the run - the client credits MEPS and AROME only when they are), `hours` the valid times (the index is the `{hour}` below; ICON-EU
 beyond +78 h is every 3 hours, the hours in between are left out), `channels`
 2 (u, v) or 3 (+ gust). All levels share one global grid with origin
 -90 / -180: block `bx_by` of a level covers longitude `-180 + bx*128*res`

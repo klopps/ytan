@@ -67,6 +67,10 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
             <label class="form-check-label" for="windFine"><?= $t('admin.wind.fine') ?></label>
         </div>
         <div class="form-check mb-1">
+            <input class="form-check-input" type="checkbox" id="windArome" <?= $windSettings['arome'] ? 'checked' : '' ?>>
+            <label class="form-check-label" for="windArome"><?= $t('admin.wind.arome') ?></label>
+        </div>
+        <div class="form-check mb-1">
             <input class="form-check-input" type="checkbox" id="windMeps" <?= $windSettings['meps'] ? 'checked' : '' ?>>
             <label class="form-check-label" for="windMeps"><?= $t('admin.wind.meps') ?></label>
         </div>

@@ -13,6 +13,7 @@ wind_job.py               cron entry point (lock, logging)
 ytanwind/grib2.py         GRIB2 reader (simple packing 5.0, CCSDS 5.42, bitmap) - no eccodes
 ytanwind/icon_global.py   ICON global's icosahedral grid -> 0.25 degree field (KD tree, index cached)
 ytanwind/meps.py          MET Norway MEPS (2.5 km) over OPeNDAP: Lambert grid -> 0.02 degree fields, wind rotated to east/north
+ytanwind/arome.py         Météo-France AROME (2.5 km) over the API portal's WCS: one GRIB2 slice per hour and field, API key
 ytanwind/dwd.py           file names, run listings ("is this run complete?"), download
 ytanwind/blocks.py        levels L0/L1/L2, sampling, region mask, uint8 encoding
 ytanwind/job.py           one run: plan, hours in parallel, manifest, cleanup, status
@@ -46,6 +47,24 @@ off); the outer 10 cells (relaxation zone) are not used, and where ICON-D2 runs 
 failure (catalog, outage, a step) only costs resolution: the hour is built from ICON. Measured 2026-11-19 (southern
 Norway, 6 h): ~1 MB of OPeNDAP data per hour for the cut-out, whole run 38 MB incl. ICON, 31 s; MEPS against raw
 ICON-EU over southern Norway: east component identical on average, correlation 0.75 (terrain detail).
+
+**Météo-France AROME** (`arome.py`, 2026-11-19, Licence Ouverte 2.0) is the third L2 source (order ICON-D2, MEPS, AROME,
+ICON-EU/global), over France and its surroundings (`arome.AREA`, 37.5-55.4 N, 12 W-16 E), on by default (`wind.arome`,
+checkbox on /admin/wind, migration 080). It needs an API key from `portail-api.meteofrance.fr` (token type "API Key",
+chosen lifetime): `AROME_API_KEY` in the environment or the repository's `.env`; on the YTAN worker (Home Assistant) the
+add-on option `arome_api_key` (run.sh exports it). Without a key, or with an expired one (HTTP 401), the job goes on
+without AROME (one log line). The portal's WCS service `MF-NWP-HIGHRES-AROME-0025-FRANCE-WCS`: a coverage is one
+parameter of ONE run (`U_COMPONENT_OF_WIND__SPECIFIC_HEIGHT_LEVEL_ABOVE_GROUND___2026-11-19T09.00.00Z`, V, and the gust
+`WIND_SPEED_GUST__...`), a run every 3 hours with 51 hourly steps; `GetCoverage` cuts `lat(a,b)`/`long(a,b)` and
+returns GRIB2 on the regular lat/lon grid (simple packing with 11 bits - `grib2.py` reads any bit width since this
+source), but only 2D slices: one `time(...)` (no quotes) and `height(10)` per request, a time range is refused - so
+one request per hour and field. `GetCapabilities` is 2.9 MB and is never used: a run's existence is `DescribeCoverage`
+(404 `NoSuchCoverage` = not there yet), its last step one 185-byte request. The gust starts one hour after the run
+(step 0: the mean wind). Rate limit: 100 requests per minute for this account - requests are spaced `MIN_GAP_S` = 0.75 s
+apart across all threads, HTTP 429 waits and retries. The grid is plain lat/lon, so u/v are east/north already; the
+outer 0.2 degrees of the domain and ICON-D2's area are left out. `status.json`'s `last_processing.traffic` lists bytes
+and requests per extra source. Measured 2026-11-19 (Brittany, 6 h with gusts): 26 AROME requests, 1.3 MB, the whole run
+23 s; against raw ICON-EU: correlation 0.93, direction median 4.6 degrees off, gusts above the mean wind everywhere.
 
 The area: the rain radar's regions by default, or - `wind.regions` in the same file, set on /admin/wind (up to 10
 rectangles anywhere on the globe, the whole world included - measured 570 MB download and 480 MB written for the world at 72 h, 4-5 minutes - migration 050) - the wind layer's own.

@@ -11,6 +11,9 @@ SERVER_STORAGE=$(opt server_storage)
 WORKERS=$(opt workers)
 TICK_MINUTES=$(opt tick_minutes)
 HOST_NAME=$(opt host_name)
+# optional (an older options file has none): the AROME key the wind job reads from its environment
+AROME_API_KEY=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1])).get(sys.argv[2]) or "")' "$OPTIONS" arome_api_key)
+export AROME_API_KEY
 
 # Add-on log format (same rule as every YTAN log): local "YYYY-MM-DD hh:mm:ss", then
 # [source] - addon = this script, worker/wind/radar = the line comes from that log file.

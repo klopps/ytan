@@ -76,9 +76,17 @@ def _unpack(s5: bytes, s7: bytes, max_points: int) -> np.ndarray:
     if nbits == 0:
         x = np.zeros(npts, np.float32)
     elif tpl == 0:
-        if nbits != 16:
+        if nbits == 16:
+            x = np.frombuffer(data, ">u2", npts).astype(np.float32)
+        elif 0 < nbits <= 32:
+            # any bit width (Météo-France's AROME uses 11): the values are packed back to back, MSB first
+            if len(data) * 8 < npts * nbits:
+                raise Grib2Error("simple packing: data section too short")
+            bits = np.unpackbits(np.frombuffer(data, np.uint8), count=npts * nbits).reshape(npts, nbits)
+            weights = np.uint64(1) << np.arange(nbits - 1, -1, -1, dtype=np.uint64)
+            x = bits.astype(np.uint64).dot(weights).astype(np.float32)
+        else:
             raise Grib2Error("simple packing with %d bits not supported" % nbits)
-        x = np.frombuffer(data, ">u2", npts).astype(np.float32)
     elif tpl == 42:
         if nbits > 16:
             raise Grib2Error("CCSDS packing with %d bits not supported" % nbits)

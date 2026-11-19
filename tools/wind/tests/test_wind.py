@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import bz2
 import gzip
+import io
 import json
 import os
 import re
 import struct
+import urllib.error
+import urllib.parse
 import sys
 import tempfile
 import unittest
@@ -18,7 +21,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from ytanwind import blocks, dwd, grib2, icon_global, meps  # noqa: E402
+from ytanwind import arome, blocks, dwd, grib2, icon_global, meps  # noqa: E402
 import threading  # noqa: E402
 import time  # noqa: E402
 import wind_job  # noqa: E402
@@ -103,6 +106,35 @@ class Grib2Test(unittest.TestCase):
 
     def test_ccsds_packing(self):
         self.check("ccsds", 64)
+
+    def test_simple_packing_with_other_bit_widths(self):
+        # Météo-France's AROME packs with 11 bits: take a 16 bit message's sections and swap in values of N bits
+        sec = grib2._sections(make_grib(ramp(30, 40), 43.18, -3.94, 0.02, "simple"))
+
+        def message(s5: bytes, s7: bytes) -> bytes:
+            body = sec[1] + sec[3] + s5 + sec[6] + s7 + b"7777"
+            return b"GRIB" + b"\x00\x00\x00\x02" + struct.pack(">Q", 16 + len(body)) + body
+
+        rng = np.random.default_rng(1)
+        for nbits in (1, 8, 11, 13, 24, 32):
+            x = rng.integers(0, 1 << nbits, 30 * 40, dtype=np.uint64)
+            packed = np.packbits(((x[:, None] >> np.arange(nbits - 1, -1, -1, dtype=np.uint64)) & 1)
+                                 .astype(np.uint8)).tobytes()
+            s5 = bytearray(sec[5])
+            s5[11:15] = struct.pack(">f", -3.0)        # reference value
+            s5[15:19] = struct.pack(">HH", 0x8000 | 3, 0)  # binary scale -3 (steps of 0.125), decimal scale 0
+            s5[19] = nbits
+            out = grib2.decode(message(bytes(s5), struct.pack(">IB", 5 + len(packed), 7) + packed))
+            want = (-3.0 + x.astype(np.float64) * 0.125).reshape(30, 40)
+            # float32 holds 24 bits: wider values are only exact up to its rounding
+            np.testing.assert_allclose(out.values, want, rtol=1e-6, atol=1e-6)
+        s5 = bytearray(sec[5])
+        s5[19] = 40
+        with self.assertRaises(grib2.Grib2Error):
+            grib2.decode(message(bytes(s5), sec[7]))
+        s5[19] = 11   # data section far too short for 1200 values of 11 bits
+        with self.assertRaises(grib2.Grib2Error):
+            grib2.decode(message(bytes(s5), struct.pack(">IB", 7, 7) + b"\x00\x00"))
 
     def test_north_to_south_is_flipped(self):
         self.check("simple", 0)
@@ -405,10 +437,12 @@ class JobTest(unittest.TestCase):
     NOW = datetime(2026, 10, 18, 21, 30, tzinfo=timezone.utc)
 
     def setUp(self):
-        # no test may reach MET Norway: MEPS has its own tests (MepsJobTest)
-        patch = mock.patch.object(meps, "latest_complete_run", lambda *a, **k: None)
-        patch.start()
-        self.addCleanup(patch.stop)
+        # no test may reach MET Norway or Météo-France (the real AROME key is in .env): MEPS and AROME
+        # have their own tests (MepsJobTest, AromeJobTest)
+        for module in (meps, arome):
+            patch = mock.patch.object(module, "latest_complete_run", lambda *a, **k: None)
+            patch.start()
+            self.addCleanup(patch.stop)
 
     def fake_http(self, url: str, timeout: int = 60, tries: int = 3) -> bytes:
         self.requested.append(url)
@@ -432,7 +466,7 @@ class JobTest(unittest.TestCase):
             info = job.run()
             self.assertEqual(job.read_status()["last_run"]["outcome"], "processed")
             m = job.read_manifest()
-            self.assertEqual(m["sources"], {"eu": "2026101821", "d2": "2026101821", "gl": None, "meps": None})
+            self.assertEqual(m["sources"], {"eu": "2026101821", "d2": "2026101821", "gl": None, "meps": None, "arome": None})
             self.assertTrue(all("icon_global" not in u for u in self.requested))  # inside Europe: no global files
             self.assertEqual(len(m["hours"]), 4)  # window 20:00-24:00, the run starts at 21: 21, 22, 23, 00
             self.assertEqual(m["channels"], 2)
@@ -486,7 +520,7 @@ class JobTest(unittest.TestCase):
             job = self.run_world(sydney, d)
             self.assertEqual(job.read_status()["last_run"]["outcome"], "processed")
             m = job.read_manifest()
-            self.assertEqual(m["sources"], {"eu": None, "d2": None, "gl": "2026101818", "meps": None})
+            self.assertEqual(m["sources"], {"eu": None, "d2": None, "gl": "2026101818", "meps": None, "arome": None})
             self.assertEqual(len(m["hours"]), 5)  # the 18 UTC run: 20, 21, 22, 23, 00
             self.assertTrue(all("icon-eu" not in u and "icon-d2" not in u for u in self.requested))
             self.assertGreaterEqual(len(m["levels"]["L1"]["blocks"]), 1)
@@ -721,6 +755,224 @@ class MepsJobTest(unittest.TestCase):
         with mock.patch.object(meps, "listed_runs", lambda: [self.RUN]), mock.patch.object(meps, "fetch", unfinished):
             first = self.NOW - timedelta(hours=1)
             self.assertIsNone(meps.latest_complete_run(self.NOW, first, first + timedelta(hours=4)))
+
+
+class FakeAromePortal:
+    """Stands in for arome._get: DescribeCoverage and GetCoverage of a run published at RUN."""
+
+    RUN = datetime(2026, 11, 19, 9, tzinfo=timezone.utc)
+    HOURS = 51
+
+    def __init__(self, published=None, fail_with=None):
+        self.published = {self.RUN} if published is None else set(published)
+        self.fail_with = fail_with
+        self.calls = []
+
+    def __call__(self, operation, params, key, stats=None, tries=4):
+        self.calls.append((operation, dict(params)))
+        if self.fail_with:
+            raise self.fail_with
+        p = {}
+        for k, v in params:
+            p.setdefault(k, []).append(v)
+        run = datetime.strptime(p["coverageid"][0].split("___")[1], "%Y-%m-%dT%H.00.00Z").replace(tzinfo=timezone.utc)
+        if run not in self.published:
+            raise arome.NoSuchRun("no such coverage")
+        if stats is not None:
+            stats["files"] = stats.get("files", 0) + 1
+        if operation == "DescribeCoverage":
+            end = run + timedelta(hours=self.HOURS)
+            return f'<x><gml:endPosition frame="#ISO-8601">{end:%Y-%m-%dT%H:%M:%SZ}</gml:endPosition></x>'.encode()
+        subsets = {m.group(1): (m.group(2), m.group(3)) for s in p["subset"]
+                   for m in [re.match(r"(lat|long)\(([-\d.]+),([-\d.]+)\)", s)] if m}
+        south, north = map(float, subsets["lat"])
+        west, east = map(float, subsets["long"])
+        rows, cols = round((north - south) / 0.025) + 1, round((east - west) / 0.025) + 1
+        name = p["coverageid"][0]
+        base = 6.0 if name.startswith("U_") else -3.0 if name.startswith("V_") else 9.0
+        return make_grib(np.full((rows, cols), base, np.float32) + np.arange(cols, dtype=np.float32) * 0.001,
+                         south, west, 0.025)
+
+
+class AromeTest(unittest.TestCase):
+    def setUp(self):
+        patch = mock.patch.object(arome, "MIN_GAP_S", 0.0)
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def test_window_is_snapped_to_the_grid_and_loses_the_domain_edge(self):
+        w = arome.plan_window({"south": 47.0, "west": -5.5, "north": 49.0, "east": -3.0})
+        self.assertAlmostEqual((w.south - 37.5) / 0.025, round((w.south - 37.5) / 0.025), places=6)
+        self.assertAlmostEqual((w.west + 12.0) / 0.025, round((w.west + 12.0) / 0.025), places=6)
+        self.assertLessEqual(w.south, 47.0)
+        self.assertGreaterEqual(w.north, 49.0)
+        self.assertEqual(w.rows, round((w.north - w.south) / 0.025) + 1)
+        edge = arome.plan_window({"south": 30.0, "west": -20.0, "north": 45.0, "east": -5.0})
+        self.assertGreaterEqual(edge.south, 37.5 + arome.EDGE_DEG - 0.025)  # nothing of the outer 0.2 degrees
+        self.assertGreaterEqual(edge.west, -12.0 + arome.EDGE_DEG - 0.025)
+        self.assertIsNone(arome.plan_window({"south": -35.0, "west": 150.0, "north": -33.0, "east": 152.0}))
+
+    def test_coverage_id_and_key_lookup(self):
+        self.assertEqual(arome.coverage_id(arome.P_U, datetime(2026, 11, 19, 9, tzinfo=timezone.utc)),
+                         arome.P_U + "___2026-11-19T09.00.00Z")
+        with mock.patch.dict(os.environ, {"AROME_API_KEY": " abc "}):
+            self.assertEqual(arome.api_key(), "abc")
+
+    def test_newest_published_run_with_a_written_last_step_is_taken(self):
+        now = datetime(2026, 11, 19, 16, 30, tzinfo=timezone.utc)
+        portal = FakeAromePortal()  # the 15 and 12 UTC runs are not there yet, 09 is
+        first = now.replace(minute=0) - timedelta(hours=1)
+        with mock.patch.object(arome, "_get", portal):
+            run, steps = arome.latest_complete_run(now, first, first + timedelta(hours=5), key="k")
+        self.assertEqual(run, portal.RUN)
+        self.assertEqual(steps, list(range(6, 12)))  # valid 15:00 ... 20:00 = hours 6..11 after 09 UTC
+        self.assertEqual(portal.calls[-1][0], "GetCoverage")  # the last step was probed with one tiny request
+        self.assertEqual(portal.calls[-1][1]["coverageid"].split("___")[0], arome.P_V)
+
+    def test_a_listed_run_with_an_unwritten_last_step_is_skipped(self):
+        now = datetime(2026, 11, 19, 12, 30, tzinfo=timezone.utc)
+        portal = FakeAromePortal(published={datetime(2026, 11, 19, 12, tzinfo=timezone.utc), FakeAromePortal.RUN})
+        real = portal.__call__
+
+        def half_written(operation, params, key, stats=None, tries=4):
+            if operation == "GetCoverage" and "T12.00.00Z" in dict(params)["coverageid"]:
+                raise arome.AromeError("HTTP 404: Synopsis backend error")
+            return real(operation, params, key, stats, tries)
+        with mock.patch.object(arome, "_get", half_written):
+            run, _ = arome.latest_complete_run(now, now, now + timedelta(hours=2), key="k")
+        self.assertEqual(run, FakeAromePortal.RUN)
+
+    def test_without_a_key_or_with_a_rejected_one_there_is_no_run_and_no_exception(self):
+        now = datetime(2026, 11, 19, 16, 30, tzinfo=timezone.utc)
+        with mock.patch.object(arome, "api_key", lambda: ""), mock.patch.object(arome, "_get", self.fail):
+            self.assertIsNone(arome.latest_complete_run(now, now, now + timedelta(hours=2)))
+        rejected = FakeAromePortal(fail_with=arome.AromeError("AROME API key rejected (HTTP 401)"))
+        with mock.patch.object(arome, "_get", rejected):
+            self.assertIsNone(arome.latest_complete_run(now, now, now + timedelta(hours=2), key="k"))
+
+    def test_http_errors_never_show_the_key_and_429_is_retried(self):
+        def http_error(code, body=b"<mw:fault>x</mw:fault>"):
+            return urllib.error.HTTPError("https://example.invalid/x?y", code, "err", {}, io.BytesIO(body))
+        with mock.patch.object(urllib.request, "urlopen", side_effect=http_error(401)):
+            with self.assertRaises(arome.AromeError) as ctx:
+                arome._get("GetCoverage", [("coverageid", "x")], "SECRET-KEY-123")
+        self.assertNotIn("SECRET-KEY-123", str(ctx.exception))
+        self.assertIn("401", str(ctx.exception))
+
+        class Ok:
+            def __enter__(self):
+                return self
+            def __exit__(self, *a):
+                return False
+            def read(self):
+                return b"GRIB"
+        answers = [http_error(429), Ok()]
+
+        def urlopen(req, timeout=0):
+            a = answers.pop(0)
+            if isinstance(a, Exception):
+                raise a
+            return a
+        with mock.patch.object(urllib.request, "urlopen", urlopen), mock.patch.object(time, "sleep", lambda s: None):
+            stats = {}
+            self.assertEqual(arome._get("GetCoverage", [("coverageid", "x")], "k", stats), b"GRIB")
+        self.assertEqual(stats["files"], 1)
+
+
+class AromeJobTest(unittest.TestCase):
+    """A whole run with AROME as an extra source, against a fake portal."""
+
+    NOW = datetime(2026, 11, 19, 16, 30, tzinfo=timezone.utc)
+    REGION = [{"name": "t", "south": 47.5, "west": -5.5, "north": 48.5, "east": -4.5}]  # western Brittany: only AROME is finer than ICON-EU
+
+    def setUp(self):
+        patches = [mock.patch.object(arome, "MIN_GAP_S", 0.0),
+                   mock.patch.object(meps, "latest_complete_run", lambda *a, **k: None),
+                   mock.patch.object(dwd, "http_get", JobTest.fake_http.__get__(self)),
+                   mock.patch.object(dwd, "listed_steps", lambda m, r, v: set(range(0, 49)))]
+        for p in patches:
+            p.start()
+            self.addCleanup(p.stop)
+        self.requested = []
+
+    def run_job(self, directory: str, portal, **kw) -> Job:
+        settings = WindSettings(regions=self.REGION, horizon_hours=3, workers=2, **kw)
+        with mock.patch.object(arome, "_get", portal), mock.patch.object(arome, "api_key", lambda: "k"):
+            job = Job(directory, settings, now=self.NOW)
+            job.run()
+        return job
+
+    def test_arome_fills_l2_where_icon_d2_has_no_data(self):
+        portal = FakeAromePortal()
+        with tempfile.TemporaryDirectory() as d:
+            job = self.run_job(d, portal)
+            m = job.read_manifest()
+            self.assertEqual(m["sources"]["arome"], "2026111909")
+            self.assertGreaterEqual(len(m["levels"]["L2"]["blocks"]), 1)
+            run_dir = os.path.join(d, "runs", m["run"])
+            block = m["levels"]["L2"]["blocks"][0]
+            with open(os.path.join(run_dir, "L2", "000", block + ".bin.gz"), "rb") as f:
+                raw = np.frombuffer(gzip.decompress(f.read()), np.uint8)
+            u = raw.reshape(blocks.SIZE, blocks.SIZE, 2)[..., 0]
+            self.assertTrue((u != blocks.NODATA).any())
+            last = job.read_status()["last_processing"]
+            self.assertEqual(last["arome_run"], "2026111909")
+            self.assertGreater(last["traffic"]["arome"]["files"], 4)  # planning probes + a u and a v slice per hour
+            self.assertGreaterEqual(last["files_downloaded"], last["traffic"]["arome"]["files"])
+        slices = [c for c in portal.calls if c[0] == "GetCoverage" and c[1]["coverageid"].startswith(arome.P_U)]
+        self.assertGreaterEqual(len(slices), 4)  # one request per hour (a time range is refused by the portal)
+
+    def test_the_gust_field_is_requested_only_with_gusts_on(self):
+        portal = FakeAromePortal()
+        with tempfile.TemporaryDirectory() as d:
+            job = self.run_job(d, portal, gusts=True)
+            self.assertEqual(job.read_manifest()["channels"], 3)
+        self.assertTrue([c for c in portal.calls if c[1]["coverageid"].startswith(arome.P_GUST)])
+        plain = FakeAromePortal()
+        with tempfile.TemporaryDirectory() as d:
+            self.run_job(d, plain)
+        self.assertFalse([c for c in plain.calls if c[1]["coverageid"].startswith(arome.P_GUST)])
+
+    def test_the_first_hour_of_a_run_has_no_gust_field_the_mean_wind_stands_in(self):
+        portal = FakeAromePortal()
+        window = arome.plan_window(self.REGION[0])
+        with mock.patch.object(arome, "_get", portal):
+            src = arome.Source(portal.RUN, self.REGION[0], key="k")
+            fields = src.fields(0, True)
+        self.assertEqual(len(fields), 3)
+        self.assertFalse([c for c in portal.calls if c[1]["coverageid"].startswith(arome.P_GUST)])
+        np.testing.assert_allclose(fields[2].values, np.hypot(fields[0].values, fields[1].values), rtol=1e-5)
+        self.assertEqual(fields[0].values.shape, (window.rows, window.cols))
+
+    def test_switch_off_and_a_missing_key_do_not_ask_the_portal(self):
+        portal = FakeAromePortal()
+        with tempfile.TemporaryDirectory() as d:
+            job = self.run_job(d, portal, arome=False)
+            self.assertIsNone(job.read_manifest()["sources"]["arome"])
+        self.assertEqual(portal.calls, [])
+
+    def test_an_expired_key_only_costs_resolution(self):
+        rejected = FakeAromePortal(fail_with=arome.AromeError("AROME API key rejected (HTTP 401)"))
+        with tempfile.TemporaryDirectory() as d:
+            job = self.run_job(d, rejected)
+            self.assertEqual(job.read_status()["last_run"]["outcome"], "processed")
+            self.assertIsNone(job.read_manifest()["sources"]["arome"])
+
+    def test_a_failing_hour_is_built_from_the_other_models(self):
+        portal = FakeAromePortal()
+        real = portal.__call__
+        state = {"slices": 0}
+
+        def flaky(operation, params, key, stats=None, tries=4):
+            if operation == "GetCoverage" and dict(params)["coverageid"].startswith(arome.P_U) and "lat(" in str(params):
+                state["slices"] += 1
+                if state["slices"] == 2:
+                    raise arome.AromeError("HTTP 500")
+            return real(operation, params, key, stats, tries)
+        with tempfile.TemporaryDirectory() as d:
+            job = self.run_job(d, flaky)
+            self.assertEqual(job.read_status()["last_run"]["outcome"], "processed")
+            self.assertEqual(job.read_manifest()["sources"]["arome"], "2026111909")
 
 
 if __name__ == "__main__":

@@ -19,16 +19,16 @@ final class WindConfig
     public const MAX_REGIONS = 10;
 
     /**
-     * @return array{enabled: bool, horizon_hours: int, run_interval_hours: int, gusts: bool, fine: bool, world: bool, meps: bool, regions: list<array{name: string, south: float, west: float, north: float, east: float}>|null}
+     * @return array{enabled: bool, horizon_hours: int, run_interval_hours: int, gusts: bool, fine: bool, world: bool, meps: bool, arome: bool, regions: list<array{name: string, south: float, west: float, north: float, east: float}>|null}
      */
     public static function defaults(): array
     {
-        return ['enabled' => true, 'horizon_hours' => 48, 'run_interval_hours' => 3, 'gusts' => false, 'fine' => true, 'world' => true, 'meps' => true, 'regions' => null];
+        return ['enabled' => true, 'horizon_hours' => 48, 'run_interval_hours' => 3, 'gusts' => false, 'fine' => true, 'world' => true, 'meps' => true, 'arome' => true, 'regions' => null];
     }
 
     /**
      * @param array<string, mixed> $input
-     * @return array{enabled: bool, horizon_hours: int, run_interval_hours: int, gusts: bool, fine: bool, world: bool, meps: bool, regions: list<array{name: string, south: float, west: float, north: float, east: float}>|null}
+     * @return array{enabled: bool, horizon_hours: int, run_interval_hours: int, gusts: bool, fine: bool, world: bool, meps: bool, arome: bool, regions: list<array{name: string, south: float, west: float, north: float, east: float}>|null}
      */
     public static function normalize(array $input): array
     {
@@ -40,7 +40,7 @@ final class WindConfig
         if (!in_array($interval, self::INTERVALS, true)) {
             throw new ValidationException('run_interval_hours must be 3 or 6.', 'wind.settings_invalid_interval');
         }
-        foreach (['enabled', 'gusts', 'fine', 'world', 'meps'] as $flag) {
+        foreach (['enabled', 'gusts', 'fine', 'world', 'meps', 'arome'] as $flag) {
             if (!is_bool($input[$flag] ?? null)) {
                 throw new ValidationException($flag . ' must be true or false.', 'wind.settings_invalid_flag');
             }
@@ -48,7 +48,7 @@ final class WindConfig
 
         return [
             'enabled' => $input['enabled'], 'horizon_hours' => $horizon, 'run_interval_hours' => $interval,
-            'gusts' => $input['gusts'], 'fine' => $input['fine'], 'world' => $input['world'], 'meps' => $input['meps'],
+            'gusts' => $input['gusts'], 'fine' => $input['fine'], 'world' => $input['world'], 'meps' => $input['meps'], 'arome' => $input['arome'],
             'regions' => self::normalizeRegions($input['regions'] ?? null),
         ];
     }

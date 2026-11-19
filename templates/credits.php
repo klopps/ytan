@@ -42,6 +42,10 @@
         'source_link' => '<a href="https://www.met.no/en/free-meteorological-data" target="_blank" rel="noopener">Norwegian Meteorological Institute (MET Norway)</a>',
         'license_link' => '<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>',
     ]) ?></p>
+    <p><?= $t('about.wind_arome_text', [
+        'source_link' => '<a href="https://portail-api.meteofrance.fr/" target="_blank" rel="noopener">Météo-France</a>',
+        'license_link' => '<a href="https://www.etalab.gouv.fr/licence-ouverte-open-licence/" target="_blank" rel="noopener">Licence Ouverte 2.0 (Etalab)</a>',
+    ]) ?></p>
     <h2><?= $t('about.tide_title') ?></h2>
     <?php /* renamed from about.tide_text 2026-11-16: merge-i18n keeps the server's value of an existing key, so a changed source list only reaches prod under a new key */ ?>
     <p><?= $t('about.tide_sources_text', [
