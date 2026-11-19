@@ -11,6 +11,7 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/vendor/autoload.php';
 
 use Dotenv\Dotenv;
+use Ytan\Database\SchemaDump;
 
 $root = dirname(__DIR__);
 if (is_file($root . '/.env')) {
@@ -28,6 +29,15 @@ $dsn = sprintf(
 $pdo = new PDO($dsn, $_ENV['DB_USERNAME'] ?? 'root', $_ENV['DB_PASSWORD'] ?? '', [
     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
 ]);
+
+// An empty database gets the checked-in base schema first (the earliest
+// migrations no longer exist in the repository, see Ytan\Database\SchemaDump);
+// it marks the migrations it already contains as applied.
+$schemaFile = $root . '/database/schema.sql';
+if (SchemaDump::isEmpty($pdo) && is_file($schemaFile)) {
+    echo "Empty database: loading database/schema.sql ...\n";
+    $pdo->exec(file_get_contents($schemaFile));
+}
 
 $pdo->exec(
     'CREATE TABLE IF NOT EXISTS schema_migrations (
