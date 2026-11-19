@@ -1,4 +1,4 @@
-const { test, expect, apiToken, apiCreate, reloadMap } = require('../fixtures');
+const { test, expect, apiToken, apiAdminToken, apiCreate, reloadMap } = require('../fixtures');
 
 /**
  * Routencheck: consent, the bottom sheet with the traffic light the server
@@ -10,10 +10,12 @@ const { test, expect, apiToken, apiCreate, reloadMap } = require('../fixtures');
  * PEGELONLINE call).
  */
 test.describe('Routencheck', () => {
-  let token;
+  let token; // the admin's - switching the feature is an admin setting
+  let userToken; // the signed-in e2e user's - owns the route, has the paddle level
 
   test.beforeAll(async ({ request }) => {
-    token = await apiToken(request);
+    token = await apiAdminToken(request);
+    userToken = await apiToken(request);
     // the feature is switched off in a fresh e2e database
     const res = await request.put('/api/v1/settings/ai', {
       headers: { Authorization: `Bearer ${token}` },
@@ -47,7 +49,7 @@ test.describe('Routencheck', () => {
 
   test('opens the sheet with traffic light, gauges, level chips and the faked text', async ({ loggedInPage: page, request }) => {
     const points = [{ lat: -15.0, lng: -150.0 }, { lat: -15.03, lng: -150.0 }, { lat: -15.06, lng: -150.01 }];
-    await apiCreate(request, token, 'routes', { name: 'E2E Routencheck', description: '', public: 0, length: 6700, points: JSON.stringify(points), color: '#BF409F' });
+    await apiCreate(request, userToken, 'routes', { name: 'E2E Routencheck', description: '', public: 0, length: 6700, points: JSON.stringify(points), color: '#BF409F' });
     const bodies = [];
     await stubBriefing(page, bodies);
     await page.evaluate(() => { try { localStorage.removeItem(ROUTE_CHECK_CONSENT_KEY); } catch (e) { /* none */ } });
@@ -92,7 +94,7 @@ test.describe('Routencheck', () => {
     await page.locator(`label[for="userPaddleLevel-${next}"]`).click();
     expect((await saved).ok()).toBeTruthy();
 
-    const res = await request.get('/api/v1/auth/paddle-level', { headers: { Authorization: `Bearer ${token}` } });
+    const res = await request.get('/api/v1/auth/paddle-level', { headers: { Authorization: `Bearer ${userToken}` } });
     expect((await res.json()).data.paddle_level).toBe(next);
   });
 });

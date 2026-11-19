@@ -1,5 +1,11 @@
 # Erledigt
 
+## e2e-Tests als normaler Benutzer (PaulPaddler) statt als Admin
+
+~~Den auf DEV angelegten Benutzer PaulPaddler (alle Rechte außer Admin, Zugangsdaten in `.env` `E2E_TEST_USERNAME`/`E2E_TEST_PASSWORD`) für künftige e2e-Tests nutzen.~~
+
+Gelöst (2026-11-19): Die Playwright-Suite läuft weiter gegen ihre eigene Datenbank `ytan_e2e` (nicht gegen DEV - sonst bricht die Trennung, die PHPUnit schützt). `tests/e2e/seed/reset-e2e-db.php` legt dort jetzt zwei Benutzer aus `.env` an: den Hauptbenutzer aus `E2E_TEST_*` mit allen Rechten außer Admin (bisher war der einzige, fest eingebaute `e2e_test_user` Admin - Abläufe wurden also mit Admin-Sonderrechten getestet) und einen Admin aus `ADMIN_TEST_*` nur für Admin-Endpunkte (`apiAdminToken()`/`adminCredentials` in fixtures.js: `admin-logs.spec.js`, der Routencheck-Schalter `PUT /settings/ai` in `route-check.spec.js` und den Anleitungs-Screenshots; die Testroute und das Paddel-Level gehören dem Hauptbenutzer). Passwörter stehen nicht mehr im Repo (Fallback-Werte im Skript nur ohne `.env`-Zeilen), `.env.example` nennt die vier Schlüssel, Reste des alten `e2e_test_user` werden weiter aufgeräumt. Alle 57 Tests grün als Nicht-Admin. Für manuelle Browser-Tests auf DEV nutze ich PaulPaddler, den Admin nur für `/admin/*`. Auch die Anleitungs-Screenshots (`npm run screenshots`) laufen als PaulPaddler: Vor-/Nachname kommen aus dem gleichnamigen DEV-Benutzer (`devProfile()`, nur lesend), die E-Mail nur im Screenshot-Lauf (`YTAN_E2E_REAL_EMAIL=1` aus `playwright.screenshots.config.js`) - ein normaler e2e-Lauf verschickt Mails (Tour-Benachrichtigungen) und behält deshalb eine `example.invalid`-Adresse. So zeigt das Kapitel Profil „Paul Paddler“ wie das vom Benutzer ausgetauschte `profil.jpg`.
+
 ## Routen glätten: rundere Ecken, Stärke im Admin-Bereich einstellbar
 
 ~~Die Glättung der Routen ist sehr schwach, die Routen wirken eckig. Verbessern, ohne dass die Kosten deutlich steigen; den Wert im Admin-Bereich konfigurierbar machen.~~

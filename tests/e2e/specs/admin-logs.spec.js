@@ -38,8 +38,8 @@ async function openAdminLogs(page, request, credentials) {
   await page.reload();
 }
 
-test('lists, shows and follows a log file', async ({ page, request, credentials }) => {
-  await openAdminLogs(page, request, credentials);
+test('lists, shows and follows a log file', async ({ page, request, adminCredentials }) => {
+  await openAdminLogs(page, request, adminCredentials);
 
   const row = page.locator('#logsList tr', { hasText: LOG_NAME });
   await expect(row).toBeVisible();
@@ -61,8 +61,8 @@ test('lists, shows and follows a log file', async ({ page, request, credentials 
   expect(atEnd).toBe(true);
 });
 
-test('downloads one file as is and several as a ZIP', async ({ page, request, credentials }) => {
-  await openAdminLogs(page, request, credentials);
+test('downloads one file as is and several as a ZIP', async ({ page, request, adminCredentials }) => {
+  await openAdminLogs(page, request, adminCredentials);
   const row = page.locator('#logsList tr', { hasText: LOG_NAME });
   await expect(row).toBeVisible();
 

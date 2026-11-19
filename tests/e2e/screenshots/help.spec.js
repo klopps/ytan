@@ -1,6 +1,6 @@
 const path = require('path');
 const fs = require('fs');
-const { test, expect, settleMapAt } = require('../fixtures');
+const { test, expect, settleMapAt, apiAdminToken } = require('../fixtures');
 
 /**
  * Takes the screenshots of the user guide (docs/user/*, rendered at /help)
@@ -277,8 +277,10 @@ test('user guide screenshots', async ({ loggedInPage: page, request, credentials
   // Switched on for the e2e database only for this picture. The traffic light
   // uses the real forecast; the AI text is a fixed example (no paid request,
   // and the picture doesn't change with whatever the model writes).
+  // an admin setting - the e2e user has every right except admin
+  const adminToken = await apiAdminToken(request);
   const aiSettings = (enabled) => request.put('/api/v1/settings/ai', {
-    headers: { Authorization: 'Bearer ' + token }, data: { enabled, daily_limit: 20, cache_hours: 0 },
+    headers: { Authorization: 'Bearer ' + adminToken }, data: { enabled, daily_limit: 20, cache_hours: 0 },
   });
   expect((await aiSettings(true)).ok()).toBeTruthy();
   await page.route('**/briefing', async (route) => {

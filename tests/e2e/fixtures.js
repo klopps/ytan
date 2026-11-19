@@ -49,6 +49,11 @@ const test = base.test.extend({
     await use(readCredentials());
   },
 
+  /** The admin of the e2e database (.env ADMIN_TEST_*) - only for admin endpoints/pages. */
+  adminCredentials: async ({}, use) => {
+    await use(readCredentials().admin);
+  },
+
   loggedInPage: async ({ page, request, baseURL }, use) => {
     await loginInBrowser(page, request, baseURL);
     await use(page);
@@ -62,6 +67,20 @@ async function apiToken(request) {
     data: { username: creds.username, password: creds.password },
   });
   base.expect(loginResponse.ok(), 'e2e user login via API should succeed').toBeTruthy();
+  return (await loginResponse.json()).token;
+}
+
+/**
+ * The e2e admin's JWT - for admin-only endpoints (settings, /admin/*). The
+ * main e2e user has every right except admin (since 2026-11-19), so flows
+ * are tested as an ordinary user.
+ */
+async function apiAdminToken(request) {
+  const admin = readCredentials().admin;
+  const loginResponse = await request.post('/api/v1/auth/login', {
+    data: { username: admin.username, password: admin.password },
+  });
+  base.expect(loginResponse.ok(), 'e2e admin login via API should succeed').toBeTruthy();
   return (await loginResponse.json()).token;
 }
 
@@ -188,5 +207,5 @@ async function setZoomAndWaitIdle(page, zoom, maxMs = 3000) {
 
 module.exports = {
   test, expect, settleMapAt, setZoomAndWaitIdle, readCredentials,
-  apiToken, loginInBrowser, apiCreate, apiGet, reloadMap, rightClickMapCentre, showPoiMarker, POI_MARKER_OFFSET,
+  apiToken, apiAdminToken, loginInBrowser, apiCreate, apiGet, reloadMap, rightClickMapCentre, showPoiMarker, POI_MARKER_OFFSET,
 };

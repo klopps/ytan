@@ -32,9 +32,19 @@ $rootDir = dirname(__DIR__, 3);
 Dotenv\Dotenv::createImmutable($rootDir)->load();
 
 const E2E_DB_NAME = 'ytan_e2e';
-const E2E_USERNAME = 'e2e_test_user';
-const E2E_PASSWORD = 'E2eTest!2026';
-const E2E_EMAIL = 'e2e-test-user@example.invalid';
+// The user names/passwords come from .env (2026-11-19): E2E_TEST_USERNAME/
+// E2E_TEST_PASSWORD = the main test user, every right EXCEPT admin (the same
+// user exists on the dev database for manual tests), ADMIN_TEST_USERNAME/
+// ADMIN_TEST_PASSWORD = an admin, used only by the specs that need admin
+// endpoints (admin-logs, the Routencheck switch). The constants below are
+// the fallback for a machine without those lines. Until 2026-11-19 there was
+// only one hard-coded user, an admin - LEGACY_USERNAME's leftovers are
+// still cleaned up.
+const FALLBACK_USERNAME = 'e2e_test_user';
+const FALLBACK_PASSWORD = 'E2eTest!2026';
+const FALLBACK_ADMIN_USERNAME = 'e2e_admin';
+const FALLBACK_ADMIN_PASSWORD = 'E2eAdmin!2026';
+const LEGACY_USERNAME = 'e2e_test_user';
 
 $host = $_ENV['DB_HOST'] ?? 'localhost';
 $port = $_ENV['DB_PORT'] ?? '3306';
@@ -119,47 +129,114 @@ if ($poitypeCount === 0) {
 // pixel-offset click in the specs miss. All columns have defaults.
 $pdo->exec('INSERT IGNORE INTO app_settings (id) VALUES (1)');
 
-// --- 2. The e2e test user: upsert so re-running is idempotent and the
+// --- 2. The e2e test users: upsert so re-running is idempotent and the
 // password/rights are always reset to the known, expected values.
-$passwordHash = password_hash(E2E_PASSWORD, PASSWORD_DEFAULT);
-$existingId = $pdo->prepare('SELECT id FROM user WHERE username = ?');
-$existingId->execute([E2E_USERNAME]);
-$userId = $existingId->fetchColumn();
+function envOr(string $key, string $fallback): string
+{
+    $value = trim((string) ($_ENV[$key] ?? ''));
 
-if ($userId === false) {
-    $insertUser = $pdo->prepare(
-        'INSERT INTO user (username, email, password, firstname, lastname, is_admin, tour_create, tour_publish, tour_manage, tour_copy, route_view_recording, export_routes_own, export_routes_public, ai_use)
-         VALUES (:username, :email, :password, :firstname, :lastname, 1, 1, 1, 1, 1, 1, 1, 1, 1)'
-    );
-    $insertUser->execute([
-        'username' => E2E_USERNAME,
-        'email' => E2E_EMAIL,
-        'password' => $passwordHash,
-        'firstname' => 'E2E',
-        'lastname' => 'Test',
-    ]);
-    $userId = (int) $pdo->lastInsertId();
-    fwrite(STDERR, "[reset-e2e-db] created e2e test user #$userId\n");
-} else {
-    $userId = (int) $userId;
-    $updateUser = $pdo->prepare(
-        'UPDATE user SET password = :password, is_admin = 1, tour_create = 1, tour_publish = 1, tour_manage = 1, tour_copy = 1, route_view_recording = 1, export_routes_own = 1, export_routes_public = 1, ai_use = 1 WHERE id = :id'
-    );
-    $updateUser->execute(['password' => $passwordHash, 'id' => $userId]);
-    fwrite(STDERR, "[reset-e2e-db] reset existing e2e test user #$userId\n");
+    return $value === '' ? $fallback : $value;
 }
 
-// --- 3. Wipe anything this user created on a previous run. Order matters
-// for the RESTRICT foreign keys on poi/route/area/tour.user_id: tour
-// first (cascades tour_route/tour_tag), then the independent poi/route/
-// area rows.
-$pdo->prepare('DELETE FROM tour WHERE user_id = ?')->execute([$userId]);
-$pdo->prepare('DELETE FROM route WHERE user_id = ?')->execute([$userId]);
-$pdo->prepare('DELETE FROM poi WHERE user_id = ?')->execute([$userId]);
-$pdo->prepare('DELETE FROM area WHERE user_id = ?')->execute([$userId]);
+/**
+ * First name, last name and e-mail of the same user on the dev database
+ * (read-only) - the user guide's screenshots (profile chapter) show them, so
+ * they should be PaulPaddler's real profile, not "E2E Test". The e-mail is
+ * only taken when YTAN_E2E_REAL_EMAIL=1 (set by
+ * playwright.screenshots.config.js): a normal e2e run sends mails (tour
+ * notifications), which must not reach a real address. Missing row/dev DB =
+ * placeholders.
+ *
+ * @return array{firstname: string, lastname: string, email: string}
+ */
+function devProfile(string $name, bool $admin): array
+{
+    $profile = [
+        'firstname' => 'E2E',
+        'lastname' => $admin ? 'Admin' : 'Test',
+        'email' => 'e2e-' . strtolower((string) preg_replace('/[^A-Za-z0-9]/', '', $name)) . '@example.invalid',
+    ];
+    try {
+        $dev = new PDO(
+            sprintf('mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4', $_ENV['DB_HOST'] ?? 'localhost', $_ENV['DB_PORT'] ?? '3306', $_ENV['DB_DATABASE'] ?? 'ytan'),
+            $_ENV['DB_USERNAME'] ?? 'root',
+            $_ENV['DB_PASSWORD'] ?? '',
+            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+        );
+        $row = $dev->prepare('SELECT firstname, lastname, email FROM user WHERE username = ?');
+        $row->execute([$name]);
+        $found = $row->fetch(PDO::FETCH_ASSOC);
+    } catch (PDOException) {
+        $found = false;
+    }
+    if (is_array($found)) {
+        if (trim((string) $found['firstname']) !== '' || trim((string) $found['lastname']) !== '') {
+            $profile['firstname'] = (string) $found['firstname'];
+            $profile['lastname'] = (string) $found['lastname'];
+        }
+        if (getenv('YTAN_E2E_REAL_EMAIL') === '1' && trim((string) $found['email']) !== '') {
+            $profile['email'] = (string) $found['email'];
+        }
+    }
 
-fwrite(STDERR, "[reset-e2e-db] cleaned up previous e2e-created data for user #$userId\n");
+    return $profile;
+}
+
+/** Creates or resets one user; every right on, is_admin as given, profile from devProfile(). Returns its id. */
+function upsertE2eUser(PDO $pdo, string $name, string $password, bool $admin): int
+{
+    $hash = password_hash($password, PASSWORD_DEFAULT);
+    $profile = devProfile($name, $admin);
+    $existing = $pdo->prepare('SELECT id FROM user WHERE username = ?');
+    $existing->execute([$name]);
+    $id = $existing->fetchColumn();
+    if ($id === false) {
+        $pdo->prepare(
+            'INSERT INTO user (username, email, password, firstname, lastname, is_admin, tour_create, tour_publish, tour_manage, tour_copy, route_view_recording, export_routes_own, export_routes_public, ai_use)
+             VALUES (:username, :email, :password, :firstname, :lastname, :admin, 1, 1, 1, 1, 1, 1, 1, 1)'
+        )->execute(['username' => $name, 'password' => $hash, 'admin' => (int) $admin] + $profile);
+        $id = (int) $pdo->lastInsertId();
+        fwrite(STDERR, "[reset-e2e-db] created e2e user #$id" . ($admin ? ' (admin)' : '') . "\n");
+    } else {
+        $id = (int) $id;
+        $pdo->prepare(
+            'UPDATE user SET password = :password, email = :email, firstname = :firstname, lastname = :lastname, is_admin = :admin, tour_create = 1, tour_publish = 1, tour_manage = 1, tour_copy = 1, route_view_recording = 1, export_routes_own = 1, export_routes_public = 1, ai_use = 1 WHERE id = :id'
+        )->execute(['password' => $hash, 'admin' => (int) $admin, 'id' => $id] + $profile);
+        fwrite(STDERR, "[reset-e2e-db] reset existing e2e user #$id" . ($admin ? ' (admin)' : '') . "\n");
+    }
+
+    return $id;
+}
+
+$userName = envOr('E2E_TEST_USERNAME', FALLBACK_USERNAME);
+$userPassword = envOr('E2E_TEST_PASSWORD', FALLBACK_PASSWORD);
+$adminName = envOr('ADMIN_TEST_USERNAME', FALLBACK_ADMIN_USERNAME);
+$adminPassword = envOr('ADMIN_TEST_PASSWORD', FALLBACK_ADMIN_PASSWORD);
+if (strcasecmp($userName, $adminName) === 0) {
+    fwrite(STDERR, "[reset-e2e-db] E2E_TEST_USERNAME and ADMIN_TEST_USERNAME must differ\n");
+    exit(1);
+}
+
+$userId = upsertE2eUser($pdo, $userName, $userPassword, false);
+$adminId = upsertE2eUser($pdo, $adminName, $adminPassword, true);
+
+// --- 3. Wipe anything these users created on a previous run (plus the
+// pre-2026-11-19 single user's). Order matters for the RESTRICT foreign
+// keys on poi/route/area/tour.user_id: tour first (cascades tour_route/
+// tour_tag), then the independent poi/route/area rows.
+$legacy = $pdo->prepare('SELECT id FROM user WHERE username = ?');
+$legacy->execute([LEGACY_USERNAME]);
+$cleanIds = array_unique(array_filter([$userId, $adminId, (int) $legacy->fetchColumn()]));
+foreach ($cleanIds as $id) {
+    foreach (['tour', 'route', 'poi', 'area'] as $table) {
+        $pdo->prepare("DELETE FROM `$table` WHERE user_id = ?")->execute([$id]);
+    }
+    fwrite(STDERR, "[reset-e2e-db] cleaned up previous e2e-created data for user #$id\n");
+}
 
 // Machine-readable line for global-setup.js to parse (stdout only, so
 // stderr's human-readable progress log above doesn't interfere).
-echo json_encode(['userId' => $userId, 'username' => E2E_USERNAME, 'password' => E2E_PASSWORD]) . PHP_EOL;
+echo json_encode([
+    'userId' => $userId, 'username' => $userName, 'password' => $userPassword,
+    'admin' => ['userId' => $adminId, 'username' => $adminName, 'password' => $adminPassword],
+]) . PHP_EOL;

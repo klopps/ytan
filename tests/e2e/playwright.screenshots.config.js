@@ -1,5 +1,10 @@
 // @ts-check
 const base = require('./playwright.config.js');
+
+// The guide shows the e2e user's profile (chapter Profil): reset-e2e-db.php
+// then copies PaulPaddler's real e-mail from the dev database too - only for
+// this run, a normal e2e run sends mails that must not reach it.
+process.env.YTAN_E2E_REAL_EMAIL = '1';
 const { defineConfig, devices } = require('@playwright/test');
 
 /**
