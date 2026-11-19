@@ -87,6 +87,22 @@ final class SettingsRepository
     }
 
     /**
+     * Smoothed route lines (smoothRoutePoints(), helper.js, as
+     * window.YTAN_ROUTE_SMOOTHING_SHARE): how far the curve may bulge from
+     * the straight line, in percent of the shortest segment involved - at
+     * least the fixed 15 m of config.js. 0 = only the fixed cap.
+     */
+    public function routeSmoothingSharePercent(): int
+    {
+        return (int) $this->column('route_smoothing_share_pct');
+    }
+
+    public function setRouteSmoothingSharePercent(int $percent): void
+    {
+        $this->write('UPDATE app_settings SET route_smoothing_share_pct = ? WHERE id = 1', [$percent]);
+    }
+
+    /**
      * The three distance-filter presets track-recorder.js offers when
      * starting a GPS recording (Capacitor background-geolocation's only
      * tunable lever for update frequency/battery use) - previously a

@@ -125,6 +125,22 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
 </div>
 <div class="card mt-3">
     <div class="card-body">
+        <h2 class="h6"><?= $t('admin.settings.route_smoothing_title') ?></h2>
+        <p class="text-muted small"><?= $t('admin.settings.route_smoothing_hint') ?></p>
+        <div class="row g-3">
+            <div class="col-sm-4">
+                <label for="settingRouteSmoothingShare" class="form-label"><?= $t('admin.settings.route_smoothing_share') ?></label>
+                <div class="input-group">
+                    <input type="number" min="0" max="<?= \Ytan\Http\Controllers\SettingsController::MAX_ROUTE_SMOOTHING_SHARE_PCT ?>" step="1" class="form-control" id="settingRouteSmoothingShare" value="<?= (int) $routeSmoothingSharePercent ?>">
+                    <span class="input-group-text">%</span>
+                </div>
+            </div>
+        </div>
+        <button type="button" class="btn btn-primary mt-3" id="settingRouteSmoothingSaveBtn" data-on-click="saveRouteSmoothingSettings();"><?= $t('common.save') ?></button>
+    </div>
+</div>
+<div class="card mt-3">
+    <div class="card-body">
         <h2 class="h6"><?= $t('admin.settings.ar_title') ?></h2>
         <p class="text-muted small"><?= $t('admin.settings.ar_hint') ?></p>
         <div class="row g-3">

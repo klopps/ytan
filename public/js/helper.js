@@ -386,14 +386,16 @@ function toLatLngPath(points) {
  * @param {Array<{lat:number,lng:number}>} points Rohe Stützpunkte
  * @param {number} [segmentsPerPoint] Anzahl interpolierter Punkte je Originalsegment
  * @param {number} [alpha] Knoten-Parametrisierung der Spline (0=uniform, 0.5=zentripetal, 1=chordal)
- * @param {number} [maxDeviationMeters] Maximaler Abstand eines hinzugefügten Punkts von der Geraden zwischen den beiden echten Nachbar-Stützpunkten, in Metern (Infinity = unbegrenzt)
+ * @param {number} [maxDeviationMeters] Maximaler Abstand eines hinzugefügten Punkts von der Geraden zwischen den beiden echten Nachbar-Stützpunkten, in Metern (Infinity = unbegrenzt) - Untergrenze, siehe maxDeviationShare
+ * @param {number} [maxDeviationShare] Der Deckel wächst mit den Segmenten: dieser Anteil des kürzesten der drei beteiligten Segmente (vorheriges, eigenes, nächstes), wenn das mehr ist als maxDeviationMeters (0 = fester Deckel)
  * @returns {Array<{lat:number,lng:number}>} neues, geglättetes Array (Original bleibt unverändert)
  */
 function smoothRoutePoints(
     points,
     segmentsPerPoint = ROUTE_SMOOTHING_SEGMENTS_PER_POINT,
     alpha = ROUTE_SMOOTHING_ALPHA,
-    maxDeviationMeters = ROUTE_SMOOTHING_MAX_DEVIATION_METERS
+    maxDeviationMeters = ROUTE_SMOOTHING_MAX_DEVIATION_METERS,
+    maxDeviationShare = ROUTE_SMOOTHING_MAX_DEVIATION_SHARE
 ) {
     var deduped = [];
     for (var i = 0; i < points.length; i++) {
@@ -438,17 +440,24 @@ function smoothRoutePoints(
         var t2 = t1 + knots[i + 1];
         var t3 = t2 + knots[i + 2];
 
+        // A fixed 15 m cap left corners between segments of several hundred
+        // metres almost sharp (user report 2026-11-19); a share of the
+        // shortest segment involved rounds those, while a detailed narrow
+        // waterway (short segments) keeps the small cap.
+        var maxDeviation = Math.max(maxDeviationMeters,
+            maxDeviationShare * Math.min(lengths[i], segmentLength, lengths[i + 2]));
+
         var pieces = smoothingPieces(segmentLength, segmentsPerPoint);
         for (var s = 0; s < pieces; s++) {
             var t = t1 + (t2 - t1) * (s / pieces);
             var curvePoint = catmullRomInterpolate(p0, p1, p2, p3, t0, t1, t2, t3, t);
-            if (isFinite(maxDeviationMeters)) {
+            if (isFinite(maxDeviation)) {
                 // p1/p2 sind hier die beiden echten Nachbar-Stützpunkte (nicht
                 // die Phantompunkte) - lerpPoint(p1, p2, t1, t2, t) ist also
                 // die Position auf der direkten Geraden zwischen ihnen, an
                 // derselben Stelle t wie curvePoint auf der Kurve.
                 var straightPoint = lerpPoint(p1, p2, t1, t2, t);
-                curvePoint = clampDeviation(curvePoint, straightPoint, maxDeviationMeters, metric);
+                curvePoint = clampDeviation(curvePoint, straightPoint, maxDeviation, metric);
             }
             smoothed.push(curvePoint);
         }

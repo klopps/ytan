@@ -16,6 +16,8 @@ final class SettingsController extends BaseController
 
     /** Upper limit of the route-merge midpoint distance (meters). */
     public const MAX_ROUTE_MERGE_MIDPOINT_M = 1000;
+    /** Above ~50 % a curve between long segments bulges far off the drawn route. */
+    public const MAX_ROUTE_SMOOTHING_SHARE_PCT = 50;
 
     public function __construct(private readonly SettingsRepository $settings)
     {
@@ -88,6 +90,20 @@ final class SettingsController extends BaseController
         $this->settings->setRouteMergeMidpointMeters($meters);
 
         return $this->json($response, ['data' => ['midpoint_m' => $meters]]);
+    }
+
+    /** Body {share_pct} - see SettingsRepository::routeSmoothingSharePercent(). */
+    public function updateRouteSmoothing(Request $request, Response $response): Response
+    {
+        $this->requireAdmin($request);
+        $percent = filter_var($this->jsonBody($request)['share_pct'] ?? null, FILTER_VALIDATE_INT);
+        if ($percent === false || $percent < 0 || $percent > self::MAX_ROUTE_SMOOTHING_SHARE_PCT) {
+            throw new ValidationException('share_pct must be a whole percentage from 0 to ' . self::MAX_ROUTE_SMOOTHING_SHARE_PCT . '.');
+        }
+
+        $this->settings->setRouteSmoothingSharePercent($percent);
+
+        return $this->json($response, ['data' => ['share_pct' => $percent]]);
     }
 
     public function updateRouteLabelFontSizeRange(Request $request, Response $response): Response

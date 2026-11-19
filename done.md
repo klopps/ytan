@@ -1,5 +1,11 @@
 # Erledigt
 
+## Routen glätten: rundere Ecken, Stärke im Admin-Bereich einstellbar
+
+~~Die Glättung der Routen ist sehr schwach, die Routen wirken eckig. Verbessern, ohne dass die Kosten deutlich steigen; den Wert im Admin-Bereich konfigurierbar machen.~~
+
+Gelöst (2026-11-19): Ursache war nicht der Performance-Umbau desselben Tages (alte und neue Glättung im Browser pixelgleich übereinandergelegt), sondern der feste Deckel `ROUTE_SMOOTHING_MAX_DEVIATION_METERS = 15` seit Einführung der Glättung: die Kurve durfte höchstens 15 m von der Geraden abweichen, Ecken zwischen Segmenten von einigen hundert Metern blieben fast spitz (kurze GPS-Segmente sahen rund aus, gezeichnete Routen eckig). Jetzt wächst der Deckel mit den Segmenten: `smoothRoutePoints()` (helper.js) erlaubt je Kurvenstück `max(15 m, Anteil x kürzestes der drei beteiligten Segmente)` (vorheriges, eigenes, nächstes - kurze Segmente in engen Gewässern behalten die 15 m, der ursprüngliche Grund für den Deckel). Kosten unverändert: gleiche Zahl Zwischenpunkte, je Segment ein `Math.min`. Anteil vom Benutzer nach Vergleich 10 %/15 % auf 10 % gesetzt und im Admin-Bereich einstellbar: /admin/settings Karte „Routen glätten“ (0-50 %, 0 = fest 15 m), `app_settings.route_smoothing_share_pct` (Migration 078, Standard 10), `PUT /settings/route-smoothing` (`SettingsController::updateRouteSmoothing()`, Body `share_pct`), an die Karte als `window.YTAN_ROUTE_SMOOTHING_SHARE` (Anteil, nicht Prozent) -> `ROUTE_SMOOTHING_MAX_DEVIATION_SHARE` in config.js (Fallback 0,10); gilt nach dem Neuladen der Karte. Tests: `SettingsControllerTest` (Standard/Speichern, Bereich, nur Admin); im Browser geprüft (Ecke bei Flensburg deutlich runder, Admin-Seite speichert, Wert kommt in der Karte an).
+
 ## Performance: offene Punkte aus der Analyse vom 2026-10-16
 
 ~~Restliche Long Tasks beim Laden (4x gedrosselt, nach dem Umbau): längster ~280 ms, zusammen ~2,2 s; größte eigene Posten `createRoutes()` ~210 ms (davon Glätten ~100 ms), `setAllPois()` ~170 ms, `updatePoiClustering()` ~130 ms (Clusterbildung bei niedrigem Zoom). Weitere Möglichkeit: `createRoutes()` in Zeitscheiben aufteilen.~~ (Kompression, Browser-Caching, WSI-Icons, Marker bei Bedarf, das doppelte Laden, gerundete Koordinaten usw. waren schon früher erledigt, siehe weiter unten.)

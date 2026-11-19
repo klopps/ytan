@@ -69,6 +69,17 @@ const AREA_PHOTO_MAX_COUNT = 5;
 const ROUTE_SMOOTHING_SEGMENTS_PER_POINT = 15;
 const ROUTE_SMOOTHING_ALPHA = 0.5;
 const ROUTE_SMOOTHING_MAX_DEVIATION_METERS = 15; // Default: Infinity
+// - MAX_DEVIATION_SHARE: the cap grows with the segments - this share of the
+//   shortest of the three segments around a curve piece, if that is more
+//   than MAX_DEVIATION_METERS (2026-11-19: with the fixed 15 m, corners
+//   between segments of several hundred metres stayed almost sharp). Set by
+//   the admin on /admin/settings (app_settings.route_smoothing_share_pct,
+//   window.YTAN_ROUTE_SMOOTHING_SHARE as a fraction); 0.10 when the page
+//   doesn't provide it. 0 = fixed cap.
+const ROUTE_SMOOTHING_MAX_DEVIATION_SHARE =
+    (typeof window.YTAN_ROUTE_SMOOTHING_SHARE === 'number' && window.YTAN_ROUTE_SMOOTHING_SHARE >= 0)
+        ? window.YTAN_ROUTE_SMOOTHING_SHARE
+        : 0.10;
 // - METERS_PER_PIECE: a segment gets one interpolated piece per this many
 //   metres of its length, at most SEGMENTS_PER_POINT (helper.js's
 //   smoothingPieces()) - short GPS segments don't need 15.

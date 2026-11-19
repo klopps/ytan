@@ -40,6 +40,7 @@
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_ROUTE_LABEL_FONT_SIZE_RANGE = <?= json_encode($routeLabelFontSizeRange, JSON_HEX_TAG) ?>;</script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_ROUTE_ANIMATION = <?= json_encode($routeAnimation, JSON_HEX_TAG) ?>;</script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_AR = <?= json_encode($arSettings, JSON_HEX_TAG) ?>;</script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_ROUTE_SMOOTHING_SHARE = <?= json_encode($routeSmoothingShare) ?>;</script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_ROUTE_CHECK_ENABLED = <?= !empty($routeCheckEnabled) ? 'true' : 'false' ?>;</script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_LOCALE = "<?= htmlspecialchars($translator->locale(), ENT_QUOTES) ?>";</script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_TRANSLATIONS = <?= json_encode($translator->all(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;</script>

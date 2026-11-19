@@ -74,6 +74,20 @@ function saveRouteMergeSettings() {
     });
 }
 
+/** Smoothed route lines: max. bulge in percent of the shortest segment involved (smoothRoutePoints(), helper.js). */
+function saveRouteSmoothingSettings() {
+    var btn = document.getElementById('settingRouteSmoothingSaveBtn');
+    var body = { share_pct: parseInt(document.getElementById('settingRouteSmoothingShare').value, 10) };
+    btn.disabled = true;
+    Ytan.put('/settings/route-smoothing', body).then(function () {
+        showAdminToast(t('common.saved'), 'success');
+    }).catch(function (err) {
+        showAdminToast(t('common.save_failed', { error: err.message }), 'error');
+    }).finally(function () {
+        btn.disabled = false;
+    });
+}
+
 /** Colour, line width, zoom level, end pause and default speed of the route/tour animation (route-animation.js). */
 function saveRouteAnimationSettings() {
     var btn = document.getElementById('settingRouteAnimationSaveBtn');

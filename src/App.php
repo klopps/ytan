@@ -622,6 +622,7 @@ final class App
         $app->put('/api/v1/settings/route-animation', [SettingsController::class, 'updateRouteAnimation']);
         $app->put('/api/v1/settings/ar', [SettingsController::class, 'updateAr']);
         $app->put('/api/v1/settings/route-merge', [SettingsController::class, 'updateRouteMerge']);
+        $app->put('/api/v1/settings/route-smoothing', [SettingsController::class, 'updateRouteSmoothing']);
         $app->get('/api/v1/settings/radar', [RadarSettingsController::class, 'show']);
         $app->put('/api/v1/settings/radar', [RadarSettingsController::class, 'update']);
         $app->post('/api/v1/settings/radar/run', [RadarSettingsController::class, 'run']);
@@ -668,6 +669,7 @@ final class App
             $routeLabelFontSizeRange = $c->get(SettingsRepository::class)->routeLabelFontSizeRange();
             $routeAnimation = $c->get(SettingsRepository::class)->routeAnimationSettings();
             $arSettings = $c->get(SettingsRepository::class)->arSettings();
+            $routeSmoothingShare = $c->get(SettingsRepository::class)->routeSmoothingSharePercent() / 100;
             $routeCheckEnabled = $c->get(SettingsRepository::class)->aiSettings()['enabled'];
             $appVersion = 'dev';
             $versionFile = $rootDir . '/VERSION';
@@ -845,6 +847,7 @@ final class App
                 'routeLabelFontSizeRange' => $settings->routeLabelFontSizeRange(),
                 'routeAnimation' => $settings->routeAnimationSettings(),
                 'routeMergeMidpointMeters' => $settings->routeMergeMidpointMeters(),
+                'routeSmoothingSharePercent' => $settings->routeSmoothingSharePercent(),
                 'arSettings' => $settings->arSettings(),
                 'waterDistancePoiTypes' => $settings->waterDistancePoiTypes(),
             ]);

@@ -296,6 +296,45 @@ final class SettingsControllerTest extends ControllerTestCase
         }
     }
 
+    public function testRouteSmoothingShareDefaultsToTenAndPersists(): void
+    {
+        $repo = new SettingsRepository($this->pdo);
+        $this->assertSame(10, $repo->routeSmoothingSharePercent(), 'column default');
+
+        $decoded = $this->decode($this->controller->updateRouteSmoothing(
+            $this->request('PUT', '/api/v1/settings/route-smoothing', $this->authPayload($this->createUser(), ['is_admin' => true]), ['share_pct' => 0]),
+            $this->response()
+        ));
+
+        $this->assertSame(['share_pct' => 0], $decoded['data']);
+        $this->assertSame(0, (new SettingsRepository($this->pdo))->routeSmoothingSharePercent());
+    }
+
+    public function testRouteSmoothingShareRejectsOutOfRangeValues(): void
+    {
+        foreach ([-1, 51, 'abc', null, 2.5] as $value) {
+            try {
+                $this->controller->updateRouteSmoothing(
+                    $this->request('PUT', '/api/v1/settings/route-smoothing', $this->authPayload($this->createUser(), ['is_admin' => true]), ['share_pct' => $value]),
+                    $this->response()
+                );
+                $this->fail('Accepted ' . var_export($value, true));
+            } catch (ValidationException) {
+                $this->addToAssertionCount(1);
+            }
+        }
+    }
+
+    public function testRouteSmoothingShareRejectsANonAdmin(): void
+    {
+        $this->expectException(ForbiddenException::class);
+
+        $this->controller->updateRouteSmoothing(
+            $this->request('PUT', '/api/v1/settings/route-smoothing', $this->authPayload(1, ['is_admin' => false]), ['share_pct' => 20]),
+            $this->response()
+        );
+    }
+
     public function testRouteMergeMidpointRejectsANonAdmin(): void
     {
         $this->expectException(ForbiddenException::class);
