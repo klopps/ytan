@@ -160,10 +160,11 @@ function logsUpdateViewerInfo() {
         return;
     }
     document.getElementById('logsViewerName').textContent = file.name;
-    document.getElementById('logsViewerInfo').textContent = t('admin.logs.viewer_info', {
-        size: logsFormatBytes(file.size),
-        modified: logsFormatDate(file.modified),
-    });
+    document.getElementById('logsViewerInfo').textContent = t('admin.logs.col_source') + ': ' + logsSourceLabel(file.source) + ' · ' +
+        t('admin.logs.viewer_info', {
+            size: logsFormatBytes(file.size),
+            modified: logsFormatDate(file.modified),
+        });
 }
 
 async function logsOpen(index) {
