@@ -109,5 +109,5 @@ window.YTAN_WIND_SETTINGS = <?= json_encode($windSettings + [
     'max_regions' => \Ytan\Service\WindConfig::MAX_REGIONS,
     'status' => \Ytan\Service\WindConfig::readStatus($rootDir . '/storage/wind'),
     'running' => (new \Ytan\Service\RadarJobRunner($rootDir, 'wind'))->isRunning(),
-] + \Ytan\Service\JobPlacement::payload($rootDir . '/storage', 'wind', $externalJobs), JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) ?>;</script>
+] + \Ytan\Service\JobPlacement::payload($rootDir . '/storage', 'wind', $jobWorkers), JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) ?>;</script>
 <?php require $rootDir . '/templates/partials/admin-shell-footer.php'; ?>

@@ -31,6 +31,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -162,13 +163,127 @@ def run_job(spec: JobSpec, force: bool = False) -> int:
 
 
 def external_jobs(storage_root: str) -> list[str]:
-    """The jobs the admin moved to the YTAN worker (storage/radar/config.json "external_jobs", JobPlacement)."""
+    """The jobs the admin moved to the YTAN worker (storage/radar/config.json "external_jobs", JobPlacement).
+
+    The old key, derived by the server from the priority lists (the jobs whose first enabled entry is
+    not the server): all that a worker or a config from before the lists knows. server_skip() and the
+    worker's tick use the lists ("job_workers") and fall back to this only when there are none."""
     try:
         with open(os.path.join(storage_root, "radar", "config.json"), encoding="utf-8") as f:
             jobs = json.load(f).get("external_jobs") or []
         return [str(j) for j in jobs] if isinstance(jobs, list) else []
     except (OSError, ValueError, AttributeError):
         return []
+
+
+# -- who works on a job: the priority lists of the admin (storage/radar/config.json "job_workers") and
+#    the workers' heartbeats; the same rules as src/Service/JobPlacement.php activeWorker(), pinned by the
+#    shared vectors tests/testdata/worker-election.json (tools/tests/test_worker.py) --
+
+SERVER_ID = "server"            # the entry of this server's own cron in a list
+WORKER_STALE_S = 15 * 60        # a worker silent for this long is away
+WORKER_RUNNING_STALE_S = 2 * 3600  # ... while it reports a running job, this long
+PLACEABLE_JOBS = tuple(spec.name for spec in JOBS if not spec.php)  # = JobPlacement::JOBS
+_WORKER_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,31}$")
+
+
+def valid_worker_id(value) -> bool:
+    return isinstance(value, str) and value != SERVER_ID and _WORKER_ID.match(value) is not None
+
+
+def parse_time(value) -> datetime | None:
+    """An ISO time as the workers and PHP write it ('...Z' or '...+00:00') -> aware datetime, None if unreadable."""
+    if not isinstance(value, str):
+        return None
+    try:
+        t = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return t if t.tzinfo else t.replace(tzinfo=timezone.utc)
+
+
+def heartbeat_alive(heartbeat: dict | None, now: datetime) -> bool:
+    """Fresh: its tick is younger than WORKER_STALE_S, or - while it reports a running job - than WORKER_RUNNING_STALE_S."""
+    if not isinstance(heartbeat, dict):
+        return False
+    tick = parse_time(heartbeat.get("tick"))
+    if tick is None:
+        return False
+    limit = WORKER_RUNNING_STALE_S if isinstance(heartbeat.get("running"), dict) else WORKER_STALE_S
+    return (now - tick).total_seconds() <= limit
+
+
+def active_worker(job: str, entries: list, heartbeats: dict, server_tick, now: datetime) -> str | None:
+    """The one who works on `job` now, or None (nobody alive and able).
+
+    Only enabled entries count. A worker is a candidate when its heartbeat is fresh and it reports `job` in its
+    "capabilities"; the server is one when `server_tick` (storage/jobs-heartbeat.json: the cron ticks) is fresh.
+    One that is running `job` right now keeps it (the first of them in list order), whatever its place; else the
+    first candidate. A name used by two systems does not change this: the second system stops itself (the worker's
+    tick) and leaves workers/{id}/conflict.json for the admin to see."""
+    candidates: list[str] = []
+    busy: list[str] = []
+    for entry in entries or []:
+        if not isinstance(entry, dict) or entry.get("enabled") is not True:
+            continue
+        ident = entry.get("id")
+        if ident == SERVER_ID:
+            if server_tick is not None and heartbeat_alive({"tick": server_tick}, now):
+                candidates.append(ident)
+            continue
+        hb = heartbeats.get(ident)
+        capabilities = hb.get("capabilities") if isinstance(hb, dict) else None
+        if not heartbeat_alive(hb, now) or not isinstance(capabilities, list) or job not in capabilities:
+            continue
+        candidates.append(ident)
+        running = hb.get("running")
+        if isinstance(running, dict) and running.get("job") == job:
+            busy.append(ident)
+    return (busy or candidates or [None])[0]
+
+
+def read_workers(workers_dir: str) -> dict[str, dict]:
+    """Every worker's heartbeat from {workers_dir}/{id}/worker-status.json (a worker without one is not listed)."""
+    out: dict[str, dict] = {}
+    try:
+        names = sorted(os.listdir(workers_dir))
+    except OSError:
+        return out
+    for name in names:
+        if not valid_worker_id(name):
+            continue
+        heartbeat = _read_json(os.path.join(workers_dir, name, "worker-status.json"))
+        if heartbeat is not None:
+            out[name] = heartbeat
+    return out
+
+
+def job_lists(storage_root: str) -> dict | None:
+    """storage/radar/config.json "job_workers" ({job: [{id, enabled}]}); None when the server wrote none (older config)."""
+    config = _read_json(os.path.join(storage_root, "radar", "config.json"))
+    lists = config.get("job_workers") if config else None
+    return lists if isinstance(lists, dict) else None
+
+
+def server_skip(storage_root: str, now: datetime) -> list[str]:
+    """The jobs the server's cron must NOT run now: those a worker works on (or nobody may: all entries off).
+
+    The server runs a job when the election gives it to the server - it is alive by definition here, so it
+    only comes second to a living worker above it; with nobody alive it is the stand-in when its entry is
+    enabled. A job without a list (or a config from before the lists) follows the old external_jobs."""
+    lists = job_lists(storage_root)
+    if lists is None:
+        return external_jobs(storage_root)
+    workers = read_workers(os.path.join(storage_root, "workers"))
+    tick = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    skip = []
+    for job in PLACEABLE_JOBS:
+        entries = lists.get(job)
+        if not isinstance(entries, list) or not entries:
+            continue
+        if active_worker(job, entries, workers, tick, now) != SERVER_ID:
+            skip.append(job)
+    return skip
 
 
 def run_due(jobs: list[JobSpec], storage_root: str, now: datetime, runner=run_job,
@@ -311,7 +426,8 @@ def main() -> int:
             resume_osm_import(storage_root)
         except Exception:
             log.exception("resuming the OpenStreetMap import failed")
-        results = run_due(JOBS, storage_root, datetime.now(timezone.utc), skip=external_jobs(storage_root))
+        now = datetime.now(timezone.utc)
+        results = run_due(JOBS, storage_root, now, skip=server_skip(storage_root, now))
     return 1 if any(code not in (None, 0) for code in results.values()) else 0
 
 

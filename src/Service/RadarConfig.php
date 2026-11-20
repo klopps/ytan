@@ -266,13 +266,23 @@ final class RadarConfig
      * job (tools/wind/) reads the same regions plus its own "wind" object.
      *
      * @param array<string, mixed>|null $wind WindConfig settings; null = the defaults
-     * @param list<string>|null $externalJobs jobs on the external worker (JobPlacement); null = keep what the file says
+     * @param array<string, list<array{id: string, enabled: bool}>>|null $jobWorkers per job the priority list of the workers
+     *        (JobPlacement, SettingsRepository::jobWorkers()); null = keep what the file says
      */
-    public static function writeJobConfig(string $radarDir, array $config, ?array $wind = null, ?array $externalJobs = null): void
+    public static function writeJobConfig(string $radarDir, array $config, ?array $wind = null, ?array $jobWorkers = null): void
     {
-        if ($externalJobs === null) {
+        if ($jobWorkers === null) {
             $old = json_decode((string) @file_get_contents($radarDir . '/config.json'), true);
-            $externalJobs = is_array($old) && is_array($old['external_jobs'] ?? null) ? $old['external_jobs'] : [];
+            // the file's own lists were written by this method: normalizing them again needs their worker names
+            $names = [];
+            if (is_array($old) && is_array($old['job_workers'] ?? null)) {
+                foreach ($old['job_workers'] as $entries) {
+                    foreach (is_array($entries) ? $entries : [] as $entry) {
+                        $names[] = is_array($entry) ? (string) ($entry['id'] ?? '') : '';
+                    }
+                }
+            }
+            $jobWorkers = JobPlacement::normalizeLists(is_array($old) ? ($old['job_workers'] ?? null) : null, $names, false);
         }
         if (!is_dir($radarDir) && !mkdir($radarDir, 0775, true) && !is_dir($radarDir)) {
             throw new \RuntimeException('Cannot create ' . $radarDir);
@@ -286,8 +296,11 @@ final class RadarConfig
             'paused_forever' => (bool) ($config['paused_forever'] ?? false),
             'regions' => self::regions($config),
             'wind' => $wind ?? WindConfig::defaults(),
-            // where the jobs run: tools/ytan_jobs.py skips these here, the YTAN worker runs only these
-            'external_jobs' => JobPlacement::normalize($externalJobs),
+            // where the jobs run: per job the priority list of workers ("server" = this server's cron); who works NOW
+            // is decided by tools/ytan_jobs.py active_worker() / JobPlacement::activeWorker() from these lists and the heartbeats
+            'job_workers' => $jobWorkers,
+            // the same for workers that predate the lists: the jobs whose first enabled entry is not the server
+            'external_jobs' => JobPlacement::externalFromLists($jobWorkers),
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         $tmp = $radarDir . '/config.json.' . bin2hex(random_bytes(4)) . '.tmp';
         if (file_put_contents($tmp, $json) === false || !rename($tmp, $radarDir . '/config.json')) {

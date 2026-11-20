@@ -19,6 +19,11 @@ import ytan_worker  # noqa: E402
 
 NOW = datetime(2026, 11, 12, 16, 0, 5, tzinfo=timezone.utc)
 PY_JOBS = [s for s in ytan_jobs.JOBS if not s.php]  # radar, wind
+VECTORS = os.path.join(os.path.dirname(__file__), "..", "..", "tests", "testdata", "worker-election.json")
+
+
+def iso(t: datetime) -> str:
+    return t.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 class FakeServer:
@@ -40,10 +45,11 @@ class FakeServer:
         if os.path.isdir(src.rstrip("/")):
             os.makedirs(dst, exist_ok=True)
             rules = [(a == "--include", args[i + 1].lstrip("/")) for i, a in enumerate(args) if a in ("--include", "--exclude")]
-            if any(include for include, _ in rules):  # filtered sync of top-level files: the first matching rule wins
+            if any(include and p == "*/" for include, p in rules):  # a filtered TREE (fetch_tree): files by name, all directories
+                self._tree(src, dst, rules, "--delete" in args)
+            elif any(include for include, _ in rules):  # filtered sync of top-level files: the first matching rule wins
                 for name in os.listdir(src):
-                    match = next((include for include, p in rules if fnmatch.fnmatchcase(name, p)), True)
-                    if match and os.path.isfile(os.path.join(src, name)):  # a missing one is simply not transferred
+                    if self._wanted(name, rules) and os.path.isfile(os.path.join(src, name)):  # a missing one is simply not transferred
                         shutil.copy2(os.path.join(src, name), os.path.join(dst, name))
             else:
                 shutil.copytree(src, dst, dirs_exist_ok=True)
@@ -51,6 +57,26 @@ class FakeServer:
             os.makedirs(os.path.dirname(dst) or ".", exist_ok=True)
             shutil.copy2(src, dst)
         return SimpleNamespace(returncode=0, stderr="")
+
+    @staticmethod
+    def _wanted(name, rules):
+        return next((include for include, p in rules if p != "*/" and fnmatch.fnmatchcase(name, p)), True)
+
+    def _tree(self, src, dst, rules, delete):
+        os.makedirs(dst, exist_ok=True)
+        for name in sorted(os.listdir(src)):
+            path = os.path.join(src, name)
+            if os.path.isdir(path):
+                self._tree(path, os.path.join(dst, name), rules, delete)
+            elif self._wanted(name, rules):
+                shutil.copy2(path, os.path.join(dst, name))
+        if delete:  # what the source dropped goes; files that the rules exclude are left alone
+            for name in os.listdir(dst):
+                path = os.path.join(dst, name)
+                if os.path.isdir(path) and not os.path.isdir(os.path.join(src, name)):
+                    shutil.rmtree(path)
+                elif os.path.isfile(path) and self._wanted(name, rules) and not os.path.isfile(os.path.join(src, name)):
+                    os.remove(path)
 
     @staticmethod
     def _is_pattern(args, a):
@@ -63,12 +89,19 @@ class FakeServer:
         return p
 
 
+def entries(*ids: str, off: tuple[str, ...] = ()) -> list[dict]:
+    """A priority list: the ids in order, enabled unless named in `off`."""
+    return [{"id": i, "enabled": i not in off} for i in ids]
+
+
 class WorkerTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
         self.server = os.path.join(self.tmp, "server")
         self.local = os.path.join(self.tmp, "local")
         os.makedirs(os.path.join(self.server, "radar"))
+        os.makedirs(os.path.join(self.server, "workers"))  # JobPlacement::ensureWorkersDir() makes it on the real server
+        os.makedirs(os.path.join(self.server, "logs", "worker"))
         os.makedirs(self.local)
         self.fake = FakeServer(self.server)
         self.remote = ytan_worker.Remote("u@h", run=self.fake)
@@ -77,9 +110,39 @@ class WorkerTest(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
-    def server_config(self, external):
+    def server_config(self, wind=("pi",), radar=("server",), **kw):
+        """The server's config.json with the priority lists (default: wind on the worker "pi", radar on the server)."""
+        lists = {"wind": entries(*wind), "radar": entries(*radar)}
+        lists.update(kw.pop("lists", {}))
         with open(os.path.join(self.server, "radar", "config.json"), "w") as f:
-            json.dump({"workers": 4, "wind": {"workers": 4}, "external_jobs": external}, f)
+            json.dump({"workers": 4, "wind": {"workers": 4}, "job_workers": lists}, f)
+
+    def heartbeat_of(self, wid, age=60, **extra):
+        d = os.path.join(self.server, "workers", wid)
+        os.makedirs(d, exist_ok=True)
+        body = {"tick": iso(NOW - timedelta(seconds=age)), "id": wid, "host": wid + "-host", "instance": "inst-" + wid,
+                "capabilities": ["radar", "wind"]}
+        body.update(extra)
+        with open(os.path.join(d, "worker-status.json"), "w") as f:
+            json.dump(body, f)
+
+    def server_heartbeat(self, age=60):
+        with open(os.path.join(self.server, "jobs-heartbeat.json"), "w") as f:
+            json.dump({"tick": iso(NOW - timedelta(seconds=age))}, f)
+
+    def server_status(self, job, start):
+        os.makedirs(os.path.join(self.server, job), exist_ok=True)
+        with open(os.path.join(self.server, job, "status.json"), "w") as f:
+            json.dump({"last_run": {"outcome": "processed", "start": iso(start)}}, f)
+
+    def tick(self, runner=None, **kw):
+        kw.setdefault("worker_id", "pi")
+        kw.setdefault("instance", "inst-pi")
+        return ytan_worker.tick(self.local, self.remote, NOW, runner=runner or self.runner, **kw)
+
+    def own_heartbeat(self, wid="pi"):
+        with open(os.path.join(self.server, "workers", wid, "worker-status.json")) as f:
+            return json.load(f)
 
     def runner(self, spec, force=False):
         self.ran.append((spec.name, force))
@@ -93,15 +156,15 @@ class WorkerTest(unittest.TestCase):
             json.dump({"last_run": {"outcome": "processed", "start": "2026-11-12T16:00:05Z"}}, f)
         return 0
 
-    def test_only_external_jobs_run_and_are_uploaded_manifest_last(self):
-        self.server_config(["wind"])
-        report = ytan_worker.tick(self.local, self.remote, NOW, runner=self.runner, workers=2, host="pi")
+    def test_only_the_jobs_the_worker_is_given_run_and_are_uploaded_manifest_last(self):
+        self.server_config()
+        report = self.tick(workers=2, host="pi")
 
         self.assertEqual(self.ran, [("wind", False)])
         self.assertTrue(report["jobs"]["wind"]["published"])
         self.assertNotIn("radar", report["jobs"])
+        self.assertEqual(report["active_jobs"], ["wind"])
         self.assertTrue(os.path.exists(os.path.join(self.server, "wind", "runs", "r1", "block")))
-        self.assertTrue(os.path.exists(os.path.join(self.server, "worker-status.json")))
         # the local copy of config.json got the add-on's worker count
         with open(os.path.join(self.local, "radar", "config.json")) as f:
             self.assertEqual(json.load(f)["wind"]["workers"], 2)
@@ -118,73 +181,181 @@ class WorkerTest(unittest.TestCase):
         self.assertTrue(fetches and "/run-request" in fetches[0])  # run-request asked for as a filtered directory
         self.assertIn("--delete", uploads[3])
 
-    def test_the_current_logs_go_to_their_own_directory_on_the_server(self):
-        self.server_config([])
+    def test_the_heartbeat_tells_who_it_is_and_what_it_can_do(self):
+        self.server_config()
+        self.tick(host="pi-host", address="192.168.178.11")
+        beat = self.own_heartbeat()
+        self.assertEqual((beat["id"], beat["instance"], beat["host"], beat["address"]), ("pi", "inst-pi", "pi-host", "192.168.178.11"))
+        self.assertEqual((beat["capabilities"], beat["protocol"]), (["radar", "wind"], ytan_worker.WORKER_PROTOCOL))
+        self.assertEqual(beat["jobs"]["wind"]["last_run"]["outcome"], "processed")
+        # nothing at the old place of the single worker-status.json
+        self.assertFalse(os.path.exists(os.path.join(self.server, "worker-status.json")))
+
+    def test_the_current_logs_go_to_the_workers_own_directory_on_the_server(self):
+        self.server_config(wind=("server",))
         logs = os.path.join(self.local, "logs")
         os.makedirs(logs)
         for name in ("worker.log", "wind.log", "wind.3.log", "wind.1-10.zip"):
             with open(os.path.join(logs, name), "w") as f:
                 f.write(name)
-        ytan_worker.tick(self.local, self.remote, NOW, runner=self.runner)
-        self.assertEqual(sorted(os.listdir(os.path.join(self.server, "logs", "worker"))), ["wind.log", "worker.log"])
+        self.tick()
+        self.assertEqual(sorted(os.listdir(os.path.join(self.server, "logs", "worker", "pi"))), ["wind.log", "worker.log"])
 
     def test_the_heartbeat_says_running_before_a_job_and_carries_the_end_time(self):
-        self.server_config(["wind"])
+        self.server_config()
         seen = []
 
         def runner(spec, force=False):
-            with open(os.path.join(self.server, "worker-status.json")) as f:
-                seen.append(json.load(f))  # what the server sees while the job runs
+            seen.append(self.own_heartbeat())  # what the server sees while the job runs
             return self.runner(spec, force)
 
         clock = [1000.0]
         old = ytan_worker.time.monotonic
         ytan_worker.time.monotonic = lambda: clock.__setitem__(0, clock[0] + 300) or clock[0]  # every call: +5 min
         try:
-            ytan_worker.tick(self.local, self.remote, NOW, runner=runner)
+            self.tick(runner=runner)
         finally:
             ytan_worker.time.monotonic = old
         self.assertEqual(seen[0]["running"]["job"], "wind")
-        with open(os.path.join(self.server, "worker-status.json")) as f:
-            final = json.load(f)
+        final = self.own_heartbeat()
         self.assertNotIn("running", final)
         self.assertGreater(final["tick"], seen[0]["tick"])  # written at the end, not the round's start
-        self.assertGreater(seen[0]["tick"], NOW.strftime("%Y-%m-%dT%H:%M:%SZ"))
+        self.assertGreater(seen[0]["tick"], iso(NOW))
 
-    def test_nothing_runs_when_no_job_is_external(self):
-        self.server_config([])
-        report = ytan_worker.tick(self.local, self.remote, NOW, runner=self.runner)
-        self.assertEqual((self.ran, report["jobs"]), ([], {}))
-        self.assertTrue(os.path.exists(os.path.join(self.server, "worker-status.json")))
+    def test_a_worker_in_no_list_only_reports(self):
+        self.server_config(wind=("server",), radar=("server",))
+        report = self.tick()
+        self.assertEqual((self.ran, report["jobs"], report["active_jobs"]), ([], {}, []))
+        self.assertEqual(self.own_heartbeat()["capabilities"], ["radar", "wind"])  # the admin sees it as a stranger and can list it
+
+    def test_a_disabled_entry_does_not_work(self):
+        with open(os.path.join(self.server, "radar", "config.json"), "w") as f:
+            json.dump({"job_workers": {"wind": entries("pi", "server", off=("pi",)), "radar": entries("server")}}, f)
+        report = self.tick()
+        self.assertEqual((self.ran, report["active_jobs"]), ([], []))
 
     def test_a_run_request_forces_the_job_and_is_removed_on_the_server(self):
-        self.server_config(["wind"])
+        self.server_config()
         os.makedirs(os.path.join(self.local, "wind"))
         with open(os.path.join(self.local, "wind", "status.json"), "w") as f:
-            json.dump({"last_run": {"start": NOW.strftime("%Y-%m-%dT%H:%M:%SZ")}}, f)  # not due by its slot
+            json.dump({"last_run": {"start": iso(NOW)}}, f)  # not due by its slot
         os.makedirs(os.path.join(self.server, "wind"))
         open(os.path.join(self.server, "wind", "run-request"), "w").close()
 
-        report = ytan_worker.tick(self.local, self.remote, NOW, runner=self.runner)
+        report = self.tick()
         self.assertEqual(self.ran, [("wind", True)])
         self.assertTrue(report["jobs"]["wind"]["requested"])
         self.assertFalse(os.path.exists(os.path.join(self.local, "wind", "run-request")))
-        delete_pass = [c for c in self.fake.commands if "--delete" in c][-1]
+        delete_pass = [c for c in self.fake.commands if "--delete" in c and c[-1].startswith("u@h:wind")][-1]
         self.assertNotIn("run-request", delete_pass)  # not protected: the server's copy is deleted
 
     def test_not_due_and_not_requested_does_not_run(self):
-        self.server_config(["wind"])
+        self.server_config()
         os.makedirs(os.path.join(self.local, "wind"))
         with open(os.path.join(self.local, "wind", "status.json"), "w") as f:
-            json.dump({"last_run": {"start": NOW.strftime("%Y-%m-%dT%H:%M:%SZ")}}, f)
-        report = ytan_worker.tick(self.local, self.remote, NOW, runner=self.runner)
+            json.dump({"last_run": {"start": iso(NOW)}}, f)
+        report = self.tick()
         self.assertEqual(self.ran, [])
         self.assertFalse(report["jobs"]["wind"]["ran"])
 
     def test_without_the_servers_config_nothing_runs(self):
-        report = ytan_worker.tick(self.local, self.remote, NOW, runner=self.runner)
+        report = self.tick()
         self.assertIn("config.json", report["error"])
         self.assertEqual(self.ran, [])
+
+    def test_a_config_from_before_the_lists_is_refused_not_guessed(self):
+        with open(os.path.join(self.server, "radar", "config.json"), "w") as f:
+            json.dump({"external_jobs": ["wind"]}, f)
+        report = self.tick()
+        self.assertIn("job_workers", report["error"])
+        self.assertEqual(self.ran, [])
+
+    def test_a_stand_in_takes_over_only_when_the_first_one_is_silent(self):
+        self.server_config(wind=("nuc", "pi"))
+        self.heartbeat_of("nuc", age=60)
+        self.assertEqual(self.tick()["active_jobs"], [])
+        self.assertEqual(self.ran, [])
+
+        self.heartbeat_of("nuc", age=3600)  # silent for an hour
+        report = self.tick()
+        self.assertEqual((report["active_jobs"], self.ran), (["wind"], [("wind", False)]))
+
+    def test_the_one_that_is_running_the_job_keeps_it_when_a_higher_one_returns(self):
+        self.server_config(wind=("pi", "nuc"))
+        self.heartbeat_of("nuc", age=100, running={"job": "wind", "since": iso(NOW - timedelta(seconds=300))})
+        report = self.tick()
+        self.assertEqual((report["active_jobs"], self.ran), ([], []))
+
+    def test_a_worker_does_not_take_a_job_it_cannot_do(self):
+        self.server_config(wind=("pi",), radar=("pi", "server"))
+        report = self.tick(jobs=["radar"])
+        self.assertEqual((report["active_jobs"], self.ran), (["radar"], [("radar", False)]))
+        self.assertEqual(self.own_heartbeat()["capabilities"], ["radar"])
+
+    def test_the_server_is_the_stand_in_only_while_its_cron_ticks(self):
+        self.server_config(wind=("nuc", "server", "pi"))
+        self.heartbeat_of("nuc", age=3600)  # silent
+        # the server's cron does not tick (no jobs-heartbeat.json): the server is no candidate, so pi, behind it, works
+        self.assertEqual(self.tick()["active_jobs"], ["wind"])
+        self.ran.clear()
+        shutil.rmtree(os.path.join(self.local, "wind"))  # a fresh start of the same worker
+
+        self.server_heartbeat(age=60)  # the cron ticks: the server comes before pi
+        self.assertEqual(self.tick()["active_jobs"], [])
+        self.assertEqual(self.ran, [])
+
+    def test_a_stand_in_does_not_repeat_what_the_one_before_just_did(self):
+        self.server_config(wind=("nuc", "pi"))
+        self.heartbeat_of("nuc", age=3600)
+        self.server_status("wind", NOW - timedelta(seconds=2))  # nuc ran in this very slot (15 min), then went silent
+        report = self.tick()
+        self.assertEqual((report["active_jobs"], self.ran), (["wind"], []))
+        self.assertFalse(report["jobs"]["wind"]["ran"])
+
+    def test_a_second_system_with_the_same_name_does_not_work_and_marks_it(self):
+        self.server_config()
+        self.heartbeat_of("pi", age=60, instance="the-real-pi", host="the-real-host")
+        report = self.tick(instance="a-twin")
+        self.assertIn("pi is used by another system (the-real-host)", report["error"])
+        self.assertEqual(self.ran, [])
+        with open(os.path.join(self.server, "workers", "pi", "conflict.json")) as f:
+            marker = json.load(f)
+        self.assertEqual(marker["instance"], "a-twin")
+        # the real one's heartbeat was not touched
+        self.assertEqual(self.own_heartbeat()["instance"], "the-real-pi")
+
+    def test_the_same_system_after_a_restart_is_no_conflict(self):
+        self.server_config()
+        self.heartbeat_of("pi", age=60, instance="inst-pi")
+        report = self.tick(instance="inst-pi")
+        self.assertNotIn("error", report)
+        self.assertEqual(self.ran, [("wind", False)])
+
+    def test_a_replaced_system_is_a_conflict_until_the_old_report_is_stale(self):
+        self.server_config()
+        self.heartbeat_of("pi", age=3600, instance="old-sd-card")  # more than 15 min: the old one is gone
+        report = self.tick(instance="new-sd-card")
+        self.assertNotIn("error", report)
+        self.assertEqual(self.own_heartbeat()["instance"], "new-sd-card")
+
+    def test_without_workers_on_the_server_nothing_runs_and_it_says_why(self):
+        shutil.rmtree(os.path.join(self.server, "workers"))
+        self.server_config()
+        report = self.tick()
+        self.assertIn("workers/", report["error"])
+        self.assertEqual(self.ran, [])
+
+    def test_the_instance_id_is_made_once_and_kept(self):
+        first = ytan_worker.load_instance(self.local)
+        self.assertEqual(ytan_worker.load_instance(self.local), first)
+        self.assertRegex(first, r"^[0-9a-f]{32}$")
+
+    def test_the_worker_name_is_checked_on_the_command_line(self):
+        for bad in ("server", "Pi", "-x", "a b", "x" * 33):
+            with self.assertRaises(SystemExit):
+                ytan_worker.main(["--remote", "u@h", "--worker-id", bad])
+        with self.assertRaises(SystemExit):
+            ytan_worker.main(["--remote", "u@h", "--worker-id", "pi", "--jobs", "radar,cleanup"])
 
     def test_radar_keeps_its_working_files_and_the_servers_config_out_of_the_upload(self):
         radar = next(s for s in ytan_jobs.JOBS if s.name == "radar")
@@ -204,26 +375,111 @@ class WorkerTest(unittest.TestCase):
             sent.append((req.full_url, json.loads(req.data)))
             return Answer()
 
-        report = {"tick": "2026-11-12T16:00:05Z", "external_jobs": ["wind"], "jobs": {
+        report = {"tick": "2026-11-12T16:00:05Z", "id": "pi", "external_jobs": ["wind"], "jobs": {
             "wind": {"ran": True, "code": 0, "published": True, "seconds": 812.0, "requested": False,
                      "last_run": {"outcome": "processed", "start": "a", "end": "b"}}}}
         ytan_worker.post_sensors(report, token="t", base="http://x/api", opener=opener)
         self.assertEqual(sent[0][0], "http://x/api/states/sensor.ytan_worker")
+        self.assertEqual(sent[0][1]["attributes"]["worker_id"], "pi")
         self.assertEqual(sent[1][0], "http://x/api/states/sensor.ytan_worker_wind")
         self.assertEqual((sent[1][1]["state"], sent[1][1]["attributes"]["duration_s"]), ("processed", 812.0))
 
 
+class ElectionTest(unittest.TestCase):
+    """The shared vectors (tests/testdata/worker-election.json): ytan_jobs.active_worker() must agree with JobPlacement::activeWorker()."""
+
+    def test_vectors(self):
+        with open(VECTORS, encoding="utf-8") as f:
+            data = json.load(f)
+        now = datetime.fromtimestamp(data["now"], tz=timezone.utc)
+        self.assertGreaterEqual(len(data["cases"]), 15)
+        for case in data["cases"]:
+            heartbeats = {
+                wid: {"tick": iso(now - timedelta(seconds=w["age"])), "capabilities": w.get("capabilities", []),
+                      "running": {"job": w["running"]} if w.get("running") else None}
+                for wid, w in case["workers"].items()
+            }
+            server_tick = None if case["server_age"] is None else iso(now - timedelta(seconds=case["server_age"]))
+            with self.subTest(case["name"]):
+                self.assertEqual(ytan_jobs.active_worker(case["job"], case["list"], heartbeats, server_tick, now), case["expected"])
+
+    def test_names(self):
+        for ok in ("homeassistant", "ytanworker", "a", "pi-4", "0x"):
+            self.assertTrue(ytan_jobs.valid_worker_id(ok), ok)
+        for bad in ("", "server", "Home", "-a", "a b", "a_b", "a" * 33, 5, None):
+            self.assertFalse(ytan_jobs.valid_worker_id(bad), repr(bad))
+
+    def test_times_in_both_formats(self):
+        self.assertEqual(ytan_jobs.parse_time("2026-11-12T16:00:05Z"), NOW)
+        self.assertEqual(ytan_jobs.parse_time("2026-11-12T16:00:05+00:00"), NOW)
+        self.assertIsNone(ytan_jobs.parse_time("soon"))
+        self.assertIsNone(ytan_jobs.parse_time(None))
+
+
 class ServerSkipTest(unittest.TestCase):
+    def config(self, d, lists=None, **extra):
+        os.makedirs(os.path.join(d, "radar"), exist_ok=True)
+        body = dict(extra)
+        if lists is not None:
+            body["job_workers"] = lists
+        with open(os.path.join(d, "radar", "config.json"), "w") as f:
+            json.dump(body, f)
+
+    def worker(self, d, wid, age=60, **extra):
+        os.makedirs(os.path.join(d, "workers", wid), exist_ok=True)
+        body = {"tick": iso(NOW - timedelta(seconds=age)), "capabilities": ["radar", "wind"]}
+        body.update(extra)
+        with open(os.path.join(d, "workers", wid, "worker-status.json"), "w") as f:
+            json.dump(body, f)
+
     def test_the_server_skips_external_jobs(self):
         with tempfile.TemporaryDirectory() as d:
-            os.makedirs(os.path.join(d, "radar"))
-            with open(os.path.join(d, "radar", "config.json"), "w") as f:
-                json.dump({"external_jobs": ["wind"]}, f)
+            self.config(d, external_jobs=["wind"])
             ran = []
             results = ytan_jobs.run_due(PY_JOBS, d, NOW, runner=lambda s: ran.append(s.name) or 0,
                                         skip=ytan_jobs.external_jobs(d))
             self.assertEqual(ran, ["radar"])
             self.assertIsNone(results["wind"])
+
+    def test_a_config_without_lists_follows_the_old_external_jobs_key(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.config(d, external_jobs=["wind"])
+            self.assertEqual(ytan_jobs.server_skip(d, NOW), ["wind"])
+
+    def test_no_config_at_all_means_the_server_runs_everything(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(ytan_jobs.server_skip(d, NOW), [])
+
+    def test_a_job_on_a_living_worker_is_skipped_the_others_stay(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.config(d, {"wind": entries("pi", "server"), "radar": entries("server")})
+            self.worker(d, "pi")
+            self.assertEqual(ytan_jobs.server_skip(d, NOW), ["wind"])
+
+    def test_with_the_worker_gone_the_server_stands_in_when_it_is_listed(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.config(d, {"wind": entries("pi", "server"), "radar": entries("pi", "server", off=("server",))})
+            self.worker(d, "pi", age=3600)
+            # wind: the server is listed and enabled = the stand-in; radar: its entry is off = nobody
+            self.assertEqual(ytan_jobs.server_skip(d, NOW), ["radar"])
+
+    def test_the_server_first_in_the_list_runs_even_with_a_living_worker_behind_it(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.config(d, {"wind": entries("server", "pi")})
+            self.worker(d, "pi")
+            self.assertEqual(ytan_jobs.server_skip(d, NOW), [])
+
+    def test_a_worker_that_is_running_the_job_keeps_it_over_the_server_above_it(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.config(d, {"wind": entries("server", "pi")})
+            self.worker(d, "pi", running={"job": "wind"})
+            self.assertEqual(ytan_jobs.server_skip(d, NOW), ["wind"])
+
+    def test_a_worker_that_cannot_do_the_job_does_not_take_it(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.config(d, {"wind": entries("pi", "server")})
+            self.worker(d, "pi", capabilities=["radar"])
+            self.assertEqual(ytan_jobs.server_skip(d, NOW), [])
 
     def test_every_tick_logs_what_ran_and_what_not(self):
         with tempfile.TemporaryDirectory() as d:
@@ -257,6 +513,9 @@ class ServerSkipTest(unittest.TestCase):
             self.assertEqual(ran, [])
             ytan_jobs.run_due(cleanups, d, today + timedelta(days=1), runner=runner)
             self.assertEqual(ran, ["cleanup-weather", "cleanup-caches"])
+
+    def test_the_cleanups_can_never_be_placed_on_a_worker(self):
+        self.assertEqual(ytan_jobs.PLACEABLE_JOBS, ("radar", "wind"))
 
     def test_php_jobs_run_with_the_configured_php(self):
         spec = next(s for s in ytan_jobs.JOBS if s.name == "cleanup-weather")

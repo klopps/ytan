@@ -54,8 +54,12 @@ storage/static-maps-cache/*
 /storage/weather-failures/
 /storage/overpass-last-request
 /storage/nga-msi-last-request
-# heartbeat of the YTAN worker (Home Assistant add-on, tools/ytan_worker.py)
+# what the YTAN workers report (tools/ytan_worker.py): storage/workers/{id}/worker-status.json; the single
+# worker-status.json is that of the add-on before the registry
 /storage/worker-status.json
+/storage/workers/
+# the worker container's secret configuration (docker/ytan-worker/worker.env.example is the template)
+/worker.env
 # background OpenStreetMap import (OsmImportJob): lock and status
 /storage/osm-import.lock
 /storage/osm-import-status.json

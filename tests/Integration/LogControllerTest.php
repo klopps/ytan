@@ -93,7 +93,7 @@ final class LogControllerTest extends ControllerTestCase
     public function testTheWorkersUploadedLogsAreListedSeparately(): void
     {
         mkdir($this->dir . '/logs/worker');
-        file_put_contents($this->dir . '/logs/worker/wind.log', "from the pi\n");
+        file_put_contents($this->dir . '/logs/worker/wind.log', "from the pi\n"); // the add-on from before the registry
         try {
             $result = $this->decode($this->controller->index($this->request('GET', '/api/v1/admin/logs', $this->admin()), $this->response()));
             $this->assertSame(['s:radar.log', 's:wind.log', 'w:wind.log', 'x:0'], array_column($result['data'], 'id'));
@@ -103,6 +103,34 @@ final class LogControllerTest extends ControllerTestCase
             $this->assertSame("from the pi\n", $read['data']['content']);
         } finally {
             unlink($this->dir . '/logs/worker/wind.log');
+            rmdir($this->dir . '/logs/worker');
+        }
+    }
+
+    public function testEachWorkersLogsLiveInTheirOwnDirectoryAndAreAddressedByServerIssuedIds(): void
+    {
+        mkdir($this->dir . '/logs/worker/pi', 0777, true);
+        mkdir($this->dir . '/logs/worker/nuc');
+        mkdir($this->dir . '/logs/worker/Not A Name'); // not a worker name: never listed
+        file_put_contents($this->dir . '/logs/worker/pi/wind.log', "from the pi\n");
+        file_put_contents($this->dir . '/logs/worker/nuc/wind.log', "from the nuc\n");
+        file_put_contents($this->dir . '/logs/worker/Not A Name/x.log', "x\n");
+        try {
+            $result = $this->decode($this->controller->index($this->request('GET', '/api/v1/admin/logs', $this->admin()), $this->response()));
+            $ids = array_column($result['data'], 'id');
+            $this->assertSame(['w:nuc/wind.log', 'w:pi/wind.log'], array_values(array_filter($ids, fn ($id) => str_starts_with($id, 'w:'))));
+            $sources = array_column($result['data'], 'source', 'id');
+            $this->assertSame(['worker:nuc', 'worker:pi'], [$sources['w:nuc/wind.log'], $sources['w:pi/wind.log']]);
+
+            $read = $this->decode($this->controller->read($this->request('GET', '/api/v1/admin/logs/read', $this->admin(), null, ['id' => 'w:nuc/wind.log']), $this->response()));
+            $this->assertSame("from the nuc\n", $read['data']['content']);
+            // an id that was never issued does not become a path
+            $this->assertNull((new LogFileService($this->dir . '/logs'))->resolve('w:../../etc/passwd'));
+        } finally {
+            foreach (['pi', 'nuc', 'Not A Name'] as $d) {
+                array_map('unlink', glob($this->dir . '/logs/worker/' . $d . '/*') ?: []);
+                rmdir($this->dir . '/logs/worker/' . $d);
+            }
             rmdir($this->dir . '/logs/worker');
         }
     }

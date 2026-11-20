@@ -8,6 +8,7 @@ use Ytan\Domain\Settings\SettingsRepository;
 use Ytan\Exception\ForbiddenException;
 use Ytan\Http\Controllers\AdminHealthController;
 use Ytan\Service\AdminHealthService;
+use Ytan\Service\JobPlacement;
 
 /**
  * The /admin dashboard's "Probleme" card (AdminHealthService): every check
@@ -49,6 +50,9 @@ final class AdminHealthServiceTest extends ControllerTestCase
     private function write(string $relative, array|string $content, ?int $mtime = null): void
     {
         $file = $this->root . '/storage/' . $relative;
+        if (!is_dir(dirname($file))) {
+            mkdir(dirname($file), 0777, true);
+        }
         file_put_contents($file, is_array($content) ? json_encode($content) : $content);
         touch($file, $mtime ?? self::NOW);
     }
@@ -125,14 +129,54 @@ final class AdminHealthServiceTest extends ControllerTestCase
         $this->assertSame([], $this->issues());
     }
 
+    /** @param list<array{id: string, enabled: bool}> $windList */
+    private function listWindWorkers(array $windList, array $registered = ['pi', 'nuc']): void
+    {
+        $this->settings->setWorkerRegistry(array_map(fn ($id) => ['id' => $id, 'label' => '', 'note' => ''], $registered));
+        $this->settings->setJobWorkers(['wind' => $windList] + JobPlacement::defaultLists());
+    }
+
+    private function heartbeat(string $id, int $ago, array $extra = []): void
+    {
+        $this->write('workers/' . $id . '/worker-status.json', $extra + ['tick' => self::iso(self::NOW - $ago), 'id' => $id, 'host' => $id,
+            'capabilities' => ['radar', 'wind']]);
+    }
+
     public function testASilentWorkerAndItsFailedJob(): void
     {
-        $this->settings->setExternalJobs(['wind']);
-        $this->assertSame(['worker.never' => 'error'], $this->issues());
+        $this->listWindWorkers([['id' => 'pi', 'enabled' => true]]);
+        // never reported: nobody works on the wind job
+        $this->assertSame(['worker.none_alive' => 'error'], $this->issues());
 
-        $this->write('worker-status.json', ['tick' => self::iso(self::NOW - 3600), 'host' => 'pi',
-            'jobs' => ['wind' => ['ran' => true, 'code' => 1, 'published' => false]]]);
-        $this->assertSame(['worker.silent' => 'error', 'worker.job_failed' => 'error'], $this->issues());
+        $this->heartbeat('pi', 3600, ['jobs' => ['wind' => ['ran' => true, 'code' => 1, 'published' => false]]]);
+        $this->assertSame(['worker.none_alive' => 'error', 'worker.job_failed' => 'error', 'worker.silent' => 'warning'], $this->issues()); // errors first
+    }
+
+    public function testAStandInAtWorkIsAWarningAndTheServerCanBeTheFallback(): void
+    {
+        $this->listWindWorkers([['id' => 'pi', 'enabled' => true], ['id' => 'nuc', 'enabled' => true], ['id' => 'server', 'enabled' => true]]);
+        $this->heartbeat('pi', 3600);
+        $this->heartbeat('nuc', 60);
+        $this->assertSame(['worker.failover' => 'warning', 'worker.silent' => 'warning'], $this->issues());
+
+        // both workers gone, the server's cron ticks: the server is the stand-in
+        $this->heartbeat('nuc', 3600);
+        $this->write('jobs-heartbeat.json', ['tick' => self::iso(self::NOW - 60)]);
+        $this->assertSame(['worker.failover' => 'warning', 'worker.silent' => 'warning'], array_column($this->service()->issues(self::NOW), 'severity', 'code'));
+        $failover = array_values(array_filter($this->service()->issues(self::NOW), fn ($i) => $i['code'] === 'worker.failover'))[0];
+        $this->assertSame(['wind', 'server', 'pi'], [$failover['vars']['job'], $failover['vars']['active'], $failover['vars']['first']]);
+    }
+
+    public function testANameUsedByTwoSystemsAndAStranger(): void
+    {
+        $this->listWindWorkers([['id' => 'pi', 'enabled' => true]]);
+        $this->heartbeat('pi', 60);
+        $this->write('workers/pi/conflict.json', ['tick' => self::iso(self::NOW - 30), 'host' => 'thief', 'instance' => 'x']);
+        $this->heartbeat('stranger', 60);
+        $codes = $this->issues();
+        $this->assertSame('error', $codes['worker.name_conflict']);
+        $this->assertSame('warning', $codes['worker.unknown']);
+        $this->assertArrayNotHasKey('worker.none_alive', $codes); // the system that was there first goes on working
     }
 
     public function testAFailedOrOverdueDailyCleanup(): void

@@ -128,6 +128,8 @@ function refreshWindStatus(quiet) {
         windData().status = answer.data.status;
         windData().running = answer.data.running;
         windData().external = answer.data.external;
+        windData().active = answer.data.active;
+        windData().list = answer.data.list;
         windData().run_requested = answer.data.run_requested;
         windData().worker = answer.data.worker;
         renderAdminJobPlacement(windData());
@@ -393,9 +395,7 @@ function initWindPage() {
     document.getElementById('windRunNow').addEventListener('click', startWindRun);
     document.getElementById('windStatusRefresh').addEventListener('click', function () { refreshWindStatus(); });
     document.getElementById('windEnabled').addEventListener('change', renderWindStatus);
-    initAdminJobPlacement('wind', windData(), function (data) {
-        Object.assign(windData(), { external: data.external, run_requested: data.run_requested, worker: data.worker });
-    });
+    initAdminJobPlacement('wind', windData());
     renderWindStatus();
     // a run started by cron meanwhile shows up too (not in a background tab)
     setInterval(function () {

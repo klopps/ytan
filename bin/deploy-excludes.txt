@@ -9,6 +9,7 @@ node_modules
 android
 watch
 ha-addon
+docker/ytan-worker
 assets
 docs/API.md
 tests

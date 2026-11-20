@@ -16,7 +16,7 @@ use Ytan\Service\Overpass\OsmImportJob;
  * in the web server's / PHP's error log during the last 24 hours.
  *
  * Everything comes from what the jobs already write (storage/{radar,wind}/
- * status.json + manifest.json, storage/worker-status.json, the OSM import's
+ * status.json + manifest.json, storage/workers/{id}/worker-status.json, the OSM import's
  * status, storage/logs/*.log modification times) and one COUNT on
  * weather_forecast - nothing is fetched from outside, so the dashboard can
  * call it on every load.
@@ -62,13 +62,13 @@ final class AdminHealthService
     {
         $now ??= time();
         $storage = $this->rootDir . '/storage';
-        $external = $this->settings->externalJobs();
+        $lists = $this->settings->jobWorkers();
         $issues = [];
 
         $this->checkCron($storage, $now, $issues);
         $this->checkRadar($storage, $now, $issues);
         $this->checkWind($storage, $now, $issues);
-        $this->checkWorker($storage, $external, $now, $issues);
+        $this->checkWorker($storage, $lists, $now, $issues);
         $this->checkOsmImport($now, $issues);
         $this->checkWeather($now, $issues);
         $this->checkCleanup($storage, $now, $issues);
@@ -187,29 +187,59 @@ final class AdminHealthService
         }
     }
 
-    /** @param list<string> $external */
-    private function checkWorker(string $storage, array $external, int $now, array &$issues): void
+    /**
+     * The workers (JobPlacement): per job nobody alive and able (error) or a stand-in at work (warning),
+     * per worker silent / reporting an error / a failed job / a name used by two systems / a stranger.
+     *
+     * @param array<string, list<array{id: string, enabled: bool}>> $lists
+     */
+    private function checkWorker(string $storage, array $lists, int $now, array &$issues): void
     {
-        if ($external === []) {
-            return;
+        $workers = JobPlacement::workers($storage, $now);
+        $heartbeats = JobPlacement::heartbeats($workers);
+        $serverTick = JobPlacement::serverTick($storage);
+        $listed = [];
+        foreach (JobPlacement::JOBS as $job) {
+            $enabled = array_values(array_filter($lists[$job] ?? [], fn ($e) => $e['enabled']));
+            $others = array_values(array_filter(array_column($enabled, 'id'), fn ($id) => $id !== JobPlacement::SERVER));
+            if ($others === []) {
+                continue; // the server alone: the cron checks cover it
+            }
+            foreach ($others as $id) {
+                $listed[$id] = true;
+            }
+            $active = JobPlacement::activeWorker($job, $lists[$job], $heartbeats, $serverTick, $now);
+            if ($active === null) {
+                self::add($issues, 'error', 'worker.none_alive', ['job' => $job, 'workers' => implode(', ', $others)], $job);
+            } elseif ($active !== $enabled[0]['id']) {
+                self::add($issues, 'warning', 'worker.failover', ['job' => $job, 'active' => $active, 'first' => $enabled[0]['id']], $job);
+            }
         }
-        $worker = JobPlacement::workerStatus($storage, $now);
-        $page = in_array('wind', $external, true) ? 'wind' : 'radar';
-        if ($worker === null) {
-            self::add($issues, 'error', 'worker.never', ['jobs' => implode(', ', $external)], $page);
-
-            return;
-        }
-        if ($worker['stale']) {
-            self::add($issues, 'error', 'worker.silent', ['since' => (string) ($worker['tick'] ?? ''), 'host' => (string) ($worker['host'] ?? '')], $page);
-        }
-        if (!empty($worker['error'])) {
-            self::add($issues, 'error', 'worker.error', ['error' => (string) $worker['error']], $page);
-        }
-        foreach (($worker['jobs'] ?? []) as $job => $entry) {
-            if (is_array($entry) && !empty($entry['ran']) && (($entry['code'] ?? 0) !== 0 || empty($entry['published']))) {
-                self::add($issues, 'error', 'worker.job_failed', ['job' => (string) $job, 'code' => $entry['code'] ?? null,
-                    'published' => !empty($entry['published'])], in_array($job, JobPlacement::JOBS, true) ? (string) $job : $page);
+        $registered = array_column($this->settings->workerRegistry(), 'id');
+        foreach ($workers as $id => $report) {
+            $status = $report['status'];
+            $page = array_key_first(array_filter($lists, fn ($list) => in_array($id, array_column($list, 'id'), true))) ?? 'wind';
+            if ($report['conflict'] !== null) {
+                self::add($issues, 'error', 'worker.name_conflict', ['worker' => $id, 'host' => (string) ($report['conflict']['host'] ?? '')], $page);
+            }
+            if (!in_array($id, $registered, true)) {
+                self::add($issues, 'warning', 'worker.unknown', ['worker' => $id, 'host' => (string) ($status['host'] ?? '')], $page);
+                continue;
+            }
+            if (!isset($listed[$id]) || $status === null) {
+                continue;
+            }
+            if ($status['stale']) {
+                self::add($issues, 'warning', 'worker.silent', ['worker' => $id, 'since' => (string) ($status['tick'] ?? ''), 'host' => (string) ($status['host'] ?? '')], $page);
+            }
+            if (!empty($status['error'])) {
+                self::add($issues, 'error', 'worker.error', ['worker' => $id, 'error' => (string) $status['error']], $page);
+            }
+            foreach (($status['jobs'] ?? []) as $job => $entry) {
+                if (is_array($entry) && !empty($entry['ran']) && (($entry['code'] ?? 0) !== 0 || empty($entry['published']))) {
+                    self::add($issues, 'error', 'worker.job_failed', ['worker' => $id, 'job' => (string) $job, 'code' => $entry['code'] ?? null,
+                        'published' => !empty($entry['published'])], in_array($job, JobPlacement::JOBS, true) ? (string) $job : $page);
+                }
             }
         }
     }

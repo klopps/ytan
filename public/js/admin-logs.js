@@ -60,8 +60,9 @@ function logsSourceLabel(source) {
     if (source === 'extra') {
         return t('admin.logs.source_extra');
     }
-    if (source === 'worker') {
-        return t('admin.logs.source_worker');
+    if (source === 'worker' || source.indexOf('worker:') === 0) {
+        // "worker:{id}" = a log of that registered worker (storage/logs/worker/{id}/)
+        return t('admin.logs.source_worker') + (source.length > 7 ? ' ' + source.slice(7) : '');
     }
     return t('admin.logs.source_storage');
 }

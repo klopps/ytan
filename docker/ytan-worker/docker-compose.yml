@@ -1,0 +1,28 @@
+# YTAN worker on a plain Linux machine (Debian + Docker). Started by bin\publish-worker.bat from
+# ~/ytan-worker on that machine:  docker compose -f docker/ytan-worker/docker-compose.yml --env-file worker.env up -d --build
+# Configuration: worker.env next to it (copy docker/ytan-worker/worker.env.example once, it holds secrets
+# and is never overwritten); data (job output, SSH key, the worker's instance id) in ./data. See README.md.
+name: ytan-worker
+services:
+  worker:
+    build:
+      context: ../..                       # the repository root: tools/ and docker/ytan-worker/
+      dockerfile: docker/ytan-worker/Dockerfile
+    image: ytan-worker:local
+    container_name: ytan-worker
+    restart: unless-stopped
+    init: true
+    env_file:
+      - ../../worker.env
+    environment:
+      - TZ=${TZ:-Europe/Berlin}            # the time stamps in the logs are local time
+    volumes:
+      - ../../data:/data                   # storage/ (job output), ssh/ (key, known_hosts) - kept across rebuilds
+    # a 4 GB machine: the rain radar job needs up to ~1 GB, the wind job about the same, never together
+    # (one job at a time); the limit keeps a runaway job from taking the host down with it
+    mem_limit: ${WORKER_MEM_LIMIT:-3g}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

@@ -366,6 +366,7 @@ final class App
         ));
         $c->set(RadarController::class, fn () => new RadarController(new RadarTileService($rootDir . '/storage/radar')));
         $c->set(WindSettingsController::class, fn ($c) => new WindSettingsController($c->get(SettingsRepository::class), $rootDir . '/storage/radar', $rootDir . '/storage/wind', new RadarJobRunner($rootDir, 'wind')));
+        $c->set(\Ytan\Http\Controllers\WorkerSettingsController::class, fn ($c) => new \Ytan\Http\Controllers\WorkerSettingsController($c->get(SettingsRepository::class), $rootDir . '/storage'));
         $c->set(WindController::class, fn () => new WindController(new WindDataService($rootDir . '/storage/wind')));
         $c->set(WsiController::class, fn () => new WsiController(new WsiRenderer($rootDir . '/public/images/wsi')));
         $c->set(SettingsController::class, fn ($c) => new SettingsController($c->get(SettingsRepository::class)));
@@ -633,6 +634,10 @@ final class App
         $app->put('/api/v1/settings/wind', [WindSettingsController::class, 'update']);
         $app->post('/api/v1/settings/wind/run', [WindSettingsController::class, 'run']);
         $app->put('/api/v1/settings/wind/placement', [WindSettingsController::class, 'placement']);
+        // Workers: the registry (unique names) and the priority list of workers per job (admin page /admin/workers)
+        $app->get('/api/v1/settings/workers', [\Ytan\Http\Controllers\WorkerSettingsController::class, 'show']);
+        $app->put('/api/v1/settings/workers', [\Ytan\Http\Controllers\WorkerSettingsController::class, 'update']);
+        $app->post('/api/v1/settings/workers/{id}/reset', [\Ytan\Http\Controllers\WorkerSettingsController::class, 'reset']);
         $app->put('/api/v1/settings/ai', [\Ytan\Http\Controllers\AiAdminController::class, 'updateSettings']);
         $app->post('/api/v1/settings/ai/test', [\Ytan\Http\Controllers\AiAdminController::class, 'test']);
         $app->put('/api/v1/settings/briefing-rules', [\Ytan\Http\Controllers\AiAdminController::class, 'updateRules']);
@@ -856,7 +861,7 @@ final class App
         // Rain radar: the radar job's settings and its last runs (RadarSettingsController).
         $app->get('/admin/radar', fn (Request $req, Response $res) => $renderAdmin($res, 'admin-radar', [
             'radarSettings' => $c->get(SettingsRepository::class)->radarSettings(),
-            'externalJobs' => $c->get(SettingsRepository::class)->externalJobs(),
+            'jobWorkers' => $c->get(SettingsRepository::class)->jobWorkers(),
             'mapsApiKey' => $mapsApiKey,
         ]));
 
@@ -869,9 +874,12 @@ final class App
         // Wind layer: the wind job's settings and its last runs (WindSettingsController).
         $app->get('/admin/wind', fn (Request $req, Response $res) => $renderAdmin($res, 'admin-wind', [
             'windSettings' => $c->get(SettingsRepository::class)->windSettings(),
-            'externalJobs' => $c->get(SettingsRepository::class)->externalJobs(),
+            'jobWorkers' => $c->get(SettingsRepository::class)->jobWorkers(),
             'mapsApiKey' => $mapsApiKey,
         ]));
+
+        // YTAN workers: registry with unique names and the priority list per job (WorkerSettingsController).
+        $app->get('/admin/workers', fn (Request $req, Response $res) => $renderAdmin($res, 'admin-workers'));
 
         // Routencheck: switch, limit, connection test, token usage, traffic-light rules (AiAdminController).
         $app->get('/admin/ai', fn (Request $req, Response $res) => $renderAdmin($res, 'admin-ai', [

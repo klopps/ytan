@@ -164,5 +164,5 @@ window.YTAN_RADAR_SETTINGS = <?= json_encode($radarSettings + [
     'preset_regions' => RadarConfig::PRESETS,
     'max_mosaic_pixels_min' => RadarConfig::MAX_MOSAIC_PIXELS_MIN,
     'max_mosaic_pixels_limit' => RadarConfig::MAX_MOSAIC_PIXELS_LIMIT,
-] + \Ytan\Service\JobPlacement::payload($rootDir . '/storage', 'radar', $externalJobs), JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) ?>;</script>
+] + \Ytan\Service\JobPlacement::payload($rootDir . '/storage', 'radar', $jobWorkers), JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) ?>;</script>
 <?php require $rootDir . '/templates/partials/admin-shell-footer.php'; ?>

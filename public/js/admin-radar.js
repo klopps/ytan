@@ -353,6 +353,8 @@ function refreshRadarStatus(quiet) {
         radarSettingsData().paused_until = answer.data.paused_until;
         radarSettingsData().paused_forever = answer.data.paused_forever;
         radarSettingsData().external = answer.data.external;
+        radarSettingsData().active = answer.data.active;
+        radarSettingsData().list = answer.data.list;
         radarSettingsData().run_requested = answer.data.run_requested;
         radarSettingsData().worker = answer.data.worker;
         renderAdminJobPlacement(radarSettingsData());
@@ -521,9 +523,7 @@ function initRadarPage() {
         btn.addEventListener('click', function () { setRadarPause(btn.dataset.radarPause); });
     });
     document.getElementById('radarResume').addEventListener('click', function () { setRadarPause(null); });
-    initAdminJobPlacement('radar', radarSettingsData(), function (data) {
-        Object.assign(radarSettingsData(), { external: data.external, run_requested: data.run_requested, worker: data.worker });
-    });
+    initAdminJobPlacement('radar', radarSettingsData());
     setInterval(radarIdleCheck, RADAR_IDLE_CHECK_MS);
     initRadarSettings();
 }

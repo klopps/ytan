@@ -173,14 +173,28 @@ final class LogFileService
                 $paths['s:' . $name] = [$path, 'storage'];
             }
         }
-        // the YTAN worker's logs, uploaded by tools/ytan_worker.py (publish_logs()) on every tick
+        // the YTAN workers' logs, uploaded by tools/ytan_worker.py (publish_logs()) on every tick: one
+        // directory per worker (storage/logs/worker/{id}/ -> "w:{id}/{name}", source "worker:{id}"); the
+        // loose files directly in storage/logs/worker/ are those of the add-on from before the registry
         $workerDir = $this->logDir . DIRECTORY_SEPARATOR . self::WORKER_DIR;
         $names = is_dir($workerDir) ? (scandir($workerDir) ?: []) : [];
         sort($names);
         foreach ($names as $name) {
             $path = $workerDir . DIRECTORY_SEPARATOR . $name;
-            if ($name[0] !== '.' && is_file($path) && is_readable($path)) {
+            if ($name[0] === '.') {
+                continue;
+            }
+            if (is_file($path) && is_readable($path)) {
                 $paths['w:' . $name] = [$path, 'worker'];
+            } elseif (is_dir($path) && \Ytan\Service\JobPlacement::isValidId($name)) {
+                $inner = scandir($path) ?: [];
+                sort($inner);
+                foreach ($inner as $file) {
+                    $filePath = $path . DIRECTORY_SEPARATOR . $file;
+                    if ($file[0] !== '.' && is_file($filePath) && is_readable($filePath)) {
+                        $paths['w:' . $name . '/' . $file] = [$filePath, 'worker:' . $name];
+                    }
+                }
             }
         }
         if ($this->phpErrorLog !== null && $this->phpErrorLog !== '' && is_file($this->phpErrorLog) && is_readable($this->phpErrorLog)) {

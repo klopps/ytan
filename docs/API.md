@@ -337,7 +337,7 @@ The admin tool `/admin/logs` (`LogController`, `LogFileService`). Reachable file
 
 ## Admin dashboard problems (admin only)
 
-`AdminHealthController`/`AdminHealthService`, shown as the "Probleme" card on `/admin`. Reads only what the jobs write (status/manifest files, `worker-status.json`, the OSM import status, log modification times) plus one count on `weather_forecast`.
+`AdminHealthController`/`AdminHealthService`, shown as the "Probleme" card on `/admin`. Reads only what the jobs write (status/manifest files, `workers/*/worker-status.json`, the OSM import status, log modification times) plus one count on `weather_forecast`.
 
 | Method | Path | Auth | Body / query | Notes |
 |---|---|---|---|---|
@@ -564,34 +564,61 @@ switched off, `wind.job_running` while a run holds `storage/wind/.lock`; 503
 `wind.job_not_installed` / `wind.job_cannot_start`. The job writes
 `storage/logs/wind.log` itself; console output to `storage/logs/console.log`.
 
-### Where a job runs (YTAN worker)
+### Where a job runs (YTAN workers)
+
+Jobs (`radar`, `wind`) run on this server's cron or on registered **workers**
+(`tools/ytan_worker.py`: the Home Assistant add-on `ha-addon/ytan-worker/`, the Docker
+worker `docker/ytan-worker/`). Each worker has ONE unique name (1-32 characters of
+`a-z`, `0-9`, `-`; `server` is reserved). Per job there is a priority list of
+registered workers and `server`; the first enabled entry that is alive and able
+works on the job (rules: `JobPlacement::activeWorker()`, `tests/testdata/worker-election.json`).
+
+`GET /api/v1/settings/workers` (admin only): `workers` (the registry: `id`, `label`,
+`note`), `job_workers` (`{job: [{id, enabled}]}` in priority order), `jobs`,
+`active` (`{job: id|null}`: who works on the job now, null = nobody alive and able),
+`reports` (`{id: {registered, status, conflict}}` for every system that has reported:
+`status` = its `worker-status.json` plus `stale`, `conflict` = `conflict.json` while
+fresh), `server` (`{tick, alive}`: this server's cron), `limits`.
+`PUT /api/v1/settings/workers` saves registry and lists together, body
+`{workers: [{id, label, note}], job_workers: {job: [{id, enabled}]}}`; the lists are
+checked against the new registry. 422 `worker.invalid_name`, `worker.name_taken`,
+`worker.registry_invalid`, `worker.too_many`, `worker.list_invalid` (twice in a list,
+more than 8 entries), `worker.unknown` (an entry that is not registered). Answers
+like the GET. `POST /api/v1/settings/workers/{id}/reset` frees a name by deleting
+what the system behind it reported (404 for an unknown name).
 
 `PUT /api/v1/settings/radar/placement` and `PUT /api/v1/settings/wind/placement`
-(admin only), body `{external: true|false}`: `true` = the job runs on the YTAN
-worker (Home Assistant add-on `ha-addon/ytan-worker/`, `tools/ytan_worker.py`)
-instead of this server, `false` = back on this server. Stored in
-`app_settings.external_jobs` and written as `external_jobs` into
-`storage/radar/config.json` (cron here skips those jobs, the worker runs only
-those, from its next tick on). Answers the page's settings object like the
-GET. 422 `job.placement_invalid` without a boolean.
+(admin only), body `{external: true|false}`, remain as the simple switch on top of the
+lists: `true` puts the first listed (else the first registered) worker first and switches
+the server entry off (422 `worker.none_registered` without one), `false` puts the server
+first. Answers the page's settings object like the GET. 422 `job.placement_invalid`
+without a boolean. Stored in `app_settings.workers`/`job_workers` and written as
+`job_workers` - plus the old `external_jobs`, derived: the jobs whose first enabled
+entry is not the server - into `storage/radar/config.json`.
 
-The GETs of both pages (and the page payloads) carry `external`,
-`run_requested` (an "update now" is waiting for the worker) and `worker` (the
-worker's last report `storage/worker-status.json`: `tick` UTC, `host`,
-`external_jobs`, `jobs` {name: ran, code, seconds, published, requested,
-last_run}, plus `stale` = no report for 15 minutes; null if it never reported).
-For an external job `POST .../run` does not start anything here: it writes
-`storage/{job}/run-request` and answers 202 `{started: true, external: true}`;
-the worker fetches the request at its next tick (within 5 minutes), runs the
-job with `--force` and deletes the request.
+The GETs of both pages (and the page payloads) carry `active`, `list`, `external`
+(a worker is the active one), `run_requested` (an "update now" is waiting for a
+worker) and `worker` (the report of the active worker, else of the first listed one:
+`tick` UTC, `id`, `instance`, `host`, `address`, `capabilities`, `jobs` {name: ran,
+code, seconds, published, requested, last_run}, `running`, plus `stale` = no report for
+15 minutes, 2 hours while it reports a running job; null if it never reported).
+`POST .../run` starts the job here only when the server is the active one (or nobody
+is alive and the server is listed); otherwise it writes `storage/{job}/run-request` and
+answers 202 `{started: true, external: true}`; the active worker fetches the request at
+its next tick (within 5 minutes), runs the job with `--force` and deletes the request.
 
-The worker connects to the server only, by rsync over SSH with a key that
+A worker connects to the server only, by rsync over SSH with a key that
 `authorized_keys` restricts to rsync below `storage/`
-(`command="/usr/bin/rrsync .../storage",restrict`): it reads
-`radar/config.json` and `{job}/run-request`, and writes the job's directory
-(files first, then `status.json`, `manifest.json` last via `--delay-updates`,
-then a `--delete` pass; per-job excludes in `ytan_jobs.JOBS`) and
-`worker-status.json`.
+(`command="/usr/bin/rrsync .../storage",restrict`): it reads `radar/config.json`,
+`workers/*/worker-status.json` + `conflict.json`, `jobs-heartbeat.json`, `{job}/status.json`
+and `{job}/run-request`, and writes the job's directory (files first, then `status.json`,
+`manifest.json` last via `--delay-updates`, then a `--delete` pass; per-job excludes in
+`ytan_jobs.JOBS`), `workers/{id}/worker-status.json` (and `conflict.json` when another
+system already uses its name) and its logs to `logs/worker/{id}/`. `storage/workers/` and
+`storage/logs/worker/` must exist (the admin pages create them). **Trust:** rrsync cannot
+tell the keys apart, so a worker may read and write everything below `storage/` and its name
+is its own claim; the name conflict check (a second live system with another `instance`
+does not work) and one key per worker are the protection, not an access barrier.
 
 ## CSP reports
 

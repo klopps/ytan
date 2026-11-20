@@ -1,8 +1,8 @@
 # YTAN worker - Home Assistant add-on (local add-on: copied to the "addons" share by bin\publish-ha-addon.bat).
-# Runs the YTAN jobs the admin moved off the server (/admin/wind, /admin/radar: "Extern berechnen")
+# Runs the YTAN jobs the admin gave this worker in the priority lists of Admin > Workers
 # and uploads their output; see DOCS.md and tools/ytan_worker.py.
 name: YTAN Worker
-version: "1.0.0"
+version: "1.1.0"
 slug: ytan_worker
 description: Berechnet YTAN-Jobs (Windkarte, später Regenradar) für den YTAN-Server und lädt die Ergebnisse hoch.
 url: https://ytan.pesr.org
@@ -20,6 +20,12 @@ options:
   workers: 2
   tick_minutes: 5
   host_name: homeassistant
+  # this worker's unique name, registered in Admin > Workers (a-z, 0-9, -; at most 32 characters)
+  worker_id: homeassistant
+  # what this system can do, comma separated (radar,wind); empty = every job
+  jobs: ""
+  # an address shown in Admin > Workers (display only), e.g. 192.168.178.11
+  address: ""
   # Météo-France AROME API key (wind job, tools/wind/ytanwind/arome.py); empty = the job goes on without AROME
   arome_api_key: ""
 schema:
@@ -29,6 +35,9 @@ schema:
   workers: int(1,8)
   tick_minutes: int(1,60)
   host_name: str
+  worker_id: str
+  jobs: str?
+  address: str?
   arome_api_key: password?
 # the job output (several GB, recomputed at any time) stays out of Home Assistant's backups;
 # the SSH key and known_hosts in /data/ssh are kept

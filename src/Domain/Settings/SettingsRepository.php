@@ -339,22 +339,52 @@ final class SettingsRepository
     }
 
     /**
-     * The scheduled jobs that run on the external worker instead of this server (JobPlacement).
+     * The registered YTAN workers (migration 081, /admin/workers): unique names, label, note.
+     *
+     * @return list<array{id: string, label: string, note: string}>
+     */
+    public function workerRegistry(): array
+    {
+        $value = $this->column('workers');
+
+        return \Ytan\Service\JobPlacement::normalizeRegistry($value === false || $value === null ? [] : json_decode((string) $value, true), false);
+    }
+
+    /** @param list<array{id: string, label: string, note: string}> $workers normalized by JobPlacement::normalizeRegistry() */
+    public function setWorkerRegistry(array $workers): void
+    {
+        $this->write('UPDATE app_settings SET workers = ? WHERE id = 1', [json_encode($workers, JSON_UNESCAPED_UNICODE)]);
+    }
+
+    /**
+     * Per job the priority list of the workers (and "server") that may run it (JobPlacement); a job
+     * without a list - or an entry of a worker that is no longer registered - falls back to the server.
+     *
+     * @return array<string, list<array{id: string, enabled: bool}>>
+     */
+    public function jobWorkers(): array
+    {
+        $value = $this->column('job_workers');
+        $registered = array_column($this->workerRegistry(), 'id');
+
+        return \Ytan\Service\JobPlacement::normalizeLists($value === false || $value === null ? null : json_decode((string) $value, true), $registered, false);
+    }
+
+    /** @param array<string, list<array{id: string, enabled: bool}>> $lists normalized by JobPlacement::normalizeLists() */
+    public function setJobWorkers(array $lists): void
+    {
+        $this->write('UPDATE app_settings SET job_workers = ? WHERE id = 1', [json_encode($lists)]);
+    }
+
+    /**
+     * The jobs whose first enabled entry is not this server - what config.json's "external_jobs" says
+     * for workers that predate the lists (JobPlacement::externalFromLists()).
      *
      * @return list<string>
      */
     public function externalJobs(): array
     {
-        $value = $this->column('external_jobs');
-        $jobs = $value === false || $value === null ? [] : json_decode((string) $value, true);
-
-        return \Ytan\Service\JobPlacement::normalize(is_array($jobs) ? $jobs : []);
-    }
-
-    /** @param list<string> $jobs */
-    public function setExternalJobs(array $jobs): void
-    {
-        $this->write('UPDATE app_settings SET external_jobs = ? WHERE id = 1', [json_encode(\Ytan\Service\JobPlacement::normalize($jobs))]);
+        return \Ytan\Service\JobPlacement::externalFromLists($this->jobWorkers());
     }
 
     /**

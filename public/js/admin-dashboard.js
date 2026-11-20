@@ -68,7 +68,10 @@ function healthText(issue) {
     case 'wind.silent': return t('admin.health.wind.silent', vars);
     case 'wind.no_data': return t('admin.health.wind.no_data', vars);
     case 'wind.stale': return vars.until ? t('admin.health.wind.stale_until', vars) : t('admin.health.wind.stale', vars);
-    case 'worker.never': return t('admin.health.worker.never', vars);
+    case 'worker.none_alive': return t('admin.health.worker.none_alive', vars);
+    case 'worker.failover': return t('admin.health.worker.failover', vars);
+    case 'worker.name_conflict': return t('admin.health.worker.name_conflict', vars);
+    case 'worker.unknown': return t('admin.health.worker.unknown', vars);
     case 'worker.silent': return t('admin.health.worker.silent', vars);
     case 'worker.error': return t('admin.health.worker.error', vars);
     case 'worker.job_failed': return t('admin.health.worker.job_failed', vars);

@@ -5,7 +5,7 @@ Everything in `tools/` that runs on a schedule shares ONE Python environment
 
 ```
 ytan_jobs.py         the dispatcher: the only cron entry, runs the due jobs one after the other
-ytan_worker.py       the YTAN worker: runs jobs marked "Extern berechnen" on an external machine
+ytan_worker.py       the YTAN worker (--worker-id NAME): runs the jobs the priority lists of Admin > Workers give it, on an external machine
 ytanjob.py           shared job helpers (lock, atomic JSON)
 ytanlog.py           shared log helpers (time stamps, rotation)
 requirements.txt     the packages of ALL jobs below
