@@ -71,9 +71,5 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
 
 <h2 class="h6 mt-4"><?= $t('admin.workers.jobs_title') ?></h2>
 <div id="workersJobs"></div>
-
-<div class="d-flex flex-wrap align-items-center gap-2 mb-4">
-    <button type="button" class="btn btn-primary" id="workersSave"><?= $t('common.save') ?></button>
-    <span class="small text-warning-emphasis" id="workersDirty" hidden><?= $t('admin.workers.dirty') ?></span>
-</div>
+<p class="small text-secondary mb-4"><?= $t('admin.workers.autosave_hint') ?></p>
 <?php require $rootDir . '/templates/partials/admin-shell-footer.php'; ?>

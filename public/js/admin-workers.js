@@ -4,21 +4,17 @@
  * (the lists, what the workers reported, who works on each job now), PUT /settings/workers saves
  * registry and lists together; POST /settings/workers/{id}/reset frees a name.
  *
- * All edits happen in `workersState` and are saved with one button; who "works" / is "ready" is what
- * the server computed when it was loaded - it is recomputed by saving.
+ * Every change is saved at once (no save button): the page changes `workersState`, sends registry and
+ * lists with PUT /settings/workers and shows the server's answer, which also recomputes who "works" /
+ * is "ready". A failed save shows the error and reloads what the server has.
  */
 var WORKERS_REFRESH_MS = 30000;
 var WORKERS_NAME = /^[a-z0-9][a-z0-9-]{0,31}$/;
 var workersState = null;   // the server's answer, edited in place
-var workersDirty = false;
+var workersSaving = false; // a save is under way: further clicks wait for its answer
 
 function workersClone(value) {
     return JSON.parse(JSON.stringify(value));
-}
-
-function workersSetDirty(dirty) {
-    workersDirty = dirty;
-    document.getElementById('workersDirty').hidden = !dirty;
 }
 
 /** Name, label of a registered worker (or the server's entry) for the lists. */
@@ -185,7 +181,6 @@ function workersRender() {
 function workersLoad(quiet) {
     return Ytan.get('/settings/workers').then(function (answer) {
         workersState = workersClone(answer.data);
-        workersSetDirty(false);
         workersRender();
     }).catch(function (err) {
         if (quiet !== true) {
@@ -202,22 +197,28 @@ function workersPayload() {
     };
 }
 
-function workersSave() {
-    var btn = document.getElementById('workersSave');
-    btn.disabled = true;
-    Ytan.put('/settings/workers', workersPayload()).then(function (answer) {
+/**
+ * Saves the registry and the lists as they are in `workersState` and shows the server's answer. `message`
+ * = a toast on success (the registry actions; a list tweak is visible in the list itself). A failure shows
+ * the error and reloads what the server has, so the page never shows something that was not saved.
+ */
+function workersCommit(message) {
+    workersSaving = true;
+    return Ytan.put('/settings/workers', workersPayload()).then(function (answer) {
         workersState = workersClone(answer.data);
-        workersSetDirty(false);
         workersRender();
-        showAdminToast(t('admin.workers.saved'), 'success');
+        if (message) {
+            showAdminToast(message, 'success');
+        }
     }).catch(function (err) {
         showAdminToast(t('common.save_failed', { error: err.data ? translateApiError(err.data) : err.message }), 'error');
+        return workersLoad(true);
     }).finally(function () {
-        btn.disabled = false;
+        workersSaving = false;
     });
 }
 
-/** Registers a name (the form's fields or a stranger's name) - saved with the save button. */
+/** Registers a name (the form's fields or a stranger's name) and saves; false = refused before saving. */
 function workersRegister(id, label, note) {
     if (!WORKERS_NAME.test(id) || id === 'server') {
         showAdminToast(t('admin.workers.invalid_name'), 'error');
@@ -228,13 +229,15 @@ function workersRegister(id, label, note) {
         return false;
     }
     workersState.workers.push({ id: id, label: label, note: note });
-    workersSetDirty(true);
-    workersRender();
+    workersCommit(t('admin.workers.saved'));
     return true;
 }
 
 function workersRemove(index) {
     var id = workersState.workers[index].id;
+    if (!window.confirm(t('admin.workers.remove_confirm', { worker: id }))) {
+        return;
+    }
     workersState.workers.splice(index, 1);
     Object.keys(workersState.job_workers).forEach(function (job) {
         workersState.job_workers[job] = workersState.job_workers[job].filter(function (e) { return e.id !== id; });
@@ -242,8 +245,7 @@ function workersRemove(index) {
             workersState.job_workers[job] = [{ id: 'server', enabled: true }];
         }
     });
-    workersSetDirty(true);
-    workersRender();
+    workersCommit(t('admin.workers.saved'));
 }
 
 function workersReset(id) {
@@ -251,7 +253,6 @@ function workersReset(id) {
         return;
     }
     Ytan.post('/settings/workers/' + encodeURIComponent(id) + '/reset', {}).then(function (answer) {
-        // only the reports: unsaved edits of the registry and the lists stay as they are
         workersState.reports = answer.data.reports;
         workersState.active = answer.data.active;
         workersRender();
@@ -268,8 +269,10 @@ function workersEntryOf(target) {
 }
 
 function initWorkersPage() {
-    document.getElementById('workersSave').addEventListener('click', workersSave);
     document.getElementById('workersAdd').addEventListener('click', function () {
+        if (!workersState || workersSaving) {
+            return;
+        }
         var idField = document.getElementById('workersNewId');
         var label = document.getElementById('workersNewLabel');
         var note = document.getElementById('workersNewNote');
@@ -279,24 +282,24 @@ function initWorkersPage() {
             note.value = '';
         }
     });
-    document.addEventListener('input', function (event) {
-        var field = event.target.dataset ? event.target.dataset.workersField : null;
-        if (field) {
-            workersState.workers[parseInt(event.target.dataset.workersIndex, 10)][field] = event.target.value;
-            workersSetDirty(true);
-        }
-    });
+    // display name / note: saved when the field is left (change), not on every key
     document.addEventListener('change', function (event) {
-        if (event.target.dataset && event.target.dataset.workersEnabled) {
+        if (!workersState || workersSaving || !event.target.dataset) {
+            return;
+        }
+        var data = event.target.dataset;
+        if (data.workersField) {
+            workersState.workers[parseInt(data.workersIndex, 10)][data.workersField] = event.target.value.trim();
+            workersCommit();
+        } else if (data.workersEnabled) {
             var entry = workersEntryOf(event.target);
             workersState.job_workers[entry.job][entry.index].enabled = event.target.checked;
-            workersSetDirty(true);
-            workersRenderJobs();
+            workersCommit();
         }
     });
     document.addEventListener('click', function (event) {
         var button = event.target.closest('button');
-        if (!button || !workersState) {
+        if (!button || !workersState || workersSaving) {
             return;
         }
         var data = button.dataset;
@@ -306,8 +309,7 @@ function initWorkersPage() {
             var to = entry.index + parseInt(data.workersMove, 10);
             if (to >= 0 && to < list.length) {
                 list.splice(to, 0, list.splice(entry.index, 1)[0]);
-                workersSetDirty(true);
-                workersRenderJobs();
+                workersCommit();
             }
         } else if (data.workersRemoveEntry) {
             var removed = workersEntryOf(button);
@@ -315,14 +317,12 @@ function initWorkersPage() {
             if (workersState.job_workers[removed.job].length === 0) {
                 workersState.job_workers[removed.job] = [{ id: 'server', enabled: true }];
             }
-            workersSetDirty(true);
-            workersRenderJobs();
+            workersCommit();
         } else if (data.workersAddEntry) {
             var select = document.querySelector('[data-workers-add-select="' + data.workersAddEntry + '"]');
             if (select && select.value) {
                 workersState.job_workers[data.workersAddEntry].push({ id: select.value, enabled: true });
-                workersSetDirty(true);
-                workersRenderJobs();
+                workersCommit();
             }
         } else if (data.workersRemove) {
             workersRemove(parseInt(data.workersRemove, 10));
@@ -334,9 +334,10 @@ function initWorkersPage() {
         }
     });
     workersLoad();
-    // what the workers reported changes by itself; not while there are unsaved edits or in a background tab
+    // what the workers reported changes by itself; not in a background tab, during a save or while a field is being edited
     setInterval(function () {
-        if (!document.hidden && !workersDirty) {
+        var editing = document.activeElement && /^(INPUT|SELECT)$/.test(document.activeElement.tagName);
+        if (!document.hidden && !workersSaving && !editing) {
             workersLoad(true);
         }
     }, WORKERS_REFRESH_MS);

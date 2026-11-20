@@ -19,7 +19,7 @@ Ein Worker, der in keiner Liste steht, meldet sich nur. Nur der Worker verbindet
 1. Auf dem Server unter `Admin > Worker` den Namen anlegen (z. B. `homeassistant`) und dieselbe Schreibweise in der Option `worker_id` eintragen. Das Anlegen erzeugt auch die Verzeichnisse `storage/workers/` und `storage/logs/worker/`, die der erste Upload braucht.
 2. Add-on starten. Das Protokoll zeigt beim Start eine Zeile, in der nach Zeit und `[addon]` der Text `command="/usr/bin/rrsync ...` folgt.
 3. Diese Zeile ab `command=` auf dem Server in `~/.ssh/authorized_keys` des SSH-Benutzers eintragen (Verzeichnis `.ssh` mit Rechten 700, Datei 600). Der Schlüssel kann damit **nur** rsync unterhalb des YTAN-Ordners `storage/` – keine Shell, kein Zugriff auf andere Websites. **Ein eigener Schlüssel je Worker:** Der Schlüssel des Add-ons nie auf ein zweites System kopieren.
-4. Unter `Admin > Worker` den Worker in die Listen der Jobs aufnehmen, die er rechnen soll, und speichern. Ab dem nächsten Takt rechnet er.
+4. Unter `Admin > Worker` den Worker in die Listen der Jobs aufnehmen, die er rechnen soll (jede Änderung dort wird sofort gespeichert). Ab dem nächsten Takt rechnet er.
 
 **Sperren:** Zum sofortigen Aussperren die `authorized_keys`-Zeile dieses Workers auf dem Server löschen. Der Server kann die Schlüssel nicht unterscheiden (rrsync): Ein Worker kann alles unter `storage/` lesen und schreiben. Mehr dazu auf der Seite `Admin > Worker` („Wie sicher ist die Anmeldung?“).
 

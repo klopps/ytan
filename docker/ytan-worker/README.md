@@ -15,7 +15,7 @@ Derselbe Worker wie das Home-Assistant-Add-on (`ha-addon/ytan-worker/`), für ei
 2. Auf dem Worker-System `~/ytan-worker/worker.env` anlegen (Vorlage `worker.env.example`) und `WORKER_ID` auf den Namen setzen. Diese Datei enthält ein Geheimnis (AROME-Schlüssel) und bleibt nur dort; `bin\publish-worker.bat` überschreibt sie nie.
 3. `bin\publish-worker.bat` ausführen: kopiert `tools/` und `docker/ytan-worker/`, baut das Image auf dem Worker-System und startet den Container.
 4. Das Protokoll (`docker logs ytan-worker`) zeigt beim Start eine Zeile mit `command="/usr/bin/rrsync ...`. Diese Zeile ab `command=` auf dem YTAN-Server in `~/.ssh/authorized_keys` des SSH-Benutzers eintragen (Verzeichnis `.ssh` mit Rechten 700, Datei 600). Der Schlüssel kann damit **nur** rsync unterhalb von `storage/`.
-5. Unter `Admin > Worker` den Worker in die Listen der Jobs aufnehmen, die er rechnen soll, und speichern.
+5. Unter `Admin > Worker` den Worker in die Listen der Jobs aufnehmen, die er rechnen soll (jede Änderung dort wird sofort gespeichert).
 
 **Ein eigener Schlüssel je Worker.** Der Schlüssel liegt in `~/ytan-worker/data/ssh/`; nie auf ein zweites System kopieren. Zum sofortigen Sperren die Zeile dieses Schlüssels in `authorized_keys` löschen. Der Server kann die Schlüssel nicht unterscheiden (rrsync): Jeder Worker kann alles unter `storage/` lesen und schreiben. Die Seite `Admin > Worker` erklärt das Restrisiko.
 
