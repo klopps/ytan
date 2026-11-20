@@ -71,7 +71,7 @@ let windParticles = null; // {n, x, y, age, life}
 let windColorLut = null;
 
 function initWind() {
-    registerMapContextMenuItem('waves', 'wind.context_menu.toggle_item', windContextMenuToggle);
+    registerMapContextMenuItem('waves', 'wind.context_menu.toggle_item', windContextMenuToggle, MAP_CONTEXT_MENU_ORDER.wind);
     window.addEventListener('online', updateWindOnlineState);
     window.addEventListener('offline', updateWindOnlineState);
     document.addEventListener('visibilitychange', function () {

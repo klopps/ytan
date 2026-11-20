@@ -1348,7 +1348,7 @@ function arShowOnMap() {
 if (arSupported()) {
     registerMapContextMenuItem('photo_camera', 'ar.context_menu', function () {
         startArPoiView();
-    });
+    }, MAP_CONTEXT_MENU_ORDER.ar);
 }
 
 document.addEventListener('DOMContentLoaded', () => {

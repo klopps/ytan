@@ -53,7 +53,27 @@ function initAdminAuth(options) {
         return typeof t === 'function' ? t('admin.login.not_admin') : 'Signed in, but this account is not an admin.';
     }
 
+    var submitting = false; // Enter and the button both submit: one request at a time
+
+    // The login box is no <form> (its button is a plain button), so Enter has to be wired by hand:
+    // username [Tab] password [Enter] must log in. Not while an input method is composing text.
+    ['loginUsername', 'loginPassword'].forEach(function (id) {
+        var field = document.getElementById(id);
+        if (field) {
+            field.addEventListener('keydown', function (event) {
+                if (event.key === 'Enter' && !event.isComposing) {
+                    event.preventDefault();
+                    window.submitAdminLogin();
+                }
+            });
+        }
+    });
+
     window.submitAdminLogin = async function () {
+        if (submitting) {
+            return;
+        }
+        submitting = true;
         var username = document.getElementById('loginUsername').value;
         var password = document.getElementById('loginPassword').value;
         var message = document.getElementById('loginMessage');
@@ -86,6 +106,8 @@ function initAdminAuth(options) {
             });
         } catch (err) {
             message.textContent = err.message;
+        } finally {
+            submitting = false;
         }
     };
 

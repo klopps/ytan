@@ -60,9 +60,13 @@ function logsSourceLabel(source) {
     if (source === 'extra') {
         return t('admin.logs.source_extra');
     }
-    if (source === 'worker' || source.indexOf('worker:') === 0) {
+    if (source.indexOf('worker:') === 0) {
         // "worker:{id}" = a log of that registered worker (storage/logs/worker/{id}/)
-        return t('admin.logs.source_worker') + (source.length > 7 ? ' ' + source.slice(7) : '');
+        return t('admin.logs.source_worker') + ' ' + source.slice(7);
+    }
+    if (source === 'worker') {
+        // loose in storage/logs/worker/: uploaded by a worker from before the registry - it has no name
+        return t('admin.logs.source_worker_unnamed');
     }
     return t('admin.logs.source_storage');
 }

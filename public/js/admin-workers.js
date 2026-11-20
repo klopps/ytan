@@ -4,14 +4,18 @@
  * (the lists, what the workers reported, who works on each job now), PUT /settings/workers saves
  * registry and lists together; POST /settings/workers/{id}/reset frees a name.
  *
- * Every change is saved at once (no save button): the page changes `workersState`, sends registry and
- * lists with PUT /settings/workers and shows the server's answer, which also recomputes who "works" /
- * is "ready". A failed save shows the error and reloads what the server has.
+ * Changes to the lists (move, switch on/off, add, take out), registering and removing a worker are saved
+ * at once: the page changes `workersState`, sends registry and lists with PUT /settings/workers and shows
+ * the server's answer, which also recomputes who "works" / is "ready". Display name and note of a
+ * registered worker are only a draft until the save button at the end of the row is used. Removing a
+ * worker, taking an entry out of a list and resetting a name ask first (adminConfirm(), the shell's
+ * modal). A failed save shows the error and reloads what the server has.
  */
 var WORKERS_REFRESH_MS = 30000;
 var WORKERS_NAME = /^[a-z0-9][a-z0-9-]{0,31}$/;
 var workersState = null;   // the server's answer, edited in place
 var workersSaving = false; // a save is under way: further clicks wait for its answer
+var workersDrafts = {};    // unsaved display name / note per worker id ({label, note}), kept until the row's save button is used
 
 function workersClone(value) {
     return JSON.parse(JSON.stringify(value));
@@ -66,19 +70,28 @@ function workersStateHtml(report) {
 
 function workersRenderRegistered() {
     var body = document.getElementById('workersRegistered');
-    body.innerHTML = workersState.workers.map(function (worker, index) {
+    // one card per worker (a table did not fit a phone: the save button at the end of the row was off screen)
+    body.innerHTML = workersState.workers.map(function (worker) {
         var report = workersState.reports[worker.id] || null;
+        // an unsaved edit of this row stays in the fields (and its save button stays on) when the page redraws
+        var draft = workersDrafts[worker.id] || { label: worker.label, note: worker.note };
+        var dirty = draft.label !== worker.label || draft.note !== worker.note;
+        var fieldId = 'workers-' + escapeHTML(worker.id);
         var resetButton = report
-            ? '<button type="button" class="btn btn-outline-secondary btn-sm" data-workers-reset="' + escapeHTML(worker.id) + '" title="' + escapeHTML(t('admin.workers.reset_title')) + '"><i class="bi bi-arrow-counterclockwise"></i> <span class="d-none d-lg-inline">' + escapeHTML(t('admin.workers.reset')) + '</span></button> '
+            ? '<button type="button" class="btn btn-outline-secondary btn-sm" data-workers-reset="' + escapeHTML(worker.id) + '" title="' + escapeHTML(t('admin.workers.reset_title')) + '"><i class="bi bi-arrow-counterclockwise"></i> ' + escapeHTML(t('admin.workers.reset')) + '</button>'
             : '';
-        return '<tr>' +
-            '<td><code>' + escapeHTML(worker.id) + '</code></td>' +
-            '<td><input type="text" class="form-control form-control-sm" maxlength="60" data-workers-field="label" data-workers-index="' + index + '" value="' + escapeHTML(worker.label) + '" aria-label="' + escapeHTML(t('admin.workers.col_label')) + '"></td>' +
-            '<td class="d-none d-md-table-cell"><input type="text" class="form-control form-control-sm" maxlength="200" data-workers-field="note" data-workers-index="' + index + '" value="' + escapeHTML(worker.note) + '" aria-label="' + escapeHTML(t('admin.workers.col_note')) + '"></td>' +
-            '<td>' + workersStateHtml(report) + '</td>' +
-            '<td class="text-nowrap">' + resetButton +
-            '<button type="button" class="btn btn-outline-danger btn-sm" data-workers-remove="' + index + '" title="' + escapeHTML(t('admin.workers.remove_title')) + '"><i class="bi bi-trash"></i> <span class="d-none d-lg-inline">' + escapeHTML(t('admin.workers.remove')) + '</span></button></td>' +
-            '</tr>';
+        return '<li class="list-group-item" data-workers-row="' + escapeHTML(worker.id) + '">' +
+            '<div class="d-flex flex-wrap align-items-start gap-2 mb-2"><code class="fs-6">' + escapeHTML(worker.id) + '</code><div class="flex-grow-1">' + workersStateHtml(report) + '</div></div>' +
+            '<div class="row g-2 mb-2">' +
+            '<div class="col-12 col-md-5"><label class="form-label small mb-0" for="' + fieldId + '-label">' + escapeHTML(t('admin.workers.col_label')) + '</label>' +
+            '<input type="text" class="form-control form-control-sm" id="' + fieldId + '-label" maxlength="60" data-workers-field="label" value="' + escapeHTML(draft.label) + '"></div>' +
+            '<div class="col-12 col-md-7"><label class="form-label small mb-0" for="' + fieldId + '-note">' + escapeHTML(t('admin.workers.col_note')) + '</label>' +
+            '<input type="text" class="form-control form-control-sm" id="' + fieldId + '-note" maxlength="200" data-workers-field="note" value="' + escapeHTML(draft.note) + '"></div>' +
+            '</div>' +
+            '<div class="d-flex flex-wrap justify-content-end gap-2">' + resetButton +
+            '<button type="button" class="btn btn-outline-danger btn-sm" data-workers-remove="' + escapeHTML(worker.id) + '" title="' + escapeHTML(t('admin.workers.remove_title')) + '"><i class="bi bi-trash"></i> ' + escapeHTML(t('admin.workers.remove')) + '</button>' +
+            '<button type="button" class="btn btn-primary btn-sm" data-workers-save-row="' + escapeHTML(worker.id) + '"' + (dirty ? '' : ' disabled') + '><i class="bi bi-check-lg"></i> ' + escapeHTML(t('common.save')) + '</button>' +
+            '</div></li>';
     }).join('');
 }
 
@@ -233,12 +246,52 @@ function workersRegister(id, label, note) {
     return true;
 }
 
-function workersRemove(index) {
-    var id = workersState.workers[index].id;
-    if (!window.confirm(t('admin.workers.remove_confirm', { worker: id }))) {
+/** The row's display name and note, as typed, go into the registry and are saved. */
+function workersSaveRow(id) {
+    var draft = workersDrafts[id];
+    var worker = workersState.workers.find(function (w) { return w.id === id; });
+    if (!draft || !worker) {
+        return;
+    }
+    worker.label = draft.label.trim();
+    worker.note = draft.note.trim();
+    delete workersDrafts[id];
+    workersCommit(t('admin.workers.saved'));
+}
+
+/** Typing in a row: remembers the draft and switches the row's save button on (only while something differs). */
+function workersEditRow(row, field, value) {
+    var id = row.dataset.workersRow;
+    var worker = workersState.workers.find(function (w) { return w.id === id; });
+    if (!worker) {
+        return;
+    }
+    var draft = workersDrafts[id] || { label: worker.label, note: worker.note };
+    draft[field] = value;
+    if (draft.label === worker.label && draft.note === worker.note) {
+        delete workersDrafts[id];
+    } else {
+        workersDrafts[id] = draft;
+    }
+    row.querySelector('[data-workers-save-row]').disabled = !workersDrafts[id];
+}
+
+/** Removing a registered worker asks first (the shell's modal, not the browser's message box). */
+async function workersRemove(id) {
+    if (!(await adminConfirm({
+        title: t('admin.workers.remove_modal_title'),
+        message: t('admin.workers.remove_confirm', { worker: id }),
+        confirmLabel: t('admin.workers.remove'),
+        danger: true,
+    }))) {
+        return;
+    }
+    var index = workersState.workers.findIndex(function (w) { return w.id === id; });
+    if (index < 0) {
         return;
     }
     workersState.workers.splice(index, 1);
+    delete workersDrafts[id];
     Object.keys(workersState.job_workers).forEach(function (job) {
         workersState.job_workers[job] = workersState.job_workers[job].filter(function (e) { return e.id !== id; });
         if (workersState.job_workers[job].length === 0) {
@@ -248,8 +301,35 @@ function workersRemove(index) {
     workersCommit(t('admin.workers.saved'));
 }
 
-function workersReset(id) {
-    if (!window.confirm(t('admin.workers.reset_confirm', { worker: id }))) {
+/** Taking an entry out of a job's list (Wind, Regenradar) asks first too; the worker itself stays registered. */
+async function workersRemoveEntry(job, id) {
+    if (!(await adminConfirm({
+        title: t('admin.workers.remove_entry_title'),
+        message: t('admin.workers.remove_entry_confirm', { worker: workersLabelOf(id), job: workersJobName(job) }),
+        confirmLabel: t('admin.workers.remove'),
+        danger: true,
+    }))) {
+        return;
+    }
+    var list = workersState.job_workers[job] || [];
+    var index = list.findIndex(function (e) { return e.id === id; });
+    if (index < 0) {
+        return;
+    }
+    list.splice(index, 1);
+    if (list.length === 0) {
+        workersState.job_workers[job] = [{ id: 'server', enabled: true }];
+    }
+    workersCommit();
+}
+
+async function workersReset(id) {
+    if (!(await adminConfirm({
+        title: t('admin.workers.reset'),
+        message: t('admin.workers.reset_confirm', { worker: id }),
+        confirmLabel: t('admin.workers.reset'),
+        danger: true,
+    }))) {
         return;
     }
     Ytan.post('/settings/workers/' + encodeURIComponent(id) + '/reset', {}).then(function (answer) {
@@ -282,20 +362,27 @@ function initWorkersPage() {
             note.value = '';
         }
     });
-    // display name / note: saved when the field is left (change), not on every key
+    // display name / note: only a draft until the save button at the end of the row is used (or Enter in a field)
+    document.addEventListener('input', function (event) {
+        var row = workersState && event.target.dataset && event.target.dataset.workersField ? event.target.closest('[data-workers-row]') : null;
+        if (row) {
+            workersEditRow(row, event.target.dataset.workersField, event.target.value);
+        }
+    });
+    document.addEventListener('keydown', function (event) {
+        var row = event.key === 'Enter' && event.target.dataset && event.target.dataset.workersField ? event.target.closest('[data-workers-row]') : null;
+        if (row && workersState && !workersSaving) {
+            event.preventDefault();
+            workersSaveRow(row.dataset.workersRow);
+        }
+    });
     document.addEventListener('change', function (event) {
-        if (!workersState || workersSaving || !event.target.dataset) {
+        if (!workersState || workersSaving || !event.target.dataset || !event.target.dataset.workersEnabled) {
             return;
         }
-        var data = event.target.dataset;
-        if (data.workersField) {
-            workersState.workers[parseInt(data.workersIndex, 10)][data.workersField] = event.target.value.trim();
-            workersCommit();
-        } else if (data.workersEnabled) {
-            var entry = workersEntryOf(event.target);
-            workersState.job_workers[entry.job][entry.index].enabled = event.target.checked;
-            workersCommit();
-        }
+        var entry = workersEntryOf(event.target);
+        workersState.job_workers[entry.job][entry.index].enabled = event.target.checked;
+        workersCommit();
     });
     document.addEventListener('click', function (event) {
         var button = event.target.closest('button');
@@ -313,19 +400,17 @@ function initWorkersPage() {
             }
         } else if (data.workersRemoveEntry) {
             var removed = workersEntryOf(button);
-            workersState.job_workers[removed.job].splice(removed.index, 1);
-            if (workersState.job_workers[removed.job].length === 0) {
-                workersState.job_workers[removed.job] = [{ id: 'server', enabled: true }];
-            }
-            workersCommit();
+            workersRemoveEntry(removed.job, workersState.job_workers[removed.job][removed.index].id);
         } else if (data.workersAddEntry) {
             var select = document.querySelector('[data-workers-add-select="' + data.workersAddEntry + '"]');
             if (select && select.value) {
                 workersState.job_workers[data.workersAddEntry].push({ id: select.value, enabled: true });
                 workersCommit();
             }
+        } else if (data.workersSaveRow) {
+            workersSaveRow(data.workersSaveRow);
         } else if (data.workersRemove) {
-            workersRemove(parseInt(data.workersRemove, 10));
+            workersRemove(data.workersRemove);
         } else if (data.workersReset) {
             workersReset(data.workersReset);
         } else if (data.workersRegister) {
@@ -337,7 +422,8 @@ function initWorkersPage() {
     // what the workers reported changes by itself; not in a background tab, during a save or while a field is being edited
     setInterval(function () {
         var editing = document.activeElement && /^(INPUT|SELECT)$/.test(document.activeElement.tagName);
-        if (!document.hidden && !workersSaving && !editing) {
+        // not while a confirmation modal is open either: it was opened for an entry of the state as it is now
+        if (!document.hidden && !workersSaving && !editing && !document.querySelector('.modal.show')) {
             workersLoad(true);
         }
     }, WORKERS_REFRESH_MS);

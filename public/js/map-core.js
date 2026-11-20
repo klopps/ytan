@@ -253,11 +253,20 @@ let overlayProjection; // OverlayView set in initMap(), exposes getProjection() 
  * meant to grow over time, per the same "just push into a shared array"
  * extensibility already used for longPressCandidates above.
  */
-let mapContextMenuItems = []; // { icon, labelKey, handler(latLng) }
+let mapContextMenuItems = []; // { icon, labelKey, handler(latLng), order }
 let mapContextMenuLatLng = null; // the location the currently-open menu was opened for, read by invokeMapContextMenuItem()
 
-function registerMapContextMenuItem(iconName, labelKey, handler) {
-    mapContextMenuItems.push({ icon: iconName, labelKey: labelKey, handler: handler });
+/**
+ * The menu's order is fixed by these numbers, not by which file happens to register first (the
+ * init calls in initMap() used to decide it): weather data, wind, rain radar, Windy, Windy's radar,
+ * create POI, then the AR view. A new item picks its place here.
+ */
+const MAP_CONTEXT_MENU_ORDER = { weather: 10, wind: 20, radar: 30, windy: 40, windyRadar: 50, createPoi: 60, ar: 70 };
+
+function registerMapContextMenuItem(iconName, labelKey, handler, order) {
+    mapContextMenuItems.push({ icon: iconName, labelKey: labelKey, handler: handler, order: order === undefined ? 1000 : order });
+    // a stable sort (ES2019): items with the same number keep the order they were registered in
+    mapContextMenuItems.sort(function (a, b) { return a.order - b.order; });
 }
 
 function invokeMapContextMenuItem(index) {

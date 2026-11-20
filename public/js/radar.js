@@ -48,7 +48,7 @@ let radarRefreshTimer = null;
 let radarMapListeners = [];
 
 function initRadar() {
-    registerMapContextMenuItem('radar', 'radar.context_menu.toggle_item', radarContextMenuToggle);
+    registerMapContextMenuItem('radar', 'radar.context_menu.toggle_item', radarContextMenuToggle, MAP_CONTEXT_MENU_ORDER.radar);
     window.addEventListener('online', updateRadarOnlineState);
     window.addEventListener('offline', updateRadarOnlineState);
     document.addEventListener('visibilitychange', function () {

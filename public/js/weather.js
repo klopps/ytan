@@ -95,9 +95,9 @@ function windSpeedColor(speedKmh) {
  * registerMapContextMenuItem() for why.
  */
 function initWeatherWidget() {
-    registerMapContextMenuItem('cloud', 'weather.context_menu.item', openWeatherTimelineForLocation);
-    registerMapContextMenuItem('open_in_new', 'weather.context_menu.windy_item', openWindyForLocation);
-    registerMapContextMenuItem('radar', 'radar.context_menu.open_windy_radar_item', openWindyRadarForLocation);
+    registerMapContextMenuItem('cloud', 'weather.context_menu.item', openWeatherTimelineForLocation, MAP_CONTEXT_MENU_ORDER.weather);
+    registerMapContextMenuItem('open_in_new', 'weather.context_menu.windy_item', openWindyForLocation, MAP_CONTEXT_MENU_ORDER.windy);
+    registerMapContextMenuItem('radar', 'radar.context_menu.open_windy_radar_item', openWindyRadarForLocation, MAP_CONTEXT_MENU_ORDER.windyRadar);
 }
 
 /**

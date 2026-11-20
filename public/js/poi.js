@@ -1396,7 +1396,7 @@ function openWsiEditorModal() {
  * uses for its own items).
  */
 function initPoiMapContextMenu() {
-    registerMapContextMenuItem('add_location', 'poi.context_menu.create_item', mapContextMenuCreatePoi);
+    registerMapContextMenuItem('add_location', 'poi.context_menu.create_item', mapContextMenuCreatePoi, MAP_CONTEXT_MENU_ORDER.createPoi);
 }
 
 /**

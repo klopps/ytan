@@ -139,4 +139,30 @@ test.describe('Context menus', () => {
     const items = page.locator('.contextMenuItem');
     await expect(items.first()).toBeVisible({ timeout: 10_000 });
   });
+
+  test('the menu of an empty map point lists its items in the fixed order', async ({ loggedInPage: page }) => {
+    await page.waitForFunction(() => typeof mapInitialized !== 'undefined' && mapInitialized === true, null, { timeout: 20_000 });
+    // an empty patch of the Atlantic: no POI, route or area of another spec can be under the click
+    await settleMapAt(page, 40.0, -30.0, 5);
+
+    const mapBox = await page.locator('#map').boundingBox();
+    await page.mouse.click(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2, { button: 'right' });
+    await expect(page.locator('.contextMenuItem').first()).toBeVisible({ timeout: 10_000 });
+
+    // weather data, wind, rain radar, Windy, Windy's radar, create POI (the AR view comes last, on touch devices only)
+    const expected = [
+      'weather.context_menu.item',
+      'wind.context_menu.toggle_item',
+      'radar.context_menu.toggle_item',
+      'weather.context_menu.windy_item',
+      'radar.context_menu.open_windy_radar_item',
+      'poi.context_menu.create_item',
+    ];
+    const registered = await page.evaluate(() => mapContextMenuItems.map((i) => i.labelKey).filter((k) => k !== 'ar.context_menu'));
+    expect(registered).toEqual(expected);
+    // and the menu shows them in that order
+    const shown = await page.locator('.contextMenuItem').allInnerTexts();
+    const labels = await page.evaluate((keys) => keys.map((k) => t(k)), expected);
+    expect(shown.slice(0, expected.length).map((s) => s.replace(/^\S+\s*/, '').trim())).toEqual(labels.map((s) => s.trim()));
+  });
 });

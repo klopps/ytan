@@ -27,20 +27,7 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
     <div class="card-body">
         <h2 class="h6"><?= $t('admin.workers.registered_title') ?></h2>
         <p class="text-muted small"><?= $t('admin.workers.registered_hint') ?></p>
-        <div class="table-responsive">
-            <table class="table table-sm align-middle mb-2">
-                <thead>
-                    <tr>
-                        <th><?= $t('admin.workers.col_name') ?></th>
-                        <th><?= $t('admin.workers.col_label') ?></th>
-                        <th class="d-none d-md-table-cell"><?= $t('admin.workers.col_note') ?></th>
-                        <th><?= $t('admin.workers.col_state') ?></th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody id="workersRegistered"></tbody>
-            </table>
-        </div>
+        <ul class="list-group mb-3" id="workersRegistered"></ul>
         <div class="row g-2 align-items-end">
             <div class="col-12 col-md-3">
                 <input type="text" class="form-control form-control-sm" id="workersNewId" maxlength="32" autocomplete="off" autocapitalize="none" spellcheck="false"

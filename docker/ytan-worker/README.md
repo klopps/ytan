@@ -1,5 +1,7 @@
 # YTAN-Worker in Docker (ohne Home Assistant)
 
+> Die ausführliche Schritt-für-Schritt-Anleitung (Debian, Docker, Schlüssel, Konfiguration, Fehlerbehebung) steht in **[INSTALLATION.md](INSTALLATION.md)**. Diese Seite ist die Kurzfassung.
+
 Derselbe Worker wie das Home-Assistant-Add-on (`ha-addon/ytan-worker/`), für ein normales Linux-System im Heimnetz, z. B. `ytanworker` (192.168.178.12, Debian 13, 4 GB RAM, 128 GB SSD). Er rechnet die Jobs (Wind, Regenradar), die ihm die Prioritätenlisten unter `Admin > Worker` auf dem YTAN-Server geben, und lädt die Ergebnisse hoch. Nur der Worker verbindet sich – per SSH/rsync zum Server. Es ist keine Portfreigabe nötig.
 
 ## Voraussetzungen auf dem Worker-System

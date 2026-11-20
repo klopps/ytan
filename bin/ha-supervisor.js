@@ -67,7 +67,10 @@ async function main() {
     try {
         if (command === 'info') {
             const info = await ha.call(`/addons/${slug}/info`);
-            console.log(JSON.stringify({ state: info.state, version: info.version, installed: info.version !== null }, null, 2));
+            console.log(JSON.stringify({
+                state: info.state, version: info.version, version_latest: info.version_latest,
+                installed: info.version !== null, update_available: info.version !== null && info.version !== info.version_latest
+            }, null, 2));
         } else if (command === 'logs') {
             // plain text: not over the WebSocket, the REST proxy allows add-on logs for an admin token
             const res = await fetch(env('HA_URL') + `/api/hassio/addons/${slug}/logs`, { headers: { Authorization: 'Bearer ' + env('HA_TOKEN') } });
@@ -77,21 +80,29 @@ async function main() {
             console.log(slug + ' restarted');
         } else if (command === 'deploy') {
             await ha.call('/store/reload', 'post', 120);
-            let installed = false;
+            let info = null;
             try {
-                installed = (await ha.call(`/addons/${slug}/info`)).version !== null;
+                info = await ha.call(`/addons/${slug}/info`);
             } catch (e) {
-                installed = false;
+                info = null;
             }
+            const installed = info !== null && info.version !== null;
             // building the image on the Pi takes several minutes (Python packages)
-            if (installed) {
+            if (installed && info.version_latest && info.version_latest !== info.version) {
+                // a new version number in config.yaml (new options, new schema): only an UPDATE makes Home
+                // Assistant take over the new configuration form - a rebuild keeps the old one
+                console.log('updating ' + slug + ' ' + info.version + ' -> ' + info.version_latest + ' ...');
+                await ha.call(`/addons/${slug}/update`, 'post', 1800);
+            } else if (installed) {
                 console.log('rebuilding ' + slug + ' ...');
                 await ha.call(`/addons/${slug}/rebuild`, 'post', 1800);
             } else {
                 console.log('installing ' + slug + ' ...');
                 await ha.call(`/store/addons/${slug}/install`, 'post', 1800);
             }
-            await ha.call(`/addons/${slug}/start`, 'post', 120);
+            if ((await ha.call(`/addons/${slug}/info`)).state !== 'started') {
+                await ha.call(`/addons/${slug}/start`, 'post', 120);
+            }
             console.log(slug + ' started');
         } else {
             throw new Error('unknown command ' + command);

@@ -1,5 +1,23 @@
 # Erledigt
 
+## Karte: Reihenfolge im Kontextmenü
+
+~~Die Reihenfolge der Menüpunkte im Kontextmenü der Karte muss umgestellt werden: 1. Wetterdaten für diesen Ort 2. Wind ein-/ausblenden 3. Regenradar ein-/ausblenden 4. Auf Windy öffnen 5. Regenradar auf Windy öffnen 6. POI erstellen.~~
+
+Gelöst (2026-11-20): Die Reihenfolge hing bisher davon ab, welche Datei in `initMap()` zuerst ihren Eintrag registrierte (Wetter, Windy, Windy-Radar, POI, Radar, Wind, AR). Jetzt trägt jeder Eintrag eine feste Sortierzahl (`MAP_CONTEXT_MENU_ORDER` in `map-core.js`: Wetter 10, Wind 20, Regenradar 30, Windy 40, Windy-Radar 50, POI erstellen 60, AR-Ansicht 70), `registerMapContextMenuItem(icon, labelKey, handler, order)` sortiert beim Registrieren stabil; ein neuer Eintrag wählt dort seine Stelle. Der AR-Eintrag (nur auf Touch-Geräten, stand nicht in der Liste) steht am Ende, hinter „POI erstellen“. Neuer e2e-Test in `context-menu.spec.js` prüft die Reihenfolge der registrierten Einträge und der angezeigten Texte (die ganze Spec läuft grün, 4 Tests).
+
+## Login-Dialog für Admin-Bereich: Enter schickt ab
+
+~~Das Formular des Login-Dialogs für den Admin-Bereich kann nicht mit ENTER abgeschickt werden. Das Vorgehen 1. Benutzername eingeben [TAB] 2. Passwort eingeben [ENTER] muss funktionieren.~~
+
+Gelöst (2026-11-20): Das Login-Feld ist kein `<form>` (der Knopf ist ein einfacher Button), deshalb hat Enter nie etwas ausgelöst. `admin-auth.js` (gemeinsam für die Admin-Oberfläche und die Styleguide-Seite) hängt jetzt an `#loginUsername` und `#loginPassword` einen `keydown`-Handler: Enter (nicht während eine Eingabemethode Text zusammensetzt) ruft `submitAdminLogin()` auf; eine Sperre sorgt dafür, dass Enter und Knopf nur eine Anfrage gleichzeitig auslösen. Im Browser geprüft: Benutzername, Tab (Fokus im Passwortfeld), Passwort, Enter löst den Anmeldeversuch aus, ebenso Enter im Benutzernamenfeld.
+
+## Worker ändern: Speichern je Zeile, Modal statt MessageBox, Rückfrage in den Listen
+
+~~Beim Ändern von registrierten Workern unter admin/worker sollen Änderungen mit einem Speichern-Button am Ende der Zeile bestätigt werden. Die Sicherheitsabfrage beim Löschen von registrierten Workern soll nicht über eine MessageBox gelöst werden, sondern dem Standard im Admin-Bereich folgen und mit einem eigenen Modal arbeiten. Beim Löschen von Workern für Wind und Regenradar muss eine Sicherheitsabfrage erfolgen.~~
+
+Gelöst (2026-11-20): `admin-workers.js`. **Speichern je Zeile:** Anzeigename und Notiz eines registrierten Workers sind nur ein Entwurf, bis der Speichern-Knopf am Ende der Zeile (oder Enter in einem Feld) benutzt wird; der Knopf ist aus, solange nichts geändert ist, und der Entwurf einer Zeile überlebt das Speichern einer anderen und das Neuzeichnen der Seite (`workersDrafts`, nach Worker-Name). Registrieren, Entfernen, die Listenänderungen (verschieben, aktivieren, hinzufügen) werden weiter sofort gespeichert. **Modal statt MessageBox:** Entfernen eines Workers, Herausnehmen eines Eintrags aus der Liste von Wind oder Regenradar und „Instanz zurücksetzen“ fragen über `adminConfirm()` (das gemeinsame Bootstrap-Modal des Admin-Bereichs, roter Knopf) statt `window.confirm()`; die Rückfrage arbeitet mit dem Namen statt mit dem Zeilenindex, damit sie auch stimmt, wenn die Seite sich zwischendurch neu lädt (der 30-Sekunden-Abgleich pausiert, solange ein Modal offen ist). **Listen:** Das Herausnehmen aus der Liste fragt „{Worker} aus der Liste von {Job} entfernen? Der Worker bleibt angelegt und kann wieder aufgenommen werden.“ **Mobil:** Die Tabelle der registrierten Worker passte nicht auf ein Handy (der Speichern-Knopf am Zeilenende lag außerhalb des sichtbaren Bereichs), sie ist jetzt eine Karte je Worker (Name und Zustand, die zwei Felder, die Knöpfe mit Text darunter). Im Browser geprüft (mobil und Desktop): Entwurf geht beim Neuladen verloren, Speichern und Enter speichern, ein fremder Entwurf bleibt, Abbrechen im Modal ändert nichts, Bestätigen entfernt.
+
 ## Externe Worker-Infrastruktur: mehrere Worker, Prioritätenliste je Task
 
 ~~Externe Worker für Wind, Radar etc. sollen im Admin-Bereich konfiguriert werden können. Wenn mehrere Workersysteme versuchen Daten zu lesen oder zu schreiben, könnten sie sich gegenseitig überschreiben oder würden ggfs. doppelte Arbeit verrichten. Daher soll eine Prioritätenliste für jeden Task angelegt werden. Nur in einer Liste hinterlegte und aktivierte Workersysteme dürfen Kontakt zum System aufnehmen. Je Task existiert eine Liste mit Workersystemen. Das können externe Workersysteme sein oder der systemeigene. Die externen Workersysteme melden bei jeder Kontaktaufnahme, welche Tasks sie übernehmen können, da nicht jedes Workersystem alle Tasks ausführen kann.~~
