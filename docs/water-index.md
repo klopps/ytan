@@ -11,6 +11,14 @@ milliseconds, on the servers too, without any external request.
 - **Published** to a server by `bin\publish-water.bat [test]` (into
   `storage/water/`, which no deploy script touches).
 - **Read** by `Ytan\Service\Water\WaterIndex` / `WaterDistanceService` (PHP).
+- **Age** (admin dashboard tile "Gewässerindex", `GET /admin/dashboard-stats` -> `water_index`,
+  `Ytan\Service\Water\WaterIndexAge`): the index's `version` is the UTC time its build started
+  (`YYYYMMDDHHMM`; a run that only adds the covered area sets a new one too). Coastlines, rivers and big
+  lakes hardly change, so a rebuild once a year is enough: the tile is green up to 12 months, yellow up to
+  13, red beyond; grey "kein Index" without one. The dashboard's "Probleme" card says so too
+  (`AdminHealthService::checkWaterIndex()`: yellow = warning `waterindex.aging`, red = error
+  `waterindex.outdated`, no index = nothing). A rebuild earlier: a new country, a changed format, a
+  mistake in the source data.
 
 ## Water
 

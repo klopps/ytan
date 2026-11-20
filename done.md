@@ -1,5 +1,11 @@
 # Erledigt
 
+## Admin-Dashboard: Alter des Gewässerindex
+
+~~Im Admin-Dashboard soll das Alter des Gewässerindex angezeigt werden. Bis 12 Monate grün, bis 13 Monate gelb, danach rot.~~
+
+Gelöst (2026-11-20): Neue Kachel „Gewässerindex von {Datum}“ unter den Zähler-Kacheln des Dashboards, mit dem Alter in vollen Monaten („8 Monate“, darunter in Tagen) und der Farbe grün (bis 12 Monate), gelb (bis 13 Monate) oder rot (älter), grau „kein Index“ ohne Index. Grundlage ist die `version` in `storage/water/water-index.json`: die UTC-Zeit, zu der `build_index.py` den Bau gestartet hat (`YYYYMMDDHHMM`); ein Lauf, der nur das Gebiet nachträgt (`--coverage-only`), setzt eine neue Version, die Kachel zeigt also das Alter des letzten Baus, nicht der OpenStreetMap-Daten. Die Regel steckt in `Ytan\Service\Water\WaterIndexAge::describe()` (Kalendermonate, genau 12 Monate sind noch grün, genau 13 noch gelb; Zeitzone des Aufrufers egal; eine Version in der Zukunft gilt als frisch), `GET /admin/dashboard-stats` liefert `water_index: {built_at, age_days, age_months, state: ok|warn|old}` oder `null` (`AdminController` bekam den `WaterDistanceService` als Abhängigkeit). Tests: `WaterIndexAgeTest` (Grenzen auf die Minute, Zeitzonen, ungültige Versionen), `AdminControllerTest`. Im Browser geprüft (mobil): echter Index der Dev-Instanz („6 Tage“, grün), alle Zustände und Texte über eine abgefangene Antwort. **Problemliste (Nachtrag, 2026-11-20):** Ist die Kachel gelb, steht in der Karte „Probleme“ eine Warnung (`waterindex.aging`: „älter als 12 Monate“), ist sie rot, ein Fehler (`waterindex.outdated`: „überfällig, älter als 13 Monate“); beide nennen den Bauzeitpunkt und was zu tun ist (`tools/water/build_index.py`, `bin\publish-water.bat`, danach `bin/poi-water-distance.php --all`). Kein Index ist hier kein Problem (die Kachel sagt „kein Index“). `AdminHealthService::checkWaterIndex()` liest `storage/water/water-index.json` direkt (der Konstruktor blieb gleich), die Zustände kommen aus derselben `WaterIndexAge`-Regel wie die Kachel; Tests in `AdminHealthServiceTest`.
+
 ## Karte: Reihenfolge im Kontextmenü
 
 ~~Die Reihenfolge der Menüpunkte im Kontextmenü der Karte muss umgestellt werden: 1. Wetterdaten für diesen Ort 2. Wind ein-/ausblenden 3. Regenradar ein-/ausblenden 4. Auf Windy öffnen 5. Regenradar auf Windy öffnen 6. POI erstellen.~~

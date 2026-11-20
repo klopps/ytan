@@ -348,6 +348,7 @@ final class App
             $c->get(AreaRepository::class),
             $c->get(TourRepository::class),
             $c->get(UserRepository::class),
+            $c->get(\Ytan\Service\Water\WaterDistanceService::class),
         ));
         $c->set(AuthController::class, fn ($c) => new AuthController($authService, $userRepository, $mailService, $appUrl, $c->get(RequestThrottle::class)));
         $c->set(\Ytan\Service\AccountDeletionService::class, fn ($c) => new \Ytan\Service\AccountDeletionService($pdo, $c->get(TourRepository::class), [

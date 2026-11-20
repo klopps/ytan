@@ -12,6 +12,8 @@ use Ytan\Domain\Route\RouteRepository;
 use Ytan\Domain\Tour\TourRepository;
 use Ytan\Domain\User\UserRepository;
 use Ytan\Service\ImageReconciliationService;
+use Ytan\Service\Water\WaterDistanceService;
+use Ytan\Service\Water\WaterIndexAge;
 
 /**
  * Backend for the /admin area's own tools that aren't already covered by
@@ -32,6 +34,7 @@ final class AdminController extends BaseController
         private readonly AreaRepository $areas,
         private readonly TourRepository $tours,
         private readonly UserRepository $users,
+        private readonly WaterDistanceService $water,
     ) {
     }
 
@@ -65,7 +68,8 @@ final class AdminController extends BaseController
      * Counts for the dashboard's stat tiles - "private" is derived
      * (total - public) rather than a separate query, since every one of
      * these tables only distinguishes the two via the same plain `public`
-     * column countAll()/countPublic() already query.
+     * column countAll()/countPublic() already query. `water_index` = the age of the
+     * water index (WaterIndexAge: state ok/warn/old = green/yellow/red), null without one.
      */
     public function dashboardStats(Request $request, Response $response): Response
     {
@@ -86,6 +90,7 @@ final class AdminController extends BaseController
             'area' => ['public' => $areaPublic, 'private' => $areaTotal - $areaPublic],
             'tour' => ['public' => $tourPublic, 'private' => $tourTotal - $tourPublic],
             'users' => ['total' => $this->users->countAll()],
+            'water_index' => WaterIndexAge::describe($this->water->version(), new \DateTimeImmutable('now', new \DateTimeZone('UTC'))),
         ]]);
     }
 }

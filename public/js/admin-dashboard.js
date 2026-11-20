@@ -18,6 +18,25 @@ function statTile(iconClass, colorClass, value, label) {
     );
 }
 
+/**
+ * The water index tile: its age in full months (days when younger than a month), green up to 12 months,
+ * yellow up to 13, red beyond (WaterIndexAge::describe()); grey "no index" when there is none.
+ */
+function waterIndexTile(info) {
+    if (!info) {
+        return statTile('bi-water', 'secondary', escapeHTML(t('admin.dashboard.water_index_none')), escapeHTML(t('admin.dashboard.water_index')));
+    }
+    var colors = { ok: 'success', warn: 'warning', old: 'danger' };
+    var value;
+    if (info.age_months >= 1) {
+        value = info.age_months === 1 ? t('admin.dashboard.water_index_month_one') : t('admin.dashboard.water_index_months', { n: info.age_months });
+    } else {
+        value = info.age_days === 1 ? t('admin.dashboard.water_index_day_one') : t('admin.dashboard.water_index_days', { n: info.age_days });
+    }
+    var built = new Date(info.built_at).toLocaleDateString(window.YTAN_LOCALE || undefined, { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return statTile('bi-water', colors[info.state] || 'secondary', escapeHTML(value), escapeHTML(t('admin.dashboard.water_index_built', { date: built })));
+}
+
 async function loadDashboardStats() {
     var container = document.getElementById('adminDashboardStats');
     try {
@@ -33,7 +52,8 @@ async function loadDashboardStats() {
             statTile('bi-hexagon', 'secondary', data.area.private, t('admin.dashboard.areas_private')) +
             statTile('bi-flag-fill', 'primary', data.tour.public, t('admin.dashboard.tours_public')) +
             statTile('bi-flag', 'secondary', data.tour.private, t('admin.dashboard.tours_private')) +
-            statTile('bi-people-fill', 'info', data.users.total, t('admin.dashboard.users_total'));
+            statTile('bi-people-fill', 'info', data.users.total, t('admin.dashboard.users_total')) +
+            waterIndexTile(data.water_index);
     } catch (err) {
         container.innerHTML = '<div class="col-12"><p class="text-danger">' + t('admin.dashboard.load_failed', { error: err.message }) + '</p></div>';
     }
@@ -79,6 +99,8 @@ function healthText(issue) {
     case 'osm.interrupted': return t('admin.health.osm.interrupted', vars);
     case 'osm.failed_tiles': return t('admin.health.osm.failed_tiles', vars);
     case 'weather.old_rows': return t('admin.health.weather.old_rows', vars);
+    case 'waterindex.aging': return t('admin.health.waterindex.aging', vars);
+    case 'waterindex.outdated': return t('admin.health.waterindex.outdated', vars);
     case 'cleanup.never': return t('admin.health.cleanup.never', vars);
     case 'cleanup.silent': return t('admin.health.cleanup.silent', vars);
     case 'cleanup.failed': return t('admin.health.cleanup.failed', vars);

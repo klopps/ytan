@@ -7,6 +7,7 @@ namespace Ytan\Service;
 use PDO;
 use Ytan\Domain\Settings\SettingsRepository;
 use Ytan\Service\Overpass\OsmImportJob;
+use Ytan\Service\Water\WaterIndexAge;
 
 /**
  * Problems for the /admin dashboard's "Probleme" card (AdminHealthController,
@@ -71,6 +72,7 @@ final class AdminHealthService
         $this->checkWorker($storage, $lists, $now, $issues);
         $this->checkOsmImport($now, $issues);
         $this->checkWeather($now, $issues);
+        $this->checkWaterIndex($storage, $now, $issues);
         $this->checkCleanup($storage, $now, $issues);
         $this->checkErrorLogs($now, $issues);
 
@@ -272,6 +274,22 @@ final class AdminHealthService
         if ($count > 0) {
             self::add($issues, 'warning', 'weather.old_rows', ['count' => $count, 'days' => self::WEATHER_ROW_MAX_DAYS], 'logs');
         }
+    }
+
+    /**
+     * The water index (storage/water/water-index.json, built by hand once a year - docs/water-index.md): a hint
+     * when it is older than 12 months (yellow tile = warning, up to 13 months), an error beyond 13 months (red tile).
+     * No index at all is no problem here (the dashboard tile says "kein Index"; every distance is then null).
+     */
+    private function checkWaterIndex(string $storage, int $now, array &$issues): void
+    {
+        $meta = self::json($storage . '/water/water-index.json');
+        $age = WaterIndexAge::describe(isset($meta['version']) ? (string) $meta['version'] : null, new \DateTimeImmutable('@' . $now));
+        if ($age === null || $age['state'] === 'ok') {
+            return;
+        }
+        self::add($issues, $age['state'] === 'warn' ? 'warning' : 'error', $age['state'] === 'warn' ? 'waterindex.aging' : 'waterindex.outdated',
+            ['built' => $age['built_at'], 'months' => $age['age_months']]);
     }
 
     /** The daily PHP jobs of tools/ytan_jobs.py (JOBS, php=True) - name => script; their runs are in storage/jobs-status.json. */

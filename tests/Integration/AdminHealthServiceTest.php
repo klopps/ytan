@@ -179,6 +179,39 @@ final class AdminHealthServiceTest extends ControllerTestCase
         $this->assertArrayNotHasKey('worker.none_alive', $codes); // the system that was there first goes on working
     }
 
+    /** A water-index.json built this many seconds before NOW (its "version" is the build time, YYYYMMDDHHMM in UTC). */
+    private function waterIndexBuilt(int $secondsAgo): void
+    {
+        $this->write('water/water-index.json', ['version' => gmdate('YmdHi', self::NOW - $secondsAgo)]);
+    }
+
+    public function testAnAgingWaterIndexIsAWarningAndAnOverdueOneAnError(): void
+    {
+        $this->assertSame([], $this->issues()); // no index at all is no problem here
+
+        $this->waterIndexBuilt(8 * 30 * 86400);
+        $this->assertSame([], $this->issues());
+
+        $this->waterIndexBuilt(12 * 31 * 86400 + 10 * 86400); // over 12 months
+        $this->assertSame(['waterindex.aging' => 'warning'], $this->issues());
+
+        $this->waterIndexBuilt(14 * 31 * 86400); // over 13 months
+        $this->assertSame(['waterindex.outdated' => 'error'], $this->issues());
+
+        $issue = $this->service()->issues(self::NOW)[0];
+        $this->assertGreaterThanOrEqual(13, $issue['vars']['months']);
+        $this->assertMatchesRegularExpression('/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/', $issue['vars']['built']);
+        $this->assertNull($issue['page']); // there is no admin page for it
+    }
+
+    public function testAWaterIndexMetaFileThatIsUnreadableIsNoProblem(): void
+    {
+        $this->write('water/water-index.json', 'not json');
+        $this->assertSame([], $this->issues());
+        $this->write('water/water-index.json', ['version' => 'soon']);
+        $this->assertSame([], $this->issues());
+    }
+
     public function testAFailedOrOverdueDailyCleanup(): void
     {
         $this->write('jobs-status.json', [

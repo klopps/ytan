@@ -13,6 +13,7 @@ use Ytan\Exception\ForbiddenException;
 use Ytan\Exception\UnauthorizedException;
 use Ytan\Http\Controllers\AdminController;
 use Ytan\Service\ImageReconciliationService;
+use Ytan\Service\Water\WaterDistanceService;
 
 /**
  * Covers AdminController::dashboardStats() - the admin-gating and the
@@ -29,10 +30,13 @@ final class AdminControllerTest extends ControllerTestCase
     private AreaRepository $areas;
     private TourRepository $tours;
     private UserRepository $users;
+    private string $metaDir;
 
     protected function setUp(): void
     {
         parent::setUp();
+        $this->metaDir = sys_get_temp_dir() . '/ytan-admin-water-' . bin2hex(random_bytes(4));
+        mkdir($this->metaDir);
 
         // poitype is a lookup table; bin/setup-test-db.php clones structure
         // only, so the test DB starts with none of the live seed rows -
@@ -46,14 +50,64 @@ final class AdminControllerTest extends ControllerTestCase
         $this->tours = new TourRepository($this->pdo);
         $this->users = new UserRepository($this->pdo);
 
-        $this->controller = new AdminController(
+        $this->controller = $this->newController();
+    }
+
+    /** A controller with a fresh WaterDistanceService (it reads water-index.json once per instance). */
+    private function newController(): AdminController
+    {
+        return new AdminController(
             new ImageReconciliationService([]),
             $this->pois,
             $this->routes,
             $this->areas,
             $this->tours,
             $this->users,
+            new WaterDistanceService($this->metaDir . '/water-index.bin', $this->metaDir . '/water-index.json'),
         );
+    }
+
+    protected function tearDown(): void
+    {
+        @unlink($this->metaDir . '/water-index.json');
+        @rmdir($this->metaDir);
+        parent::tearDown();
+    }
+
+    /** The test's water-index.json with this version (a time "YYYYMMDDHHMM"); without one there is no index. */
+    private function waterIndexVersion(string $version): void
+    {
+        file_put_contents($this->metaDir . '/water-index.json', json_encode(['version' => $version]));
+    }
+
+    private function stats(): array
+    {
+        $response = $this->newController()->dashboardStats(
+            $this->request('GET', '/api/v1/admin/dashboard-stats', $this->authPayload($this->createUser(), ['is_admin' => true])),
+            $this->response()
+        );
+
+        return $this->decode($response)['data'];
+    }
+
+    public function testTheDashboardShowsTheAgeOfTheWaterIndex(): void
+    {
+        $this->waterIndexVersion(gmdate('YmdHi', strtotime('-8 months')));
+        $index = $this->stats()['water_index'];
+        $this->assertSame('ok', $index['state']);
+        $this->assertContains($index['age_months'], [7, 8]); // "-8 months" overflows at the end of a month
+        $this->assertGreaterThan(200, $index['age_days']);
+
+        $this->waterIndexVersion(gmdate('YmdHi', strtotime('-12 months -10 days')));
+        $this->assertSame('warn', $this->stats()['water_index']['state']);
+
+        $this->waterIndexVersion(gmdate('YmdHi', strtotime('-14 months')));
+        $this->assertSame('old', $this->stats()['water_index']['state']);
+    }
+
+    public function testWithoutAWaterIndexTheTileIsNull(): void
+    {
+        $this->assertNull($this->stats()['water_index']); // no water-index.json in the temp directory
     }
 
     public function testDashboardStatsReturnsPublicPrivateSplitPerEntityAndUserTotal(): void
