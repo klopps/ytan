@@ -103,7 +103,7 @@ function logsRenderList() {
         '<th>' + escapeHTML(t('admin.logs.col_name')) + '</th>' +
         '<th class="text-end">' + escapeHTML(t('admin.logs.col_size')) + '</th>' +
         '<th>' + escapeHTML(t('admin.logs.col_modified')) + '</th>' +
-        '<th class="d-none d-md-table-cell">' + escapeHTML(t('admin.logs.col_source')) + '</th>' +
+        '<th>' + escapeHTML(t('admin.logs.col_source')) + '</th>' +
         '</tr></thead><tbody>';
     logsState.files.forEach(function (file, index) {
         var active = logsState.current === file.id;
@@ -113,7 +113,7 @@ function logsRenderList() {
             '<td><a href="#" title="' + escapeHTML(file.path) + '" data-on-click="logsOpen(' + index + '); return false;">' + escapeHTML(file.name) + '</a></td>' +
             '<td class="text-end text-nowrap">' + escapeHTML(logsFormatBytes(file.size)) + '</td>' +
             '<td>' + logsDateHtml(file.modified) + '</td>' +
-            '<td class="d-none d-md-table-cell text-secondary small">' + escapeHTML(logsSourceLabel(file.source)) + '</td>' +
+            '<td class="text-secondary small">' + escapeHTML(logsSourceLabel(file.source)) + '</td>' +
             '</tr>';
     });
     container.innerHTML = html + '</tbody></table></div>';
