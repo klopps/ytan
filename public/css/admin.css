@@ -19,7 +19,8 @@
     max-width: 360px;
 }
 
-/* /admin/logs file list in Barlow Condensed. The admin shell does not load
+/* /admin/logs file list in Barlow Condensed on narrow screens only (below 768 px,
+   phones); wider screens keep AdminLTE's default font. The admin shell does not load
    fonts.css, so the two weights used here are declared again (same files). */
 @font-face {
     font-family: 'Barlow Condensed';
@@ -33,12 +34,14 @@
     font-weight: 500;
     src: url('../fonts/barlow-condensed-v13-latin-500.woff2') format('woff2');
 }
-#logsList table {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 1.05rem;
-}
-#logsList table .small {
-    font-size: 1rem;
+@media (max-width: 767.98px) {
+    #logsList table {
+        font-family: 'Barlow Condensed', sans-serif;
+        font-size: 1.05rem;
+    }
+    #logsList table .small {
+        font-size: 1rem;
+    }
 }
 
 /* /admin/ai usage table: the user column stays visible while the table scrolls sideways */

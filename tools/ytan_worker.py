@@ -248,6 +248,7 @@ def tick(storage_root: str, remote: Remote, now: datetime, runner=ytan_jobs.run_
     long run (found 2026-11-12). Before each job it is also sent once with "running" = {job, since},
     so the server knows the worker is busy, not gone (JobPlacement::heartbeatAlive())."""
     started_round = time.monotonic()
+    log.info("tick: start")
     instance = instance or load_instance(storage_root)
     capabilities = [s.name for s in ytan_jobs.JOBS if s.name in ytan_jobs.PLACEABLE_JOBS and (jobs is None or s.name in jobs)]
     report: dict = {"tick": iso(now), "id": worker_id, "instance": instance, "protocol": WORKER_PROTOCOL,
@@ -321,6 +322,7 @@ def tick(storage_root: str, remote: Remote, now: datetime, runner=ytan_jobs.run_
         due = requested or ytan_jobs.is_due(spec, last, now)
         entry = {"ran": False, "requested": requested}
         if due:
+            log.info("%s: start%s", spec.name, " (requested)" if requested else "")
             send_heartbeat({"job": spec.name, "since": clock()})
             started = time.monotonic()
             try:
@@ -340,6 +342,10 @@ def tick(storage_root: str, remote: Remote, now: datetime, runner=ytan_jobs.run_
         report["jobs"][spec.name] = entry
     if not send_heartbeat():
         report["error"] = "worker-status.json could not be uploaded"
+    # one line per tick, written before the logs are uploaded so the server sees it at once
+    overview = ", ".join(f"{name} {'ran' if e['ran'] else 'not due'}" for name, e in report["jobs"].items())
+    log.info("tick: done in %.1f s - %s", time.monotonic() - started_round,
+             overview or "no job assigned to this worker")
     publish_logs(storage_root, remote, worker_id)  # never fails the tick; rsync() logs a failure
     return report
 

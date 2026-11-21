@@ -17,6 +17,7 @@ services:
     environment:
       - TZ=${TZ:-Europe/Berlin}            # the time stamps in the logs are local time
     volumes:
+      - ../../worker.env:/worker.env:ro    # re-read before every tick (AROME key, jobs, threads, interval)
       - ../../data:/data                   # storage/ (job output), ssh/ (key, known_hosts) - kept across rebuilds
     # a 4 GB machine: the rain radar job needs up to ~1 GB, the wind job about the same, never together
     # (one job at a time); the limit keeps a runaway job from taking the host down with it
