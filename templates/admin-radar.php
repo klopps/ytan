@@ -67,23 +67,23 @@ $minuteOptions = function (int $from, int $to, int $step, int $selected, ?string
         <div class="table-responsive" id="radarProcessingTable">
             <table class="table table-sm small mb-0">
                 <tbody>
-                    <tr class="table-light"><th colspan="2"><?= $t('admin.radar.overall') ?></th></tr>
+                    <tr><th colspan="2" class="bg-body-secondary"><?= $t('admin.radar.overall') ?></th></tr>
                     <tr><td><?= $t('admin.radar.start') ?></td><td id="radarRunStart"></td></tr>
                     <tr><td><?= $t('admin.radar.end') ?></td><td id="radarRunEnd"></td></tr>
                     <tr><td><?= $t('admin.radar.duration') ?></td><td id="radarRunDuration"></td></tr>
                     <tr><td><?= $t('admin.radar.regions_of_run') ?></td><td id="radarRunRegions"></td></tr>
-                    <tr class="table-light"><th colspan="2"><?= $t('admin.radar.download') ?></th></tr>
+                    <tr><th colspan="2" class="bg-body-secondary"><?= $t('admin.radar.download') ?></th></tr>
                     <tr><td><?= $t('admin.radar.start') ?></td><td id="radarDownloadStart"></td></tr>
                     <tr><td><?= $t('admin.radar.end') ?></td><td id="radarDownloadEnd"></td></tr>
                     <tr><td><?= $t('admin.radar.duration') ?></td><td id="radarDownloadDuration"></td></tr>
                     <tr><td><?= $t('admin.radar.size') ?></td><td id="radarDownloadSize"></td></tr>
-                    <tr class="table-light"><th colspan="2"><?= $t('admin.radar.processing') ?></th></tr>
+                    <tr><th colspan="2" class="bg-body-secondary"><?= $t('admin.radar.processing') ?></th></tr>
                     <tr><td><?= $t('admin.radar.start') ?></td><td id="radarProcessingStart"></td></tr>
                     <tr><td><?= $t('admin.radar.end') ?></td><td id="radarProcessingEnd"></td></tr>
                     <tr><td><?= $t('admin.radar.duration') ?></td><td id="radarProcessingDuration"></td></tr>
                     <tr><td><?= $t('admin.radar.workers_used') ?></td><td id="radarProcessingWorkers"></td></tr>
                     <tr><td><?= $t('admin.radar.generated') ?></td><td id="radarProcessingSize"></td></tr>
-                    <tr class="table-light"><th colspan="2"><?= $t('admin.radar.finishing') ?></th></tr>
+                    <tr><th colspan="2" class="bg-body-secondary"><?= $t('admin.radar.finishing') ?></th></tr>
                     <tr><td><?= $t('admin.radar.start') ?></td><td id="radarFinishingStart"></td></tr>
                     <tr><td><?= $t('admin.radar.end') ?></td><td id="radarFinishingEnd"></td></tr>
                     <tr><td><?= $t('admin.radar.duration') ?></td><td id="radarFinishingDuration"></td></tr>

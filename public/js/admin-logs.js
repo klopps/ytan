@@ -136,7 +136,7 @@ function logsRenderList() {
         var file = logsState.files[index];
         if (logsState.group && logsSourceLabel(file.source) !== lastGroup) {
             lastGroup = logsSourceLabel(file.source);
-            html += '<tr class="table-light"><th colspan="5" class="small fw-semibold">' + escapeHTML(lastGroup) + '</th></tr>';
+            html += '<tr><th colspan="5" class="small fw-semibold bg-body-secondary">' + escapeHTML(lastGroup) + '</th></tr>';
         }
         var active = logsState.current === file.id;
         html += '<tr' + (active ? ' class="table-active"' : '') + '>' +
