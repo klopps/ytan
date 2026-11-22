@@ -1558,6 +1558,8 @@
     "admin.logs.col_size": "Größe",
     "admin.logs.col_modified": "Letzte Änderung",
     "admin.logs.col_source": "Herkunft",
+    "admin.logs.group_by_source": "Nach Herkunft gruppieren",
+    "admin.logs.sort_by": "Nach {column} sortieren",
     "admin.logs.viewer_info": "{size} · zuletzt geändert {modified}",
     "admin.logs.truncated": "… (ältere Einträge abgeschnitten – vollständige Datei per Download)",
     "admin.logs.rotated": "… (Datei wurde geleert oder rotiert)",

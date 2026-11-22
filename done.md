@@ -1,5 +1,14 @@
 # Erledigt
 
+## Log-Dateien sortierbar und gruppierbar
+
+~~Die Log-Dateien in admin/logs sollen nach jeder Spalte auf- und absteigend sortierbar sein. Auf Wunsch sollens Sie nach Herkunft gruppierbar sein.~~
+
+Gelöst (2026-11-22): Die Spaltenköpfe der Liste in `/admin/logs` (Name, Größe, Geändert, Herkunft) sind Schaltflächen: ein Klick sortiert nach der Spalte, ein zweiter dreht die Richtung um (Pfeil an der sortierten Spalte, `aria-sort`); Größe und Zeit beginnen absteigend (größte/neueste zuerst), Name und Herkunft aufsteigend. Der Schalter "Nach Herkunft gruppieren" im Kartenkopf setzt Zwischenzeilen je Herkunft (Gruppen alphabetisch nach ihrem angezeigten Namen, darin gilt die gewählte Sortierung). Ohne Wahl bleibt die Reihenfolge des Servers. Name wird natürlich sortiert (`radar.2.log` vor `radar.10.log`).
+- **Umsetzung nur im Browser** (`admin-logs.js`, kein Server-Teil nötig, die Liste ist klein und kommt ohnehin ganz): `logsViewOrder()` liefert die Anzeigereihenfolge als Indizes in `logsState.files`, die Zeilen sprechen ihre Datei weiter über diesen Index an - Sortieren ändert also nie, welche Datei ein Klick öffnet, und die Auswahl der Kontrollkästchen bleibt beim Umsortieren erhalten. Gleiche Werte behalten die Reihenfolge des Servers (stabil), auch beim alle 15 s nachgeladenen Listenstand.
+- Sortierung und Gruppierung merkt sich der Browser pro Betrachter in `localStorage` (`ytan_admin_logs_view`, mit try/catch - ohne Speicher läuft die Seite mit den Voreinstellungen).
+- Geprüft mit einem Node-Test der Sortierfunktion (Server-Reihenfolge, Name auf-/absteigend, Größe, Zeit, gruppiert); im Browser nicht angesehen.
+
 ## Leuchtfeuer-Quellen: Finnland und Norwegen
 
 ~~Finnland und Norwegen als Quellen `fi`/`no` bauen (Leuchtfeuer direkt von den offenen Diensten der Behörden).~~ Zusammen mit dem Streichen des Punktes "Dansk Fyrliste" (neuere Ausgabe bei der Søfartsstyrelsen erfragen) aus todo.md auf Wunsch des Users.

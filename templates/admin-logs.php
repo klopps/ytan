@@ -9,7 +9,11 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
 <div class="card mb-4">
     <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
         <h2 class="h6 mb-0"><?= $t('admin.logs.files') ?></h2>
-        <div class="d-flex flex-wrap gap-2 ms-auto">
+        <div class="d-flex flex-wrap gap-2 ms-auto align-items-center">
+            <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" role="switch" id="logsGroup" data-on-change="logsSetGroup(this.checked);">
+                <label class="form-check-label small" for="logsGroup"><?= $t('admin.logs.group_by_source') ?></label>
+            </div>
             <button type="button" class="btn btn-outline-secondary btn-sm" data-on-click="logsLoadList();"><i class="bi bi-arrow-clockwise"></i> <?= $t('admin.logs.refresh') ?></button>
             <button type="button" class="btn btn-primary btn-sm" id="logsDownloadSelected" data-on-click="logsDownloadSelected();" disabled><i class="bi bi-file-earmark-zip"></i> <?= $t('admin.logs.download_selected') ?></button>
         </div>

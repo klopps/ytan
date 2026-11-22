@@ -1,9 +1,5 @@
 # Offene Punkte
 
-## Log-Dateien sortierbar und gruppierbar
-
-Die Log-Dateien in admin/logs sollen nach jeder Spalte auf- und absteigend sortierbar sein. Auf Wunsch sollens Sie nach Herkunft gruppierbar sein.
-
 ## Leuchtfeuer-Quellen: nächste Schritte
 
 Aus der Quellenrecherche (2026-10-14, Plan "Weitere Quellen für den Leuchtfeuer-Import"); OpenStreetMap als Quelle und die Quellen-Tabelle sind umgesetzt (done.md), `last_seen_at`, die Markierung gleicher Nummern, die Prüfung der nationalen Dienste und deren Anbindung (Finnland, Norwegen) ebenfalls (done.md, "Leuchtfeuer-Quellen: ..."). Offen sind:

@@ -19,7 +19,33 @@ var logsState = {
     follow: false,
     followTimer: null,
     polling: false,
+    // list view: sort column (null = the order the server sends), direction, grouping by origin
+    sortKey: null,
+    sortDir: 'asc',
+    group: false,
 };
+
+/** The sort/group choice is a per-viewer convenience: kept in localStorage, the page works without it. */
+function logsLoadViewPrefs() {
+    try {
+        var saved = JSON.parse(localStorage.getItem('ytan_admin_logs_view') || 'null');
+        if (saved && ['name', 'size', 'modified', 'source', null].indexOf(saved.sortKey) !== -1) {
+            logsState.sortKey = saved.sortKey;
+            logsState.sortDir = saved.sortDir === 'desc' ? 'desc' : 'asc';
+            logsState.group = saved.group === true;
+        }
+    } catch (e) {
+        // no storage: keep the defaults
+    }
+}
+
+function logsSaveViewPrefs() {
+    try {
+        localStorage.setItem('ytan_admin_logs_view', JSON.stringify({ sortKey: logsState.sortKey, sortDir: logsState.sortDir, group: logsState.group }));
+    } catch (e) {
+        // no storage: the choice just doesn't survive a reload
+    }
+}
 
 // Escaping: helper.js's escapeHTML().
 
@@ -100,12 +126,18 @@ function logsRenderList() {
     var html = '<div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0"><thead><tr>' +
         '<th style="width:2.5rem;"><input type="checkbox" class="form-check-input" aria-label="' + escapeHTML(t('admin.logs.select_all')) + '"' +
             (allSelected ? ' checked' : '') + ' data-on-change="logsToggleAll(this.checked);"></th>' +
-        '<th>' + escapeHTML(t('admin.logs.col_name')) + '</th>' +
-        '<th class="text-end">' + escapeHTML(t('admin.logs.col_size')) + '</th>' +
-        '<th>' + escapeHTML(t('admin.logs.col_modified')) + '</th>' +
-        '<th>' + escapeHTML(t('admin.logs.col_source')) + '</th>' +
+        logsSortHeader('name', t('admin.logs.col_name'), '') +
+        logsSortHeader('size', t('admin.logs.col_size'), 'text-end') +
+        logsSortHeader('modified', t('admin.logs.col_modified'), '') +
+        logsSortHeader('source', t('admin.logs.col_source'), '') +
         '</tr></thead><tbody>';
-    logsState.files.forEach(function (file, index) {
+    var lastGroup = null;
+    logsViewOrder().forEach(function (index) {
+        var file = logsState.files[index];
+        if (logsState.group && logsSourceLabel(file.source) !== lastGroup) {
+            lastGroup = logsSourceLabel(file.source);
+            html += '<tr class="table-light"><th colspan="5" class="small fw-semibold">' + escapeHTML(lastGroup) + '</th></tr>';
+        }
         var active = logsState.current === file.id;
         html += '<tr' + (active ? ' class="table-active"' : '') + '>' +
             '<td><input type="checkbox" class="form-check-input" aria-label="' + escapeHTML(file.name) + '"' +
@@ -118,6 +150,75 @@ function logsRenderList() {
     });
     container.innerHTML = html + '</tbody></table></div>';
     logsUpdateSelectionButton();
+}
+
+/** A column header that sorts the list: a button with the direction arrow on the sorted column. */
+function logsSortHeader(key, label, cssClass) {
+    var active = logsState.sortKey === key;
+    var arrow = active ? (logsState.sortDir === 'asc' ? ' <i class="bi bi-caret-up-fill small"></i>' : ' <i class="bi bi-caret-down-fill small"></i>') : '';
+    return '<th class="' + cssClass + '"' + (active ? ' aria-sort="' + (logsState.sortDir === 'asc' ? 'ascending' : 'descending') + '"' : '') + '>' +
+        '<button type="button" class="btn btn-link btn-sm p-0 text-decoration-none fw-bold text-reset" title="' + escapeHTML(t('admin.logs.sort_by', { column: label })) + '"' +
+        ' data-on-click="logsSort(\'' + key + '\');">' + escapeHTML(label) + arrow + '</button></th>';
+}
+
+/**
+ * The indexes into logsState.files in the order they are shown: sorted by the chosen column (ties keep the
+ * server's order), and with grouping on first by origin. The rows keep addressing files by their index in
+ * logsState.files, so sorting never changes which file a click opens.
+ */
+function logsViewOrder() {
+    var order = logsState.files.map(function (file, index) { return index; });
+    var label = function (index) { return logsSourceLabel(logsState.files[index].source); };
+    var value = function (index) {
+        var file = logsState.files[index];
+        switch (logsState.sortKey) {
+            case 'size':
+                return Number(file.size) || 0;
+            case 'modified':
+                return file.modified ? new Date(file.modified).getTime() : 0;
+            case 'source':
+                return label(index);
+            default:
+                return String(file.name);
+        }
+    };
+    var compare = function (a, b) {
+        var x = value(a);
+        var y = value(b);
+        var result = typeof x === 'number' ? x - y : x.localeCompare(y, undefined, { numeric: true, sensitivity: 'base' });
+        return logsState.sortDir === 'desc' ? -result : result;
+    };
+    order.sort(function (a, b) {
+        if (logsState.group) {
+            var byGroup = label(a).localeCompare(label(b), undefined, { numeric: true, sensitivity: 'base' });
+            if (byGroup !== 0) {
+                return byGroup;
+            }
+        }
+        var result = logsState.sortKey === null ? 0 : compare(a, b);
+        return result !== 0 ? result : a - b;
+    });
+
+    return order;
+}
+
+/** Click on a column header: sort by it, or reverse the direction when it is the sorted one already. */
+function logsSort(key) {
+    if (logsState.sortKey === key) {
+        logsState.sortDir = logsState.sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+        logsState.sortKey = key;
+        // size and time: biggest / newest first is what one wants first
+        logsState.sortDir = key === 'size' || key === 'modified' ? 'desc' : 'asc';
+    }
+    logsSaveViewPrefs();
+    logsRenderList();
+}
+
+function logsSetGroup(on) {
+    logsState.group = on === true;
+    logsSaveViewPrefs();
+    logsRenderList();
 }
 
 function logsToggle(index, checked) {
@@ -315,6 +416,8 @@ function logsDownloadCurrent() {
 }
 
 function logsStart() {
+    logsLoadViewPrefs();
+    document.getElementById('logsGroup').checked = logsState.group;
     logsLoadList();
     setInterval(function () {
         if (!document.hidden) {
