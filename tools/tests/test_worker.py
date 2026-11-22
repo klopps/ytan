@@ -110,6 +110,23 @@ class WorkerTest(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
+    def test_busy_rrsync_is_retried(self):
+        busy = SimpleNamespace(returncode=12, stderr="/usr/bin/rrsync error: " + ytan_worker.RRSYNC_BUSY + ".")
+        answers = [busy, busy, SimpleNamespace(returncode=0, stderr="")]
+        waits = []
+        remote = ytan_worker.Remote("u@h", run=lambda *a, **k: answers.pop(0), sleep=waits.append)
+        self.assertEqual(0, remote.rsync(["x"]))
+        self.assertEqual([ytan_worker.RRSYNC_BUSY_WAIT_S] * 2, waits)
+
+    def test_other_rsync_errors_are_not_retried(self):
+        calls = []
+        def run(*a, **k):
+            calls.append(1)
+            return SimpleNamespace(returncode=23, stderr="missing")
+        remote = ytan_worker.Remote("u@h", run=run, sleep=lambda s: self.fail("must not wait"))
+        self.assertEqual(23, remote.rsync(["x"]))
+        self.assertEqual(1, len(calls))
+
     def server_config(self, wind=("pi",), radar=("server",), **kw):
         """The server's config.json with the priority lists (default: wind on the worker "pi", radar on the server)."""
         lists = {"wind": entries(*wind), "radar": entries(*radar)}

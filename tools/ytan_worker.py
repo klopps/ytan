@@ -93,10 +93,17 @@ def load_instance(storage_root: str) -> str:
     return value
 
 
+RRSYNC_BUSY = "Another instance of rrsync is already accessing this directory"
+RRSYNC_BUSY_TRIES = 6
+RRSYNC_BUSY_WAIT_S = 5
+
+
 class Remote:
     """rsync to/from the server's storage/ (the rrsync root of the worker's key)."""
 
-    def __init__(self, target: str, ssh_key: str | None = None, known_hosts: str | None = None, run=subprocess.run):
+    def __init__(self, target: str, ssh_key: str | None = None, known_hosts: str | None = None, run=subprocess.run,
+                 sleep=time.sleep):
+        self.sleep = sleep
         self.target = target  # user@host
         ssh = ["ssh", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new", "-o", "ConnectTimeout=30"]
         if ssh_key:
@@ -109,9 +116,20 @@ class Remote:
     def rsync(self, args: list[str]) -> int:
         # --timeout: give up after 120 s without data instead of hanging the tick (and the lock) for ever
         command = ["rsync", "-e", self.ssh, "--timeout=120"] + args
-        result = self.run(command, capture_output=True, text=True)
+        for attempt in range(1, RRSYNC_BUSY_TRIES + 1):
+            result = self.run(command, capture_output=True, text=True)
+            stderr = (result.stderr or "").strip()
+            # rrsync allows ONE connection per directory at a time: a second worker (or the same one's
+            # other call) arriving in that moment is refused with "Another instance of rrsync ..." -
+            # not an error of the data, so wait a moment and ask again
+            if result.returncode != 0 and RRSYNC_BUSY in stderr and attempt < RRSYNC_BUSY_TRIES:
+                log.info("rrsync is busy (another worker is syncing), try %d/%d again in %d s",
+                         attempt, RRSYNC_BUSY_TRIES, RRSYNC_BUSY_WAIT_S)
+                self.sleep(RRSYNC_BUSY_WAIT_S)
+                continue
+            break
         if result.returncode != 0:
-            log.error("rsync failed (exit %s): %s", result.returncode, (result.stderr or "").strip()[-500:])
+            log.error("rsync failed (exit %s): %s", result.returncode, stderr[-500:])
         return result.returncode
 
     def path(self, relative: str) -> str:
