@@ -44,6 +44,24 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
     </div>
     <div class="card mb-3">
         <div class="card-body">
+            <h2 class="h6"><?= $t('admin.lighthouse_import.national_title') ?></h2>
+            <p class="small text-secondary mb-2"><?= $t('admin.lighthouse_import.national_hint') ?></p>
+            <form id="liNationalForm" class="row g-2 align-items-end" data-on-submit="return false;">
+                <div class="col-12 col-md-8">
+                    <label for="liNationalCountry" class="form-label small mb-1"><?= $t('admin.lighthouse_import.national_country') ?></label>
+                    <select class="form-select form-select-sm" id="liNationalCountry">
+                        <option value="fi"><?= $t('admin.lighthouse_import.national_fi') ?></option>
+                        <option value="no"><?= $t('admin.lighthouse_import.national_no') ?></option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-4">
+                    <button type="submit" class="btn btn-outline-primary btn-sm" id="liNationalLoad"><i class="bi bi-cloud-download"></i> <?= $t('admin.lighthouse_import.national_load') ?></button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div class="card mb-3">
+        <div class="card-body">
             <h2 class="h6"><?= $t('admin.lighthouse_import.osm_title') ?></h2>
             <p class="small text-secondary mb-2"><?= $t('admin.lighthouse_import.osm_hint') ?></p>
             <form id="liOsmForm" class="row g-2 align-items-end" data-on-submit="return false;">
@@ -184,6 +202,8 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
                         <option value="nga"><?= $t('admin.lighthouse_import.source_nga') ?></option>
                         <option value="ngaapi"><?= $t('admin.lighthouse_import.source_ngaapi') ?></option>
                         <option value="osm"><?= $t('admin.lighthouse_import.source_osm') ?></option>
+                        <option value="fi"><?= $t('admin.lighthouse_import.source_fi') ?></option>
+                        <option value="no"><?= $t('admin.lighthouse_import.source_no') ?></option>
                     </select>
                 </div>
                 <div class="col-6 col-md-3">
@@ -193,6 +213,10 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
                         <option value="open"><?= $t('admin.lighthouse_import.status_open') ?></option>
                         <option value="imported"><?= $t('admin.lighthouse_import.status_imported') ?></option>
                     </select>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label for="liFilterSeenBefore" class="form-label small mb-1" title="<?= $t('admin.lighthouse_import.filter_seen_before_hint') ?>"><?= $t('admin.lighthouse_import.filter_seen_before') ?></label>
+                    <input type="date" class="form-control form-control-sm" id="liFilterSeenBefore" data-filter="seen_before">
                 </div>
                 <div class="col-6 col-md-3">
                     <label for="liPageSize" class="form-label small mb-1"><?= $t('common.rows_per_page') ?></label>

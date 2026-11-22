@@ -281,7 +281,14 @@ final class App
                 new NgaMsiLightMapper(),
                 $rootDir . '/storage/nga-msi-last-request'
             ),
-            \Ytan\Service\Log\ImportLog::file($rootDir, 'lighthouse-import')
+            \Ytan\Service\Log\ImportLog::file($rootDir, 'lighthouse-import'),
+            new \Ytan\Service\NationalLightsImportService(
+                new \Ytan\Service\NationalLights\CurlNationalLightsClient(),
+                $c->get(LighthouseImportRepository::class),
+                new \Ytan\Service\LighthouseList\FinnishLightMapper(),
+                new \Ytan\Service\LighthouseList\NorwegianLightMapper(),
+                $rootDir . '/storage/national-lights-last-request'
+            )
         ));
         $c->set(\Ytan\Domain\ClubImport\ClubImportRepository::class, fn () => new \Ytan\Domain\ClubImport\ClubImportRepository($pdo));
         $c->set(\Ytan\Http\Controllers\ClubImportController::class, fn ($c) => new \Ytan\Http\Controllers\ClubImportController(
@@ -797,6 +804,7 @@ final class App
         $app->get('/api/v1/admin/lighthouse-import', [LighthouseImportController::class, 'index']);
         $app->get('/api/v1/admin/lighthouse-import/ids', [LighthouseImportController::class, 'ids']);
         $app->post('/api/v1/admin/lighthouse-import/nga', [LighthouseImportController::class, 'loadNga']);
+        $app->post('/api/v1/admin/lighthouse-import/national', [LighthouseImportController::class, 'loadNational']);
         $app->post('/api/v1/admin/lighthouse-import', [LighthouseImportController::class, 'import']);
         $app->get('/api/v1/admin/lighthouse-import/export', [LighthouseImportController::class, 'exportFile']);
         $app->post('/api/v1/admin/lighthouse-import/file', [LighthouseImportController::class, 'importFile']);

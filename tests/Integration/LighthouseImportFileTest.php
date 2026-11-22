@@ -95,6 +95,24 @@ final class LighthouseImportFileTest extends ControllerTestCase
         $this->assertNull($rows[0]['poi_id']);
     }
 
+    public function testTheFileCarriesWhenAnEntryWasLastSeenAndOldFilesWithoutItStillLoad(): void
+    {
+        $this->staging->upsertMany('dk', [$this->entry('a')]);
+        $this->pdo->exec("UPDATE lighthouse_import SET last_seen_at = '2026-02-03 04:05:06'");
+        $file = LighthouseImportFile::build($this->staging->all());
+        $this->assertSame('2026-02-03 04:05:06', $file['entries'][0]['last_seen_at']);
+
+        $this->pdo->exec('DELETE FROM lighthouse_import');
+        $this->controller->importFile($this->request('POST', '/x', $this->admin, $file), $this->response());
+        $this->assertSame('2026-02-03 04:05:06', $this->staging->search([], null)[0]['last_seen_at']);
+
+        // a file of an older version: no field at all, the entry counts as seen now
+        unset($file['entries'][0]['last_seen_at']);
+        $this->pdo->exec('DELETE FROM lighthouse_import');
+        $this->controller->importFile($this->request('POST', '/x', $this->admin, $file), $this->response());
+        $this->assertGreaterThan('2026-02-04', $this->staging->search([], null)[0]['last_seen_at']);
+    }
+
     public function testReadingTheFileAgainRefreshesAndKeepsImportedEntriesImported(): void
     {
         $this->staging->upsertMany('dk', [$this->entry('a')]);

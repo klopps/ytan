@@ -11,6 +11,7 @@ use Ytan\Exception\ValidationException;
 use Ytan\Service\LighthouseImportFile;
 use Ytan\Service\LighthouseImportService;
 use Ytan\Service\Log\ImportLog;
+use Ytan\Service\NationalLightsImportService;
 use Ytan\Service\NgaMsiImportService;
 
 /**
@@ -29,13 +30,14 @@ use Ytan\Service\NgaMsiImportService;
  */
 final class LighthouseImportController extends BaseController
 {
-    private const FILTERS = ['dk_no', 'international_id', 'region', 'subregion', 'name', 'location', 'source', 'status', 'polygon'];
+    private const FILTERS = ['dk_no', 'international_id', 'region', 'subregion', 'name', 'location', 'source', 'status', 'seen_before', 'polygon'];
 
     public function __construct(
         private readonly LighthouseImportRepository $staging,
         private readonly LighthouseImportService $importService,
         private readonly ?NgaMsiImportService $ngaImport = null,
         private readonly ImportLog $log = new ImportLog(),
+        private readonly ?NationalLightsImportService $nationalImport = null,
     ) {
     }
 
@@ -125,6 +127,33 @@ final class LighthouseImportController extends BaseController
                 }
 
                 return $this->ngaImport->import((int) $volume);
+            },
+            true
+        )]);
+    }
+
+    /**
+     * Loads the lights of Finland (Väylävirasto) or Norway (Kystverket) from the national open WFS services
+     * into the staging table (source "fi" / "no"): body {country: "fi"|"no"}.
+     */
+    public function loadNational(Request $request, Response $response): Response
+    {
+        $authUser = $this->requireAdmin($request);
+        $country = $this->jsonBody($request)['country'] ?? null;
+
+        return $this->json($response, ['data' => $this->log->run(
+            $authUser,
+            'load national lights',
+            ['country' => is_scalar($country) ? $country : null],
+            function () use ($country) {
+                if ($this->nationalImport === null) {
+                    throw new ValidationException('The national lights import is not configured.');
+                }
+                if (!is_string($country)) {
+                    throw new ValidationException('country must be fi or no.');
+                }
+
+                return $this->nationalImport->import($country);
             },
             true
         )]);

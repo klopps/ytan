@@ -135,6 +135,16 @@ final class SectorLightConverter
         return $value;
     }
 
+    /**
+     * One line of a sector characteristic ("G 8M 350.7-352.2") for a source that gives the parts as numbers
+     * (national services, not the lists' text): no range = the UNKNOWN_RANGE placeholder.
+     */
+    public static function line(string $colour, ?float $range, float $start, float $end): string
+    {
+        return $colour . ' ' . ($range === null || $range <= 0 ? self::UNKNOWN_RANGE : self::number($range)) . 'M '
+            . self::number($start) . '-' . self::number($end);
+    }
+
     /** A degree/range value as short text: no trailing zeros ("8", "350.7"). */
     public static function formatNumber(float $value): string
     {

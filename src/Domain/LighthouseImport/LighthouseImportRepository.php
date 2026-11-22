@@ -60,7 +60,9 @@ final class LighthouseImportRepository
         $inserted = 0;
         $updated = 0;
         \Ytan\Database\Transaction::run($this->db, function () use ($entries, $stmt, $source, &$inserted, &$updated): void {
+            $seen = [];
             foreach ($entries as $entry) {
+                $seen[] = (string) $entry['source_key'];
                 $stmt->execute([
                     $source,
                     $entry['source_key'],
@@ -89,16 +91,45 @@ final class LighthouseImportRepository
                     $updated++;
                 }
             }
+            $this->markSeen($source, $seen, $entries);
         });
 
         return ['inserted' => $inserted, 'updated' => $updated];
     }
 
     /**
+     * Stamps the entries just read with the time they were seen: the entry's own last_seen_at (a transfer
+     * file carries the time of the system it was exported from), else now. A separate UPDATE and not part of
+     * the upsert, so a re-read of unchanged entries still counts as "0 updated".
+     *
+     * @param list<string> $keys source_key of every entry
+     * @param list<array<string,mixed>> $entries
+     */
+    private function markSeen(string $source, array $keys, array $entries): void
+    {
+        $byTime = [];
+        foreach ($entries as $i => $entry) {
+            $time = $entry['last_seen_at'] ?? null;
+            $byTime[is_string($time) && $time !== '' ? $time : ''][] = $keys[$i];
+        }
+        foreach ($byTime as $time => $group) {
+            foreach (array_chunk($group, 500) as $chunk) {
+                $stmt = $this->db->prepare(
+                    'UPDATE lighthouse_import SET last_seen_at = ' . ($time === '' ? 'NOW()' : '?')
+                    . ' WHERE source = ? AND source_key IN (' . implode(', ', array_fill(0, count($chunk), '?')) . ')'
+                );
+                $stmt->execute(array_merge($time === '' ? [] : [$time], [$source], $chunk));
+            }
+        }
+    }
+
+    /**
      * @param array<string,string> $filters dk_no, international_id, name, location (text, substring),
      *        region, subregion (substring each), source (exactly, e.g. "dk"/"nga"),
-     *        status ("open" = not imported yet, "imported")
-     * @return list<array<string,mixed>>
+     *        status ("open" = not imported yet, "imported"),
+     *        seen_before (YYYY-MM-DD: entries last read from their source before that day, or never recorded)
+     * @return list<array<string,mixed>> each row also has also_in (the other sources that have an entry with the
+     *         same international number) and poi_count (lighthouses with that number)
      */
     public function search(array $filters, ?int $limit, int $offset = 0): array
     {
@@ -110,7 +141,42 @@ final class LighthouseImportRepository
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
 
-        return $stmt->fetchAll();
+        return $this->withRelations($stmt->fetchAll());
+    }
+
+    /**
+     * Adds to every row what else knows its international number: the other staged sources and the
+     * lighthouses already on the map (one query each for the whole page, not one per row).
+     *
+     * @param list<array<string,mixed>> $rows
+     * @return list<array<string,mixed>>
+     */
+    private function withRelations(array $rows): array
+    {
+        $numbers = array_values(array_unique(array_filter(array_map(fn ($r) => (string) $r['international_id'], $rows))));
+        $staged = [];
+        $pois = [];
+        if ($numbers !== []) {
+            $in = implode(', ', array_fill(0, count($numbers), '?'));
+            $stmt = $this->db->prepare("SELECT DISTINCT international_id, source FROM lighthouse_import WHERE international_id IN ($in)");
+            $stmt->execute($numbers);
+            foreach ($stmt->fetchAll() as $row) {
+                $staged[$row['international_id']][] = $row['source'];
+            }
+            $stmt = $this->db->prepare("SELECT international_id, COUNT(*) AS c FROM lighthouse WHERE international_id IN ($in) GROUP BY international_id");
+            $stmt->execute($numbers);
+            foreach ($stmt->fetchAll() as $row) {
+                $pois[$row['international_id']] = (int) $row['c'];
+            }
+        }
+        foreach ($rows as &$row) {
+            $number = (string) $row['international_id'];
+            $row['also_in'] = array_values(array_filter($staged[$number] ?? [], fn ($s) => $s !== $row['source']));
+            sort($row['also_in']);
+            $row['poi_count'] = $pois[$number] ?? 0;
+        }
+
+        return $rows;
     }
 
     /** @param array<string,string> $filters */
@@ -278,6 +344,16 @@ final class LighthouseImportRepository
         if ($source !== '') {
             $conditions[] = 'source = ?';
             $params[] = $source;
+        }
+
+        $seenBefore = trim((string) ($filters['seen_before'] ?? ''));
+        if ($seenBefore !== '') {
+            $day = \DateTimeImmutable::createFromFormat('!Y-m-d', $seenBefore);
+            if ($day === false || $day->format('Y-m-d') !== $seenBefore) {
+                throw new ValidationException('seen_before must be a date (YYYY-MM-DD).');
+            }
+            $conditions[] = '(last_seen_at IS NULL OR last_seen_at < ?)';
+            $params[] = $seenBefore . ' 00:00:00';
         }
 
         $polygonText = trim((string) ($filters['polygon'] ?? ''));

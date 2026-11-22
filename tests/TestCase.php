@@ -68,7 +68,9 @@ abstract class TestCase extends BaseTestCase
              ('dk', 'Dansk Fyrliste', 'https://www.soefartsstyrelsen.dk/', 'keine ausdrückliche Lizenz', NULL, 'Dansk Fyrliste, Søfartsstyrelsen'),
              ('nga', 'NGA List of Lights', 'https://msi.nga.mil/', 'Public Domain', 'https://www.law.cornell.edu/uscode/text/17/105', 'NGA List of Lights'),
              ('ngaapi', 'NGA List of Lights (MSI)', 'https://msi.nga.mil/', 'Public Domain', 'https://www.law.cornell.edu/uscode/text/17/105', 'NGA List of Lights, MSI'),
-             ('osm', 'OpenStreetMap / OpenSeaMap', 'https://www.openstreetmap.org/', 'ODbL 1.0', 'https://opendatacommons.org/licenses/odbl/1-0/', '© OpenStreetMap-Mitwirkende')"
+             ('osm', 'OpenStreetMap / OpenSeaMap', 'https://www.openstreetmap.org/', 'ODbL 1.0', 'https://opendatacommons.org/licenses/odbl/1-0/', '© OpenStreetMap-Mitwirkende'),
+             ('fi', 'Väylävirasto (Finland)', 'https://vayla.fi/', 'CC BY 4.0', 'https://creativecommons.org/licenses/by/4.0/', 'Väylävirasto'),
+             ('no', 'Kystverket (Norway)', 'https://www.kystverket.no/', 'NLOD 2.0', 'https://data.norge.no/nlod/en/2.0', 'Kystverket')"
         );
     }
 

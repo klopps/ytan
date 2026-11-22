@@ -197,9 +197,30 @@ function liSourceName(code) {
             return t('admin.lighthouse_import.source_ngaapi');
         case 'osm':
             return t('admin.lighthouse_import.source_osm');
+        case 'fi':
+            return t('admin.lighthouse_import.source_fi');
+        case 'no':
+            return t('admin.lighthouse_import.source_no');
         default:
             return t('admin.lighthouse_import.source_dk');
     }
+}
+
+/**
+ * Small notes under an entry's international number: the other sources that list the same number (an entry
+ * that is in only one of NGA's PDF and web service stands out) and lighthouses on the map with that number.
+ */
+function liRelationBadges(row) {
+    var html = '';
+    if (Array.isArray(row.also_in) && row.also_in.length > 0) {
+        html += '<div class="small text-secondary">' + escapeHTML(t('admin.lighthouse_import.also_in', {
+            sources: row.also_in.map(liSourceName).join(', ')
+        })) + '</div>';
+    }
+    if (Number(row.poi_count) > 0) {
+        html += '<div class="small text-secondary">' + escapeHTML(t('admin.lighthouse_import.on_map', { count: row.poi_count })) + '</div>';
+    }
+    return html;
 }
 
 /** Loads one volume of the NGA List of Lights from the NGA web service into the list (source "ngaapi"). */
@@ -221,6 +242,28 @@ async function liLoadNga() {
     } finally {
         button.disabled = false;
         button.innerHTML = '<i class="bi bi-cloud-download"></i> ' + escapeHTML(t('admin.lighthouse_import.nga_load'));
+    }
+}
+
+/** Loads the lights of Finland or Norway from the national open services into the list (source "fi" / "no"). */
+async function liLoadNational() {
+    var button = document.getElementById('liNationalLoad');
+    button.disabled = true;
+    button.textContent = t('admin.lighthouse_import.national_loading');
+    try {
+        var answer = await Ytan.post('/admin/lighthouse-import/national', { country: document.getElementById('liNationalCountry').value });
+        showAdminToast(t('admin.lighthouse_import.national_result', {
+            lights: answer.data.lights,
+            inserted: answer.data.inserted,
+            updated: answer.data.updated,
+            skipped: answer.data.skipped,
+        }), 'success');
+        liReload(true);
+    } catch (err) {
+        showAdminToast(t('admin.lighthouse_import.national_failed', { error: translateApiError(err.data) || err.message }), 'error');
+    } finally {
+        button.disabled = false;
+        button.innerHTML = '<i class="bi bi-cloud-download"></i> ' + escapeHTML(t('admin.lighthouse_import.national_load'));
     }
 }
 
@@ -294,7 +337,7 @@ function liRender() {
                     (imported ? ' disabled' : '') + (liState.selected.has(Number(row.id)) ? ' checked' : '') + '></td>' +
                 '<td class="text-nowrap small">' + escapeHTML(liSourceName(row.source)) + '</td>' +
                 '<td class="text-nowrap">' + escapeHTML(row.dk_no) + '</td>' +
-                '<td class="text-nowrap">' + escapeHTML(row.international_id) + '</td>' +
+                '<td class="text-nowrap">' + escapeHTML(row.international_id) + liRelationBadges(row) + '</td>' +
                 '<td>' + escapeHTML(row.name) + '</td>' +
                 '<td class="small">' + escapeHTML(row.location) + '</td>' +
                 '<td class="small">' + escapeHTML(row.region) + (row.subregion ? '<br><span class="text-secondary">' + escapeHTML(row.subregion) + '</span>' : '') + '</td>' +
@@ -302,7 +345,10 @@ function liRender() {
                 '<td>' + sectors + '</td>' +
                 '<td>' + (imported
                     ? '<span class="badge text-bg-success">' + escapeHTML(t('admin.lighthouse_import.status_imported')) + '</span>'
-                    : '<span class="badge text-bg-secondary">' + escapeHTML(t('admin.lighthouse_import.status_open')) + '</span>') + '</td>' +
+                    : '<span class="badge text-bg-secondary">' + escapeHTML(t('admin.lighthouse_import.status_open')) + '</span>') +
+                    '<div class="small text-secondary text-nowrap">' + escapeHTML(row.last_seen_at
+                        ? t('admin.lighthouse_import.last_seen', { date: row.last_seen_at.slice(0, 10) })
+                        : t('admin.lighthouse_import.last_seen_unknown')) + '</div></td>' +
             '</tr>';
         }).join('');
     }
@@ -543,6 +589,7 @@ function liInit() {
     });
 
     document.getElementById('liNgaForm').addEventListener('submit', liLoadNga);
+    document.getElementById('liNationalForm').addEventListener('submit', liLoadNational);
     document.getElementById('liOsmForm').addEventListener('submit', liLoadOsm);
     // An import started earlier may still run in the background.
     adminWatchOsmImport('lighthouse', document.getElementById('liOsmLoad'), liOsmIdleHtml(), function () { liReload(true); });

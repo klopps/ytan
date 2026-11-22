@@ -58,6 +58,7 @@ final class LighthouseImportFile
             $entry['remarks'] = $row['remarks'];
             $entry['sector_characteristic'] = $row['sector_characteristic'];
             $entry['sector_missing_range'] = (bool) $row['sector_missing_range'];
+            $entry['last_seen_at'] = $row['last_seen_at'] ?? null;
             $entries[] = $entry;
         }
 
@@ -136,6 +137,9 @@ final class LighthouseImportFile
         $result['remarks'] = is_string($remarks) ? $remarks : null;
         $result['sector_characteristic'] = is_string($sector) && $sector !== '' ? mb_substr($sector, 0, 500) : null;
         $result['sector_missing_range'] = (bool) ($entry['sector_missing_range'] ?? false);
+        // optional (files of older versions have none): when the exporting system last read the entry from its source
+        $seen = $entry['last_seen_at'] ?? null;
+        $result['last_seen_at'] = is_string($seen) && preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $seen) === 1 ? $seen : null;
 
         return $result;
     }

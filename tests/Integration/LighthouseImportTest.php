@@ -90,6 +90,66 @@ final class LighthouseImportTest extends ControllerTestCase
         $this->assertSame(['A. Nordsøen', 'D. Kattegat'], $this->staging->regions());
     }
 
+    public function testReadingAnEntryStampsLastSeenAndARereadRefreshesIt(): void
+    {
+        $this->staging->upsertMany('dk', [$this->entry('1', 'B1', 'Erster')]);
+        $this->assertNotNull($this->staging->search([], null)[0]['last_seen_at']);
+
+        $this->pdo->exec("UPDATE lighthouse_import SET last_seen_at = '2020-01-01 00:00:00'");
+        $this->staging->upsertMany('dk', [$this->entry('1', 'B1', 'Erster')]);
+        $this->assertGreaterThan('2020-01-01', $this->staging->search([], null)[0]['last_seen_at'], 'an unchanged entry is still seen again');
+    }
+
+    public function testATransferFileKeepsTheTimeTheExportingSystemLastSawTheEntry(): void
+    {
+        $this->staging->upsertMany('dk', [$this->entry('1', 'B1', 'Erster', ['last_seen_at' => '2026-02-03 04:05:06'])]);
+        $this->assertSame('2026-02-03 04:05:06', $this->staging->search([], null)[0]['last_seen_at']);
+    }
+
+    public function testSeenBeforeFindsEntriesDroppedFromANewerEdition(): void
+    {
+        $this->staging->upsertMany('dk', [$this->entry('1', 'B1', 'Bleibt'), $this->entry('2', 'B2', 'Entfallen')]);
+        $this->pdo->exec("UPDATE lighthouse_import SET last_seen_at = '2026-01-10 12:00:00' WHERE name = 'Entfallen'");
+        $this->pdo->exec("UPDATE lighthouse_import SET last_seen_at = '2026-06-01 12:00:00' WHERE name = 'Bleibt'");
+
+        $rows = $this->staging->search(['seen_before' => '2026-03-01'], null);
+        $this->assertSame(['Entfallen'], array_column($rows, 'name'));
+        $this->assertSame(1, $this->staging->count(['seen_before' => '2026-03-01']));
+        $this->assertSame(0, $this->staging->count(['seen_before' => '2026-01-10']), 'the day itself is not "before"');
+
+        $this->pdo->exec("UPDATE lighthouse_import SET last_seen_at = NULL WHERE name = 'Bleibt'");
+        $this->assertSame(2, $this->staging->count(['seen_before' => '2026-03-01']), 'never recorded counts as not seen');
+    }
+
+    public function testSeenBeforeMustBeADate(): void
+    {
+        $this->expectException(\Ytan\Exception\ValidationException::class);
+        $this->staging->count(['seen_before' => '01.03.2026']);
+    }
+
+    public function testRowsKnowWhereElseTheirNumberIsListed(): void
+    {
+        $this->staging->upsertMany('nga', [$this->entry('', 'C0969', 'Aaro PDF', ['source_key' => 'p'])]);
+        $this->staging->upsertMany('ngaapi', [
+            $this->entry('', 'C0969', 'Aaro API', ['source_key' => 'a']),
+            $this->entry('', 'C0970', 'Nur API', ['source_key' => 'b']),
+            $this->entry('', '', 'Ohne Nummer', ['source_key' => 'c']),
+        ]);
+        $this->pois->create($this->adminId, ['poitype_id' => 14, 'name' => 'Karte', 'latitude' => 54.0, 'longitude' => 9.0, 'international_id' => 'C0970']);
+
+        $byName = [];
+        foreach ($this->staging->search([], null) as $row) {
+            $byName[$row['name']] = $row;
+        }
+        $this->assertSame(['ngaapi'], $byName['Aaro PDF']['also_in']);
+        $this->assertSame(['nga'], $byName['Aaro API']['also_in']);
+        $this->assertSame([], $byName['Nur API']['also_in'], 'only in one source');
+        $this->assertSame(1, $byName['Nur API']['poi_count']);
+        $this->assertSame(0, $byName['Aaro API']['poi_count']);
+        $this->assertSame([], $byName['Ohne Nummer']['also_in']);
+        $this->assertSame(0, $byName['Ohne Nummer']['poi_count']);
+    }
+
     public function testRegionAndSubregionAreFilteredSeparately(): void
     {
         $this->stage([
@@ -316,7 +376,7 @@ G327°-331°
     public function testOnlySourcesInUseAreListedForTheAboutPage(): void
     {
         $this->assertSame([], $this->staging->usedDataSources());
-        $this->assertSame(['dk', 'nga', 'ngaapi', 'osm'], array_keys($this->staging->dataSources()));
+        $this->assertSame(['dk', 'fi', 'nga', 'ngaapi', 'no', 'osm'], array_keys($this->staging->dataSources()));
 
         [$id] = $this->stage([$this->entry('1', 'B1', 'Erste')]);
         $this->service->import([$id], $this->adminId, true);

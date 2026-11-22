@@ -28,6 +28,8 @@ final class DataSourceText
             'nga' => ['license' => $t('data_source.nga.license')],
             'ngaapi' => ['license' => $t('data_source.ngaapi.license')],
             'osm' => ['attribution' => $t('data_source.osm.attribution')],
+            'fi' => ['license' => $t('data_source.fi.license'), 'attribution' => $t('data_source.fi.attribution')],
+            'no' => ['license' => $t('data_source.no.license'), 'attribution' => $t('data_source.no.attribution')],
             default => [],
         };
 
