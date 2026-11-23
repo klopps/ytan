@@ -846,8 +846,9 @@ function initMap() {
     // caps the bubble itself, which is what actually forces that kind of
     // content to wrap instead of stretching the whole form.
     poiEditWindow = new google.maps.InfoWindow({ maxWidth: 280 });
-    routeEditWindow = new google.maps.InfoWindow();
-    areaEditWindow = new google.maps.InfoWindow();
+    // same cap for the route and area forms (they were much wider than the POI form without it)
+    routeEditWindow = new google.maps.InfoWindow({ maxWidth: 280 });
+    areaEditWindow = new google.maps.InfoWindow({ maxWidth: 280 });
     routeInfoWindow = new google.maps.InfoWindow();
     contextMenu = new google.maps.InfoWindow();
     areaInfoWindow = new google.maps.InfoWindow();
