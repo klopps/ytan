@@ -1,5 +1,11 @@
 # Erledigt
 
+## Aktiver Routen-Editor schaltet andere Funktionen ab
+
+~~Während der Routen-Editor aktiv ist, sollen Klicks mit links oder rechts auf andere Elemente der Karte (POIs, Routen, Areas, POIs von Google etc.) ohne Funktion bleiben.~~
+
+Gelöst (2026-11-23): `ui.js` führt das Flag `shapeEditorActive` (`setShapeEditorActive()`): `showSecondToolbar()` setzt es für `routeButton`/`areaButton` (Route und Area teilen sich das `measureTool`), `hideSecondToolbar()` löscht es; zugleich schaltet es `map.setClickableIcons()` aus bzw. an (Google-POIs). Solange es gesetzt ist, bleiben ohne Funktion: Linksklick/Tap auf POI, Route, Area (`shouldSuppressClick()` in `map-core.js` liefert true), Doppelklick auf POI/Route, Rechtsklick auf POI/Route/Area (Guards in den Listenern von `poi.js`/`route.js`/`area.js`), Rechtsklick auf die Karte (`map-core.js`) und Long-Press (`fireLongPress()`, deckt Touch-Fallback und Karten-Kontextmenü). Das Teilen-Menü an einem Wegpunkt der bearbeiteten Route (`route.js`, eigener Capture-Listener) funktioniert weiter. Nicht im Browser getestet (weder Mobil noch Desktop); die Bearbeitung des POI-Verschiebens (`poiMove`) sperrt bewusst nichts.
+
 ## Deploy schneller: Produktions-vendor zwischenspeichern
 
 ~~Der Deploy auf PROD dauert auch nach kleinen Änderungen 4 Minuten. Ist das notwendig, kann der Prozess beschleunigt werden?~~

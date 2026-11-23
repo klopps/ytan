@@ -381,6 +381,7 @@ function showSecondToolbar(elementId) {
     var editToolbarRect = document.getElementById('editToolbar').getBoundingClientRect();
     secondToolbar.style.right = (editToolbarRect.width + 10 + 8) + 'px';
     secondToolbar.style.display = "flex";
+    setShapeEditorActive(elementId === 'routeButton' || elementId === 'areaButton');
 }
 
 /**
@@ -398,6 +399,20 @@ function updateSecondToolbarLength() {
 
 function hideSecondToolbar() {
     document.getElementById('secondToolbar').style.display = "none";
+    setShapeEditorActive(false);
+}
+
+// True while a route or area is being drawn/edited (second toolbar shown).
+// Clicks/right-clicks on other map elements (POIs, routes, areas, Google's
+// own POIs, the map context menu) stay without function then, or they would
+// open windows/menus on top of the line being edited.
+var shapeEditorActive = false;
+
+function setShapeEditorActive(active) {
+    shapeEditorActive = active;
+    if (typeof map !== 'undefined' && map && map.setClickableIcons) {
+        map.setClickableIcons(!active);
+    }
 }
 
 function disablePoiButton() {

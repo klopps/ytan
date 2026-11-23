@@ -1022,26 +1022,39 @@ function createRoute(i) {
             }
         );
 
+        // No reaction while a route/area is being edited (shapeEditorActive, ui.js)
         google.maps.event.addListener(routePathLine, 'dblclick',
             function(event) {
+                if (shapeEditorActive) {
+                    return;
+                }
                 showRouteInfoWindow.call(this, event, i);
             }
         );
 
         google.maps.event.addListener(routePathBackground, 'dblclick',
             function(event) {
+                if (shapeEditorActive) {
+                    return;
+                }
                 showRouteInfoWindow.call(this, event, i);
             }
         );
 
         google.maps.event.addListener(routePathLine, 'contextmenu',
             function(event) {
+                if (shapeEditorActive) {
+                    return;
+                }
                 showRouteContextMenu.call(this, event, i);
             }
         );
 
         google.maps.event.addListener(routePathBackground, 'contextmenu',
             function(event) {
+                if (shapeEditorActive) {
+                    return;
+                }
                 showRouteContextMenu.call(this, event, i);
             }
         );

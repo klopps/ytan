@@ -652,6 +652,9 @@ function setPoi(i) {
     }, function (real) {
         google.maps.event.addListener(real, 'contextmenu',
             function(event) {
+                if (shapeEditorActive) {
+                    return;
+                }
                 showPoiContextMenu.call(this, event, i);
             }
         );
@@ -671,7 +674,12 @@ function setPoi(i) {
             }
         );
 
-        google.maps.event.addListener(real, 'dblclick', zoomToMaxAndPan);
+        google.maps.event.addListener(real, 'dblclick', function (event) {
+            if (shapeEditorActive) {
+                return;
+            }
+            zoomToMaxAndPan.call(this, event);
+        });
     });
 
     // WSI

@@ -593,6 +593,9 @@ function createArea(i) {
 
         google.maps.event.addListener(areaPolygon, 'contextmenu',
             function(event) {
+                if (shapeEditorActive) {
+                    return;
+                }
                 showAreaContextMenu.call(this, event, i);
             }
         );

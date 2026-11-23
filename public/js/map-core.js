@@ -342,6 +342,9 @@ function detachLongPressCandidate(overlay) {
  * @param {{handler: ?function, event: {latLng: google.maps.LatLng}}} pending
  */
 function fireLongPress(pending) {
+    if (shapeEditorActive) {
+        return;
+    }
     if (pending.handler) {
         pending.handler(pending.event);
     } else {
@@ -370,6 +373,9 @@ function fireLongPress(pending) {
  * click itself fires, which needs no prior step to have already run.
  */
 function shouldSuppressClick() {
+    if (shapeEditorActive) { // route/area editor active: other elements stay inert
+        return true;
+    }
     if (longPressCancelled || !longPressTouchStartTime) {
         return false;
     }
@@ -1082,6 +1088,9 @@ function initMap() {
     // 'contextmenu' listeners, wired up separately by poi.js/route.js/
     // area.js), so this needs no hit-testing of its own.
     map.addListener('rightclick', (event) => {
+        if (shapeEditorActive) {
+            return;
+        }
         showMapContextMenu(event.latLng);
     });
 
