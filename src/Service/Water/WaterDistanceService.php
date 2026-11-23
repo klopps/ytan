@@ -24,7 +24,7 @@ use Ytan\Service\LighthousePolygon;
  * Germany got 21.5 km to the nearest Danish coast). A meta file without
  * "coverage" (older index, test fixture) counts as covering everything.
  */
-final class WaterDistanceService
+final class WaterDistanceService implements ShoreSource
 {
     public const MAX_METERS = 100000;
     private const METERS_PER_DEGREE = 111320.0;
@@ -71,6 +71,47 @@ final class WaterDistanceService
         }
 
         return false;
+    }
+
+    /** @inheritDoc */
+    public function segmentsInBox(float $south, float $west, float $north, float $east): array
+    {
+        $index = $this->index();
+        if ($index === null) {
+            return [];
+        }
+        $oriented = ($this->meta()['oriented'] ?? false) === true;
+        $cell = $index->cellDegrees();
+        $rowFrom = (int) floor($south / $cell + 1e-9);
+        $rowTo = (int) floor($north / $cell + 1e-9);
+        $columnFrom = (int) floor($west / $cell + 1e-9);
+        $columnTo = (int) floor($east / $cell + 1e-9);
+        // [index kind name => shore kind code]
+        $kinds = [['sea', 0], ['river', 1]];
+        if ($index->hasKind('canal')) {
+            $kinds[] = ['canal', 2];
+        }
+        if ($oriented) {
+            $kinds[] = ['lake', 0];
+        }
+        $result = [];
+        $seen = [];
+        foreach ($kinds as [$name, $code]) {
+            $kind = (int) array_search($name, WaterIndex::KINDS, true);
+            for ($row = $rowFrom; $row <= $rowTo; $row++) {
+                foreach ($index->segments($kind, $row, $columnFrom, $columnTo) as [$lat1, $lng1, $lat2, $lng2]) {
+                    // a segment is stored in every cell its box touches
+                    $key = $code . ':' . $lat1 . ':' . $lng1 . ':' . $lat2 . ':' . $lng2;
+                    if (isset($seen[$key])) {
+                        continue;
+                    }
+                    $seen[$key] = true;
+                    $result[] = [$code, $lat1, $lng1, $lat2, $lng2];
+                }
+            }
+        }
+
+        return $result;
     }
 
     /** @return array<string,mixed> */

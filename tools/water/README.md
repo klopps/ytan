@@ -32,6 +32,14 @@ without rebuilding it (new `version`). Extracts larger than 2 GB (Germany,
 ~4.5 GB) keep their node locations in a temporary file next to the `.pbf`
 (`sparse_file_array`, ~10 GB, deleted afterwards) instead of memory.
 
+**Orientation (since the autorouting)**: the autorouting tells land from water
+by the side of the nearest shore line - OpenStreetMap's coastline has the land on
+the LEFT, so the water is on the right. `lake_rings()` gives lake rings the
+same rule (exterior clockwise, islands counter-clockwise) and the metadata
+carries `"oriented": true`. An index built before has no such lake rings: the
+autorouting then works with the sea only (lakes are left out of its shore data) -
+rebuild once to get large lakes too.
+
 The extracts land in `.env`'s `WATER_PBF_DIR` (default `storage/water/pbf/`;
 on this dev box `D:\Daten\ytan\storage\water\pbf`, ~30 GB in all) and are only
 downloaded when missing (or with `--refresh`). Then:

@@ -216,6 +216,31 @@ final class UserRepository
         $this->db->prepare('UPDATE user SET default_speed_kmh = ? WHERE id = ?')->execute([$kmh, $id]);
     }
 
+    /**
+     * Autorouting preferences: the user's own distance to the shore in metres
+     * (null = the admin default) and whether the distance rule is on.
+     *
+     * @return array{shore_m: ?int, max_m: ?int, enabled: bool}
+     */
+    public function getAutoroutePrefs(int $id): array
+    {
+        $stmt = $this->db->prepare('SELECT autoroute_shore_m, autoroute_shore_max_m, autoroute_shore_enabled FROM user WHERE id = ?');
+        $stmt->execute([$id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return [
+            'shore_m' => $row === false || $row['autoroute_shore_m'] === null ? null : (int) $row['autoroute_shore_m'],
+            'max_m' => $row === false || $row['autoroute_shore_max_m'] === null ? null : (int) $row['autoroute_shore_max_m'],
+            'enabled' => $row === false ? true : (bool) $row['autoroute_shore_enabled'],
+        ];
+    }
+
+    public function setAutoroutePrefs(int $id, ?int $shoreMeters, ?int $maxMeters, bool $enabled): void
+    {
+        $this->db->prepare('UPDATE user SET autoroute_shore_m = ?, autoroute_shore_max_m = ?, autoroute_shore_enabled = ? WHERE id = ?')
+            ->execute([$shoreMeters, $maxMeters, (int) $enabled, $id]);
+    }
+
     /** The Routencheck experience level (BriefingRules::LEVELS); 'experienced' when unknown. */
     public function getPaddleLevel(int $id): string
     {

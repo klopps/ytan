@@ -31,6 +31,28 @@ final class WaterDistanceServiceTest extends TestCase
         $this->assertEqualsWithDelta((56.29 - 56.0) * 111195, $d['lake'], 150);
     }
 
+    public function testSegmentsInBoxGiveShoreRiverAndCanalButLakesOnlyOfAnOrientedIndex(): void
+    {
+        // box around the coast, the river and (further north) the canal at 56.15 and the lake at 56.3
+        $plain = $this->service()->segmentsInBox(55.98, 8.98, 56.4, 9.05);
+        $kinds = array_values(array_unique(array_column($plain, 0)));
+        sort($kinds);
+        $this->assertSame([0, 1, 2], $kinds, 'sea 0, river 1, canal 2 - no lake without "oriented"');
+        $this->assertCount(3, $plain, 'a segment stored in several cells comes once');
+
+        $meta = tempnam(sys_get_temp_dir(), 'wi');
+        file_put_contents($meta, json_encode(['oriented' => true]));
+        try {
+            $oriented = (new WaterDistanceService(dirname(__DIR__) . '/testdata/water-index-sample.bin', $meta))->segmentsInBox(55.98, 8.98, 56.4, 9.05);
+        } finally {
+            unlink($meta);
+        }
+        $this->assertCount(7, $oriented, 'plus the four lake sides (kind 0)');
+        $this->assertSame(5, count(array_filter($oriented, static fn (array $s): bool => $s[0] === 0)));
+
+        $this->assertSame([], $this->service()->segmentsInBox(10.0, 10.0, 10.1, 10.1));
+    }
+
     public function testInsideALakeTheShoreCounts(): void
     {
         // Lake centre: 0.01 degrees to the east/west shore = ~622 m at 56.3 N, 1112 m north/south.

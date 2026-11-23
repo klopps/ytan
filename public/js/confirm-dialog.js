@@ -173,6 +173,153 @@ function showCaptchaDialog(question) {
  *
  * @param {{nameA: string, nameB: string, suggestName: function(boolean): string}} opts
  */
+function showAutorouteDialog(opts) {
+    return new Promise(function (resolve) {
+        var overlay = document.createElement('div');
+        overlay.className = 'confirm-dialog-overlay';
+
+        var dialog = document.createElement('div');
+        dialog.className = 'confirm-dialog confirm-dialog-default route-merge-dialog';
+
+        var icon = document.createElement('i');
+        icon.className = 'material-icons-round confirm-dialog-icon';
+        icon.textContent = 'alt_route';
+
+        var title = document.createElement('div');
+        title.className = 'confirm-dialog-message';
+        title.textContent = t('autoroute.dialog_title');
+
+        var intro = document.createElement('div');
+        intro.className = 'route-merge-hint';
+        intro.textContent = t('autoroute.dialog_intro');
+
+        var row = document.createElement('div');
+        row.className = 'route-merge-choice-row';
+        var enabledBox = document.createElement('input');
+        enabledBox.type = 'checkbox';
+        enabledBox.id = 'autorouteEnabled';
+        enabledBox.checked = opts.enabled !== false;
+        var enabledLabel = document.createElement('label');
+        enabledLabel.htmlFor = enabledBox.id;
+        enabledLabel.textContent = t('autoroute.shore_enabled');
+        row.appendChild(enabledBox);
+        row.appendChild(enabledLabel);
+
+        var distanceLabel = document.createElement('label');
+        distanceLabel.className = 'route-merge-name-label';
+        distanceLabel.htmlFor = 'autorouteShore';
+        distanceLabel.textContent = t('autoroute.shore_label');
+
+        var input = document.createElement('input');
+        input.type = 'number';
+        input.id = 'autorouteShore';
+        input.className = 'confirm-dialog-input route-merge-name';
+        input.min = '0';
+        input.max = String(opts.max_shore_m || 2000);
+        input.step = '10';
+        input.inputMode = 'numeric';
+        input.value = String(opts.shore_m);
+
+        var hint = document.createElement('div');
+        hint.className = 'route-merge-hint';
+        hint.textContent = t('autoroute.shore_hint');
+
+        var maxLabel = document.createElement('label');
+        maxLabel.className = 'route-merge-name-label';
+        maxLabel.htmlFor = 'autorouteShoreMax';
+        maxLabel.textContent = t('autoroute.max_label');
+
+        var maxInput = document.createElement('input');
+        maxInput.type = 'number';
+        maxInput.id = 'autorouteShoreMax';
+        maxInput.className = 'confirm-dialog-input route-merge-name';
+        maxInput.min = '0';
+        maxInput.max = String(opts.max_far_m || 5000);
+        maxInput.step = '50';
+        maxInput.inputMode = 'numeric';
+        maxInput.value = String(opts.max_m || 0);
+
+        var maxHint = document.createElement('div');
+        maxHint.className = 'route-merge-hint';
+        maxHint.textContent = t('autoroute.max_hint');
+
+        var actions = document.createElement('div');
+        actions.className = 'confirm-dialog-actions';
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'button';
+        cancelBtn.textContent = t('common.cancel');
+
+        var confirmBtn = document.createElement('button');
+        confirmBtn.type = 'button';
+        confirmBtn.className = 'startbtn';
+        confirmBtn.textContent = t('autoroute.start');
+
+        function refresh() {
+            input.disabled = !enabledBox.checked;
+            maxInput.disabled = !enabledBox.checked;
+        }
+
+        function close(result) {
+            document.removeEventListener('keydown', onKeydown);
+            overlay.remove();
+            resolve(result);
+        }
+
+        function submit() {
+            var meters = parseInt(input.value, 10);
+            var maxMeters = parseInt(maxInput.value, 10);
+            if (isNaN(meters) || meters < 0 || meters > (opts.max_shore_m || 2000)) {
+                input.disabled = false;
+                input.focus();
+                return;
+            }
+            if (isNaN(maxMeters) || maxMeters < 0 || maxMeters > (opts.max_far_m || 5000)) {
+                maxInput.disabled = false;
+                maxInput.focus();
+                return;
+            }
+            close({ enabled: enabledBox.checked, shore_m: meters, max_m: maxMeters });
+        }
+
+        function onKeydown(event) {
+            if (event.key === 'Escape') {
+                close(null);
+            } else if (event.key === 'Enter' && (event.target === input || event.target === maxInput)) {
+                submit();
+            }
+        }
+
+        enabledBox.addEventListener('change', refresh);
+        cancelBtn.addEventListener('click', function () {
+            close(null);
+        });
+        confirmBtn.addEventListener('click', submit);
+
+        actions.appendChild(cancelBtn);
+        actions.appendChild(confirmBtn);
+
+        dialog.appendChild(icon);
+        dialog.appendChild(title);
+        dialog.appendChild(intro);
+        dialog.appendChild(row);
+        dialog.appendChild(distanceLabel);
+        dialog.appendChild(input);
+        dialog.appendChild(hint);
+        dialog.appendChild(maxLabel);
+        dialog.appendChild(maxInput);
+        dialog.appendChild(maxHint);
+        dialog.appendChild(actions);
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+
+        refresh();
+        document.addEventListener('keydown', onKeydown);
+        input.focus();
+    });
+}
+
 function showRouteMergeDialog(opts) {
     return new Promise(function (resolve) {
         var overlay = document.createElement('div');

@@ -1,6 +1,6 @@
 ---
 title: Anlegen und Bearbeiten
-keywords: Werkzeugleiste, Route anlegen, Wegpunkt, Route teilen, Split, Routen zusammenfügen, Zusammenfügen, Verbinden, POI anlegen, POI verschieben, Sektor-Kennung, Windschatten-Indikator, WSI, Leuchtfeuer, Gebiet anlegen, Löschen, Fotos, öffentlich, privat
+keywords: Werkzeugleiste, Route anlegen, Wegpunkt, Autorouting, Uferabstand, Mindestabstand, Höchstabstand, Route über Wasser, Route teilen, Split, Routen zusammenfügen, Zusammenfügen, Verbinden, POI anlegen, POI verschieben, Sektor-Kennung, Windschatten-Indikator, WSI, Leuchtfeuer, Gebiet anlegen, Löschen, Fotos, öffentlich, privat
 ---
 
 Mit der Werkzeugleiste legst du Routen, POIs und Gebiete an. Dazu musst du angemeldet sein. Alles Neue ist zunächst **privat**.
@@ -44,6 +44,32 @@ Beim Zeichnen und beim Bearbeiten einer bestehenden Route (Kontextmenü > **Rout
 | **Öffentlich (für alle sichtbar)** | Ohne Haken sieht nur du die Route. |
 
 Mit **Entfernen** löschst du die Route, mit **Abbrechen** verwirfst du die Änderungen.
+
+### Autorouting - die Route über Wasser führen
+
+Hast du nur die Wegpunkte gesetzt, kann YTAN die Strecke dazwischen **selbst über Wasser legen**: Abschnitte über Land werden umfahren, und die Route hält einen Abstand zum Ufer ein. Die gesetzten Wegpunkte bleiben dabei, wo sie sind; gesucht wird eine möglichst **sichere und kurze** Strecke dazwischen.
+
+1. Öffne das Kontextmenü der Route (lange drücken, am Rechner Rechtsklick) und wähle **Autorouting** (der zweite Eintrag, unter **Route bearbeiten**). Du musst die Route bearbeiten dürfen.
+2. Liegt der **Start oder das Ende an Land** oder außerhalb des Gebiets, für das YTAN Gewässerdaten hat (Europa), erscheint nur ein Hinweis. Der Dialog öffnet sich dann nicht.
+3. Stelle im Dialog ein:
+   - **Abstand zum Ufer einhalten** - Haken weg, dann meidet YTAN nur das Land.
+   - **Mindestabstand zum Ufer** in Metern (0 = nur Land meiden).
+   - **Höchstabstand zum Ufer** in Metern (0 = unbegrenzt).
+4. Tippe auf **Autorouting starten**. Die Berechnung dauert einige Sekunden.
+
+Das Ergebnis erscheint im **Routen-Editor**, wie bei **Route bearbeiten**. Du kannst Wegpunkte noch verschieben und speicherst mit dem üblichen Button. **Abbrechen** lässt die Route unverändert, bis dahin ist nichts gespeichert.
+
+So arbeitet es:
+
+- **Mindestabstand**: Wo es eng wird (Meerenge, Schären), wird er unterschritten, statt aufzugeben. Dann erscheint ein Hinweis. In der Nähe von Start und Ende gilt er nicht, denn dort liegt meist ein Strand oder Steg.
+- **Höchstabstand**: Er gilt nur, **wenn es möglich ist**. Die Route bleibt in diesem Abstand zur Küste, solange der Umweg vertretbar bleibt. Offenes Wasser, das sich nicht umgehen lässt, wird auf dem kürzesten Weg gequert.
+- Teile der Route, die schon über Wasser führen und die Abstände einhalten, bleiben unverändert.
+- Findet YTAN für einen Abschnitt keinen Weg über Wasser, bleibt er unverändert, und du bekommst einen Hinweis.
+- Nach der Berechnung zeigt ein Hinweis, wie viele Abschnitte geändert wurden und wie sich die Länge ändert. Prüfe das Ergebnis vor dem Speichern.
+
+Die Werte, die du im Dialog einstellst, merkt sich YTAN für dich. Du kannst sie auch im [Profil](#chapter-profil) unter **Autorouting** ändern; ein leeres Feld bedeutet den Standard des Betreibers.
+
+Grenzen: Routen bis **300 km**. Das Autorouting kennt Meer, Flüsse, Kanäle und **Seen ab 10 km²**. Kleine Binnenseen, Teiche und breite Flussmündungen gelten als Land; liegt dort Start oder Ende, meldet YTAN „an Land". Häfen und Marinas erkennt es nur, wenn sie in den Gewässerdaten stehen.
 
 ### Eine Route teilen (aufspalten)
 

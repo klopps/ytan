@@ -91,6 +91,19 @@ class CoverageTest(unittest.TestCase):
         self.assertEqual([[55.0, 8.0], [55.0, 9.0], [56.0, 9.0]], rings[0])
         self.assertEqual([55.2, 15.2], rings[1][2])
 
+    def test_lake_rings_have_the_water_on_the_right(self):
+        import shapely
+
+        def signed_area(ring):  # > 0 = counter-clockwise
+            x, y = ring[:, 0], ring[:, 1]
+            return 0.5 * float(np.sum(x[:-1] * y[1:] - x[1:] * y[:-1]))
+
+        # exterior drawn counter-clockwise, island clockwise: both the wrong way round
+        lake = shapely.Polygon([(0, 0), (4, 0), (4, 4), (0, 4)], [[(1, 1), (1, 2), (2, 2), (2, 1)]])
+        exterior, island = build_index.lake_rings(lake)
+        self.assertLess(signed_area(exterior), 0, "exterior clockwise")
+        self.assertGreater(signed_area(island), 0, "island counter-clockwise")
+
 
 if __name__ == "__main__":
     unittest.main()

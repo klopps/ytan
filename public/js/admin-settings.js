@@ -74,6 +74,23 @@ function saveRouteMergeSettings() {
     });
 }
 
+/** Autorouting: the default minimum distance to the shore in meters (AutorouteController). */
+function saveAutorouteSettings() {
+    var btn = document.getElementById('settingAutorouteSaveBtn');
+    var body = {
+        shore_m: parseInt(document.getElementById('settingAutorouteShore').value, 10),
+        max_m: parseInt(document.getElementById('settingAutorouteShoreMax').value, 10)
+    };
+    btn.disabled = true;
+    Ytan.put('/settings/autoroute', body).then(function () {
+        showAdminToast(t('common.saved'), 'success');
+    }).catch(function (err) {
+        showAdminToast(t('common.save_failed', { error: err.message }), 'error');
+    }).finally(function () {
+        btn.disabled = false;
+    });
+}
+
 /** Smoothed route lines: max. bulge in percent of the shortest segment involved (smoothRoutePoints(), helper.js). */
 function saveRouteSmoothingSettings() {
     var btn = document.getElementById('settingRouteSmoothingSaveBtn');

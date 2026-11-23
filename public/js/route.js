@@ -1113,8 +1113,13 @@ function showRouteContextMenu(event, i) {
     var content = contextMenuHeading(routes[i].name);
     if (canEdit) {
         content +=
-            '<div class="contextMenuItem" data-on-click="routeContextMenuEditRoute(' + i + ', null, null);"><i class="material-icons-round">edit</i>' + t('route.context.edit_route') + '</div>' +
-            '<div class="contextMenuItem" data-on-click="routeContextMenuEditInfo(' + i + ');"><i class="material-icons-round">description</i>' + t('route.context.edit_info') + '</div>';
+            '<div class="contextMenuItem" data-on-click="routeContextMenuEditRoute(' + i + ', null, null);"><i class="material-icons-round">edit</i>' + t('route.context.edit_route') + '</div>';
+
+        if (routes[i].points && routes[i].points.length >= 2) {
+            content += '<div class="contextMenuItem" data-on-click="routeContextMenuAutoroute(' + i + ');"><i class="material-icons-round">alt_route</i>' + t('autoroute.context_menu') + '</div>';
+        }
+
+        content += '<div class="contextMenuItem" data-on-click="routeContextMenuEditInfo(' + i + ');"><i class="material-icons-round">description</i>' + t('route.context.edit_info') + '</div>';
 
         if (routes[i].user_id == user.id) {
             content += '<div class="contextMenuItem" data-on-click="routeContextMenuAddToTour(' + i + ');"><i class="material-icons-round">playlist_add</i>' + t('route.context.add_to_tour') + '</div>';
@@ -1214,6 +1219,78 @@ function routeContextMenuEditInfo(i) {
 function routeContextMenuEditRoute(i) {
     closeContextMenu();
     editRoute(i, null, null);
+}
+
+/** The text for a start/end problem of the autorouting (codes of AutorouteController). */
+function autorouteProblemText(code) {
+    switch (code) {
+        case 'start_not_covered': return t('error.autoroute.start_not_covered');
+        case 'end_not_covered': return t('error.autoroute.end_not_covered');
+        case 'start_on_land': return t('error.autoroute.start_on_land');
+        case 'end_on_land': return t('error.autoroute.end_on_land');
+        default: return t('autoroute.failed');
+    }
+}
+
+/**
+ * "Autorouting": moves the parts of the route that lead over land (or nearer
+ * to the shore than wanted) onto water. The server checks start and end first
+ * (POST /routes/autoroute/check) - a start/end on land or outside the water
+ * index's countries only gives a notice, the dialog does not even open. The
+ * new line then goes into the normal route editor (like "Edit route"): the
+ * user can adjust it and saves with the usual button, "cancel" leaves the
+ * route as it was.
+ */
+async function routeContextMenuAutoroute(i) {
+    closeContextMenu();
+    var route = routes[i];
+    if (!route || !route.points || route.points.length < 2) {
+        return;
+    }
+    var points = route.points.map(function (p) { return { lat: p.lat, lng: p.lng }; });
+    try {
+        var check = (await Ytan.post('/routes/autoroute/check', { points: points })).data;
+        if (!check.ok) {
+            showToast(autorouteProblemText(check.problems[0]), 'warning');
+            return;
+        }
+        var prefs = (await Ytan.get('/auth/autoroute')).data;
+        var choice = await showAutorouteDialog({ shore_m: prefs.shore_m, max_m: prefs.max_m, enabled: prefs.enabled, max_shore_m: 2000, max_far_m: 5000 });
+        if (choice === null) {
+            return;
+        }
+        showToast(t('autoroute.running'), 'info');
+        var result = (await Ytan.post('/routes/autoroute', { points: points, shore_m: choice.shore_m, max_m: choice.max_m, enabled: choice.enabled })).data;
+
+        result.warnings.forEach(function (warning) {
+            if (warning.code === 'no_path') {
+                showToast(t('autoroute.warning_no_path'), 'warning');
+            } else if (warning.code === 'clearance_relaxed') {
+                showToast(t('autoroute.warning_relaxed', { distance: choice.shore_m }), 'warning');
+            } else if (warning.code === 'truncated') {
+                showToast(t('autoroute.warning_truncated'), 'warning');
+            }
+        });
+        if (result.changed_sections === 0) {
+            showToast(t('autoroute.nothing_to_do'), 'info');
+            return;
+        }
+
+        closeRouteInfoWindow(i);
+        hideRoute(i);
+        measureTool.index = i;
+        measureTool.start(result.points);
+        document.getElementById('routeButton').classList.add('active');
+        showSecondToolbar('routeButton');
+        showToast(t('autoroute.done', {
+            sections: result.changed_sections,
+            before: formatDistance(result.length_before, settings.unit),
+            after: formatDistance(result.length_after, settings.unit)
+        }), 'success');
+    } catch (err) {
+        log('routeContextMenuAutoroute(' + i + ') failed', LOG_ERROR, err);
+        showToast(err && err.message ? err.message : t('autoroute.failed'), 'error');
+    }
 }
 
 /**

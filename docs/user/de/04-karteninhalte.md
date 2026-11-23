@@ -30,6 +30,7 @@ Im Infofenster stehen unten links **Zur Tour hinzufügen** und - wenn du eine Ga
 | Eintrag | Wirkung |
 |---|---|
 | **Route bearbeiten** | Wegpunkte ändern, siehe [Anlegen und Bearbeiten](#chapter-anlegen-bearbeiten). |
+| **Autorouting** | Legt die Strecke zwischen deinen Wegpunkten über Wasser und mit Abstand zum Ufer, siehe [Anlegen und Bearbeiten](#chapter-anlegen-bearbeiten). |
 | **Info bearbeiten** | Name, Beschreibung, Farbe, Fotos, Sichtbarkeit. |
 | **Zur Tour hinzufügen** | Hängt die Route an eine bestehende oder neue Tour. |
 | **Mit anderer Route zusammenfügen** | Verbindet die Route mit einer zweiten, die du danach antippst, siehe [Anlegen und Bearbeiten](#chapter-anlegen-bearbeiten). |
@@ -40,7 +41,7 @@ Im Infofenster stehen unten links **Zur Tour hinzufügen** und - wenn du eine Ga
 | **Route exportieren (GPX 1.1)** | Lädt die Route als GPX-Datei herunter. |
 | **Route löschen** | Entfernt die Route. Gehört sie zu einer Tour, musst du das mit einer kleinen Rechenaufgabe bestätigen, und die Ersteller der Touren werden benachrichtigt. |
 
-Nicht angemeldet siehst du nur **Zeige Routenanimation**, **AR-Navigation** und **Route exportieren** (falls der Export für alle freigegeben ist). **Bearbeiten**, **Teilen** und **Löschen** erscheinen nur bei eigenen Routen (Administratoren dürfen alle).
+Nicht angemeldet siehst du nur **Zeige Routenanimation**, **AR-Navigation** und **Route exportieren** (falls der Export für alle freigegeben ist). **Bearbeiten**, **Autorouting**, **Teilen** und **Löschen** erscheinen nur bei eigenen Routen (Administratoren dürfen alle).
 
 ## POIs - Orte
 

@@ -38,6 +38,15 @@ unless coast or lake shore is nearer - with the direction of that segment
 (downstream for a river); with an index without the canal kind it always
 answers null, since canals would be taken for rivers there.
 
+**Side of the shore**: the autorouting (`Autorouter`, `ShoreField`,
+`WaterDistanceService::segmentsInBox()`) needs to know land from water, and the
+index has no areas. Every `sea` and `lake` segment keeps its direction of
+travel with the **water on the right** (OSM's coastline: land on the left;
+since 2026-11-23 `build_index.py` orients lake rings the same way and writes
+`"oriented": true` into `water-index.json`). Segments of an index without that
+flag only serve the sea; lakes are then not used. Rivers/canals count as water
+within 40 m / 15 m of their centre line.
+
 **Covered area**: `water-index.json` carries the countries' borders (Geofabrik
 `.poly`, outer rings as `[[lat, lng], ...]`) as `coverage`. Outside them
 `WaterDistanceService::covers()` is false and there are no distances at all,

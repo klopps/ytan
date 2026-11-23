@@ -44,6 +44,7 @@ from datetime import datetime, timezone
 import numpy as np
 import osmium
 import shapely
+import shapely.geometry.polygon
 from pyproj import Transformer
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -205,6 +206,19 @@ def is_lake(tags) -> bool:
     return tags.get("natural") == "water" and tags.get("water", "") not in NOT_LAKES
 
 
+def lake_rings(geometry) -> list[np.ndarray]:
+    """The rings of a lake (multi)polygon as lng/lat arrays with the water on
+    the RIGHT of every ring (exterior clockwise, islands counter-clockwise):
+    the same rule as OSM's coastline (land on the left) that the autorouting's
+    land/water test relies on."""
+    rings = []
+    for polygon in getattr(geometry, "geoms", [geometry]):
+        polygon = shapely.geometry.polygon.orient(polygon, sign=-1.0)
+        for ring in [polygon.exterior, *polygon.interiors]:
+            rings.append(np.asarray(ring.coords, dtype=np.float64))
+    return rings
+
+
 def extract(path: str) -> dict[str, list[np.ndarray]]:
     """Lines (each an M x 2 lng/lat array) per kind from one extract."""
     lines: dict[str, list[np.ndarray]] = {k: [] for k in water_index.KINDS}
@@ -241,9 +255,7 @@ def extract(path: str) -> dict[str, list[np.ndarray]]:
             metric = shapely.transform(geometry, lambda xy: np.column_stack(TO_METRIC.transform(xy[:, 0], xy[:, 1])))
             if metric.area < LAKE_MIN_KM2 * 1e6:
                 continue
-            for polygon in getattr(geometry, "geoms", [geometry]):
-                for ring in [polygon.exterior, *polygon.interiors]:
-                    lines["lake"].append(np.asarray(ring.coords, dtype=np.float64))
+            lines["lake"].extend(lake_rings(geometry))
     processor = obj = None
     gc.collect()  # the index file stays open (and undeletable on Windows) until then
     if big and os.path.exists(node_file):
@@ -330,6 +342,7 @@ def main() -> int:
         "sources": sources,
         "lake_min_km2": LAKE_MIN_KM2,
         "simplify_meters": SIMPLIFY_METERS,
+        "oriented": True,  # lake rings have water on their right (like the coastline's sea side)
         "bytes": os.path.getsize(target),
         "seconds": round(time.time() - started),
         **stats,

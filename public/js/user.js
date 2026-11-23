@@ -52,6 +52,7 @@ function showUserWindow() {
                 profileSubRowHtml('userEditProfileBtn', 'showEditProfileForm();', 'edit', t('user.edit_profile_button')) +
                 profileSubRowHtml('userChangePasswordBtn', 'showChangePasswordForm();', 'lock', t('user.change_password_button')) +
                 profileSubRowHtml('userDefaultSpeedBtn', 'showDefaultSpeedForm();', 'speed', t('user.default_speed_button')) +
+                profileSubRowHtml('userAutorouteBtn', 'showAutorouteForm();', 'alt_route', t('user.autoroute_button')) +
                 (typeof canRouteCheck === 'function' && canRouteCheck()
                     ? profileSubRowHtml('userPaddleLevelBtn', 'showPaddleLevelForm();', 'rowing', t('user.paddle_level_button')) : '') +
                 profileSubRowHtml('userWatchBtn', 'showWatchSection();', 'watch', t('watch.title')) +
@@ -214,6 +215,45 @@ function submitDefaultSpeed() {
         // The watch's ETA uses it (watch.js) - let it fetch the new value now.
         wakeWatch();
         showDefaultSpeedForm();
+    }).catch(err => {
+        showToast(apiErrorMessage(err), 'error');
+    });
+}
+
+/**
+ * Autorouting preferences (GET/PUT /auth/autoroute): the minimum distance to
+ * the shore the route dialog starts with (empty = the admin's default) and
+ * whether the distance rule is on. The route dialog saves them too.
+ */
+function showAutorouteForm() {
+    var title = t('user.autoroute_button');
+    openProfileSub(title, '<div class="nav-form-message">' + t('watch.loading') + '</div>' + navCancelButtonHtml());
+
+    Ytan.get('/auth/autoroute').then(answer => {
+        var prefs = answer.data;
+        openProfileSub(title,
+            '<div class="nav-field"><input id="userAutorouteEnabled" type="checkbox"' + (prefs.enabled ? ' checked' : '') + '>' +
+            '<label for="userAutorouteEnabled">' + t('user.autoroute_enabled') + '</label></div>' +
+            '<div class="nav-field"><label for="userAutorouteShore">' + t('user.autoroute_label') + '</label>' +
+            '<input id="userAutorouteShore" type="number" inputmode="numeric" min="0" max="2000" step="10" value="' + (prefs.custom ? prefs.shore_m : '') + '" placeholder="' + prefs.default_m + '"></div>' +
+            '<div class="nav-field"><label for="userAutorouteShoreMax">' + t('user.autoroute_max_label') + '</label>' +
+            '<input id="userAutorouteShoreMax" type="number" inputmode="numeric" min="0" max="5000" step="50" value="' + (prefs.max_custom ? prefs.max_m : '') + '" placeholder="' + prefs.default_max_m + '"></div>' +
+            '<div class="nav-form-message">' + t('user.autoroute_hint', { default: prefs.default_m }) + '</div>' +
+            '<button id="userAutorouteSaveBtn" class="nav-btn-primary" type="button" data-on-click="submitAutorouteForm();"><i class="material-icons-round">check</i>&nbsp;' + t('common.save') + '</button>' +
+            navCancelButtonHtml());
+    }).catch(err => {
+        openProfileSub(title, '<div class="nav-form-message">' + apiErrorMessage(err) + '</div>' + navCancelButtonHtml());
+    });
+}
+
+function submitAutorouteForm() {
+    var value = parseInt(document.getElementById('userAutorouteShore').value, 10);
+    var maxValue = parseInt(document.getElementById('userAutorouteShoreMax').value, 10);
+    var body = { shore_m: isNaN(value) ? null : value, max_m: isNaN(maxValue) ? null : maxValue, enabled: document.getElementById('userAutorouteEnabled').checked };
+
+    Ytan.put('/auth/autoroute', body).then(() => {
+        showToast(t('user.autoroute_saved'), 'success');
+        showAutorouteForm();
     }).catch(err => {
         showToast(apiErrorMessage(err), 'error');
     });

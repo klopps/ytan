@@ -382,6 +382,12 @@ final class App
         $c->set(GpxExportController::class, fn ($c) => new GpxExportController($c->get(RouteRepository::class), $c->get(TourRepository::class), $c->get(SettingsRepository::class), $appName));
         $c->set(RouteSplitController::class, fn ($c) => new RouteSplitController($c->get(RouteRepository::class), $c->get(TourRepository::class), $c->get('images.route'), $pdo));
         $c->set(RouteMergeController::class, fn ($c) => new RouteMergeController($c->get(RouteRepository::class), $c->get(TourRepository::class), $c->get('images.route'), $c->get(SettingsRepository::class), $c->get(TourNotificationService::class), $pdo));
+        $c->set(\Ytan\Http\Controllers\AutorouteController::class, fn ($c) => new \Ytan\Http\Controllers\AutorouteController(
+            new \Ytan\Service\Water\Autorouter($c->get(\Ytan\Service\Water\WaterDistanceService::class)),
+            $userRepository,
+            $c->get(SettingsRepository::class),
+            $c->get(RequestThrottle::class)
+        ));
         $c->set(GpxImportController::class, fn ($c) => new GpxImportController($c->get(RouteRepository::class), $c->get(TourRepository::class), $c->get(PoiRepository::class), new GpxImportService(), $pdo, \Ytan\Service\Log\ImportLog::file($rootDir, 'gpx-import')));
         $c->set(TranslationController::class, fn () => new TranslationController(
             new TranslationRepository($rootDir . '/resources/i18n'),
@@ -524,6 +530,10 @@ final class App
         $app->get('/api/v1/auth/me', [AuthController::class, 'me']);
         $app->get('/api/v1/auth/default-speed', [AuthController::class, 'defaultSpeed']);
         $app->put('/api/v1/auth/default-speed', [AuthController::class, 'setDefaultSpeed']);
+        $app->get('/api/v1/auth/autoroute', [\Ytan\Http\Controllers\AutorouteController::class, 'preferences']);
+        $app->put('/api/v1/auth/autoroute', [\Ytan\Http\Controllers\AutorouteController::class, 'savePreferences']);
+        $app->post('/api/v1/routes/autoroute/check', [\Ytan\Http\Controllers\AutorouteController::class, 'check']);
+        $app->post('/api/v1/routes/autoroute', [\Ytan\Http\Controllers\AutorouteController::class, 'route']);
         $app->get('/api/v1/auth/paddle-level', [\Ytan\Http\Controllers\AiBriefingController::class, 'paddleLevel']);
         $app->put('/api/v1/auth/paddle-level', [\Ytan\Http\Controllers\AiBriefingController::class, 'setPaddleLevel']);
         $app->post('/api/v1/auth/forgot-password', [AuthController::class, 'forgotPassword']);
@@ -631,6 +641,7 @@ final class App
         $app->put('/api/v1/settings/route-animation', [SettingsController::class, 'updateRouteAnimation']);
         $app->put('/api/v1/settings/ar', [SettingsController::class, 'updateAr']);
         $app->put('/api/v1/settings/route-merge', [SettingsController::class, 'updateRouteMerge']);
+        $app->put('/api/v1/settings/autoroute', [SettingsController::class, 'updateAutoroute']);
         $app->put('/api/v1/settings/route-smoothing', [SettingsController::class, 'updateRouteSmoothing']);
         $app->get('/api/v1/settings/radar', [RadarSettingsController::class, 'show']);
         $app->put('/api/v1/settings/radar', [RadarSettingsController::class, 'update']);
@@ -861,6 +872,8 @@ final class App
                 'routeLabelFontSizeRange' => $settings->routeLabelFontSizeRange(),
                 'routeAnimation' => $settings->routeAnimationSettings(),
                 'routeMergeMidpointMeters' => $settings->routeMergeMidpointMeters(),
+                'autorouteShoreMeters' => $settings->autorouteShoreMeters(),
+                'autorouteShoreMaxMeters' => $settings->autorouteShoreMaxMeters(),
                 'routeSmoothingSharePercent' => $settings->routeSmoothingSharePercent(),
                 'arSettings' => $settings->arSettings(),
                 'waterDistancePoiTypes' => $settings->waterDistancePoiTypes(),

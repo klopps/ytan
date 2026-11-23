@@ -71,6 +71,38 @@ final class SettingsRepository
         $this->write('UPDATE app_settings SET gpx_export_public = ? WHERE id = 1', [(int) $enabled]);
     }
 
+    /** Autorouting: the largest distance to the shore (metres) anybody can ask for. */
+    public const AUTOROUTE_SHORE_MAX_M = 2000;
+
+    /**
+     * Autorouting (AutorouteController): the default minimum distance to the
+     * shore in metres for every user who has not set their own, 0 = only keep
+     * off the land.
+     */
+    public function autorouteShoreMeters(): int
+    {
+        return (int) $this->column('autoroute_shore_m');
+    }
+
+    public function setAutorouteShoreMeters(int $meters): void
+    {
+        $this->write('UPDATE app_settings SET autoroute_shore_m = ? WHERE id = 1', [$meters]);
+    }
+
+    /** Autorouting: the largest distance to the shore anybody can ask for (metres). */
+    public const AUTOROUTE_SHORE_FAR_MAX_M = 5000;
+
+    /** Autorouting: the default largest distance to the shore in metres, 0 = no limit. */
+    public function autorouteShoreMaxMeters(): int
+    {
+        return (int) $this->column('autoroute_shore_max_m');
+    }
+
+    public function setAutorouteShoreMaxMeters(int $meters): void
+    {
+        $this->write('UPDATE app_settings SET autoroute_shore_max_m = ? WHERE id = 1', [$meters]);
+    }
+
     /**
      * Merging two routes (RouteMergeController, RouteMerger): joined end
      * points closer than this are replaced by their midpoint, farther ones

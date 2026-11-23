@@ -125,6 +125,29 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
 </div>
 <div class="card mt-3">
     <div class="card-body">
+        <h2 class="h6"><?= $t('admin.settings.autoroute_title') ?></h2>
+        <p class="text-muted small"><?= $t('admin.settings.autoroute_hint') ?></p>
+        <div class="row g-3">
+            <div class="col-sm-4">
+                <label for="settingAutorouteShore" class="form-label"><?= $t('admin.settings.autoroute_shore') ?></label>
+                <div class="input-group">
+                    <input type="number" min="0" max="<?= \Ytan\Domain\Settings\SettingsRepository::AUTOROUTE_SHORE_MAX_M ?>" step="10" class="form-control" id="settingAutorouteShore" value="<?= (int) $autorouteShoreMeters ?>">
+                    <span class="input-group-text">m</span>
+                </div>
+            </div>
+            <div class="col-sm-4">
+                <label for="settingAutorouteShoreMax" class="form-label"><?= $t('admin.settings.autoroute_shore_max') ?></label>
+                <div class="input-group">
+                    <input type="number" min="0" max="<?= \Ytan\Domain\Settings\SettingsRepository::AUTOROUTE_SHORE_FAR_MAX_M ?>" step="50" class="form-control" id="settingAutorouteShoreMax" value="<?= (int) $autorouteShoreMaxMeters ?>">
+                    <span class="input-group-text">m</span>
+                </div>
+            </div>
+        </div>
+        <button type="button" class="btn btn-primary mt-3" id="settingAutorouteSaveBtn" data-on-click="saveAutorouteSettings();"><?= $t('common.save') ?></button>
+    </div>
+</div>
+<div class="card mt-3">
+    <div class="card-body">
         <h2 class="h6"><?= $t('admin.settings.route_smoothing_title') ?></h2>
         <p class="text-muted small"><?= $t('admin.settings.route_smoothing_hint') ?></p>
         <div class="row g-3">

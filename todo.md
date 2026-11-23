@@ -1,5 +1,10 @@
 # Offene Punkte
 
+## Autorouting: Gewässerindex neu bauen und prüfen
+
+Das Autorouting ist gebaut (done.md, "Autorouting"), arbeitet mit dem **bestehenden** Index aber nur am Meer: Seen ab 10 km² werden erst erkannt, wenn der Index mit `tools/water/build_index.py` neu gebaut ist (Seenringe mit Wasser rechts, `"oriented": true` in `water-index.json`) und mit `bin\publish-water.bat [test]` verteilt wurde. Danach prüfen: eine Route über einen großen See (Start/Ende am Ufer, Insel im Weg), Laufzeit und Hinweis für Start im Binnenland ohne Gewässerdaten. Offen außerdem: Binnengewässer unter 10 km² und breite Flüsse sind nicht als Wasser erkannt (Fluss/Kanal nur ±40/15 m um die Mittellinie) - dort meldet das Autorouting "an Land".
+
+
 ## Leuchtfeuer-Quellen: nächste Schritte
 
 Aus der Quellenrecherche (2026-10-14, Plan "Weitere Quellen für den Leuchtfeuer-Import"); OpenStreetMap als Quelle und die Quellen-Tabelle sind umgesetzt (done.md), `last_seen_at`, die Markierung gleicher Nummern, die Prüfung der nationalen Dienste und deren Anbindung (Finnland, Norwegen) ebenfalls (done.md, "Leuchtfeuer-Quellen: ..."). Offen sind:

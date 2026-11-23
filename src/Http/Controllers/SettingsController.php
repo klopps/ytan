@@ -92,6 +92,26 @@ final class SettingsController extends BaseController
         return $this->json($response, ['data' => ['midpoint_m' => $meters]]);
     }
 
+    /** Body {shore_m} - see SettingsRepository::autorouteShoreMeters(). */
+    public function updateAutoroute(Request $request, Response $response): Response
+    {
+        $this->requireAdmin($request);
+        $meters = filter_var($this->jsonBody($request)['shore_m'] ?? null, FILTER_VALIDATE_INT);
+        if ($meters === false || $meters < 0 || $meters > SettingsRepository::AUTOROUTE_SHORE_MAX_M) {
+            throw new ValidationException('shore_m must be a whole number of meters from 0 to ' . SettingsRepository::AUTOROUTE_SHORE_MAX_M . '.');
+        }
+
+        $max = filter_var($this->jsonBody($request)['max_m'] ?? $this->settings->autorouteShoreMaxMeters(), FILTER_VALIDATE_INT);
+        if ($max === false || $max < 0 || $max > SettingsRepository::AUTOROUTE_SHORE_FAR_MAX_M) {
+            throw new ValidationException('max_m must be a whole number of meters from 0 to ' . SettingsRepository::AUTOROUTE_SHORE_FAR_MAX_M . '.');
+        }
+
+        $this->settings->setAutorouteShoreMeters($meters);
+        $this->settings->setAutorouteShoreMaxMeters($max);
+
+        return $this->json($response, ['data' => ['shore_m' => $meters, 'max_m' => $max]]);
+    }
+
     /** Body {share_pct} - see SettingsRepository::routeSmoothingSharePercent(). */
     public function updateRouteSmoothing(Request $request, Response $response): Response
     {

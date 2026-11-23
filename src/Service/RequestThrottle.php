@@ -33,6 +33,7 @@ final class RequestThrottle
     public const FORGOT = 'forgot';
     public const GEO = 'geo';
     public const CSP_REPORT = 'csp';
+    public const AUTOROUTE = 'autoroute';
 
     /** kind => [window seconds, max per identifier, max per IP] */
     private const LIMITS = [
@@ -42,6 +43,8 @@ final class RequestThrottle
         // Browser CSP violation reports - they only end up in the error
         // log, which must not be floodable.
         self::CSP_REPORT => [600, 30, 30],
+        // Autorouting runs seconds of CPU per request: 15 per user and 10 minutes.
+        self::AUTOROUTE => [600, 15, 60],
     ];
 
     private const RETENTION_SECONDS = 86400;

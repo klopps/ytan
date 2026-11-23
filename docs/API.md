@@ -81,6 +81,33 @@ every tour. Lengths are computed server-side. 201 with
 `{routes: [{id, name, updated_at}, {id, name, updated_at}]}`
 (`RouteSplitController`).
 
+`POST /routes/autoroute/check` - signed in; `{points: [{lat, lng}, ...]}` (2-5000
+positions, at most 300 km): are start and end usable for autorouting? 200 with
+`{ok, problems[]}`, problems = `start_not_covered` / `end_not_covered` (outside
+the countries of the water index, or no index), `start_on_land` /
+`end_on_land` (more than 100 m from known water). The client opens its dialog
+only for `ok`. `POST /routes/autoroute` - signed in; `{points, shore_m?,
+max_m?, enabled?}` (`shore_m` 0-2000 m wanted minimum distance from the shore,
+`max_m` 0-5000 m wanted maximum distance, 0 = none, `enabled` = whether both
+apply; all become the user's preferences, a value equal to the admin default is
+stored as "default"): the line with every stretch over land - and, when
+enabled, nearer to the shore or farther from it - replaced by a detour over
+water (`Autorouter`: land/water from the side of the nearest shore line, A* on
+a local grid, then straightened; start/end zones exempt). The goal is a safe
+AND short way between the given points: the minimum distance is a cost
+(narrow passages are still used, warning `clearance_relaxed`), the maximum is
+only a soft cost (up to twice as expensive beyond it), so open water that
+cannot be avoided is crossed directly; a detour starts a little before the
+bad stretch so it can leave the line on a tangent. Stateless, nothing is
+stored. 200 with `{points: [{lat, lng}], changed_sections, length_before,
+length_after, warnings: [{code: no_path|clearance_relaxed|truncated, lat?,
+lng?}]}`; 422 `autoroute.start_on_land` etc. (start/end checked again),
+`autoroute.too_long`, `autoroute.points_invalid`; 429 above 15 requests per user
+and 10 minutes. `GET /auth/autoroute` / `PUT /auth/autoroute` - the user's
+preferences: `{shore_m, custom, max_m, max_custom, enabled, default_m,
+default_max_m}` (`shore_m`/`max_m` null on PUT = use the admin default; keys
+left out are kept).
+
 `POST /routes/{id}/merge` - owner or admin of BOTH routes; `{other_id,
 name (1-150 characters), expected_updated_at?, other_expected_updated_at?}`.
 Route `{id}` stays: it gets the joined line, the new length and `name`, and
@@ -322,6 +349,7 @@ Read by the SPA as `window.YTAN_ROUTE_ANIMATION` (`{color, line_width, zoom, end
 
 | Method | Path | Auth | Body / query | Notes |
 |---|---|---|---|---|
+| PUT | `/settings/autoroute` | admin | `shore_m` (whole meters 0-2000): the default minimum distance to the shore for the autorouting, 0 = only keep off the land; `max_m` (0-5000, optional, kept when left out): the default maximum distance, 0 = none | `data`: `{shore_m, max_m}`; 422 for anything else |
 | PUT | `/settings/route-merge` | admin | `midpoint_m` (whole meters 0-1000): merging two routes, joined end points closer than this become their midpoint; 0 = only identical points | `data`: `{midpoint_m}`; 422 for anything else |
 | PUT | `/settings/ar` | admin | `radius_m`, `radius_max_m` (AR view: default radius and its upper limit, meters), `max_pois`, `max_pois_limit` (default number of POIs in the camera picture and its upper limit), `route_range_m`, `route_range_max_m` (AR route mode: how far ahead along the route it is drawn, default and limit, meters) - all whole numbers; clamped to 100-50000 m / 1-50 / 200-30000 m, a default above its limit is lowered to it | `data`: the stored values; 422 for a missing or fractional value. Injected into the SPA as `window.YTAN_AR` |
 | PUT | `/settings/route-animation` | admin | `color` (`#RRGGBB`), `line_width` (whole px 1-30), `zoom` (3-21, rounded to 0.1), `end_delay_s` (seconds 0-600, rounded to 0.01), `speed` (default playback speed, whole screen px per second at that zoom, 10-2000) | `data`: the stored values (colour upper-case); 422 for anything else |
