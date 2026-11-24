@@ -1,9 +1,9 @@
 # Offene Punkte
 
-## Autorouting: Gewässerindex neu bauen und prüfen
+## Aktive Buttons in Dialogen
 
-Das Autorouting ist gebaut (done.md, "Autorouting"), arbeitet mit dem **bestehenden** Index aber nur am Meer: Seen ab 10 km² werden erst erkannt, wenn der Index mit `tools/water/build_index.py` neu gebaut ist (Seenringe mit Wasser rechts, `"oriented": true` in `water-index.json`) und mit `bin\publish-water.bat [test]` verteilt wurde. **Stand (2026-11-23):** der Index ist lokal neu gebaut (`storage/water/water-index.bin`, 402,9 MB, Version 202611232232, `"oriented": true`, 7394 s), **noch nicht veröffentlicht** (`bin\publish-water.bat test` / produktiv steht aus). Danach prüfen: eine Route über einen großen See (Start/Ende am Ufer, Insel im Weg), Laufzeit und Hinweis für Start im Binnenland ohne Gewässerdaten. Offen außerdem: Binnengewässer unter 10 km² und breite Flüsse sind nicht als Wasser erkannt (Fluss/Kanal nur ±40/15 m um die Mittellinie) - dort meldet das Autorouting "an Land".
-
+Im Löschen Dialog für Wegpunkte von Routen kann ich nicht erkennen, welcher der der bei
+den Buttons "Nein" und "Löschen" derzeit aktiv ist mit ENTER bestätigt wird. Untersuche, ob das auch in anderen Dialogen der Fall ist und mache einen Vorschlag für eine Lösung.
 
 ## Leuchtfeuer-Quellen: nächste Schritte
 

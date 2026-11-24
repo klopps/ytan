@@ -1010,8 +1010,10 @@ function initMap() {
         updateSecondToolbarLength();
         restoreLineAfterSplitLongPress(); // route.js
         autorouteLiveOnChange(); // route.js
+        routeSelOnMeasureChange(); // route-selection.js
     });
     initRouteSplitting(); // route.js - needs measureTool
+    routeSelInit(); // route-selection.js - needs measureTool
 
     if (zoomParam == null) {
         if (Number.isInteger(settings['zoom'])) {

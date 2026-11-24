@@ -161,8 +161,9 @@ test('the edit window button puts the drawn line onto water', async ({ loggedInP
 
 test('live mode connects a new last waypoint over water: one segment, saved preferences', async ({ loggedInPage: page }) => {
   let posted = null;
-  await page.route('**/api/v1/routes/autoroute', (r) => {
+  await page.route('**/api/v1/routes/autoroute', async (r) => {
     posted = r.request().postDataJSON();
+    await new Promise((resolve) => setTimeout(resolve, 1200)); // the spinner has to be seen meanwhile
     r.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -179,10 +180,31 @@ test('live mode connects a new last waypoint over water: one segment, saved pref
   await page.waitForTimeout(400);
   await page.mouse.click(box.x + box.width / 2 + 60, box.y + box.height / 2);
 
+  // while the request runs: spinner, and a click on the map sets no waypoint
+  await expect(page.locator('#autorouteBusy')).toBeVisible();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2 + 80);
+  expect(await page.evaluate(() => measureTool.points.length)).toBe(2);
+
   await page.waitForFunction(() => measureTool.points && measureTool.points.length === 3);
+  await expect(page.locator('#autorouteBusy')).toHaveCount(0);
   expect(posted.segment).toBe(true);
   expect(posted.points).toHaveLength(2);
   expect(posted.shore_m).toBeUndefined(); // the server uses the saved preferences
+});
+
+test('a failing routing request removes the spinner again', async ({ loggedInPage: page }) => {
+  await page.route('**/api/v1/routes/autoroute', (r) => r.fulfill({
+    status: 500, contentType: 'application/json', body: JSON.stringify({ error: { message: 'boom' } }),
+  }));
+  await settleMapAt(page, LAT, LNG, 15);
+  await page.locator('#routeButton').click();
+  await page.locator('label[for="secondToolbarLiveBtn"]').click();
+  const box = await page.locator('#map').boundingBox();
+  await page.mouse.click(box.x + box.width / 2 - 60, box.y + box.height / 2);
+  await page.waitForTimeout(400);
+  await page.mouse.click(box.x + box.width / 2 + 60, box.y + box.height / 2);
+  await expect(page.locator('.toast-error')).toBeVisible();
+  await expect(page.locator('#autorouteBusy')).toHaveCount(0);
 });
 
 test('the question before saving: a line over land can be put on water', async ({ loggedInPage: page }) => {

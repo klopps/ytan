@@ -28,6 +28,12 @@ Beim Zeichnen und beim Bearbeiten einer bestehenden Route (Kontextmenü > **Rout
 
 ![Eine Route im Bearbeitungsmodus](route-bearbeiten.jpg)
 
+**Mehrere Wegpunkte auf einmal löschen:**
+
+- **Am Rechner:** Halte **Strg** (am Mac **Cmd**) gedrückt und ziehe mit der Maus ein Rechteck über die Karte - alle Wegpunkte darin sind ausgewählt (mit zusätzlich **Umschalt** kommen sie zur bisherigen Auswahl hinzu). **Strg + Klick** auf einen Wegpunkt wählt ihn aus oder ab. Mit **Entf** löschst du die ausgewählten Wegpunkte, nach einer Rückfrage.
+- **Am Smartphone:** Drücke lange auf einen Wegpunkt und wähle **Mehrere Wegpunkte auswählen**. Dann wählt jedes Antippen eines Wegpunkts ihn aus oder ab; ein Tipp auf die leere Karte tut in dieser Zeit nichts. Mit **Strecke wählen** tippst du zwei Wegpunkte an und alles dazwischen ist ausgewählt.
+- Unten erscheint eine Leiste mit der Anzahl, **Strecke wählen**, **Löschen** und einem Kreuz. Das Kreuz oder **Esc** beendet die Auswahl; auch ein einzelner Klick auf die leere Karte hebt sie auf (er setzt dabei keinen neuen Wegpunkt). Mindestens zwei Wegpunkte müssen übrig bleiben.
+
 > **Hinweis:** Punkte lassen sich nicht in die Mitte einer Route einfügen. Willst du die Linie in der Mitte ändern, entferne die Punkte hinter der Änderung und zeichne sie neu - oder teile die Route (siehe unten) und zeichne den Teil neu.
 
 ### Name, Farbe und mehr
@@ -71,7 +77,7 @@ So arbeitet es:
 
 Das Kontextmenü der Route ist nicht der einzige Weg. Die Einstellungen aus dem Dialog (Abstände zum Ufer) gelten überall.
 
-- **Beim Zeichnen oder Bearbeiten** gibt es in der oberen Leiste (neben **BEENDEN**) das Kästchen **Autorouting**. Ist es angehakt, verbindet YTAN jeden neuen letzten Wegpunkt automatisch **über Wasser** mit dem vorherigen, ohne Dialog. Ein Segment kürzer als 60 m bleibt, wie du es gesetzt hast. Auf schmalen Smartphones rutscht das Kästchen in eine zweite Zeile unter der Leiste.
+- **Beim Zeichnen oder Bearbeiten** gibt es in der oberen Leiste (neben **BEENDEN**) das Kästchen **Autorouting**. Ist es angehakt, verbindet YTAN jeden neuen letzten Wegpunkt automatisch **über Wasser** mit dem vorherigen, ohne Dialog. Ein Segment kürzer als 60 m bleibt, wie du es gesetzt hast. Auf schmalen Smartphones rutscht das Kästchen in eine zweite Zeile unter der Leiste. Während YTAN rechnet, zeigt ein Hinweis mit Ladesymbol die Berechnung an und die Karte nimmt keine Eingaben an: Du kannst in der Zeit keine Wegpunkte setzen oder verschieben.
 - **Ein einzelner Abschnitt**: Drücke beim Bearbeiten lange auf einen inneren Wegpunkt (am Rechner Rechtsklick) und wähle **Strecke davor auf Wasser legen** oder **Strecke danach auf Wasser legen**.
 - **Beim Speichern**: Führt die gezeichnete oder geänderte Route auf mehr als 150 m über Land, fragt YTAN vor dem Speichern, ob sie **auf Wasser gelegt** werden soll. Mit **Nein, so speichern** wird sie unverändert gespeichert. Aufgezeichnete GPS-Tracks werden nicht gefragt.
 - **Im Bearbeiten-Fenster** der Route (auch direkt nach einer GPS-Aufzeichnung) steht der Knopf **Auf Wasser legen**; er legt die ganze Linie über Wasser, mit dem Dialog wie oben.

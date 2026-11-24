@@ -1389,8 +1389,7 @@ async function autorouteRun(points) {
     if (choice === null) {
         return null;
     }
-    showToast(t('autoroute.running'), 'info');
-    var result = (await Ytan.post('/routes/autoroute', { points: points, shore_m: choice.shore_m, max_m: choice.max_m, enabled: choice.enabled })).data;
+    var result = (await autorouteBusy(Ytan.post('/routes/autoroute', { points: points, shore_m: choice.shore_m, max_m: choice.max_m, enabled: choice.enabled }))).data;
 
     result.warnings.forEach(function (warning) {
         if (warning.code === 'no_path') {
@@ -1406,6 +1405,35 @@ async function autorouteRun(points) {
         return null;
     }
     return result;
+}
+
+var autorouteBusyCount = 0;
+
+/**
+ * Shows a spinner over the map while `promise` (a routing request) runs and
+ * swallows every click/touch on it - no waypoint can be set or moved meanwhile
+ * (the line must not change under the request). Hides again in any case.
+ */
+async function autorouteBusy(promise) {
+    autorouteBusyCount++;
+    if (autorouteBusyCount === 1 && !document.getElementById('autorouteBusy')) {
+        var overlay = document.createElement('div');
+        overlay.id = 'autorouteBusy';
+        overlay.className = 'autoroute-busy';
+        overlay.innerHTML = '<div class="autoroute-busy-box"><span class="rc-spinner"></span>' + escapeHTML(t('autoroute.running')) + '</div>';
+        document.body.appendChild(overlay);
+    }
+    try {
+        return await promise;
+    } finally {
+        autorouteBusyCount--;
+        if (autorouteBusyCount === 0) {
+            var el = document.getElementById('autorouteBusy');
+            if (el) {
+                el.remove();
+            }
+        }
+    }
 }
 
 function autorouteDoneToast(result) {
@@ -1516,10 +1544,10 @@ async function autorouteSegment(points, from, to, quiet) {
     if (!navigator.onLine) {
         return false;
     }
-    var answer = (await Ytan.post('/routes/autoroute', {
+    var answer = (await autorouteBusy(Ytan.post('/routes/autoroute', {
         points: [points[from], points[to]],
         segment: true
-    })).data;
+    }))).data;
     var unusable = answer.warnings.find(function (w) { return w.code === 'not_usable'; });
     if (unusable) {
         if (!quiet || !autorouteLiveNoticeShown) {
@@ -1995,7 +2023,8 @@ function routeSplitWaypointAt(clientX, clientY) {
     // Any route being drawn or edited - for a new one the menu only offers the water entries.
     var routeBtn = document.getElementById('routeButton');
     if (!routeBtn || !routeBtn.classList.contains('active') || !shapeEditorActive
-        || !overlayProjection || !overlayProjection.getProjection()) {
+        || !overlayProjection || !overlayProjection.getProjection()
+        || routeSel.mode) { // in selection mode a long-press must not open the menu
         return -1;
     }
     var points = measureTool.points || [];
@@ -2141,7 +2170,8 @@ function showRouteSplitMenu(index) {
     routeSplitPending = { routeIndex: measureTool.index, index: index, points: points };
 
     contextMenu.setPosition(new google.maps.LatLng(points[index].lat, points[index].lng));
-    var content = '<div class="contextMenuTitle">' + t('route.waypoint.title') + '</div>';
+    var content = '<div class="contextMenuTitle">' + t('route.waypoint.title') + '</div>' +
+        '<div class="contextMenuItem" data-on-click="routeSelStartModeFromMenu();"><i class="material-icons-round">done_all</i>' + t('route.waypoint.select_multiple') + '</div>';
     // Splitting needs a saved route; the water entries work for every line in the editor.
     if (measureTool.index !== null && typeof measureTool.index !== 'undefined' && routes[measureTool.index]) {
         content += '<div class="contextMenuItem" data-on-click="confirmRouteSplit();"><i class="material-icons-round">call_split</i>' + t('route.waypoint.split') + '</div>';

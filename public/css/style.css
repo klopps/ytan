@@ -6134,6 +6134,91 @@ input[type="color"] {
   animation: rc-spin 0.8s linear infinite;
 }
 @keyframes rc-spin { to { transform: rotate(360deg); } }
+/* Selecting several waypoints in the route editor (route-selection.js) */
+.route-sel-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  overflow: hidden;
+}
+.route-sel-ring {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  box-sizing: border-box;
+  border: 3px solid var(--color-accent);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 0 2px var(--color-bg-panel);
+}
+.route-sel-rect {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px dashed #FFFFFF; /* vivid blue, not the soft accent: it has to stand out on every map type */
+  background: rgba(11, 87, 208, 0.4);
+}
+.route-sel-bar {
+  position: fixed;
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 120;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  max-width: 94vw;
+  padding: 6px 10px;
+  border-radius: 22px;
+  background-color: var(--color-bg-panel);
+  color: var(--color-text);
+  box-shadow: var(--shadow-soft);
+}
+.route-sel-count { font-weight: 600; padding: 0 4px; }
+.route-sel-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 20px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.route-sel-btn .material-icons-round { font-size: 20px; }
+.route-sel-btn.active { background: var(--color-accent); color: #fff; border-color: var(--color-accent); }
+.route-sel-btn:disabled { opacity: 0.4; cursor: default; }
+.route-sel-danger { color: var(--color-danger); }
+.route-sel-close { padding: 0 8px; }
+/* Autorouting request running: blocks the map (no waypoints) and shows a spinner */
+.autoroute-busy {
+  position: fixed;
+  inset: 0;
+  z-index: 900; /* above the map and its toolbars, below the toasts (1000) */
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: calc(80px + var(--top-banner-offset));
+  background: rgba(0, 0, 0, 0.08);
+  cursor: progress;
+  touch-action: none;
+}
+.autoroute-busy-box {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  border-radius: 20px;
+  background-color: var(--color-bg-panel);
+  color: var(--color-text);
+  box-shadow: var(--shadow-soft);
+}
+.autoroute-busy-box .rc-spinner { width: 18px; height: 18px; margin-right: 10px; vertical-align: 0; }
 .routeCheckButton {
   display: inline-flex;
   align-items: center;

@@ -450,6 +450,9 @@ function hideSecondToolbar() {
     if (typeof autorouteLiveReset === 'function') {
         autorouteLiveReset(); // route.js
     }
+    if (typeof routeSelReset === 'function') {
+        routeSelReset(); // route-selection.js
+    }
 }
 
 // True while a route or area is being drawn/edited (second toolbar shown).
