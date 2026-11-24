@@ -10,6 +10,7 @@ use Ytan\Domain\Settings\SettingsRepository;
 use Ytan\Domain\User\UserRepository;
 use Ytan\Exception\ValidationException;
 use Ytan\Service\RequestThrottle;
+use Ytan\Service\Water\AutorouteApplier;
 use Ytan\Service\Water\Autorouter;
 
 /**
@@ -18,9 +19,14 @@ use Ytan\Service\Water\Autorouter;
  * water. Stateless: the line comes in the request, nothing is stored (the
  * client puts the result into the normal route editor).
  *
- * - POST /routes/autoroute/check  {points}: are start and end usable? Answers
+ * - POST /routes/autoroute/check  {points, scan?}: are start and end usable? Answers
  *   {ok, problems[]} (start_not_covered, end_not_covered, start_on_land,
- *   end_on_land); the client opens its dialog only for ok.
+ *   end_on_land); the client opens its dialog only for ok. With scan (and ok)
+ *   also land_m = metres of the line over land (asked before saving a route).
+ * - POST /routes/autoroute  {points, segment: true}: a part of a line (live mode /
+ *   waypoint menu of the route editor): the user's saved preferences, no dialog,
+ *   own rate limit; an unusable start/end is no 422 but the line unchanged with
+ *   warning {code: not_usable, problems}.
  * - POST /routes/autoroute  {points, shore_m, max_m, enabled}: the new line,
  *   {points, changed_sections, length_before, length_after, warnings[]}; start/end
  *   are checked again (422), the dialog's values become the user's preferences.
@@ -31,12 +37,15 @@ use Ytan\Service\Water\Autorouter;
  */
 final class AutorouteController extends BaseController
 {
+    private readonly AutorouteApplier $applier;
+
     public function __construct(
         private readonly Autorouter $router,
         private readonly UserRepository $users,
         private readonly SettingsRepository $settings,
         private readonly RequestThrottle $throttle,
     ) {
+        $this->applier = new AutorouteApplier($router, $users, $settings);
     }
 
     public function preferences(Request $request, Response $response): Response
@@ -63,10 +72,16 @@ final class AutorouteController extends BaseController
     public function check(Request $request, Response $response): Response
     {
         $this->requireAuthUser($request);
-        $points = $this->points($this->jsonBody($request)['points'] ?? null);
+        $body = $this->jsonBody($request);
+        $points = $this->points($body['points'] ?? null);
         $problems = $this->router->check($points);
+        $data = ['ok' => $problems === [], 'problems' => $problems];
+        // scan: how much of the line is over land (asked before a route is saved)
+        if (!empty($body['scan']) && $problems === []) {
+            $data['land_m'] = (int) round($this->applier->landMeters($points));
+        }
 
-        return $this->json($response, ['data' => ['ok' => $problems === [], 'problems' => $problems]]);
+        return $this->json($response, ['data' => $data]);
     }
 
     public function route(Request $request, Response $response): Response
@@ -75,6 +90,15 @@ final class AutorouteController extends BaseController
         $userId = (int) $auth['sub'];
         $body = $this->jsonBody($request);
         $points = $this->points($body['points'] ?? null);
+
+        // segment: part of a line (live mode, waypoint menu) - saved preferences, no dialog, an unusable end is no error
+        if (!empty($body['segment'])) {
+            $ip = (string) ($request->getServerParams()['REMOTE_ADDR'] ?? '');
+            $this->throttle->assertAllowed(RequestThrottle::AUTOROUTE_SEGMENT, 'user:' . $userId, $ip);
+            $this->throttle->record(RequestThrottle::AUTOROUTE_SEGMENT, 'user:' . $userId, $ip);
+
+            return $this->json($response, ['data' => $this->rounded($this->applier->apply($userId, $points))]);
+        }
 
         $this->throttle->assertAllowed(RequestThrottle::AUTOROUTE, 'user:' . $userId, (string) ($request->getServerParams()['REMOTE_ADDR'] ?? ''));
         $problems = $this->router->check($points);
@@ -96,6 +120,15 @@ final class AutorouteController extends BaseController
             $enabled ? (float) ($shore ?? $default) : null,
             $enabled ? (float) ($max ?? $defaultMax) : null
         );
+        return $this->json($response, ['data' => $this->rounded($result)]);
+    }
+
+    /**
+     * @param array<string, mixed> $result
+     * @return array<string, mixed>
+     */
+    private function rounded(array $result): array
+    {
         $result['points'] = array_map(
             static fn (array $p): array => ['lat' => round($p[0], 6), 'lng' => round($p[1], 6)],
             $result['points']
@@ -103,7 +136,7 @@ final class AutorouteController extends BaseController
         $result['length_before'] = (int) round($result['length_before']);
         $result['length_after'] = (int) round($result['length_after']);
 
-        return $this->json($response, ['data' => $result]);
+        return $result;
     }
 
     /** @return array{shore_m: int, custom: bool, max_m: int, max_custom: bool, enabled: bool, default_m: int, default_max_m: int} */

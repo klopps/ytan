@@ -46,7 +46,7 @@ Die drei Symbole stehen nur zur Verfügung, wenn du angemeldet bist:
 2. **POI anlegen**
 3. **Gebiet anlegen**
 
-Während du etwas zeichnest, ist das Symbol hervorgehoben, und links daneben erscheint eine zweite Leiste mit dem Schalter zum Beenden (**END EDITING** bei Routen und Gebieten, **CANCEL** bei POIs).
+Während du etwas zeichnest, ist das Symbol hervorgehoben, und links daneben erscheint eine zweite Leiste mit dem Schalter zum Beenden (**BEENDEN** bei Routen und Gebieten, **CANCEL** bei POIs).
 
 ## Das Kontextmenü (rechte Maustaste / langer Druck)
 

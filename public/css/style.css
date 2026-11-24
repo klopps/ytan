@@ -4916,6 +4916,53 @@ input[type="color"] {
   justify-content: center;
 }
 
+/* icon + text button (the water buttons of the route toolbar) */
+.second-toolbar-end-btn.second-toolbar-labelled {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 4px;
+}
+
+.second-toolbar-end-btn.second-toolbar-labelled .material-icons-round {
+  font-size: 18px;
+}
+
+/* checkbox + label (live autorouting) */
+.second-toolbar-check {
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  height: 36px;
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* a switched-on toggle button (live autorouting) */
+.second-toolbar-end-btn.active {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+/* too narrow for one row: length + END on top, the water buttons below */
+#secondToolbar.second-toolbar-stacked {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0;
+}
+
+#secondToolbar.second-toolbar-stacked .second-toolbar-length {
+  min-width: 34px;
+  padding-left: 2px;
+}
+
+.second-toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
 
 
 ::-webkit-input-placeholder { /* WebKit browsers */

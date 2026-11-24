@@ -360,6 +360,33 @@ function showSecondToolbar(elementId) {
         return;
     }
 
+    // Route: length, the two "on water" buttons (signed in only) and END. On
+    // narrow phones the text button turns into an icon, and if even that does
+    // not fit beside the search button the two water buttons move into a
+    // second row below.
+    if (elementId === 'routeButton') {
+        var routeEditToolbarRect = document.getElementById('editToolbar').getBoundingClientRect();
+        secondToolbar.style.right = (routeEditToolbarRect.width + 10 + 8) + 'px';
+        secondToolbar.style.display = "flex";
+        var searchEdge = document.getElementById('mapSearchWrapper').getBoundingClientRect().right;
+        var buildRouteToolbar = function (variant) { // 0 = one row, 1 = the checkbox in a second row
+            secondToolbar.innerHTML = routeSecondToolbarHtml(variant);
+            secondToolbar.classList.toggle('second-toolbar-stacked', variant >= 1);
+            updateSecondToolbarLength();
+        };
+        secondToolbar.style.top = '';
+        for (var variant = 0; variant <= 1; variant++) {
+            buildRouteToolbar(variant);
+            if (secondToolbar.getBoundingClientRect().left >= searchEdge + 8) {
+                break;
+            }
+        }
+        setShapeEditorActive(true);
+        return;
+    }
+    secondToolbar.classList.remove('second-toolbar-stacked');
+    secondToolbar.style.top = '';
+
     var labels = {
         routeButton: { title: t('toolbar.editing_route'), action: t('toolbar.finish_editing'), onclick: 'showRouteEditWindow(' + measureTool.index + ', null)' },
         poiButton: { title: t('toolbar.editing_poi'), action: t('toolbar.cancel'), onclick: 'cancelEditPoi()' },
@@ -385,6 +412,24 @@ function showSecondToolbar(elementId) {
 }
 
 /**
+ * The route toolbar's markup. variant 0: text "END"; 1: check icon instead
+ * (narrow phones); 2: icon and the two water buttons in a second row
+ * (CSS .second-toolbar-stacked).
+ */
+function routeSecondToolbarHtml(variant) {
+    var finish = '<button type="button" class="second-toolbar-end-btn" title="' + t('toolbar.finish_editing') + '" data-on-click="showRouteEditWindow(' + measureTool.index + ', null)">' + t('toolbar.finish_editing') + '</button>';
+    var head = '<div id="secondToolbarLength" class="second-toolbar-length" title="' + t('toolbar.editing_route') + '"></div>';
+    var live = '';
+    if (typeof user !== 'undefined' && user.id !== null) {
+        live ='<span class="second-toolbar-check" title="' + t('toolbar.autoroute_live') + '"><input type="checkbox" id="secondToolbarLiveBtn"' + (autorouteLive ? ' checked' : '') + ' data-on-change="toggleAutorouteLive()"><label for="secondToolbarLiveBtn">' + t('toolbar.autoroute_live_label') + '</label></span>';
+    }
+    if (variant === 1) { // the checkbox in a second row
+        return '<div class="second-toolbar-row">' + head + finish + '</div>' + (live ? '<div class="second-toolbar-row">' + live + '</div>' : '');
+    }
+    return head + live + finish;
+}
+
+/**
  * Refreshes the route length shown in the second toolbar from measureTool -
  * called when the toolbar is built and on every measureTool 'measure_change'
  * (map-core.js), i.e. each added/moved/removed vertex. A no-op while the
@@ -393,13 +438,18 @@ function showSecondToolbar(elementId) {
 function updateSecondToolbarLength() {
     var element = document.getElementById('secondToolbarLength');
     if (element && measureTool) {
-        element.textContent = formatDistance(measureTool.length || 0, settings.unit);
+        // measureTool.length keeps the last line's value until the first change
+        var hasLine = measureTool.points && measureTool.points.length >= 2;
+        element.textContent = formatDistance(hasLine ? (measureTool.length || 0) : 0, settings.unit);
     }
 }
 
 function hideSecondToolbar() {
     document.getElementById('secondToolbar').style.display = "none";
     setShapeEditorActive(false);
+    if (typeof autorouteLiveReset === 'function') {
+        autorouteLiveReset(); // route.js
+    }
 }
 
 // True while a route or area is being drawn/edited (second toolbar shown).

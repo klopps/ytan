@@ -68,6 +68,19 @@ final class AutorouterTest extends TestCase
         $this->assertSame([], $router->check([[55.00027, 10.05], [54.99, 10.15]]));
     }
 
+    public function testLandMetersCountsOnlyTheStretchOverLand(): void
+    {
+        $router = new Autorouter(self::island());
+
+        $this->assertSame(0.0, $router->landMeters([[54.99, 9.95], [54.99, 10.15]]), 'along the south coast: water only');
+        // across the block at 55.05 N: 0.1 degrees of longitude = ~6.4 km
+        $over = $router->landMeters([[55.05, 9.95], [55.05, 10.15]]);
+        $this->assertGreaterThan(5800.0, $over);
+        $this->assertLessThan(7000.0, $over);
+        // a start 30 m inside the land (launch beach) does not count
+        $this->assertSame(0.0, $router->landMeters([[55.00027, 10.05], [54.99, 10.06]]));
+    }
+
     public function testCheckRefusesStartOrEndOnLand(): void
     {
         $router = new Autorouter(self::island());
@@ -75,6 +88,15 @@ final class AutorouterTest extends TestCase
         $this->assertSame(['start_on_land'], $router->check([[55.05, 10.05], [54.99, 10.15]]));
         $this->assertSame(['end_on_land'], $router->check([[54.99, 9.95], [55.05, 10.05]]));
         $this->assertSame(['start_on_land', 'end_on_land'], $router->check([[55.05, 10.04], [55.05, 10.06]]));
+    }
+
+    public function testOpenSeaFarFromAnyShoreIsWater(): void
+    {
+        $router = new Autorouter(self::island());
+
+        // 2 degrees (~220 km) from the only shore: no side to tell, but it is open water
+        $this->assertSame([], $router->check([[57.0, 12.0], [57.01, 12.01]]));
+        $this->assertSame(0.0, $router->landMeters([[57.0, 12.0], [57.1, 12.1]]));
     }
 
     public function testCheckRefusesWhereTheIndexHasNothing(): void

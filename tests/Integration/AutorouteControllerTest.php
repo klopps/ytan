@@ -70,6 +70,47 @@ final class AutorouteControllerTest extends ControllerTestCase
         $this->assertSame(['start_on_land'], $land['data']['problems']);
     }
 
+    public function testCheckWithScanReportsTheLandMeters(): void
+    {
+        $auth = $this->authPayload($this->createUser());
+
+        $over = $this->call('check', $auth, ['points' => self::points([55.05, 9.95], [55.05, 10.15]), 'scan' => true]);
+        $this->assertTrue($over['data']['ok']);
+        $this->assertGreaterThan(5800, $over['data']['land_m']);
+
+        $water = $this->call('check', $auth, ['points' => self::points([54.99, 9.95], [54.99, 10.15]), 'scan' => true]);
+        $this->assertSame(0, $water['data']['land_m']);
+
+        $plain = $this->call('check', $auth, ['points' => self::points([54.99, 9.95], [54.99, 10.15])]);
+        $this->assertArrayNotHasKey('land_m', $plain['data'], 'no scan, no land_m');
+
+        $bad = $this->call('check', $auth, ['points' => self::points([55.05, 10.05], [54.99, 10.15]), 'scan' => true]);
+        $this->assertArrayNotHasKey('land_m', $bad['data'], 'an unusable start is reported instead');
+    }
+
+    public function testSegmentModeUsesTheSavedPreferencesAndKeepsThem(): void
+    {
+        $userId = $this->createUser();
+        $this->users->setAutoroutePrefs($userId, 300, null, true);
+
+        $answer = $this->call('route', $this->authPayload($userId), ['points' => self::points([55.05, 9.95], [55.05, 10.15]), 'segment' => true, 'shore_m' => 5, 'enabled' => false]);
+
+        $this->assertGreaterThanOrEqual(1, $answer['data']['changed_sections']);
+        $this->assertGreaterThan(2, count($answer['data']['points']));
+        $this->assertSame(['shore_m' => 300, 'max_m' => null, 'enabled' => true], $this->users->getAutoroutePrefs($userId), 'the body must not change the preferences');
+    }
+
+    public function testSegmentModeWithAnUnusableEndReturnsTheLineUnchanged(): void
+    {
+        $answer = $this->call('route', $this->authPayload($this->createUser()), ['points' => self::points([55.05, 10.05], [54.99, 10.15]), 'segment' => true]);
+
+        $this->assertSame(200, $answer['status']);
+        $this->assertSame(0, $answer['data']['changed_sections']);
+        $this->assertCount(2, $answer['data']['points']);
+        $this->assertSame('not_usable', $answer['data']['warnings'][0]['code']);
+        $this->assertSame(['start_on_land'], $answer['data']['warnings'][0]['problems']);
+    }
+
     public function testRouteRefusesAStartOnLandWith422(): void
     {
         $auth = $this->authPayload($this->createUser());

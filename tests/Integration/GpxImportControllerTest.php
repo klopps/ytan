@@ -69,6 +69,45 @@ final class GpxImportControllerTest extends ControllerTestCase
         return $stmt->fetch();
     }
 
+    public function testAutorouteMovesALineOverLandOntoWater(): void
+    {
+        $this->pdo->exec('INSERT INTO app_settings (id, google_search_requires_login, track_distance_filter_precise_m, track_distance_filter_balanced_m, track_distance_filter_battery_m, route_label_font_size_min, route_label_font_size_max, autoroute_shore_m) VALUES (1, 0, 20, 50, 100, 8, 20, 100)');
+        $applier = new \Ytan\Service\Water\AutorouteApplier(
+            new \Ytan\Service\Water\Autorouter(\Ytan\Tests\Fixtures\FakeShoreSource::island(55.0, 10.0, 55.1, 10.1)),
+            new \Ytan\Domain\User\UserRepository($this->pdo),
+            new \Ytan\Domain\Settings\SettingsRepository($this->pdo)
+        );
+        $controller = new GpxImportController(new RouteRepository($this->pdo), $this->tours, new PoiRepository($this->pdo), new GpxImportService(), $this->pdo, new \Ytan\Service\Log\ImportLog(), $applier);
+        $track = fn (string $name, string $a, string $b, string $lng2 = '10.15') => '<trk><name>' . $name . '</name><trkseg>'
+            . '<trkpt lat="' . $a . '" lon="9.95"/><trkpt lat="' . $b . '" lon="' . $lng2 . '"/></trkseg></trk>';
+        $gpx = '<?xml version="1.0"?><gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1">'
+            . $track('Ueber Land', '55.05', '55.05')   // across the block
+            . '<trk><name>Am Ufer</name><trkseg><trkpt lat="54.997" lon="10.02"/><trkpt lat="54.997" lon="10.08"/></trkseg></trk>' // water only, 330 m off the shore
+            . '</gpx>';
+        $userId = $this->createUser();
+        $auth = $this->authPayload($userId);
+
+        $answer = $this->decode($controller->import(
+            $this->request('POST', '/api/v1/gpx/import', $auth, ['gpx' => $gpx, 'tracks' => [0, 1], 'autoroute' => true]),
+            $this->response()
+        ));
+
+        $this->assertSame(201, $answer['status']);
+        $this->assertSame(1, $answer['data']['autorouted']);
+        $over = json_decode($this->routeRow($answer['data']['routes'][0]['id'])['points'], true);
+        $this->assertGreaterThan(2, count($over), 'the detour around the land block added points');
+        $water = json_decode($this->routeRow($answer['data']['routes'][1]['id'])['points'], true);
+        $this->assertCount(2, $water, 'a line over water stays as it is');
+    }
+
+    public function testWithoutTheOptionTheLineStaysAsImported(): void
+    {
+        $userId = $this->createUser();
+        $answer = $this->import($this->authPayload($userId), ['tracks' => [0], 'autoroute' => true]);
+
+        $this->assertSame(0, $answer['data']['autorouted'], 'a controller without the service just imports');
+    }
+
     public function testPreviewListsTracksWithoutPoints(): void
     {
         $userId = $this->createUser();

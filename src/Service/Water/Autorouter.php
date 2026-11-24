@@ -83,6 +83,27 @@ final class Autorouter
     }
 
     /**
+     * How many metres of the line lie over land (samples of 25 m, not counting
+     * the launch tolerance at start and end) - cheap, no detour is searched.
+     * Used to ask "put it on water?" before a route is saved.
+     *
+     * @param list<array{0: float, 1: float}> $points
+     */
+    public function landMeters(array $points): float
+    {
+        [$samples, $cum, , $total] = $this->densify($points);
+        [$water] = $this->classify($samples, 50.0);
+        $land = 0.0;
+        foreach ($samples as $i => $_) {
+            if (!$water[$i] && min($cum[$i], $total - $cum[$i]) > self::LAUNCH_TOLERANCE_M) {
+                $land += self::SAMPLE_M;
+            }
+        }
+
+        return $land;
+    }
+
+    /**
      * @param list<array{0: float, 1: float}> $points [lat, lng], at least 2
      * @param float|null $shoreMeters wanted distance to the shore, null/0 = only keep off the land
      * @param float|null $maxMeters wanted largest distance to the shore (soft: the way is only made more expensive
@@ -208,7 +229,11 @@ final class Autorouter
         if (!$this->source->available() || !$this->source->covers($lat, $lng)) {
             return 'not_covered';
         }
-        if ($this->waterAt($lat, $lng) === true) {
+        $water = $this->waterAt($lat, $lng);
+        if ($water !== false) {
+            // true, or null = no shore, river or lake within the widest box (open sea
+            // far from any coast: the index has no side to tell, and a kayak route
+            // there can only be on water)
             return 'ok';
         }
         $field = $this->fieldAround($lat, $lng, self::BOXES_DEGREES[0], 2500.0);
@@ -322,7 +347,7 @@ final class Autorouter
                     $d = $probe['distance'];
                 } else {
                     $carry ??= $this->waterAt($lat, $lng);
-                    $state = $carry ?? false;
+                    $state = $carry ?? true; // no shore within the widest box = open water
                     $d = null;
                 }
                 if ($field !== null && $field->hasRivers() && $field->onRiver($lat, $lng)) {

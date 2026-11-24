@@ -1009,6 +1009,7 @@ function initMap() {
         updateMeasureToolLabelVisibility();
         updateSecondToolbarLength();
         restoreLineAfterSplitLongPress(); // route.js
+        autorouteLiveOnChange(); // route.js
     });
     initRouteSplitting(); // route.js - needs measureTool
 

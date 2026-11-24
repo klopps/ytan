@@ -34,6 +34,8 @@ final class RequestThrottle
     public const GEO = 'geo';
     public const CSP_REPORT = 'csp';
     public const AUTOROUTE = 'autoroute';
+    /** Single segments of the route editor (live mode, waypoint menu): many, but short. */
+    public const AUTOROUTE_SEGMENT = 'autoroute_seg';
 
     /** kind => [window seconds, max per identifier, max per IP] */
     private const LIMITS = [
@@ -45,6 +47,8 @@ final class RequestThrottle
         self::CSP_REPORT => [600, 30, 30],
         // Autorouting runs seconds of CPU per request: 15 per user and 10 minutes.
         self::AUTOROUTE => [600, 15, 60],
+        // One click in live mode = one request over a few hundred metres to a few kilometres.
+        self::AUTOROUTE_SEGMENT => [600, 200, 400],
     ];
 
     private const RETENTION_SECONDS = 86400;

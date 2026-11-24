@@ -14,6 +14,8 @@ use Ytan\Domain\Tour\TourRepository;
 use Ytan\Exception\ValidationException;
 use Ytan\Service\GpxImportService;
 use Ytan\Service\Log\ImportLog;
+use Ytan\Service\Water\AutorouteApplier;
+use Ytan\Service\Water\Autorouter;
 
 /**
  * GPX import (gpx-import.js): the client sends the file's text as
@@ -27,6 +29,10 @@ use Ytan\Service\Log\ImportLog;
  *   track and, with create_tour, puts them into a new tour in that order.
  *   import_waypoints adds every named/described <wpt> as a POI (type 0);
  *   with it, "tracks" may be empty (a file of waypoints only).
+ *   autoroute (optional) puts every imported line onto water first
+ *   (AutorouteApplier, the user's saved preferences); lines whose start/end
+ *   cannot be used, that are too long or come after the time budget stay as
+ *   they are - the answer's autorouted/autoroute_skipped count them.
  *
  * Same rights as drawing: any signed-in user may import routes and POIs;
  * the tour needs tour_create (or admin), like "New tour". Everything is
@@ -41,6 +47,7 @@ final class GpxImportController extends BaseController
         private readonly GpxImportService $gpx,
         private readonly PDO $db,
         private readonly ImportLog $log = new ImportLog(),
+        private readonly ?AutorouteApplier $autoroute = null,
     ) {
     }
 
@@ -67,17 +74,18 @@ final class GpxImportController extends BaseController
                 'tracks' => is_array($body['tracks'] ?? null) ? $body['tracks'] : null,
                 'create_tour' => (bool) ($body['create_tour'] ?? false),
                 'import_waypoints' => (bool) ($body['import_waypoints'] ?? false),
+                'autoroute' => (bool) ($body['autoroute'] ?? false),
             ],
             fn () => $this->importGpx($auth, $body, $gpx),
             false,
-            fn (array $r) => ['routes' => $r['routes'], 'tour' => $r['tour']['id'] ?? null, 'pois' => $r['pois']]
+            fn (array $r) => ['routes' => $r['routes'], 'tour' => $r['tour']['id'] ?? null, 'pois' => $r['pois'], 'autorouted' => $r['autorouted'], 'autoroute_skipped' => $r['autoroute_skipped']]
         )], 201);
     }
 
     /**
      * @param array<string,mixed> $auth
      * @param array<string,mixed> $body
-     * @return array{routes: list<array{id:int, name:string}>, tour: array{id:int, name:string}|null, pois: int}
+     * @return array{routes: list<array{id:int, name:string}>, tour: array{id:int, name:string}|null, pois: int, autorouted: int, autoroute_skipped: int}
      */
     private function importGpx(array $auth, array $body, string $gpx): array
     {
@@ -120,6 +128,12 @@ final class GpxImportController extends BaseController
             }
         }
 
+        $autorouted = 0;
+        $autorouteSkipped = 0;
+        if ((bool) ($body['autoroute'] ?? false) && $this->autoroute !== null) {
+            [$routeData, $autorouted, $autorouteSkipped] = $this->autoroutedRoutes($userId, $routeData);
+        }
+
         // Tests already run inside a transaction (TestCase) - only open our own if none is active.
         $ownTransaction = !$this->db->inTransaction();
         if ($ownTransaction) {
@@ -159,7 +173,52 @@ final class GpxImportController extends BaseController
             throw $e;
         }
 
-        return ['routes' => $created, 'tour' => $tour, 'pois' => $poiCount];
+        return ['routes' => $created, 'tour' => $tour, 'pois' => $poiCount, 'autorouted' => $autorouted, 'autoroute_skipped' => $autorouteSkipped];
+    }
+
+    /** Seconds after which the remaining lines are imported as they are. */
+    private const AUTOROUTE_BUDGET_SECONDS = 60.0;
+
+    /**
+     * Puts the lines onto water, one after the other, as far as the time budget goes.
+     *
+     * @param list<array<string, mixed>> $routeData
+     * @return array{0: list<array<string, mixed>>, 1: int, 2: int} the data, how many changed, how many stayed as they are
+     */
+    private function autoroutedRoutes(int $userId, array $routeData): array
+    {
+        $started = microtime(true);
+        $changed = 0;
+        $skipped = 0;
+        foreach ($routeData as $n => $data) {
+            $points = array_map(
+                static fn (array $p): array => [(float) $p['lat'], (float) $p['lng']],
+                json_decode((string) $data['points'], true) ?: []
+            );
+            if (count($points) < 2 || Autorouter::length($points) > Autorouter::MAX_ROUTE_M
+                || microtime(true) - $started > self::AUTOROUTE_BUDGET_SECONDS) {
+                $skipped++;
+                continue;
+            }
+            $result = $this->autoroute->apply($userId, $points);
+            if ($result['changed_sections'] === 0) {
+                if ($result['warnings'] !== [] && ($result['warnings'][0]['code'] ?? '') === 'not_usable') {
+                    $skipped++;
+                }
+                continue;
+            }
+            $routeData[$n]['points'] = json_encode(array_map(
+                static fn (array $p): array => ['lat' => round($p[0], 7), 'lng' => round($p[1], 7)],
+                $result['points']
+            ));
+            $routeData[$n]['length'] = (int) round($result['length_after']);
+            // A line moved onto water is no longer the recorded track.
+            $routeData[$n]['recorded_at'] = null;
+            $routeData[$n]['recording_duration_seconds'] = null;
+            $changed++;
+        }
+
+        return [$routeData, $changed, $skipped];
     }
 
     /**

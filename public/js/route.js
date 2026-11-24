@@ -62,6 +62,7 @@ function showRouteEditWindow(i, latLng) {
     log('showRouteEditWindow(' + i + ')', LOG_INFO);
 
     hideSecondToolbar();
+    routeSaveLandAsked = false; // a new edit window = a new question
 
     if (measureTool.segments.length < 1) {
         document.getElementById('routeButton').classList.remove('active');
@@ -151,6 +152,12 @@ function showRouteEditWindow(i, latLng) {
             '<label for="editRouteStatus"><span></span>' + t('common.public_label') + '</label>' +
         '</div>';
     }
+
+    // Also right after a GPS recording: the whole line over water (route.edit.autoroute).
+    content +=
+        '<div class="infoWindowElement">' +
+            '<button type="button" class="button" data-on-click="autorouteEditorLine()" title="' + t('autoroute.dialog_intro') + '"><i class="material-icons-round">alt_route</i> ' + t('route.edit.autoroute') + '</button>' +
+        '</div>';
 
     content +=
         '<div class="infoWindowElement">' +
@@ -280,6 +287,88 @@ function addSavedRouteToMap(routeData) {
  * Speichert eine Route in der Datenbank
  */
 function saveRoute(i) {
+    if (!(validateRouteEditForm() == true)) {
+        return false;
+    }
+    if (routeSaveLandCheckState !== 'idle') {
+        return false; // the land check of the first click is still running (or its question open)
+    }
+    if (!routeSaveNeedsLandCheck(i)) {
+        return saveRouteNow(i);
+    }
+    routeSaveLandCheckState = 'checking';
+    routeSaveLandCheck(i).then(function (proceed) {
+        routeSaveLandCheckState = 'idle';
+        if (proceed) {
+            saveRouteNow(i);
+        }
+    });
+    return true;
+}
+
+// 'idle' | 'checking' while saveRoute() asks the server (and the user) about land
+let routeSaveLandCheckState = 'idle';
+// set once the question was answered for the line in the edit window - saving again does not ask again
+let routeSaveLandAsked = false;
+
+/**
+ * The land question only for a signed-in online user, a new line or one
+ * changed in this edit (a route merely renamed is not questioned again), and
+ * not for a GPS recording (a real track, it may well touch the shore).
+ */
+function routeSaveNeedsLandCheck(i) {
+    if (routeSaveLandAsked || user.id === null || !navigator.onLine || pendingRouteRecordingMeta !== null) {
+        return false;
+    }
+    var points = editorLinePoints();
+    if (points.length < 2) {
+        return false;
+    }
+    var isNew = (i === null) || (typeof i === 'undefined');
+    if (!isNew && routes[i] && routes[i].points) {
+        var original = routes[i].points;
+        if (original.length === points.length && original.every(function (p, k) { return autorouteSamePoint(p, points[k]); })) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
+ * Asks the server how much of the line is over land; when it is a good bit,
+ * asks the user whether to put it on water. Resolves true when the route
+ * should be saved now (no question needed, or the answer was "No"), false
+ * when the line was changed instead - the user checks it and saves again.
+ * Any error just lets the save go on.
+ */
+async function routeSaveLandCheck(i) {
+    try {
+        var check = (await Ytan.post('/routes/autoroute/check', { points: editorLinePoints(), scan: true })).data;
+        if (!check.ok || !(check.land_m >= AUTOROUTE_SAVE_HINT_MIN_LAND_M)) {
+            return true;
+        }
+        routeSaveLandAsked = true;
+        var yes = await showConfirmDialog(t('autoroute.save_hint', { length: formatDistance(check.land_m, settings.unit) }), {
+            confirmLabel: t('autoroute.save_hint_yes'),
+            cancelLabel: t('autoroute.save_hint_no')
+        });
+        if (!yes) {
+            return true;
+        }
+        var points = editorLinePoints();
+        var result = await autorouteRun(points);
+        if (result !== null && editorLinePoints().length === points.length) {
+            autorouteReplaceEditorLine(result.points);
+            showToast(t('autoroute.save_hint_applied'), 'success');
+        }
+        return false;
+    } catch (err) {
+        log('routeSaveLandCheck() failed', LOG_WARN, err);
+        return true;
+    }
+}
+
+function saveRouteNow(i) {
     if (!(validateRouteEditForm() == true)) {
         return false;
     }
@@ -1262,30 +1351,8 @@ async function routeContextMenuAutoroute(i) {
     }
     var points = route.points.map(function (p) { return { lat: p.lat, lng: p.lng }; });
     try {
-        var check = (await Ytan.post('/routes/autoroute/check', { points: points })).data;
-        if (!check.ok) {
-            showToast(autorouteProblemText(check.problems[0]), 'warning');
-            return;
-        }
-        var prefs = (await Ytan.get('/auth/autoroute')).data;
-        var choice = await showAutorouteDialog({ shore_m: prefs.shore_m, max_m: prefs.max_m, enabled: prefs.enabled, max_shore_m: 2000, max_far_m: 5000 });
-        if (choice === null) {
-            return;
-        }
-        showToast(t('autoroute.running'), 'info');
-        var result = (await Ytan.post('/routes/autoroute', { points: points, shore_m: choice.shore_m, max_m: choice.max_m, enabled: choice.enabled })).data;
-
-        result.warnings.forEach(function (warning) {
-            if (warning.code === 'no_path') {
-                showToast(t('autoroute.warning_no_path'), 'warning');
-            } else if (warning.code === 'clearance_relaxed') {
-                showToast(t('autoroute.warning_relaxed', { distance: choice.shore_m }), 'warning');
-            } else if (warning.code === 'truncated') {
-                showToast(t('autoroute.warning_truncated'), 'warning');
-            }
-        });
-        if (result.changed_sections === 0) {
-            showToast(t('autoroute.nothing_to_do'), 'info');
+        var result = await autorouteRun(points);
+        if (result === null) {
             return;
         }
 
@@ -1295,14 +1362,253 @@ async function routeContextMenuAutoroute(i) {
         measureTool.start(result.points);
         document.getElementById('routeButton').classList.add('active');
         showSecondToolbar('routeButton');
-        showToast(t('autoroute.done', {
-            sections: result.changed_sections,
-            before: formatDistance(result.length_before, settings.unit),
-            after: formatDistance(result.length_after, settings.unit)
-        }), 'success');
+        autorouteDoneToast(result);
     } catch (err) {
         log('routeContextMenuAutoroute(' + i + ') failed', LOG_ERROR, err);
         showToast(err && err.message ? err.message : t('autoroute.failed'), 'error');
+    }
+}
+
+/**
+ * The whole dialog flow for a line [{lat, lng}, ...]: server check of start
+ * and end, the dialog (distance to the shore, remembered), the calculation.
+ * Resolves the server's result ({points, changed_sections, length_before,
+ * length_after, warnings}) or null when nothing is to be changed (unusable
+ * start/end, dialog cancelled, line already on water) - the notice is shown
+ * already. Errors are thrown. Shared by the route context menu, the route
+ * editor's toolbar button and the edit window's button.
+ */
+async function autorouteRun(points) {
+    var check = (await Ytan.post('/routes/autoroute/check', { points: points })).data;
+    if (!check.ok) {
+        showToast(autorouteProblemText(check.problems[0]), 'warning');
+        return null;
+    }
+    var prefs = (await Ytan.get('/auth/autoroute')).data;
+    var choice = await showAutorouteDialog({ shore_m: prefs.shore_m, max_m: prefs.max_m, enabled: prefs.enabled, max_shore_m: 2000, max_far_m: 5000 });
+    if (choice === null) {
+        return null;
+    }
+    showToast(t('autoroute.running'), 'info');
+    var result = (await Ytan.post('/routes/autoroute', { points: points, shore_m: choice.shore_m, max_m: choice.max_m, enabled: choice.enabled })).data;
+
+    result.warnings.forEach(function (warning) {
+        if (warning.code === 'no_path') {
+            showToast(t('autoroute.warning_no_path'), 'warning');
+        } else if (warning.code === 'clearance_relaxed') {
+            showToast(t('autoroute.warning_relaxed', { distance: choice.shore_m }), 'warning');
+        } else if (warning.code === 'truncated') {
+            showToast(t('autoroute.warning_truncated'), 'warning');
+        }
+    });
+    if (result.changed_sections === 0) {
+        showToast(t('autoroute.nothing_to_do'), 'info');
+        return null;
+    }
+    return result;
+}
+
+function autorouteDoneToast(result) {
+    showToast(t('autoroute.done', {
+        sections: result.changed_sections,
+        before: formatDistance(result.length_before, settings.unit),
+        after: formatDistance(result.length_after, settings.unit)
+    }), 'success');
+}
+
+/* ------------------------------------------- Autorouting in the route editor
+ *
+ * Besides the route context menu: (1) the toolbar button / the edit window's
+ * button "Auf Wasser legen" for the whole line being drawn
+ * (autorouteEditorLine()), (2) the toggle "am Wasser entlang" - every new
+ * last waypoint is connected to the one before over water
+ * (toggleAutorouteLive()), (3) the waypoint menu's "Strecke davor/danach auf
+ * Wasser legen" (autorouteSegmentFromMenu()), (4) a hint before saving when
+ * the line runs over land (saveRoute()). (2) and (3) work on ONE segment
+ * with the user's saved preferences and no dialog (POST /routes/autoroute
+ * with segment: true).
+ */
+
+var autorouteLive = false; // the live toggle; kept until the page is reloaded
+var autorouteLiveLast = null; // the editor line at the last measure_change
+var autorouteLiveBusy = false;
+var autorouteLiveNoticeShown = false; // "start/end not at the water" once per drawn line
+
+const AUTOROUTE_SAVE_HINT_MIN_LAND_M = 150; // less over land is not worth a question
+const AUTOROUTE_LIVE_MIN_SEGMENT_M = 60; // shorter new segments stay as clicked
+
+function editorLinePoints() {
+    return (measureTool.points || []).map(function (p) { return { lat: p.lat, lng: p.lng }; });
+}
+
+function autorouteSamePoint(a, b) {
+    return !!a && !!b && Math.abs(a.lat - b.lat) < 1e-9 && Math.abs(a.lng - b.lng) < 1e-9;
+}
+
+function autorouteLiveReset() {
+    autorouteLiveLast = null;
+    autorouteLiveNoticeShown = false;
+}
+
+/**
+ * Puts a new line into the editor in place of the current one: the same route
+ * (measureTool.index) stays selected. end() + start(), as
+ * restoreLineAfterSplitLongPress() - start() alone while measuring keeps a point.
+ */
+function autorouteReplaceEditorLine(points) {
+    var index = measureTool.index;
+    measureTool.end();
+    measureTool.start(points);
+    measureTool.index = index;
+    unlockMapGestures();
+    autorouteLiveLast = points.map(function (p) { return { lat: p.lat, lng: p.lng }; });
+    // MeasureTool recalculates its own length only later, without a measure_change.
+    var lengthLabel = document.getElementById('secondToolbarLength');
+    if (lengthLabel) {
+        lengthLabel.textContent = formatDistance(google.maps.geometry.spherical.computeLength(
+            points.map(function (p) { return new google.maps.LatLng(p.lat, p.lng); })
+        ), settings.unit);
+    }
+}
+
+/** Toolbar button / edit window button: the whole line over water, with the dialog. */
+async function autorouteEditorLine() {
+    var points = editorLinePoints();
+    if (points.length < 2) {
+        showToast(t('autoroute.need_two_points'), 'warning');
+        return;
+    }
+    try {
+        var result = await autorouteRun(points);
+        if (result === null) {
+            return;
+        }
+        if (editorLinePoints().length !== points.length) { // changed while the dialog was open
+            showToast(t('autoroute.line_changed'), 'warning');
+            return;
+        }
+        autorouteReplaceEditorLine(result.points);
+        autorouteDoneToast(result);
+    } catch (err) {
+        log('autorouteEditorLine() failed', LOG_ERROR, err);
+        showToast(translateApiError(err && err.data) || (err && err.message) || t('autoroute.failed'), 'error');
+    }
+}
+
+function toggleAutorouteLive() {
+    autorouteLive = !autorouteLive;
+    var box = document.getElementById('secondToolbarLiveBtn');
+    if (box) {
+        box.checked = autorouteLive;
+    }
+    autorouteLiveLast = editorLinePoints();
+    autorouteLiveNoticeShown = false;
+    showToast(t(autorouteLive ? 'autoroute.live_on' : 'autoroute.live_off'), 'info');
+}
+
+/**
+ * Asks for the way over water between two waypoints of `points` (indexes
+ * from/to, neighbours) and puts it into the line as it is NOW in the editor
+ * (waypoints appended meanwhile stay). Resolves true when the line changed.
+ * Nothing but a notice for a start/end that cannot be used.
+ */
+async function autorouteSegment(points, from, to, quiet) {
+    if (!navigator.onLine) {
+        return false;
+    }
+    var answer = (await Ytan.post('/routes/autoroute', {
+        points: [points[from], points[to]],
+        segment: true
+    })).data;
+    var unusable = answer.warnings.find(function (w) { return w.code === 'not_usable'; });
+    if (unusable) {
+        if (!quiet || !autorouteLiveNoticeShown) {
+            autorouteLiveNoticeShown = true;
+            showToast(autorouteProblemText(unusable.problems[0]), 'warning');
+        }
+        return false;
+    }
+    if (answer.changed_sections === 0 || answer.points.length <= 2) {
+        if (!quiet) {
+            showToast(t('autoroute.segment_nothing'), 'info');
+        }
+        return false;
+    }
+
+    // The line must still start with the same waypoints up to the segment's end.
+    var current = editorLinePoints();
+    if (current.length <= to || !autorouteSamePoint(current[to], points[to])
+        || current.slice(0, from + 1).some(function (p, k) { return !autorouteSamePoint(p, points[k]); })) {
+        showToast(t('autoroute.line_changed'), 'warning');
+        return false;
+    }
+    var detour = answer.points.slice(1, -1).map(function (p) { return { lat: p.lat, lng: p.lng }; });
+    autorouteReplaceEditorLine(current.slice(0, from + 1).concat(detour, current.slice(to)));
+    answer.warnings.forEach(function (warning) {
+        if (warning.code === 'no_path') {
+            showToast(t('autoroute.warning_no_path'), 'warning');
+        }
+    });
+    return true;
+}
+
+/**
+ * Called from map-core.js's measure_change listener: in live mode a waypoint
+ * appended at the end of the line being drawn is connected to the one before
+ * over water. Everything else (dragging, inserting, deleting a waypoint) only
+ * updates the remembered line.
+ */
+function autorouteLiveOnChange() {
+    var now = editorLinePoints();
+    var before = autorouteLiveLast || [];
+    autorouteLiveLast = now;
+    // MeasureTool reports nothing for the very first waypoint of a NEW line, so
+    // its second one arrives with an empty "before".
+    var newLine = measureTool.index === null || typeof measureTool.index === 'undefined';
+    if (before.length === 0 && now.length === 2 && newLine) {
+        before = [now[0]];
+    }
+    var routeBtn = document.getElementById('routeButton');
+    if (!autorouteLive || autorouteLiveBusy || !routeBtn || !routeBtn.classList.contains('active')
+        || user.id === null || now.length !== before.length + 1 || before.length < 1) {
+        return;
+    }
+    if (before.some(function (p, k) { return !autorouteSamePoint(p, now[k]); })) {
+        return; // a waypoint inserted in the middle, not appended
+    }
+    var from = before.length - 1;
+    var meters = google.maps.geometry.spherical.computeDistanceBetween(
+        new google.maps.LatLng(now[from].lat, now[from].lng),
+        new google.maps.LatLng(now[from + 1].lat, now[from + 1].lng)
+    );
+    if (meters < AUTOROUTE_LIVE_MIN_SEGMENT_M) {
+        return;
+    }
+    autorouteLiveBusy = true;
+    autorouteSegment(now, from, from + 1, true)
+        .catch(function (err) {
+            log('autorouteLiveOnChange() failed', LOG_ERROR, err);
+            showToast(translateApiError(err && err.data) || (err && err.message) || t('autoroute.failed'), 'error');
+        })
+        .then(function () { autorouteLiveBusy = false; });
+}
+
+/** Waypoint menu: direction -1 = the stretch before the waypoint, 1 = the one after. */
+async function autorouteSegmentFromMenu(direction) {
+    closeContextMenu();
+    var pending = routeSplitPending;
+    routeSplitPending = null;
+    if (!pending) {
+        return;
+    }
+    var from = direction < 0 ? pending.index - 1 : pending.index;
+    try {
+        if (await autorouteSegment(pending.points, from, from + 1, false)) {
+            showToast(t('autoroute.segment_done'), 'success');
+        }
+    } catch (err) {
+        log('autorouteSegmentFromMenu() failed', LOG_ERROR, err);
+        showToast(translateApiError(err && err.data) || (err && err.message) || t('autoroute.failed'), 'error');
     }
 }
 
@@ -1686,7 +1992,9 @@ const ROUTE_SPLIT_HIT_RADIUS_PX = 14;
  * depend on the vendored library's internals.
  */
 function routeSplitWaypointAt(clientX, clientY) {
-    if (measureTool.index === null || typeof measureTool.index === 'undefined' || !routes[measureTool.index]
+    // Any route being drawn or edited - for a new one the menu only offers the water entries.
+    var routeBtn = document.getElementById('routeButton');
+    if (!routeBtn || !routeBtn.classList.contains('active') || !shapeEditorActive
         || !overlayProjection || !overlayProjection.getProjection()) {
         return -1;
     }
@@ -1833,21 +2141,21 @@ function showRouteSplitMenu(index) {
     routeSplitPending = { routeIndex: measureTool.index, index: index, points: points };
 
     contextMenu.setPosition(new google.maps.LatLng(points[index].lat, points[index].lng));
-    contextMenu.setContent(
-        '<div class="contextMenuTitle">' + t('route.split.question') + '</div>' +
-        '<div class="contextMenuItem" data-on-click="confirmRouteSplit();"><i class="material-icons-round">call_split</i>' + t('route.split.confirm') + '</div>' +
-        '<div class="contextMenuItem" data-on-click="declineRouteSplit();"><i class="material-icons-round">close</i>' + t('route.split.decline') + '</div>'
-    );
+    var content = '<div class="contextMenuTitle">' + t('route.waypoint.title') + '</div>';
+    // Splitting needs a saved route; the water entries work for every line in the editor.
+    if (measureTool.index !== null && typeof measureTool.index !== 'undefined' && routes[measureTool.index]) {
+        content += '<div class="contextMenuItem" data-on-click="confirmRouteSplit();"><i class="material-icons-round">call_split</i>' + t('route.waypoint.split') + '</div>';
+    }
+    if (user.id !== null) {
+        content +=
+            '<div class="contextMenuItem" data-on-click="autorouteSegmentFromMenu(-1);"><i class="material-icons-round">alt_route</i>' + t('route.waypoint.autoroute_before') + '</div>' +
+            '<div class="contextMenuItem" data-on-click="autorouteSegmentFromMenu(1);"><i class="material-icons-round">alt_route</i>' + t('route.waypoint.autoroute_after') + '</div>';
+    }
+    contextMenu.setContent(content);
     contextMenu.open(map);
 }
 
 let routeSplitPending = null;
-
-// "Nein" in the split question: close it without splitting (a question always offers a no).
-function declineRouteSplit() {
-    routeSplitPending = null;
-    closeContextMenu();
-}
 
 async function confirmRouteSplit() {
     closeContextMenu();

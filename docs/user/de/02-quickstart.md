@@ -28,7 +28,7 @@ Die bunten Symbole sind POIs, die farbigen Linien Routen, die eingefärbten Flä
 
 1. Tippe oben rechts auf das **Routen-Symbol** (Linie mit zwei Punkten).
 2. Tippe nacheinander auf die Karte, wo deine Route verlaufen soll. Jeder Tipp setzt einen Wegpunkt. Oben links erscheint die bisherige Länge.
-3. Tippe in der Leiste oben auf **END EDITING**.
+3. Tippe in der Leiste oben auf **BEENDEN**.
 4. Gib im Fenster einen Namen ein, wähle Farbe und Sichtbarkeit und tippe auf **Speichern**.
 
 Fertig: Die Route liegt jetzt auf der Karte. Alle Details - Wegpunkte verschieben, löschen, teilen - stehen im Kapitel [Anlegen und Bearbeiten](#chapter-anlegen-bearbeiten).

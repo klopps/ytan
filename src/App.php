@@ -388,7 +388,11 @@ final class App
             $c->get(SettingsRepository::class),
             $c->get(RequestThrottle::class)
         ));
-        $c->set(GpxImportController::class, fn ($c) => new GpxImportController($c->get(RouteRepository::class), $c->get(TourRepository::class), $c->get(PoiRepository::class), new GpxImportService(), $pdo, \Ytan\Service\Log\ImportLog::file($rootDir, 'gpx-import')));
+        $c->set(GpxImportController::class, fn ($c) => new GpxImportController($c->get(RouteRepository::class), $c->get(TourRepository::class), $c->get(PoiRepository::class), new GpxImportService(), $pdo, \Ytan\Service\Log\ImportLog::file($rootDir, 'gpx-import'), new \Ytan\Service\Water\AutorouteApplier(
+            new \Ytan\Service\Water\Autorouter($c->get(\Ytan\Service\Water\WaterDistanceService::class)),
+            $userRepository,
+            $c->get(SettingsRepository::class)
+        )));
         $c->set(TranslationController::class, fn () => new TranslationController(
             new TranslationRepository($rootDir . '/resources/i18n'),
             new TranslationUsageScanner($rootDir)

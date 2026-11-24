@@ -67,6 +67,16 @@ So arbeitet es:
 - Findet YTAN für einen Abschnitt keinen Weg über Wasser, bleibt er unverändert, und du bekommst einen Hinweis.
 - Nach der Berechnung zeigt ein Hinweis, wie viele Abschnitte geändert wurden und wie sich die Länge ändert. Prüfe das Ergebnis vor dem Speichern.
 
+#### Weitere Wege zum Autorouting
+
+Das Kontextmenü der Route ist nicht der einzige Weg. Die Einstellungen aus dem Dialog (Abstände zum Ufer) gelten überall.
+
+- **Beim Zeichnen oder Bearbeiten** gibt es in der oberen Leiste (neben **BEENDEN**) das Kästchen **Autorouting**. Ist es angehakt, verbindet YTAN jeden neuen letzten Wegpunkt automatisch **über Wasser** mit dem vorherigen, ohne Dialog. Ein Segment kürzer als 60 m bleibt, wie du es gesetzt hast. Auf schmalen Smartphones rutscht das Kästchen in eine zweite Zeile unter der Leiste.
+- **Ein einzelner Abschnitt**: Drücke beim Bearbeiten lange auf einen inneren Wegpunkt (am Rechner Rechtsklick) und wähle **Strecke davor auf Wasser legen** oder **Strecke danach auf Wasser legen**.
+- **Beim Speichern**: Führt die gezeichnete oder geänderte Route auf mehr als 150 m über Land, fragt YTAN vor dem Speichern, ob sie **auf Wasser gelegt** werden soll. Mit **Nein, so speichern** wird sie unverändert gespeichert. Aufgezeichnete GPS-Tracks werden nicht gefragt.
+- **Im Bearbeiten-Fenster** der Route (auch direkt nach einer GPS-Aufzeichnung) steht der Knopf **Auf Wasser legen**; er legt die ganze Linie über Wasser, mit dem Dialog wie oben.
+- **Beim GPX-Import**: Mit dem Haken **Strecken über Land auf Wasser legen** werden die importierten Routen sofort über Wasser gelegt. Routen, deren Start oder Ende nicht am Wasser liegt, bleiben unverändert.
+
 Die Werte, die du im Dialog einstellst, merkt sich YTAN für dich. Du kannst sie auch im [Profil](#chapter-profil) unter **Autorouting** ändern; ein leeres Feld bedeutet den Standard des Betreibers.
 
 Grenzen: Routen bis **300 km**. Das Autorouting kennt Meer, Flüsse, Kanäle und **Seen ab 10 km²**. Kleine Binnenseen, Teiche und breite Flussmündungen gelten als Land; liegt dort Start oder Ende, meldet YTAN „an Land". Häfen und Marinas erkennt es nur, wenn sie in den Gewässerdaten stehen.
@@ -77,7 +87,7 @@ Eine Route lässt sich an einem Wegpunkt in **zwei Routen** zerlegen, zum Beispi
 
 1. Öffne die Route zum Bearbeiten (Kontextmenü > **Route bearbeiten**).
 2. Drücke auf einen **inneren** Wegpunkt lange (am Rechner: Rechtsklick).
-3. Bestätige die Frage „Route an diesem Wegpunkt in zwei Routen teilen?" mit **Ja, Route hier teilen** (**Nein** schließt die Frage, ohne zu teilen).
+3. Wähle im Menü **Route hier in zwei Routen teilen**. Das Menü schließt sich, wenn du auf die Karte tippst.
 
 Die erste Route behält den Anfang bis zu diesem Punkt und heißt „… (Teil 1)", die zweite bekommt den Rest als „… (Teil 2)". Beschreibung, Farbe, Fotos und Sichtbarkeit werden kopiert; in Touren steht die neue Route direkt hinter der ursprünglichen.
 
@@ -154,7 +164,7 @@ Bei **Leuchtfeuer** (Leuchttürme, Seezeichen) trägst du die **Kennung** ein, z
 
 1. Werkzeugleiste > **Gebiet anlegen**.
 2. Tippe nacheinander die **Ecken** der Fläche auf die Karte. Wegpunkte lassen sich wie bei Routen verschieben und entfernen.
-3. Tippe auf **END EDITING**.
+3. Tippe auf **BEENDEN**.
 4. Im Fenster **Gebiet** legst du fest:
 
 | Feld | Bedeutung |

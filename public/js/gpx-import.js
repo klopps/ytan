@@ -150,6 +150,14 @@ function renderGpxImportPreview() {
     }
     html += '</div>';
 
+    // Lines over land onto water (AutorouteApplier, the user's saved autorouting settings) - off by default.
+    if (p.tracks.length > 0) {
+        html += '<div class="gpx-import-waypoints" id="gpxImportAutorouteRow">' +
+            '<input type="checkbox" id="gpxImportAutoroute">' +
+            '<label for="gpxImportAutoroute">' + t('gpx_import.autoroute') + '</label>' +
+            '<div class="route-merge-hint">' + t('gpx_import.autoroute_hint') + '</div></div>';
+    }
+
     // <wpt>s with a name/description (GpxImportService) - optional, off by
     // default; the names are listed in a collapsed <details> below it.
     if (p.waypoints.length > 0) {
@@ -233,6 +241,7 @@ async function submitGpxImport() {
         mode: merge ? 'merge' : 'separate',
         create_tour: selected.length > 1 && !merge && !!tourBox && tourBox.checked,
         import_waypoints: gpxImportWithWaypoints(),
+        autoroute: !!document.getElementById('gpxImportAutoroute') && document.getElementById('gpxImportAutoroute').checked && selected.length > 0,
     };
 
     var button = document.getElementById('gpxImportSubmit');
@@ -268,6 +277,12 @@ function renderGpxImportResult(result) {
     }
     if (result.pois > 0) {
         lines.push(t('gpx_import.done_pois', { count: result.pois }));
+    }
+    if (result.autorouted > 0) {
+        lines.push(t('gpx_import.done_autorouted', { count: result.autorouted }));
+    }
+    if (result.autoroute_skipped > 0) {
+        lines.push(t('gpx_import.done_autoroute_skipped', { count: result.autoroute_skipped }));
     }
     var html = '<div class="gpx-import-done"><i class="material-icons-round">check_circle</i><div>' +
         lines.map(escapeHTML).join('<br>') +

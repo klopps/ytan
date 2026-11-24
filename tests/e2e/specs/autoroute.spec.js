@@ -118,3 +118,111 @@ test('cancelling the dialog changes nothing', async ({ loggedInPage: page, reque
   await expect(dialog).toBeHidden();
   expect(routed).toBe(false);
 });
+
+/* ------------------------------------------------ Autorouting in the route editor
+ *
+ * Toolbar button, live toggle ("am Wasser entlang"), the question before
+ * saving and the narrow-phone layout - routing answers are made up by the
+ * test (see top).
+ */
+
+const DETOUR = [{ lat: LAT, lng: LNG }, { lat: LAT + 0.002, lng: LNG + 0.004 }, { lat: LAT + 0.004, lng: LNG }];
+
+async function drawTwoWaypoints(page) {
+  await settleMapAt(page, LAT, LNG, 15);
+  await page.locator('#routeButton').click();
+  await expect(page.locator('#routeButton')).toHaveClass(/active/);
+  const box = await page.locator('#map').boundingBox();
+  await page.mouse.click(box.x + box.width / 2 - 60, box.y + box.height / 2);
+  await page.waitForTimeout(400);
+  await page.mouse.click(box.x + box.width / 2 + 60, box.y + box.height / 2);
+  await page.waitForFunction(() => measureTool.points && measureTool.points.length === 2);
+}
+
+test('the edit window button puts the drawn line onto water', async ({ loggedInPage: page }) => {
+  await page.route('**/api/v1/routes/autoroute/check', (r) => r.fulfill({
+    status: 200, contentType: 'application/json', body: JSON.stringify({ data: { ok: true, problems: [] } }),
+  }));
+  await page.route('**/api/v1/routes/autoroute', (r) => r.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ data: { points: DETOUR, changed_sections: 1, length_before: 900, length_after: 1000, warnings: [] } }),
+  }));
+  await drawTwoWaypoints(page);
+
+  // the button of the route edit window (the toolbar has none)
+  await page.locator('#secondToolbar [data-on-click^="showRouteEditWindow"]').click();
+  await page.locator('[data-on-click="autorouteEditorLine()"]').click();
+  await page.locator('.route-merge-dialog button.startbtn').click();
+
+  await expect(page.locator('.toast-success')).toBeVisible();
+  expect(await page.evaluate(() => measureTool.points.length)).toBe(3);
+});
+
+test('live mode connects a new last waypoint over water: one segment, saved preferences', async ({ loggedInPage: page }) => {
+  let posted = null;
+  await page.route('**/api/v1/routes/autoroute', (r) => {
+    posted = r.request().postDataJSON();
+    r.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { points: [posted.points[0], { lat: LAT + 0.001, lng: LNG + 0.001 }, posted.points[1]], changed_sections: 1, length_before: 100, length_after: 130, warnings: [] } }),
+    });
+  });
+  await settleMapAt(page, LAT, LNG, 15);
+  await page.locator('#routeButton').click();
+  await page.locator('label[for="secondToolbarLiveBtn"]').click();
+  await expect(page.locator('#secondToolbarLiveBtn')).toBeChecked();
+
+  const box = await page.locator('#map').boundingBox();
+  await page.mouse.click(box.x + box.width / 2 - 60, box.y + box.height / 2);
+  await page.waitForTimeout(400);
+  await page.mouse.click(box.x + box.width / 2 + 60, box.y + box.height / 2);
+
+  await page.waitForFunction(() => measureTool.points && measureTool.points.length === 3);
+  expect(posted.segment).toBe(true);
+  expect(posted.points).toHaveLength(2);
+  expect(posted.shore_m).toBeUndefined(); // the server uses the saved preferences
+});
+
+test('the question before saving: a line over land can be put on water', async ({ loggedInPage: page }) => {
+  await page.route('**/api/v1/routes/autoroute/check', (r) => r.fulfill({
+    status: 200, contentType: 'application/json', body: JSON.stringify({ data: { ok: true, problems: [], land_m: 800 } }),
+  }));
+  await page.route('**/api/v1/routes/autoroute', (r) => r.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ data: { points: DETOUR, changed_sections: 1, length_before: 900, length_after: 1000, warnings: [] } }),
+  }));
+  await drawTwoWaypoints(page);
+  await page.locator('#secondToolbar [data-on-click^="showRouteEditWindow"]').click();
+  await page.locator('#editRouteName').fill('E2E land question');
+
+  await page.locator('#editRouteSaveBtn').click();
+  const question = page.locator('.confirm-dialog');
+  await expect(question).toBeVisible();
+  await expect(question).toContainText('800');
+  await question.locator('button.startbtn').click(); // yes, put it on water
+  await page.locator('.route-merge-dialog button.startbtn').click();
+
+  await expect(page.locator('.toast-success').last()).toBeVisible();
+  expect(await page.evaluate(() => measureTool.points.length)).toBe(3);
+});
+
+test('narrow phone: the editor toolbar keeps clear of the search button', async ({ loggedInPage: page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await settleMapAt(page, LAT, LNG, 15);
+  await page.locator('#routeButton').click();
+  await expect(page.locator('#secondToolbar')).toBeVisible();
+
+  const toolbar = await page.locator('#secondToolbar').boundingBox();
+  const search = await page.locator('#mapSearchWrapper').boundingBox();
+  // old position: top row, directly left of the edit toolbar (the English "DONE"
+  // makes it a bit wider than the space beside the search button at 360 px)
+  const edit = await page.locator('#editToolbar').boundingBox();
+  expect(Math.abs(toolbar.x + toolbar.width + 8 - edit.x)).toBeLessThan(2);
+  expect(toolbar.y).toBeLessThan(edit.y + 4);
+  expect(search.width).toBeGreaterThan(0);
+  await expect(page.locator('#secondToolbar .second-toolbar-end-btn', { hasText: /DONE|BEENDEN/ })).toBeVisible();
+  await expect(page.locator('label[for="secondToolbarLiveBtn"]')).toBeVisible();
+});

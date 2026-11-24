@@ -103,7 +103,15 @@ stored. 200 with `{points: [{lat, lng}], changed_sections, length_before,
 length_after, warnings: [{code: no_path|clearance_relaxed|truncated, lat?,
 lng?}]}`; 422 `autoroute.start_on_land` etc. (start/end checked again),
 `autoroute.too_long`, `autoroute.points_invalid`; 429 above 15 requests per user
-and 10 minutes. `GET /auth/autoroute` / `PUT /auth/autoroute` - the user's
+and 10 minutes. `scan: true` on `/check` (only answered for `ok`) adds
+`land_m`, the metres of the line over land (the client asks "put it on water?"
+before saving a route when it is 150 m or more). `segment: true` on
+`POST /routes/autoroute` (live mode / waypoint menu of the route editor, usually
+2 points): the user's SAVED preferences are used and left alone (the body's
+`shore_m`/`max_m`/`enabled` are ignored), no 422 for an unusable start/end but
+the line unchanged with warning `{code: "not_usable", problems: [...]}`, own limit
+of 200 requests per user and 10 minutes (`autoroute_seg`).
+`GET /auth/autoroute` / `PUT /auth/autoroute` - the user's
 preferences: `{shore_m, custom, max_m, max_custom, enabled, default_m,
 default_max_m}` (`shore_m`/`max_m` null on PUT = use the admin default; keys
 left out are kept).
@@ -240,11 +248,14 @@ route from the chosen tracks in file order, `"separate"`: one route each)
 and `create_tour` (separate only, needs `tour_create`/admin) and
 `import_waypoints` (every `<wpt>` with a name/desc becomes a private POI of
 type 0, name "IMPORT: " + 20 characters of the description if it has none;
-with it, `tracks` may be empty). Creates
+with it, `tracks` may be empty) and `autoroute` (every line is put on water
+first with the user's saved autorouting preferences, `AutorouteApplier`; lines
+with an unusable start/end, over 300 km or after 60 s stay as they are). Creates
 everything private (separate routes in alternating colors from
 `GpxImportService::ROUTE_COLORS`), points simplified to at most 500, `recorded_at`/
 `recording_duration_seconds` from point times if present. 201 with
-`{routes: [{id, name}], tour: {id, name}|null, pois: <count>}`.
+`{routes: [{id, name}], tour: {id, name}|null, pois: <count>, autorouted: <count>,
+autoroute_skipped: <count>}`.
 
 ## Tours
 
