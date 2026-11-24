@@ -51,3 +51,49 @@
   z-index: 1;
   background-color: var(--bs-body-bg);
 }
+
+/*
+ * Google Maps InfoWindow chrome on every admin map. Google draws the bubble,
+ * its tail and the close button itself (stylesheet injected at runtime, so
+ * !important) - always white, while the content inherits the page's text
+ * colour: in the dark admin theme light text and an invisible close x
+ * (a masked span coloured from the inherited colour) on white. Instead of
+ * fixing colours per page, the chrome follows the theme: background, tail,
+ * text and x all come from Bootstrap's body variables, so text and bubble
+ * always match - light or dark, whatever a page puts inside. Same approach
+ * as the main app's style.css ("Google Maps InfoWindow chrome").
+ */
+.gm-style .gm-style-iw-c {
+  background-color: var(--bs-body-bg) !important;
+  color: var(--bs-body-color) !important;
+}
+
+.gm-style .gm-style-iw-c,
+.gm-style .gm-style-iw-d {
+  /* Google sets Roboto 300 - thin and pale on top of everything else */
+  font-family: inherit !important;
+  font-weight: 400 !important;
+}
+
+.gm-style .gm-style-iw-tc::after {
+  background-color: var(--bs-body-bg) !important;
+}
+
+.gm-style .gm-ui-hover-effect span {
+  background-color: var(--bs-body-color) !important;
+}
+
+/* Google's inline overflow:scroll shows scrollbar arrows even with nothing to scroll.
+   Its bubble has no padding at the bottom (the always-present scrollbar used to
+   make the gap) - so the content gets one, as wide as the sides' 12px. */
+.gm-style .gm-style-iw-d {
+  overflow: auto !important;
+  padding-bottom: 12px;
+  scrollbar-color: var(--bs-border-color) var(--bs-body-bg);
+}
+
+/* Google focuses the close button itself when the window opens, which the
+   browser counts as :focus-visible - a ring around it every time. */
+.gm-style .gm-ui-hover-effect:focus {
+  outline: none !important;
+}
