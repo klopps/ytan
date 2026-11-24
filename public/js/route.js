@@ -1558,7 +1558,9 @@ async function autorouteSegment(points, from, to, quiet) {
     }
     if (answer.changed_sections === 0 || answer.points.length <= 2) {
         if (!quiet) {
-            showToast(t('autoroute.segment_nothing'), 'info');
+            // "no way found" must not be reported as "already on water"
+            var noPath = answer.warnings.some(function (w) { return w.code === 'no_path'; });
+            showToast(t(noPath ? 'autoroute.warning_no_path' : 'autoroute.segment_nothing'), noPath ? 'warning' : 'info');
         }
         return false;
     }

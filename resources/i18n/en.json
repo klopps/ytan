@@ -371,7 +371,7 @@
     "autoroute.running": "Calculating route …",
     "autoroute.done": "Route adjusted: {sections} section(s) changed, length from {before} to {after}. Please check and save.",
     "autoroute.nothing_to_do": "The route already runs over water only and keeps the distance.",
-    "autoroute.warning_no_path": "No way over water was found for one section. It stays unchanged.",
+    "autoroute.warning_no_path": "No way over water shorter than 20 km was found for one section. It stays unchanged.",
     "autoroute.warning_relaxed": "The distance of {distance} m is not kept in narrow places.",
     "autoroute.warning_truncated": "The calculation was stopped because it took too long. Not all sections were adjusted.",
     "autoroute.failed": "Autorouting failed.",

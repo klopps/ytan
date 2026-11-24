@@ -371,7 +371,7 @@
     "autoroute.running": "Route wird berechnet …",
     "autoroute.done": "Route angepasst: {sections} Abschnitt(e) geändert, Länge von {before} auf {after}. Bitte prüfen und speichern.",
     "autoroute.nothing_to_do": "Die Route führt bereits nur über Wasser und hält den Abstand ein.",
-    "autoroute.warning_no_path": "Für einen Abschnitt wurde kein Weg über Wasser gefunden. Er bleibt unverändert.",
+    "autoroute.warning_no_path": "Für einen Abschnitt wurde kein Weg über Wasser kürzer als 20 km gefunden. Er bleibt unverändert.",
     "autoroute.warning_relaxed": "An engen Stellen wird der Abstand von {distance} m unterschritten.",
     "autoroute.warning_truncated": "Die Berechnung wurde wegen ihrer Dauer abgebrochen. Nicht alle Abschnitte wurden angepasst.",
     "autoroute.failed": "Das Autorouting ist fehlgeschlagen.",

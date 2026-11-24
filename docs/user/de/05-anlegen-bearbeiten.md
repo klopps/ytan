@@ -28,7 +28,9 @@ Beim Zeichnen und beim Bearbeiten einer bestehenden Route (Kontextmenü > **Rout
 
 ![Eine Route im Bearbeitungsmodus](route-bearbeiten.jpg)
 
-**Einen Abschnitt auf Wasser legen:** Im Bearbeitungsmodus mit der rechten Maustaste auf die Linie klicken (am Smartphone die Linie lange gedrückt halten) und **Autorouting für diesen Abschnitt** wählen. Nur das Stück zwischen den beiden benachbarten Wegpunkten wird neu gelegt.
+**Einen Abschnitt auf Wasser legen:** Im Bearbeitungsmodus mit der rechten Maustaste auf die Linie klicken (am Smartphone die Linie lange gedrückt halten) und **Autorouting für diesen Abschnitt** wählen. Nur das Stück zwischen den beiden benachbarten Wegpunkten wird neu gelegt; die Einstellungen aus dem Profil (Abstand zum Ufer) gelten dabei, eine Rückfrage gibt es nicht. Dasselbe Menü erreichst du über einen Wegpunkt (**Strecke davor / danach auf Wasser legen**).
+
+> **Wichtig - Grenze von 20 km:** Das Autorouting sucht den Weg über Wasser nur in einem Korridor von **höchstens 20 km** um den Abschnitt. Führt der kürzeste Wasserweg weiter hinaus - etwa quer über eine Insel oder Halbinsel, die du nur in einem großen Bogen umfahren könntest -, bleibt der Abschnitt unverändert und es erscheint der Hinweis, dass kein Weg über Wasser gefunden wurde. Setze dann zusätzliche Wegpunkte auf dem Wasser oder lege den Abschnitt von Hand.
 
 **Mehrere Wegpunkte auf einmal löschen:**
 
