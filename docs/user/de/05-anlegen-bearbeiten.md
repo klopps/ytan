@@ -28,6 +28,8 @@ Beim Zeichnen und beim Bearbeiten einer bestehenden Route (Kontextmenü > **Rout
 
 ![Eine Route im Bearbeitungsmodus](route-bearbeiten.jpg)
 
+**Einen Abschnitt auf Wasser legen:** Im Bearbeitungsmodus mit der rechten Maustaste auf die Linie klicken (am Smartphone die Linie lange gedrückt halten) und **Autorouting für diesen Abschnitt** wählen. Nur das Stück zwischen den beiden benachbarten Wegpunkten wird neu gelegt.
+
 **Mehrere Wegpunkte auf einmal löschen:**
 
 - **Am Rechner:** Halte **Strg** (am Mac **Cmd**) gedrückt und ziehe mit der Maus ein Rechteck über die Karte - alle Wegpunkte darin sind ausgewählt (mit zusätzlich **Umschalt** kommen sie zur bisherigen Auswahl hinzu). **Strg + Klick** auf einen Wegpunkt wählt ihn aus oder ab. Mit **Entf** löschst du die ausgewählten Wegpunkte, nach einer Rückfrage.

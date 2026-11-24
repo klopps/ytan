@@ -59,6 +59,16 @@ test('Ctrl+drag selects the waypoints inside, Delete asks and deletes them', asy
   expect(await selectedCount(page)).toBe(0);
 });
 
+test('right-click on a section of the line opens the autorouting menu for it', async ({ loggedInPage: page }) => {
+  const p = await drawFourWaypoints(page);
+  const mx = (p[1].x + p[2].x) / 2;
+  const my = (p[1].y + p[2].y) / 2;
+  await page.mouse.click(mx, my, { button: 'right' });
+  await expect(page.locator('.contextMenuItem', { hasText: /Autorouting/ })).toBeVisible();
+  expect(await pointCount(page)).toBe(4);
+  expect(await page.evaluate(() => routeSplitPending.index)).toBe(1);
+});
+
 test('Ctrl+click toggles, Escape ends, a plain click on the empty map only ends the selection', async ({ loggedInPage: page }) => {
   const p = await drawFourWaypoints(page);
 

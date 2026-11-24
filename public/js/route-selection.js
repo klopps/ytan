@@ -192,6 +192,9 @@ function routeSelConsumeClick() {
     if (!routeSelEditorActive()) {
         return false;
     }
+    if (routeSplitSwallowClick) {
+        return true; // the click after a long-press that opened a menu (route.js)
+    }
     if (routeSel.mode) {
         return true;
     }

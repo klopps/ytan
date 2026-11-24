@@ -1,5 +1,9 @@
 # Erledigt
 
+## Autorouting für einen Abschnitt per Rechtsklick / langem Drücken auf die Linie
+
+~~Im Editiermodus einer Route soll ein Rechtsklick auf einen Abschnitt ein Kontextmenü mit Autorouting für diesen Abschnitt öffnen, am Smartphone per langem Drücken.~~ Gelöst (2026-11-24): `route.js` `routeSegmentAt()` (Treffer ≤ 12 px an der Linie, Wegpunkte haben Vorrang) und `showRouteSegmentMenu()`; Desktop über den `contextmenu`-Listener in `initRouteSplitting()`, Touch über denselben Timer wie beim Wegpunkt-Langdruck (zusätzlich `findLongPressTarget()` in map-core.js). Das Menü ruft `autorouteSegmentFromMenu(1)` (ein Abschnitt, gespeicherte Einstellungen, ohne Dialog). Falle: MeasureTool fügt schon beim BERÜHREN der Linie einen Wegpunkt ein (nicht erst beim Klick) - die Linie wird deshalb beim touchstart gesichert und beim Öffnen des Menüs mit `routeSplitRestoreLine()` zurückgesetzt (auch für neue Routen), der Klick beim Loslassen wird über `routeSplitSwallowClick` verworfen. i18n `route.segment.*`, e2e in `route-selection.spec.js` (Rechtsklick; Touch nur auf dem Gerät geprüft).
+
 ## Mehrfachauswahl von Wegpunkten im Routen-Editor
 
 ~~Mehrere Wegpunkte im Editiermodus markieren und gemeinsam löschen (Desktop: Strg/Shift/Alt + Ziehen = Auswahlrechteck, Strg+Klick toggelt, Entf mit Sicherheitsabfrage; Smartphone-Lösung und Aufheben der Auswahl offen). Entschieden: nur Löschen, kein Finger-Rechteck.~~

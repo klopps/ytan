@@ -502,6 +502,11 @@ function findLongPressTarget(clientX, clientY) {
     if (splitIndex >= 0) {
         return { handler: function () { showRouteSplitMenu(splitIndex); }, event: eventForHandler };
     }
+    // A section of that line: autorouting for it (also opened by route.js's own touch timer).
+    const segmentIndex = user.id !== null ? routeSegmentAt(clientX, clientY) : -1;
+    if (segmentIndex >= 0) {
+        return { handler: function () { showRouteSegmentMenu(segmentIndex, clientX, clientY); }, event: eventForHandler };
+    }
 
     let closestMarker = null;
     let closestMarkerDist = Infinity;

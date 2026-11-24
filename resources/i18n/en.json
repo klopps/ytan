@@ -316,6 +316,8 @@
     "route.waypoint.split": "Split the route into two routes here",
     "route.waypoint.autoroute_before": "Put the stretch before it on water",
     "route.waypoint.autoroute_after": "Put the stretch after it on water",
+    "route.segment.title": "Section",
+    "route.segment.autoroute": "Autorouting for this section",
     "route.waypoint.select_multiple": "Select several waypoints",
     "route.selection.count": "{count} selected",
     "route.selection.range": "Select stretch",

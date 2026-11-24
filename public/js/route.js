@@ -2047,6 +2047,64 @@ function routeSplitWaypointAt(clientX, clientY) {
 }
 
 /**
+ * Index k of the section (waypoint k to k+1) of the line being edited that
+ * lies within a few pixels of these screen coordinates, or -1. Waypoints win
+ * (checked by the caller first), so a hit near one never gets here.
+ */
+function routeSegmentAt(clientX, clientY) {
+    var routeBtn = document.getElementById('routeButton');
+    if (!routeBtn || !routeBtn.classList.contains('active') || !shapeEditorActive
+        || !overlayProjection || !overlayProjection.getProjection() || routeSel.mode) {
+        return -1;
+    }
+    var points = measureTool.points || [];
+    if (points.length < 2) {
+        return -1;
+    }
+    var projection = overlayProjection.getProjection();
+    var rect = map.getDiv().getBoundingClientRect();
+    var x = clientX - rect.left;
+    var y = clientY - rect.top;
+    var pixels = points.map(function (p) {
+        return projection.fromLatLngToContainerPixel(new google.maps.LatLng(p.lat, p.lng));
+    });
+    var best = -1;
+    var bestDist = ROUTE_SEGMENT_HIT_RADIUS_PX;
+    for (var k = 0; k < pixels.length - 1; k++) {
+        var ax = pixels[k].x, ay = pixels[k].y;
+        var dx = pixels[k + 1].x - ax, dy = pixels[k + 1].y - ay;
+        var len2 = dx * dx + dy * dy;
+        var u = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / len2));
+        var dist = Math.hypot(x - (ax + u * dx), y - (ay + u * dy));
+        if (dist <= bestDist) {
+            bestDist = dist;
+            best = k;
+        }
+    }
+    return best;
+}
+
+const ROUTE_SEGMENT_HIT_RADIUS_PX = 12;
+
+/** Menu for a section of the line in the editor: autorouting for just that section. */
+function showRouteSegmentMenu(k, clientX, clientY, snapshot) {
+    var points = snapshot || measureTool.points.map(function (p) { return { lat: p.lat, lng: p.lng }; });
+    routeSplitPending = { routeIndex: measureTool.index, index: k, points: points };
+
+    var rect = map.getDiv().getBoundingClientRect();
+    var latLng = overlayProjection.getProjection().fromContainerPixelToLatLng(
+        new google.maps.Point(clientX - rect.left, clientY - rect.top)
+    );
+    contextMenu.setPosition(latLng);
+    contextMenu.setContent(
+        '<div class="contextMenuTitle">' + t('route.segment.title') + '</div>' +
+        // direction 1 = the stretch after waypoint k, i.e. section k to k+1
+        '<div class="contextMenuItem" data-on-click="autorouteSegmentFromMenu(1);"><i class="material-icons-round">alt_route</i>' + t('route.segment.autoroute') + '</div>'
+    );
+    contextMenu.open(map);
+}
+
+/**
  * Both paths listen on the map container in the CAPTURE phase, so they run
  * before MeasureTool and Maps:
  * - Desktop right-click: handled here instead of Maps (whose own context
@@ -2072,22 +2130,47 @@ function initRouteSplitting() {
         showRouteSplitMenu(index);
     }, true);
 
+    // Right-click on a section between two waypoints: menu with autorouting for it.
+    mapDiv.addEventListener('contextmenu', function (domEvent) {
+        if (domEvent.defaultPrevented || user.id === null) {
+            return;
+        }
+        var hit = routeSegmentAt(domEvent.clientX, domEvent.clientY);
+        if (hit < 0) {
+            return;
+        }
+        domEvent.preventDefault();
+        domEvent.stopPropagation();
+        showRouteSegmentMenu(hit, domEvent.clientX, domEvent.clientY);
+    }, true);
+
     mapDiv.addEventListener('touchstart', function (domEvent) {
         cancelRouteSplitTouch();
         // A new touch is a deliberate new action - stop undoing changes.
         routeSplitRestore = null;
+        routeSplitSwallowClick = false;
         if (domEvent.touches.length !== 1) {
             return;
         }
         var touch = domEvent.touches[0];
         var index = routeSplitWaypointAt(touch.clientX, touch.clientY);
-        if (index < 0) {
+        var section = (index < 0 && user.id !== null) ? routeSegmentAt(touch.clientX, touch.clientY) : -1;
+        if (index < 0 && section < 0) {
             return;
         }
-        var state = { x: touch.clientX, y: touch.clientY, fired: false, snapshot: null };
+        // The line as it is BEFORE MeasureTool reacts to this touch (it may insert a waypoint on the line).
+        var snapshot = (measureTool.points || []).map(function (p) { return { lat: p.lat, lng: p.lng }; });
+        var state = { x: touch.clientX, y: touch.clientY, fired: false, snapshot: snapshot };
         state.timer = setTimeout(function () {
             state.fired = true;
-            showRouteSplitMenu(index);
+            // The click the browser sends when the finger lifts must not add a waypoint.
+            routeSplitSwallowClick = true;
+            if (index >= 0) {
+                showRouteSplitMenu(index);
+            } else {
+                routeSplitRestoreLine(snapshot);
+                showRouteSegmentMenu(section, state.x, state.y, snapshot);
+            }
             // From now until the next touch, undo any change to the line:
             // the only one possible is MeasureTool reacting to this very
             // touch's release (the browser's synthetic click after it,
@@ -2126,31 +2209,41 @@ function restoreLineAfterSplitLongPress() {
         return;
     }
     var snapshot = routeSplitRestore.snapshot;
-    var now = measureTool.points || [];
-    var changed = now.length !== snapshot.length || now.some(function (p, k) {
-        return p.lat !== snapshot[k].lat || p.lng !== snapshot[k].lng;
-    });
-    if (!changed || measureTool.index === null || typeof measureTool.index === 'undefined') {
+    if (!routeSplitLineDiffers(snapshot)) {
         return;
     }
     routeSplitRestore = null;
-    var index = measureTool.index;
-    setTimeout(function () {
-        measureTool.end();
-        measureTool.start(snapshot);
-        measureTool.index = index;
-        unlockMapGestures();
-        // MeasureTool recalculates its length only later, without a
-        // measure_change for the toolbar - show the restored line's own.
-        var lengthLabel = document.getElementById('secondToolbarLength');
-        if (lengthLabel) {
-            lengthLabel.textContent = formatDistance(google.maps.geometry.spherical.computeLength(
-                snapshot.map(function (p) { return new google.maps.LatLng(p.lat, p.lng); })
-            ), settings.unit);
-        }
-    }, 0);
+    setTimeout(function () { routeSplitRestoreLine(snapshot); }, 0);
 }
 
+function routeSplitLineDiffers(snapshot) {
+    var now = measureTool.points || [];
+    return now.length !== snapshot.length || now.some(function (p, k) {
+        return p.lat !== snapshot[k].lat || p.lng !== snapshot[k].lng;
+    });
+}
+
+/** Puts the line back to `snapshot` when MeasureTool changed it meanwhile (also for a new line). */
+function routeSplitRestoreLine(snapshot) {
+    if (!routeSplitLineDiffers(snapshot)) {
+        return;
+    }
+    var index = measureTool.index;
+    measureTool.end();
+    measureTool.start(snapshot);
+    measureTool.index = index;
+    unlockMapGestures();
+    // MeasureTool recalculates its length only later, without a
+    // measure_change for the toolbar - show the restored line's own.
+    var lengthLabel = document.getElementById('secondToolbarLength');
+    if (lengthLabel) {
+        lengthLabel.textContent = formatDistance(google.maps.geometry.spherical.computeLength(
+            snapshot.map(function (p) { return new google.maps.LatLng(p.lat, p.lng); })
+        ), settings.unit);
+    }
+}
+
+let routeSplitSwallowClick = false; // true from a menu-opening long-press until the next touch
 let routeSplitRestore = null; // {snapshot} from a waypoint long-press until the next touch
 
 function cancelRouteSplitTouch() {
