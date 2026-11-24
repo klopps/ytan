@@ -40,6 +40,7 @@ $adminNavItems = [
     ['key' => 'club_import', 'icon' => 'bi-people-fill', 'label' => $t('admin.nav.club_import'), 'href' => $baseUrl . '/admin/club-import'],
     ['key' => 'shelter_import', 'icon' => 'bi-house-door', 'label' => $t('admin.nav.shelter_import'), 'href' => $baseUrl . '/admin/shelter-import'],
     ['key' => 'campsite_import', 'icon' => 'bi-tree', 'label' => $t('admin.nav.campsite_import'), 'href' => $baseUrl . '/admin/campsite-import'],
+    ['key' => 'water', 'icon' => 'bi-water', 'label' => $t('admin.nav.water'), 'href' => $baseUrl . '/admin/water'],
     ['key' => 'translate', 'icon' => 'bi-translate', 'label' => $t('admin.nav.translations'), 'href' => $baseUrl . '/admin/translate', 'visible' => $translateToolEnabled],
     ['key' => 'settings', 'icon' => 'bi-gear', 'label' => $t('admin.nav.settings'), 'href' => $baseUrl . '/admin/settings'],
     ['key' => 'radar', 'icon' => 'bi-cloud-rain', 'label' => $t('admin.nav.radar'), 'href' => $baseUrl . '/admin/radar'],

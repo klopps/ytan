@@ -74,4 +74,27 @@ final class PoiWaterDistanceRepository
 
         return $stmt->fetchAll();
     }
+
+    /**
+     * Every POI of these types inside the box, public or not (a water index
+     * correction there changes their distances), at most $limit.
+     *
+     * @param list<int> $poiTypes
+     * @return list<array<string, mixed>> id, poitype_id, latitude, longitude
+     */
+    public function poisInBox(array $poiTypes, float $south, float $west, float $north, float $east, int $limit): array
+    {
+        if ($poiTypes === []) {
+            return [];
+        }
+        $placeholders = implode(', ', array_fill(0, count($poiTypes), '?'));
+        $stmt = $this->db->prepare(
+            'SELECT id, poitype_id, latitude, longitude FROM poi
+             WHERE latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ? AND poitype_id IN (' . $placeholders . ')
+             ORDER BY id LIMIT ' . max(1, $limit)
+        );
+        $stmt->execute(array_merge([$south, $north, $west, $east], array_map('intval', $poiTypes)));
+
+        return $stmt->fetchAll();
+    }
 }

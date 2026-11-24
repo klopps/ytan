@@ -74,6 +74,29 @@ final class PoiWaterDistanceService
     }
 
     /**
+     * Computes the distances of the POIs (enabled types) inside the box again
+     * - after a correction of the water index there. At most $limit; the
+     * answer says how many were computed and whether there were more
+     * (then bin/poi-water-distance.php --all does the rest).
+     *
+     * @return array{computed: int, more: bool}
+     */
+    public function recomputeBox(float $south, float $west, float $north, float $east, int $limit): array
+    {
+        if (!$this->water->available()) {
+            return ['computed' => 0, 'more' => false];
+        }
+        $pois = $this->distances->poisInBox($this->settings->waterDistancePoiTypes(), $south, $west, $north, $east, $limit + 1);
+        $more = count($pois) > $limit;
+        $pois = array_slice($pois, 0, $limit);
+        foreach ($pois as $poi) {
+            $this->compute($poi);
+        }
+
+        return ['computed' => count($pois), 'more' => $more];
+    }
+
+    /**
      * Stores distances computed elsewhere (e.g. while staging an import) -
      * not for a POI outside the index's countries (see compute()).
      *

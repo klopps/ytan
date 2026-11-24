@@ -233,6 +233,13 @@ final class App
             new \Ytan\Domain\Poi\PoiWaterDistanceRepository($pdo),
             $c->get(SettingsRepository::class)
         ));
+        $c->set(\Ytan\Http\Controllers\WaterIndexAdminController::class, fn ($c) => new \Ytan\Http\Controllers\WaterIndexAdminController(
+            $c->get(\Ytan\Service\Water\WaterDistanceService::class),
+            new \Ytan\Domain\Water\WaterCorrectionRepository($pdo),
+            $c->get(\Ytan\Service\Water\PoiWaterDistanceService::class),
+            $rootDir . '/storage/water/water-corrections.json',
+            \Ytan\Service\Log\ImportLog::file($rootDir, 'water-corrections')
+        ));
         $c->set(PoiController::class, fn ($c) => new PoiController($c->get(PoiRepository::class), $c->get('images.poi'), $c->get(\Ytan\Service\Water\PoiWaterDistanceService::class)));
         $c->set(RouteController::class, fn ($c) => new RouteController(
             $c->get(RouteRepository::class),
@@ -823,6 +830,17 @@ final class App
         $app->post('/api/v1/admin/lighthouse-import', [LighthouseImportController::class, 'import']);
         $app->get('/api/v1/admin/lighthouse-import/export', [LighthouseImportController::class, 'exportFile']);
         $app->post('/api/v1/admin/lighthouse-import/file', [LighthouseImportController::class, 'importFile']);
+
+        // Admin tool: the water index's lines as a map overlay, and the admin's
+        // corrections of it (WaterIndexAdminController, WaterCorrections).
+        $app->get('/admin/water', fn (Request $req, Response $res) => $renderAdmin($res, 'admin-water', ['mapsApiKey' => $mapsApiKey]));
+        $app->get('/api/v1/admin/water/segments', [\Ytan\Http\Controllers\WaterIndexAdminController::class, 'segments']);
+        $app->get('/api/v1/admin/water/corrections', [\Ytan\Http\Controllers\WaterIndexAdminController::class, 'index']);
+        $app->post('/api/v1/admin/water/corrections', [\Ytan\Http\Controllers\WaterIndexAdminController::class, 'create']);
+        $app->put('/api/v1/admin/water/corrections/{id:[0-9]+}', [\Ytan\Http\Controllers\WaterIndexAdminController::class, 'update']);
+        $app->delete('/api/v1/admin/water/corrections/{id:[0-9]+}', [\Ytan\Http\Controllers\WaterIndexAdminController::class, 'delete']);
+        $app->get('/api/v1/admin/water/corrections/export', [\Ytan\Http\Controllers\WaterIndexAdminController::class, 'exportFile']);
+        $app->post('/api/v1/admin/water/corrections/file', [\Ytan\Http\Controllers\WaterIndexAdminController::class, 'importFile']);
 
         // Admin tool: canoe/kayak and rowing clubs from OpenStreetMap, staged
         // and imported as POIs of type 13 (ClubImportController).

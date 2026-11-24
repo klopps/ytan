@@ -35,9 +35,18 @@ final class WaterDistanceService implements ShoreSource
     private ?array $meta = null;
     /** @var list<array{ring: list<array{0:float, 1:float}>, box: array{south:float, west:float, north:float, east:float}}>|null null = everything covered */
     private ?array $coverage = null;
+    private ?WaterCorrections $corrections = null;
+    private bool $correctionsLoaded = false;
 
-    public function __construct(private readonly string $indexPath, private readonly ?string $metaPath = null)
-    {
+    /**
+     * $correctionsPath: the admin's corrections (WaterCorrections), default
+     * water-corrections.json next to the index; a missing file = none.
+     */
+    public function __construct(
+        private readonly string $indexPath,
+        private readonly ?string $metaPath = null,
+        private readonly ?string $correctionsPath = null
+    ) {
     }
 
     /** Whether an index file is there (no index = every distance null). */
@@ -99,7 +108,7 @@ final class WaterDistanceService implements ShoreSource
         foreach ($kinds as [$name, $code]) {
             $kind = (int) array_search($name, WaterIndex::KINDS, true);
             for ($row = $rowFrom; $row <= $rowTo; $row++) {
-                foreach ($index->segments($kind, $row, $columnFrom, $columnTo) as [$lat1, $lng1, $lat2, $lng2]) {
+                foreach ($this->segments($index, $kind, $row, $columnFrom, $columnTo) as [$lat1, $lng1, $lat2, $lng2]) {
                     // a segment is stored in every cell its box touches
                     $key = $code . ':' . $lat1 . ':' . $lng1 . ':' . $lat2 . ':' . $lng2;
                     if (isset($seen[$key])) {
@@ -289,7 +298,7 @@ final class WaterDistanceService implements ShoreSource
                     }
                     $seen["$r:$c"] = true;
                     foreach ($kinds as $kind) {
-                        foreach ($index->segments((int) $kind, $r, $c, $c) as [$lat1, $lng1, $lat2, $lng2]) {
+                        foreach ($this->segments($index, (int) $kind, $r, $c, $c) as [$lat1, $lng1, $lat2, $lng2]) {
                             $hit = self::rayHit(
                                 $endX, $endY,
                                 ($lng1 - $lng) * $scaleX, ($lat1 - $lat) * self::METERS_PER_DEGREE,
@@ -328,6 +337,113 @@ final class WaterDistanceService implements ShoreSource
         $distance = $t * hypot($endX, $endY);
 
         return $distance < 1.0 ? null : $distance;
+    }
+
+    /**
+     * Segments of a run of cells of one kind with the admin's corrections
+     * applied - every read of the index goes through here.
+     *
+     * @return list<array{0: float, 1: float, 2: float, 3: float}>
+     */
+    private function segments(WaterIndex $index, int $kind, int $row, int $column0, int $column1): array
+    {
+        $segments = $index->segments($kind, $row, $column0, $column1);
+        $corrections = $this->corrections();
+
+        return $corrections === null
+            ? $segments
+            : $corrections->apply(WaterIndex::KINDS[$kind], $row, $column0, $column1, $index->cellDegrees(), $segments);
+    }
+
+    /** Reads the corrections file again on the next query (after the admin changed it). */
+    public function reloadCorrections(): void
+    {
+        $this->correctionsLoaded = false;
+        $this->corrections = null;
+    }
+
+    private function corrections(): ?WaterCorrections
+    {
+        if (!$this->correctionsLoaded) {
+            $this->correctionsLoaded = true;
+            $this->corrections = WaterCorrections::fromFile($this->correctionsPath ?? dirname($this->indexPath) . '/water-corrections.json');
+        }
+
+        return $this->corrections;
+    }
+
+    /**
+     * Admin overlay (/admin/water): every segment of every kind in the box,
+     * deduplicated, as [kind name, lat1, lng1, lat2, lng2, own] (own: 0 = in
+     * the index as built, > 0 = the id of the correction whose line it is,
+     * -1 = changed by a correction but not drawn by one, i.e. flipped) - corrected, or the
+     * index as built ($raw). 'removed' = original segments a delete correction
+     * takes away (drawn dashed), 'truncated' = more than $limit segments
+     * (the lists then stop there - zoom in).
+     *
+     * @return array{segments: list<array{0: string, 1: float, 2: float, 3: float, 4: float, 5: int}>, removed: list<array{0: string, 1: float, 2: float, 3: float, 4: float}>, truncated: bool}
+     */
+    public function overlaySegments(float $south, float $west, float $north, float $east, bool $raw, int $limit): array
+    {
+        $result = ['segments' => [], 'removed' => [], 'truncated' => false];
+        $index = $this->index();
+        if ($index === null) {
+            return $result;
+        }
+        $corrections = $raw ? null : $this->corrections();
+        $cell = $index->cellDegrees();
+        $rowFrom = (int) floor($south / $cell + 1e-9);
+        $rowTo = (int) floor($north / $cell + 1e-9);
+        $columnFrom = (int) floor($west / $cell + 1e-9);
+        $columnTo = (int) floor($east / $cell + 1e-9);
+        $seen = [];
+        $seenRemoved = [];
+        foreach (WaterIndex::KINDS as $kind => $name) {
+            if (!$index->hasKind($name)) {
+                continue;
+            }
+            for ($row = $rowFrom; $row <= $rowTo; $row++) {
+                $original = $index->segments($kind, $row, $columnFrom, $columnTo);
+                $segments = $corrections === null
+                    ? $original
+                    : $corrections->apply($name, $row, $columnFrom, $columnTo, $cell, $original);
+                // a segment that is not in the index as built comes from a correction (added, or flipped)
+                $inIndex = [];
+                foreach ($original as $segment) {
+                    $inIndex[implode(':', $segment)] = true;
+                }
+                foreach ($segments as $segment) {
+                    $key = $kind . ':' . implode(':', $segment);
+                    if (isset($seen[$key])) {
+                        continue;
+                    }
+                    if (count($result['segments']) >= $limit) {
+                        $result['truncated'] = true;
+
+                        return $result;
+                    }
+                    $seen[$key] = true;
+                    $own = 0;
+                    if (!isset($inIndex[implode(':', $segment)])) {
+                        // the correction the line belongs to, -1 = changed (flipped) but not drawn by a correction
+                        $own = $corrections?->sourceOf($name, $segment) ?? -1;
+                    }
+                    $result['segments'][] = [$name, ...$segment, $own];
+                }
+                if ($corrections === null) {
+                    continue;
+                }
+                foreach ($original as $segment) {
+                    $key = $kind . ':' . implode(':', $segment);
+                    if (!isset($seenRemoved[$key]) && $corrections->removes($name, $segment)) {
+                        $seenRemoved[$key] = true;
+                        $result['removed'][] = [$name, ...$segment];
+                    }
+                }
+            }
+        }
+
+        return $result;
     }
 
     private function index(): ?WaterIndex
@@ -375,10 +491,10 @@ final class WaterDistanceService implements ShoreSource
             $segments = [];
             for ($r = $row - $ring; $r <= $row + $ring; $r++) {
                 if ($r === $row - $ring || $r === $row + $ring) {
-                    array_push($segments, ...$index->segments($kind, $r, $column - $ring, $column + $ring));
+                    array_push($segments, ...$this->segments($index, $kind, $r, $column - $ring, $column + $ring));
                 } else {
-                    array_push($segments, ...$index->segments($kind, $r, $column - $ring, $column - $ring));
-                    array_push($segments, ...$index->segments($kind, $r, $column + $ring, $column + $ring));
+                    array_push($segments, ...$this->segments($index, $kind, $r, $column - $ring, $column - $ring));
+                    array_push($segments, ...$this->segments($index, $kind, $r, $column + $ring, $column + $ring));
                 }
             }
             foreach ($segments as [$lat1, $lng1, $lat2, $lng2]) {

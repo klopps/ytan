@@ -88,6 +88,47 @@ point of the best segment is then measured with the haversine formula.
 (`tools/water/make_test_fixture.py`) and read by PHP's
 `WaterDistanceServiceTest`: change the format on both sides and regenerate it.
 
+## Corrections (admin page /admin/water)
+
+`/admin/water` draws the index's lines over a satellite map (sea/lake with
+ticks on the water side, rivers/canals with an arrow in drawing direction) and
+lets an admin correct it. Segments have no stable id - a rebuild simplifies
+them anew - so a correction is a geometric operation that survives a rebuild:
+
+- `delete`: polygon + kinds; segments of those kinds whose midpoint lies inside disappear
+- `flip`: polygon + kinds; such segments are reversed (sea/lake: water side, river: flow direction)
+- `add`: a line of one kind; sea/lake: water on the right of the drawing direction
+- `replace`: a line of the index changed or deleted (info window of a clicked line:
+  "Bearbeiten"/"Löschen"). The page follows the clicked segment's chain through the
+  loaded segments of the same kind (`wxChain()`: drawing direction, stops where not
+  exactly one segment goes on and one arrives - a junction - or at the edge of the
+  loaded area) and sends it as `original`; `points` is the edited line, empty =
+  deleted. Applied: every segment of that kind with BOTH ends within
+  `WaterCorrections::REPLACE_BUFFER_M` (10 m) of the original is removed, then the
+  new line added - both ends, so a line joining at a junction stays, and a rebuild
+  that moves the segments a few metres still matches
+
+"Bearbeiten"/"Löschen" on an OWN line (a segment from a correction - the overlay
+gives each segment the id of the correction whose line it is) change that
+correction instead (`PUT /admin/water/corrections/{id}`); deleting an own line
+deletes its correction - an added line disappears, a changed line of the index
+gets its original back (to leave the place empty, delete the original afterwards). Only a line of
+the index gets a `replace` correction; the index file itself is never changed.
+
+They apply in id order (a later delete also removes an earlier added line).
+Stored in the table `water_correction` (migration 088); after every change
+`WaterCorrectionRepository::writeFile()` writes them to
+`storage/water/water-corrections.json` (no corrections = no file), which
+`WaterDistanceService` applies to every read of the index (`segments()` ->
+`WaterCorrections::apply()`), so distances, `flowAt()`, `nearestSea()`,
+`openWaterAlong()` and the autorouting's `segmentsInBox()` all see them, in
+CLIs too, without a database. The stored POI distances within 0.1 degrees of a
+changed correction are recomputed at once (at most 2,000; more:
+`php bin/poi-water-distance.php --all`). Added lines outside the index's
+`coverage` have no effect (positions there get no distances at all). Moving
+corrections between systems: "Exportieren" / "Datei einlesen" on the page.
+The file lives in `storage/water`, which no deploy touches.
+
 ## Where the distances go
 
 - `poi_water_distance` (`sea_m`, `river_m`, `lake_m`, `index_version`): POIs of
