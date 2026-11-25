@@ -744,6 +744,11 @@ img.wsi {
   display: none !important;
 }
 
+/* The route edit window sits in the middle of the map (route.js centreRouteEditWindow()) - its tail would point at nothing */
+.gm-style-iw-t:has(#editRouteName) .gm-style-iw-tc {
+  display: none !important;
+}
+
 .gm-style-iw-t:has(.search-remove-badge) .gm-ui-hover-effect {
   display: none !important;
 }

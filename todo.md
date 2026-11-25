@@ -1,9 +1,5 @@
 # Offene Punkte
 
-## Position des infoWindow einer Route
-
-Das infoWindow einer Route wird derzeit immer am letzten Wegpunkt der Route angezeigt. Dadurch verschiebst sich die Karte, wenn man in einem anderen Bereich der Route etwas geändert hat und dann auf BEENDEN klickt. Das ist ungünstig. Das infoWindow der Route 
-
 ## Wasserindex: Seen ab 0,1 km²
 
 Seen ab 0,1 km² statt ab 10 km² in den Wasserindex aufnehmen: In Deutschland gibt es viele direkt miteinander verbundene kleinere Seen, die bisher fehlten (Autorouting, Abstände). Testlauf Deutschland (2026-11-25): 4.423 statt 40 Seen, 345.000 statt 39.000 Seen-Segmente, ca. +5 MB; 598 der Seen von 0,1 bis 10 km² liegen höchstens 20 m neben einem anderen See.
@@ -12,8 +8,7 @@ Stand 2026-11-25: `LAKE_MIN_KM2` in `tools/water/build_index.py` auf 0.1 gesetzt
 
 ## Aktive Buttons in Dialogen
 
-Im Löschen Dialog für Wegpunkte von Routen kann ich nicht erkennen, welcher der der bei
-den Buttons "Nein" und "Löschen" derzeit aktiv ist mit ENTER bestätigt wird. Untersuche, ob das auch in anderen Dialogen der Fall ist und mache einen Vorschlag für eine Lösung.
+Im Löschen Dialog für Wegpunkte von Routen kann ich nicht erkennen, welcher der Buttons "Nein" und "Löschen" derzeit aktiv ist mit ENTER bestätigt wird. Untersuche, ob das auch in anderen Dialogen der Fall ist und mache einen Vorschlag für eine Lösung.
 
 ## Leuchtfeuer-Quellen: nächste Schritte
 

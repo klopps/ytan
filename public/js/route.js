@@ -56,6 +56,7 @@ function editRouteBtnClick(elementId) {
     }
 }
 
+// latLng: no longer used - the window always opens in the middle of the map (centreRouteEditWindow())
 function showRouteEditWindow(i, latLng) {
     hideRouteLabels(i);
 
@@ -75,7 +76,6 @@ function showRouteEditWindow(i, latLng) {
         return;
     }
 
-    var lastPoint = measureTool.points.slice(-1)[0];
     var route;
 
     if ((i !== null) && (typeof i !== 'undefined')) {
@@ -172,11 +172,11 @@ function showRouteEditWindow(i, latLng) {
         '</div>';
 
     routeEditWindow.setContent(content);
-    if (latLng === null) {
-        routeEditWindow.setPosition(lastPoint);
-    } else {
-        routeEditWindow.setPosition(latLng);
-    }
+    // In the middle of the screen, and the map does not move (user request 2026-11-25): at the
+    // last waypoint it panned the map away from where the route was just changed. Opened at the
+    // centre first; on domready moved down by half its height, so its middle is the centre.
+    routeEditWindow.setOptions({ disableAutoPan: true });
+    routeEditWindow.setPosition(map.getCenter());
 
     routeEditWindow.open(map);
 
@@ -186,6 +186,7 @@ function showRouteEditWindow(i, latLng) {
     google.maps.event.clearListeners(routeEditWindow, 'closeclick');
     routeEditWindow.addListener('domready', function() {
         validateRouteEditForm();
+        centreRouteEditWindow();
 
         var color_picker = document.getElementById("editRouteColor");
         var color_picker_wrapper = document.getElementById("editRouteColorWrapper");
@@ -198,6 +199,32 @@ function showRouteEditWindow(i, latLng) {
     google.maps.event.addListener(routeEditWindow, 'closeclick', function(i, event) {
         cancelEditRoute(i);
     }.bind(routeEditWindow, i));
+}
+
+/**
+ * Puts the route edit window's middle at the centre of the map: its anchor
+ * (the tail tip, hidden by style.css) goes half the bubble's height below the
+ * centre. Never pans the map.
+ */
+function centreRouteEditWindow() {
+    var name = document.getElementById('editRouteName');
+    var bubble = name ? name.closest('.gm-style-iw-c') : null;
+    var projection = overlayProjection && overlayProjection.getProjection();
+    if (!bubble || !projection) {
+        return;
+    }
+    var div = map.getDiv();
+    var anchorY = div.clientHeight / 2 + bubble.offsetHeight / 2;
+    routeEditWindow.setPosition(projection.fromContainerPixelToLatLng(new google.maps.Point(div.clientWidth / 2, anchorY)));
+    // the bubble sits a few pixels above its anchor (room for the hidden tail): measure once drawn, correct
+    requestAnimationFrame(function () {
+        var b = bubble.getBoundingClientRect();
+        var m = div.getBoundingClientRect();
+        var off = (m.top + m.height / 2) - (b.top + b.height / 2);
+        if (Math.abs(off) >= 1) {
+            routeEditWindow.setPosition(projection.fromContainerPixelToLatLng(new google.maps.Point(div.clientWidth / 2, anchorY + off)));
+        }
+    });
 }
 
 function validateRouteEditForm() {
