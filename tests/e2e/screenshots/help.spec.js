@@ -318,7 +318,7 @@ test('user guide screenshots', async ({ loggedInPage: page, request, credentials
   // The e2e user keeps its key from earlier runs, so the button is "Neuen
   // Uhr-Schlüssel erzeugen" and asks first - confirm it, or the dialog stays
   // open on this shot AND on the login shot below.
-  const regenerate = page.locator('.confirm-dialog .startbtn');
+  const regenerate = page.locator('.confirm-dialog .confirm-dialog-confirm');
   if (await regenerate.waitFor({ state: 'visible', timeout: 1500 }).then(() => true, () => false)) {
     await regenerate.click();
   }

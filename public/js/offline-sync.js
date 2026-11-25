@@ -400,6 +400,7 @@ function showConflictDialog(entry) {
             if (event.key === 'Escape') {
                 close(null);
             }
+            trapDialogFocus(event, dialog);
         }
 
         keepServerBtn.addEventListener('click', function () { close('server'); });
@@ -417,6 +418,9 @@ function showConflictDialog(entry) {
         document.body.appendChild(overlay);
 
         document.addEventListener('keydown', onKeydown);
+        // Without a focus inside, Enter acted on whatever behind the overlay had it last.
+        // The server's version is the safe default (nothing is overwritten on the server).
+        keepServerBtn.focus();
     });
 }
 

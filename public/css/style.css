@@ -1173,6 +1173,14 @@ img.wsi {
   color: var(--color-text);
 }
 
+/* The button Enter would press: always ringed in a dialog - :focus, not :focus-visible, since the
+   dialogs set the focus by script and browsers show no ring for that after a tap/click
+   (confirm-dialog.js, offline-sync.js's conflict dialog). */
+.confirm-dialog button:focus {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
 .admin-panel-header {
   display: flex;
   justify-content: flex-end;

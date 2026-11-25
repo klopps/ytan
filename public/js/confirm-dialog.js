@@ -9,6 +9,41 @@ const CONFIRM_DIALOG_ICON = {
     default: 'info',
 };
 
+/**
+ * Keeps Tab / Shift+Tab inside an open dialog (every dialog of this file and
+ * offline-sync.js's conflict dialog call it from their keydown handler):
+ * without it the focus wandered to the map and menus behind the overlay.
+ */
+function trapDialogFocus(event, dialog) {
+    if (event.key !== 'Tab') {
+        return;
+    }
+    var items = Array.prototype.filter.call(
+        dialog.querySelectorAll('button, input, select, textarea, a[href], [tabindex]:not([tabindex="-1"])'),
+        function (el) { return !el.disabled && el.offsetParent !== null; }
+    );
+    if (!items.length) {
+        return;
+    }
+    var first = items[0];
+    var last = items[items.length - 1];
+    var inside = dialog.contains(document.activeElement);
+    if (event.shiftKey && (!inside || document.activeElement === first)) {
+        event.preventDefault();
+        last.focus();
+    } else if (!event.shiftKey && (!inside || document.activeElement === last)) {
+        event.preventDefault();
+        first.focus();
+    }
+}
+
+/**
+ * options.type 'danger' (deleting, discarding, signing out everywhere): the
+ * confirm button is red and Cancel/No has the focus, so Enter does NOT
+ * confirm; otherwise the confirm button has the focus and Enter confirms.
+ * The focused button is ringed in every dialog (style.css .confirm-dialog
+ * button:focus), also after a tap/click - the browser shows no ring there.
+ */
 function showConfirmDialog(message, options) {
     var opts = options || {};
     var type = CONFIRM_DIALOG_ICON.hasOwnProperty(opts.type) ? opts.type : 'default';
@@ -35,12 +70,14 @@ function showConfirmDialog(message, options) {
 
         var cancelBtn = document.createElement('button');
         cancelBtn.type = 'button';
-        cancelBtn.className = 'button';
+        cancelBtn.className = 'button confirm-dialog-cancel';
         cancelBtn.textContent = cancelLabel;
 
         var confirmBtn = document.createElement('button');
         confirmBtn.type = 'button';
-        confirmBtn.className = 'startbtn';
+        // a destructive action is red, not the accent colour that reads as "the default"
+        // (confirm-dialog-confirm / -cancel: stable hooks for the e2e tests, independent of the look)
+        confirmBtn.className = (type === 'danger' ? 'button button-danger' : 'startbtn') + ' confirm-dialog-confirm';
         confirmBtn.textContent = confirmLabel;
 
         function close(result) {
@@ -50,14 +87,14 @@ function showConfirmDialog(message, options) {
         }
 
         // Escape mirrors native confirm()'s cancel-on-Escape behaviour.
-        // Enter is intentionally NOT wired to the confirm button - Cancel
-        // gets default focus below, so pressing Enter without deliberately
-        // tabbing to "Delete" cancels instead of confirming a destructive
-        // action.
+        // Enter is not wired to a button here: it activates the FOCUSED one
+        // (browser default) - Cancel for 'danger', confirm otherwise (see
+        // below), and the ring shows which.
         function onKeydown(event) {
             if (event.key === 'Escape') {
                 close(false);
             }
+            trapDialogFocus(event, dialog);
         }
 
         cancelBtn.addEventListener('click', function () {
@@ -77,7 +114,7 @@ function showConfirmDialog(message, options) {
         document.body.appendChild(overlay);
 
         document.addEventListener('keydown', onKeydown);
-        cancelBtn.focus();
+        (type === 'danger' ? cancelBtn : confirmBtn).focus();
     });
 }
 
@@ -136,6 +173,7 @@ function showCaptchaDialog(question) {
         }
 
         function onKeydown(event) {
+            trapDialogFocus(event, dialog);
             if (event.key === 'Escape') {
                 close(null);
             } else if (event.key === 'Enter') {
@@ -284,6 +322,7 @@ function showAutorouteDialog(opts) {
         }
 
         function onKeydown(event) {
+            trapDialogFocus(event, dialog);
             if (event.key === 'Escape') {
                 close(null);
             } else if (event.key === 'Enter' && (event.target === input || event.target === maxInput)) {
@@ -410,6 +449,7 @@ function showRouteMergeDialog(opts) {
         }
 
         function onKeydown(event) {
+            trapDialogFocus(event, dialog);
             if (event.key === 'Escape') {
                 close(null);
             } else if (event.key === 'Enter' && event.target === input) {

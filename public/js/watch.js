@@ -328,7 +328,7 @@ function copyWatchToken() {
 
 function createWatchToken() {
     const proceed = isWatchPaired()
-        ? showConfirmDialog(t('watch.regenerate_confirm'))
+        ? showConfirmDialog(t('watch.regenerate_confirm'), { type: 'danger' }) // the old key stops working: Enter must not confirm
         : Promise.resolve(true);
     proceed.then((confirmed) => {
         if (!confirmed) {
@@ -341,7 +341,7 @@ function createWatchToken() {
 }
 
 function unpairWatch() {
-    showConfirmDialog(t('watch.unpair_confirm')).then((confirmed) => {
+    showConfirmDialog(t('watch.unpair_confirm'), { type: 'danger' }).then((confirmed) => {
         if (!confirmed) {
             return;
         }

@@ -6,9 +6,6 @@ Seen ab 0,1 km² statt ab 10 km² in den Wasserindex aufnehmen: In Deutschland g
 
 Stand 2026-11-25: `LAKE_MIN_KM2` in `tools/water/build_index.py` auf 0.1 gesetzt, Doku/Texte angepasst, Neubau des gesamten Index gestartet (Sicherung des alten Index: `D:\Daten\ytan\storage\water\backup-202611232232`). Offen: Ergebnis prüfen (Größe, Stichproben auf `/admin/water`, Autorouting über eine Seenkette), mit `bin\publish-water.bat` verteilen, danach `php bin/poi-water-distance.php --all` und die Abstände der Shelter-/Campingplatz-Importe (`distances --all`) neu rechnen; prüfen, ob die Filter "am See" der Importe in Skandinavien neue Schwellen brauchen.
 
-## Aktive Buttons in Dialogen
-
-Im Löschen Dialog für Wegpunkte von Routen kann ich nicht erkennen, welcher der Buttons "Nein" und "Löschen" derzeit aktiv ist mit ENTER bestätigt wird. Untersuche, ob das auch in anderen Dialogen der Fall ist und mache einen Vorschlag für eine Lösung.
 
 ## Leuchtfeuer-Quellen: nächste Schritte
 

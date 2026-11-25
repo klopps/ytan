@@ -95,14 +95,14 @@ test.describe('Edit and delete', () => {
     await showPoiMarker(page, poiName, poiLat, LNG);
     await rightClickMapCentre(page, POI_MARKER_OFFSET);
     await page.locator('.contextMenuItem', { hasText: 'delete' }).click();
-    await page.locator('.confirm-dialog .startbtn').click();
+    await page.locator('.confirm-dialog .confirm-dialog-confirm').click();
     await expect.poll(async () => (await apiGet(request, t, 'pois/' + poi.id)).status, { timeout: 15_000 }).toBe(404);
 
     await page.waitForFunction((n) => areas.some((a) => a && a.name === n), areaName, { timeout: 20_000 });
     await settleMapAt(page, areaLat, LNG, 15);
     await rightClickMapCentre(page);
     await page.locator('.contextMenuItem', { hasText: 'delete' }).click();
-    await page.locator('.confirm-dialog .startbtn').click();
+    await page.locator('.confirm-dialog .confirm-dialog-confirm').click();
     await expect.poll(async () => (await apiGet(request, t, 'areas/' + area.id)).status, { timeout: 15_000 }).toBe(404);
   });
 
@@ -119,7 +119,7 @@ test.describe('Edit and delete', () => {
     await settleMapAt(page, lat, LNG, 15);
     await rightClickMapCentre(page);
     await page.locator('.contextMenuItem', { hasText: 'delete' }).click();
-    await page.locator('.confirm-dialog .startbtn').click();
+    await page.locator('.confirm-dialog .confirm-dialog-confirm').click();
 
     // the server answers 422 with a question "a + b = ?"; the dialog asks it
     const captcha = page.locator('.confirm-dialog-input');

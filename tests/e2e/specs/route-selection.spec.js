@@ -49,11 +49,11 @@ test('Ctrl+drag selects the waypoints inside, Delete asks and deletes them', asy
   // "No" keeps everything
   await page.keyboard.press('Delete');
   await expect(page.locator('.confirm-dialog')).toBeVisible();
-  await page.locator('.confirm-dialog button.button').click();
+  await page.locator('.confirm-dialog .confirm-dialog-cancel').click();
   expect(await pointCount(page)).toBe(4);
 
   await page.keyboard.press('Delete');
-  await page.locator('.confirm-dialog button.startbtn').click();
+  await page.locator('.confirm-dialog .confirm-dialog-confirm').click();
   await page.waitForFunction(() => measureTool.points.length === 2);
   await expect(page.locator('#routeSelBar')).toHaveCount(0);
   expect(await selectedCount(page)).toBe(0);
@@ -128,7 +128,7 @@ test('selection mode: "select stretch" takes everything between two waypoints; t
   await page.mouse.click(p[0].x, p[0].y); // off
   expect(await selectedCount(page)).toBe(2);
   await page.locator('.route-sel-danger').click();
-  await page.locator('.confirm-dialog button.startbtn').click();
+  await page.locator('.confirm-dialog .confirm-dialog-confirm').click();
   await page.waitForFunction(() => measureTool.points.length === 2);
   await expect(page.locator('#routeSelBar')).toHaveCount(0);
 });
