@@ -48,7 +48,10 @@ flag only serve the sea; lakes are then not used. Rivers/canals count as water
 within 40 m / 15 m of their centre line, and the autorouting's detour grid also
 counts every cell such a line runs through as water - so a passage narrower than
 a grid cell (25 m or more) between two shore lines, e.g. under a bridge, is
-opened by drawing a short canal line through it on `/admin/water`.
+opened by drawing a short canal line through it on `/admin/water`. Where the way
+runs through cells that are water only because of such a line, its points are
+put onto the line itself (`Autorouter::snapToRivers()`), not left at the cell
+centres beside it.
 
 **Covered area**: `water-index.json` carries the countries' borders (Geofabrik
 `.poly`, outer rings as `[[lat, lng], ...]`) as `coverage`. Outside them

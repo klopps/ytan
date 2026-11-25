@@ -260,6 +260,13 @@ final class AutorouterTest extends TestCase
 
                 $this->assertSame(1, $result['changed_sections'], "east $east, north $north");
                 $this->assertLessThan(1000.0, $result['length_after'], "east $east, north $north: through the gap, not around the dam");
+                // inside the dam the way follows the canal line (within its 15 m buffer), not the cell centres beside it
+                foreach (self::walk($result['points']) as [$lat, $lng]) {
+                    if ($lat > 55.0 && $lat < 55.0009) {
+                        $off = abs($lng - $canal[2]) * 111320 * cos(deg2rad(55.0));
+                        $this->assertLessThanOrEqual(15.0, $off, "east $east, north $north: ($lat, $lng) is {$off} m beside the canal");
+                    }
+                }
             }
         }
     }

@@ -493,25 +493,31 @@ final class Autorouter
                 }
             }
         }
+        // cells that are water only because of a river/canal line (not by the shore): a way through
+        // them is put onto the line itself, see snapToRivers() and lineCost()
+        $riverOnly = [];
         if ($field->hasRivers()) {
+            $markWater = static function (int $r, int $c) use (&$state, &$near, &$riverOnly, $cols, $rows): void {
+                if ($r >= 0 && $r < $rows && $c >= 0 && $c < $cols) {
+                    $index = $r * $cols + $c;
+                    if ($state[$index] !== 1) {
+                        $riverOnly[$index] = true;
+                    }
+                    $state[$index] = 1;
+                    $near[$index] = INF;
+                }
+            };
             for ($r = 0; $r < $rows; $r++) {
                 $y = $y0 + ($r + 0.5) * $cell;
                 for ($c = 0; $c < $cols; $c++) {
                     if ($field->onRiverXY($x0 + ($c + 0.5) * $cell, $y)) {
-                        $state[$r * $cols + $c] = 1;
-                        $near[$r * $cols + $c] = INF;
+                        $markWater($r, $c);
                     }
                 }
             }
             // Every cell a river/canal line runs through is water too: the buffer test above only
             // looks at cell centres, so a canal drawn through a passage narrower than a cell could
             // miss every centre (or leave only cells touching at a corner) depending on where the grid lies.
-            $markWater = static function (int $r, int $c) use (&$state, &$near, $cols, $rows): void {
-                if ($r >= 0 && $r < $rows && $c >= 0 && $c < $cols) {
-                    $state[$r * $cols + $c] = 1;
-                    $near[$r * $cols + $c] = INF;
-                }
-            };
             foreach ($field->riverLinesXY() as [$ax, $ay, $bx, $by]) {
                 $steps = max(1, (int) ceil(hypot($bx - $ax, $by - $ay) / ($cell / 4)));
                 $previous = null;
@@ -596,8 +602,11 @@ final class Autorouter
         $last = count($xy) - 1;
         $xy[0] = [$field->x($path[0][1]), $field->y($path[0][0]), $xy[0][2]];
         $xy[$last] = [$field->x($path[count($path) - 1][1]), $field->y($path[count($path) - 1][0]), $xy[$last][2]];
-        $xy = $this->straighten($xy, $state, $near, $penalty, $cols, $rows, $cell, $x0, $y0);
-        $xy = $this->withoutBacktracking($xy, $state, $near, $penalty, $cols, $rows, $cell, $x0, $y0);
+        if ($riverOnly !== []) {
+            $xy = $this->snapToRivers($xy, $riverOnly, $field, $cols, $rows, $cell, $x0, $y0);
+        }
+        $xy = $this->straighten($xy, $state, $near, $penalty, $cols, $rows, $cell, $x0, $y0, $riverOnly, $field);
+        $xy = $this->withoutBacktracking($xy, $state, $near, $penalty, $cols, $rows, $cell, $x0, $y0, $riverOnly, $field);
 
         $result = [[$path[0][0], $path[0][1]]];
         for ($i = 1; $i < count($xy) - 1; $i++) {
@@ -772,6 +781,34 @@ final class Autorouter
     }
 
     /**
+     * Puts the way's points in cells that are water only because of a
+     * river/canal line onto the nearest point of that line: the cell centres lie
+     * up to half a cell diagonal beside it, i.e. on the banks of a canal
+     * narrower than a cell (reported 2026-11-25). Start and end stay.
+     *
+     * @param list<array{0: float, 1: float, 2: int}> $xy
+     * @param array<int, true> $riverOnly
+     * @return list<array{0: float, 1: float, 2: int}>
+     */
+    private function snapToRivers(array $xy, array $riverOnly, ShoreField $field, int $cols, int $rows, float $cell, float $x0, float $y0): array
+    {
+        for ($i = 1; $i < count($xy) - 1; $i++) {
+            if (!isset($riverOnly[$xy[$i][2]])) {
+                continue;
+            }
+            $point = $field->nearestRiverPointXY($xy[$i][0], $xy[$i][1]);
+            if ($point === null) {
+                continue;
+            }
+            $c = max(0, min($cols - 1, (int) floor(($point[0] - $x0) / $cell)));
+            $r = max(0, min($rows - 1, (int) floor(($point[1] - $y0) / $cell)));
+            $xy[$i] = [$point[0], $point[1], $r * $cols + $c];
+        }
+
+        return $xy;
+    }
+
+    /**
      * Drops the cell-centre zigzag: from each point the farthest later point
      * that can be reached in a straight line over water cells for no more than
      * the way along the cells costs.
@@ -780,7 +817,7 @@ final class Autorouter
      * @param list<int> $state
      * @return list<array{0: float, 1: float, 2: int}>
      */
-    private function straighten(array $xy, array $state, array $near, \Closure $penalty, int $cols, int $rows, float $cell, float $x0, float $y0): array
+    private function straighten(array $xy, array $state, array $near, \Closure $penalty, int $cols, int $rows, float $cell, float $x0, float $y0, array $riverOnly, ShoreField $field): array
     {
         $n = count($xy);
         if ($n <= 2) {
@@ -796,7 +833,7 @@ final class Autorouter
         while ($i < $n - 1) {
             $next = $i + 1;
             for ($j = min($n - 1, $i + self::LOOK_AHEAD); $j > $i + 1; $j--) {
-                $cost = $this->lineCost($xy[$i], $xy[$j], $state, $near, $penalty, $cols, $rows, $cell, $x0, $y0);
+                $cost = $this->lineCost($xy[$i], $xy[$j], $state, $near, $penalty, $cols, $rows, $cell, $x0, $y0, $riverOnly, $field);
                 if ($cost !== null && $cost <= ($prefix[$j] - $prefix[$i]) * 1.001) {
                     $next = $j;
                     break;
@@ -816,12 +853,12 @@ final class Autorouter
      * @param list<array{0: float, 1: float, 2: int}> $xy
      * @return list<array{0: float, 1: float, 2: int}>
      */
-    private function withoutBacktracking(array $xy, array $state, array $near, \Closure $penalty, int $cols, int $rows, float $cell, float $x0, float $y0): array
+    private function withoutBacktracking(array $xy, array $state, array $near, \Closure $penalty, int $cols, int $rows, float $cell, float $x0, float $y0, array $riverOnly, ShoreField $field): array
     {
         $i = 1;
         while ($i < count($xy) - 1) {
             $dot = ($xy[$i][0] - $xy[$i - 1][0]) * ($xy[$i + 1][0] - $xy[$i][0]) + ($xy[$i][1] - $xy[$i - 1][1]) * ($xy[$i + 1][1] - $xy[$i][1]);
-            if ($dot < 0.0 && $this->lineCost($xy[$i - 1], $xy[$i + 1], $state, $near, $penalty, $cols, $rows, $cell, $x0, $y0) !== null) {
+            if ($dot < 0.0 && $this->lineCost($xy[$i - 1], $xy[$i + 1], $state, $near, $penalty, $cols, $rows, $cell, $x0, $y0, $riverOnly, $field) !== null) {
                 array_splice($xy, $i, 1);
                 $i = max(1, $i - 1);
                 continue;
@@ -836,22 +873,31 @@ final class Autorouter
      * Cost of the straight line between two cell centres, null when it touches
      * a non-water cell or a cell closer to the shore than one cell (the grid
      * does not know where inside such a cell the land is) - the cells of the
-     * two ends themselves are exempt.
+     * two ends themselves are exempt. In a cell that is water only because of a
+     * river/canal line the line must stay within that line's buffer, or a
+     * straightened way cut across the banks.
+     *
+     * @param array<int, true> $riverOnly
      */
-    private function lineCost(array $a, array $b, array $state, array $near, \Closure $penalty, int $cols, int $rows, float $cell, float $x0, float $y0): ?float
+    private function lineCost(array $a, array $b, array $state, array $near, \Closure $penalty, int $cols, int $rows, float $cell, float $x0, float $y0, array $riverOnly, ShoreField $field): ?float
     {
         $length = hypot($b[0] - $a[0], $b[1] - $a[1]);
         $steps = max(1, (int) ceil($length / ($cell / 2)));
         $sum = 0.0;
         for ($s = 0; $s <= $steps; $s++) {
             $t = $s / $steps;
-            $c = (int) floor(($a[0] + $t * ($b[0] - $a[0]) - $x0) / $cell);
-            $r = (int) floor(($a[1] + $t * ($b[1] - $a[1]) - $y0) / $cell);
+            $px = $a[0] + $t * ($b[0] - $a[0]);
+            $py = $a[1] + $t * ($b[1] - $a[1]);
+            $c = (int) floor(($px - $x0) / $cell);
+            $r = (int) floor(($py - $y0) / $cell);
             if ($c < 0 || $c >= $cols || $r < 0 || $r >= $rows) {
                 return null;
             }
             $index = $r * $cols + $c;
             if ($state[$index] !== 1 || ($near[$index] < $cell && $index !== $a[2] && $index !== $b[2])) {
+                return null;
+            }
+            if (isset($riverOnly[$index]) && $s > 0 && $s < $steps && !$field->onRiverXY($px, $py)) {
                 return null;
             }
             $sum += $penalty($index);

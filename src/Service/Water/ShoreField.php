@@ -176,6 +176,40 @@ final class ShoreField
         return array_map(static fn (array $r): array => [$r[0], $r[1], $r[2], $r[3]], $this->rivers);
     }
 
+    /**
+     * The nearest point on a river or canal centre line within the bucket size
+     * of the position, null = none that near.
+     *
+     * @return array{0: float, 1: float}|null x, y
+     */
+    public function nearestRiverPointXY(float $x, float $y): ?array
+    {
+        $best = INF;
+        $point = null;
+        $bx = (int) floor($x / $this->bucket);
+        $by = (int) floor($y / $this->bucket);
+        for ($i = $bx - 1; $i <= $bx + 1; $i++) {
+            for ($j = $by - 1; $j <= $by + 1; $j++) {
+                foreach ($this->riverBuckets[$i * self::KEY + $j] ?? [] as $index) {
+                    [$ax, $ay, $cx, $cy] = $this->rivers[$index];
+                    $dx = $cx - $ax;
+                    $dy = $cy - $ay;
+                    $length = $dx * $dx + $dy * $dy;
+                    $t = $length > 0.0 ? max(0.0, min(1.0, (($x - $ax) * $dx + ($y - $ay) * $dy) / $length)) : 0.0;
+                    $px = $ax + $t * $dx;
+                    $py = $ay + $t * $dy;
+                    $d2 = ($px - $x) ** 2 + ($py - $y) ** 2;
+                    if ($d2 < $best) {
+                        $best = $d2;
+                        $point = [$px, $py];
+                    }
+                }
+            }
+        }
+
+        return $point;
+    }
+
     /** Whether a river or canal centre line is near enough to count the position as water. */
     public function onRiver(float $lat, float $lng): bool
     {
