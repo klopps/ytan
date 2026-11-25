@@ -224,6 +224,46 @@ final class AutorouterTest extends TestCase
         }
     }
 
+    public function testLandNearBothEndsButNotTouchingThemIsGoneAround(): void
+    {
+        // a ~110 m wide land strip (55.0-55.001), crossed by a short segment whose ends lie ~55 m off it on
+        // the water: all of its land is within 100 m of an end, but none of it touches an end (found 2026-11-25)
+        $router = new Autorouter(FakeShoreSource::island(55.0, 10.0, 55.001, 10.01));
+        $segment = [[54.9995, 10.005], [55.0015, 10.005]];
+
+        $this->assertGreaterThan(0.0, $router->landMeters($segment));
+        $result = $router->route($segment, null);
+        $this->assertSame(1, $result['changed_sections']);
+        foreach (self::walk($result['points']) as [$lat, $lng]) {
+            $this->assertFalse($lat > 55.0 && $lat < 55.001 && $lng > 10.0 && $lng < 10.01, "($lat, $lng) is on land");
+        }
+    }
+
+    public function testCanalLineOpensAPassageNarrowerThanACell(): void
+    {
+        // a dam (55.0-55.0009, ~100 m) of two blocks with a ~10 m gap at 10.0 E, open water north and south;
+        // around the dam's ends is ~6 km longer. A canal line runs through the gap.
+        $gapWest = 10.0;
+        $gapEast = 10.00015;
+        $canal = [2, 54.9995, ($gapWest + $gapEast) / 2, 55.0014, ($gapWest + $gapEast) / 2];
+        $segments = array_merge(
+            FakeShoreSource::ring(55.0, 9.95, 55.0009, $gapWest),
+            FakeShoreSource::ring(55.0, $gapEast, 55.0009, 10.05),
+            [$canal]
+        );
+        $router = new Autorouter(new FakeShoreSource($segments));
+        // several start/end positions = several positions of the detour grid
+        foreach ([0.001, 0.0013, 0.0017, 0.0021, 0.0026] as $east) {
+            foreach ([0.0, 0.00007] as $north) {
+                $route = [[54.99865 + $north, $gapEast + $east], [55.00225 + $north, $gapEast + $east * 0.8]];
+                $result = $router->route($route, null);
+
+                $this->assertSame(1, $result['changed_sections'], "east $east, north $north");
+                $this->assertLessThan(1000.0, $result['length_after'], "east $east, north $north: through the gap, not around the dam");
+            }
+        }
+    }
+
     public function testGivesUpOnAnEnclosedStart(): void
     {
         // a closed lake-like ring (water inside = clockwise): the route inside cannot get out and a stretch crosses the ring

@@ -21,7 +21,10 @@ use Ytan\Service\GeometryService;
  *
  * Near the start and end the distance rule is off (a launch beach is always
  * near the shore), and they may lie up to LAUNCH_TOLERANCE_M beside known
- * water (beach, slipway, harbour wall).
+ * water (beach, slipway, harbour wall) - only land touching the end counts
+ * as such a launch, land with water between it and the end is gone around.
+ * Every grid cell a river/canal line runs through is water, so a passage
+ * narrower than a cell stays open when a canal line is drawn through it.
  */
 final class Autorouter
 {
@@ -93,14 +96,41 @@ final class Autorouter
     {
         [$samples, $cum, , $total] = $this->densify($points);
         [$water] = $this->classify($samples, 50.0);
+        $launch = $this->launchExempt($water, $cum, $total);
         $land = 0.0;
         foreach ($samples as $i => $_) {
-            if (!$water[$i] && min($cum[$i], $total - $cum[$i]) > self::LAUNCH_TOLERANCE_M) {
+            if (!$water[$i] && !$launch[$i]) {
                 $land += self::SAMPLE_M;
             }
         }
 
         return $land;
+    }
+
+    /**
+     * The land samples that belong to a launch: the unbroken run of land
+     * samples starting at the first sample or ending at the last one, as far as
+     * it lies within LAUNCH_TOLERANCE_M of that end (beach, slipway, harbour
+     * wall). Land with water between it and the end is never exempt - otherwise
+     * a dam crossed by a short segment between two waypoints on the water was
+     * taken for "already on water" (found 2026-11-25).
+     *
+     * @param list<bool> $water
+     * @param list<float> $cum
+     * @return list<bool>
+     */
+    private function launchExempt(array $water, array $cum, float $total): array
+    {
+        $count = count($water);
+        $exempt = array_fill(0, $count, false);
+        for ($i = 0; $i < $count && !$water[$i] && $cum[$i] <= self::LAUNCH_TOLERANCE_M; $i++) {
+            $exempt[$i] = true;
+        }
+        for ($i = $count - 1; $i >= 0 && !$water[$i] && $total - $cum[$i] <= self::LAUNCH_TOLERANCE_M; $i--) {
+            $exempt[$i] = true;
+        }
+
+        return $exempt;
     }
 
     /**
@@ -131,10 +161,11 @@ final class Autorouter
         $bad = array_fill(0, $count, false);
         $farOnly = array_fill(0, $count, false);
         $clearanceExempt = max(200.0, $shore);
+        $launch = $this->launchExempt($water, $cum, $total);
         for ($i = 0; $i < $count; $i++) {
             $fromEnd = min($cum[$i], $total - $cum[$i]);
             if (!$water[$i]) {
-                $bad[$i] = $fromEnd > self::LAUNCH_TOLERANCE_M;
+                $bad[$i] = !$launch[$i];
             } elseif ($shoreOn && $distance[$i] !== null && $distance[$i] < $shore * self::CLEARANCE_TOLERANCE && $fromEnd > $clearanceExempt) {
                 $bad[$i] = true;
             } elseif ($far !== null && $tooFar[$i] && $fromEnd > $clearanceExempt) {
@@ -470,6 +501,30 @@ final class Autorouter
                         $state[$r * $cols + $c] = 1;
                         $near[$r * $cols + $c] = INF;
                     }
+                }
+            }
+            // Every cell a river/canal line runs through is water too: the buffer test above only
+            // looks at cell centres, so a canal drawn through a passage narrower than a cell could
+            // miss every centre (or leave only cells touching at a corner) depending on where the grid lies.
+            $markWater = static function (int $r, int $c) use (&$state, &$near, $cols, $rows): void {
+                if ($r >= 0 && $r < $rows && $c >= 0 && $c < $cols) {
+                    $state[$r * $cols + $c] = 1;
+                    $near[$r * $cols + $c] = INF;
+                }
+            };
+            foreach ($field->riverLinesXY() as [$ax, $ay, $bx, $by]) {
+                $steps = max(1, (int) ceil(hypot($bx - $ax, $by - $ay) / ($cell / 4)));
+                $previous = null;
+                for ($s = 0; $s <= $steps; $s++) {
+                    $t = $s / $steps;
+                    $c = (int) floor(($ax + $t * ($bx - $ax) - $x0) / $cell);
+                    $r = (int) floor(($ay + $t * ($by - $ay) - $y0) / $cell);
+                    if ($previous !== null && $previous[0] !== $r && $previous[1] !== $c) {
+                        // a step across a corner: A* does not cut corners past land, so open a side neighbour
+                        $markWater($previous[0], $c);
+                    }
+                    $markWater($r, $c);
+                    $previous = [$r, $c];
                 }
             }
         }

@@ -166,6 +166,16 @@ final class ShoreField
         return ['distance' => $distance, 'water' => (($x - $qx) * $nx + ($y - $qy) * $ny) >= 0.0];
     }
 
+    /**
+     * The river and canal centre lines in x/y metres (without their buffer).
+     *
+     * @return list<array{0: float, 1: float, 2: float, 3: float}>
+     */
+    public function riverLinesXY(): array
+    {
+        return array_map(static fn (array $r): array => [$r[0], $r[1], $r[2], $r[3]], $this->rivers);
+    }
+
     /** Whether a river or canal centre line is near enough to count the position as water. */
     public function onRiver(float $lat, float $lng): bool
     {

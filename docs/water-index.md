@@ -27,7 +27,7 @@ milliseconds, on the servers too, without any external request.
 | sea   | ways `natural=coastline` (fjords and bays included) | the coastline |
 | river | ways `waterway=river`                         | the centre line (wide rivers: up to half their width too far); segments keep the way's point order = flow direction (OpenStreetMap draws rivers downstream) |
 | canal | ways `waterway=canal` (own kind since 2026-11-14, before: stored as river) | the centre line; no current, its direction means nothing |
-| lake  | areas `natural=water` of at least 10 km², not `water=pond/basin/wastewater/river/canal/stream/...` | the shore, every ring (an island in a lake measures to its own shore) |
+| lake  | areas `natural=water` of at least 0.1 km² (until 2026-11-25: 10 km² - chains of smaller connected lakes were missing), not `water=pond/basin/wastewater/river/canal/stream/...` | the shore, every ring (an island in a lake measures to its own shore) |
 
 Lines are simplified by 5 m (EPSG:3035) before they are written. Distances
 farther than 100 km (`WaterDistanceService::MAX_METERS`) are `null`.
@@ -45,7 +45,10 @@ travel with the **water on the right** (OSM's coastline: land on the left;
 since 2026-11-23 `build_index.py` orients lake rings the same way and writes
 `"oriented": true` into `water-index.json`). Segments of an index without that
 flag only serve the sea; lakes are then not used. Rivers/canals count as water
-within 40 m / 15 m of their centre line.
+within 40 m / 15 m of their centre line, and the autorouting's detour grid also
+counts every cell such a line runs through as water - so a passage narrower than
+a grid cell (25 m or more) between two shore lines, e.g. under a bridge, is
+opened by drawing a short canal line through it on `/admin/water`.
 
 **Covered area**: `water-index.json` carries the countries' borders (Geofabrik
 `.poly`, outer rings as `[[lat, lng], ...]`) as `coverage`. Outside them

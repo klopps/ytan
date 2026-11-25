@@ -89,7 +89,7 @@ Das Kontextmenü der Route ist nicht der einzige Weg. Die Einstellungen aus dem 
 
 Die Werte, die du im Dialog einstellst, merkt sich YTAN für dich. Du kannst sie auch im [Profil](#chapter-profil) unter **Autorouting** ändern; ein leeres Feld bedeutet den Standard des Betreibers.
 
-Grenzen: Routen bis **300 km**. Das Autorouting kennt Meer, Flüsse, Kanäle und **Seen ab 10 km²**. Kleine Binnenseen, Teiche und breite Flussmündungen gelten als Land; liegt dort Start oder Ende, meldet YTAN „an Land". Häfen und Marinas erkennt es nur, wenn sie in den Gewässerdaten stehen.
+Grenzen: Routen bis **300 km**. Das Autorouting kennt Meer, Flüsse, Kanäle und **Seen ab 0,1 km²**. Kleinere Seen, Teiche und breite Flussmündungen gelten als Land; liegt dort Start oder Ende, meldet YTAN „an Land". Häfen und Marinas erkennt es nur, wenn sie in den Gewässerdaten stehen.
 
 ### Eine Route teilen (aufspalten)
 

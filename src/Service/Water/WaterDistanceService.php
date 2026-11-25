@@ -8,7 +8,7 @@ use Ytan\Service\LighthousePolygon;
 
 /**
  * Distance in metres from a position to the nearest sea (coastline), river or
- * canal (centre line) and large lake (shore, at least 10 km²) - looked up in
+ * canal (centre line) and lake (shore, at least 0.1 km²) - looked up in
  * the local water index (WaterIndex, built by tools/water/build_index.py), so
  * it takes milliseconds and works on the servers without any external request.
  *

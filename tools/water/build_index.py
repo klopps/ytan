@@ -126,7 +126,7 @@ GEOFABRIK = "https://download.geofabrik.de/{}-latest.osm.pbf"
 GEOFABRIK_POLY = "https://download.geofabrik.de/{}.poly"
 USER_AGENT = "YTAN/1.0 (+https://ytan.pesr.org; no-reply@pesr.org)"
 
-LAKE_MIN_KM2 = 10.0
+LAKE_MIN_KM2 = 0.1  # until 2026-11-25: 10 - chains of smaller connected lakes were missing
 # Above this size the node locations go to a file instead of memory - the
 # German extract (~4.5 GB) did not fit next to everything else in 14 GB RAM.
 FILE_INDEX_BYTES = 2_000_000_000

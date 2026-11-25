@@ -77,7 +77,7 @@ Ein POI ist ein einzelner Ort, den ein Symbol markiert. Die Farbe und das Bild z
 
 Je nach POI zeigt das Infofenster außerdem:
 
-- **Abstand zum Wasser** (Wellen-Symbol): wie weit es zum nächsten **Meer**, **Fluss** und **See** (ab 10 km²) ist, zum Beispiel „Meer 39 m · Fluss 10,9 km". YTAN berechnet das beim Anlegen und Verschieben selbst, für Orte in Europa und für die meisten POI-Typen. Werte über 100 km fehlen.
+- **Abstand zum Wasser** (Wellen-Symbol): wie weit es zum nächsten **Meer**, **Fluss** und **See** (ab 0,1 km²) ist, zum Beispiel „Meer 39 m · Fluss 10,9 km". YTAN berechnet das beim Anlegen und Verschieben selbst, für Orte in Europa und für die meisten POI-Typen. Werte über 100 km fehlen.
 - **Quelle** bei Leuchtfeuern: Stammt es aus einer amtlichen Leuchtfeuerliste oder aus OpenStreetMap, nennt das Fenster die Quelle samt Lizenz. Bei anderen übernommenen POIs (Vereine, Shelter und Campingplätze, etwa aus OpenStreetMap) steht die Quelle in der Beschreibung.
 - **Zeige Sektorlicht** bei Leuchtfeuern mit Sektoren: zeichnet die farbigen Lichtsektoren auf die Karte (noch einmal tippen blendet sie aus).
 - **POI verschieben** (Kreuzpfeil-Symbol, nur bei eigenen POIs), siehe [Anlegen und Bearbeiten](#chapter-anlegen-bearbeiten).
