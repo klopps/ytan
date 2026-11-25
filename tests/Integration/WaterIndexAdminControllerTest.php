@@ -154,6 +154,57 @@ final class WaterIndexAdminControllerTest extends ControllerTestCase
         $this->assertSame('island', $all[0]['note'], 'the note stays when none is sent');
     }
 
+    public function testAnAddedLineCanChangeItsKindAReplacedLineCannot(): void
+    {
+        $added = $this->addCorrection(['type' => 'add', 'kinds' => ['sea'], 'points' => [[56.0, 8.99], [56.0, 9.01]]]);
+        $answer = $this->decode($this->controller->update(
+            $this->request('PUT', '/x', $this->admin, ['points' => [[56.0, 8.99], [56.0, 9.01]], 'kinds' => ['canal']]),
+            $this->response(),
+            ['id' => $added['data']['correction']['id']]
+        ))['data'];
+        $this->assertSame(['canal'], $answer['correction']['kinds']);
+
+        $replaced = $this->addCorrection([
+            'type' => 'replace', 'kinds' => ['sea'],
+            'original' => [[56.000898, 8.99], [56.000898, 9.01]],
+            'points' => [[56.0005, 8.99], [56.0005, 9.01]],
+        ]);
+        $kept = $this->decode($this->controller->update(
+            $this->request('PUT', '/x', $this->admin, ['points' => [[56.0004, 8.99], [56.0004, 9.01]], 'kinds' => ['river']]),
+            $this->response(),
+            ['id' => $replaced['data']['correction']['id']]
+        ))['data'];
+        $this->assertSame(['sea'], $kept['correction']['kinds'], 'the kind says which segments of the index it replaces');
+
+        $this->expectException(ValidationException::class);
+        $this->controller->update(
+            $this->request('PUT', '/x', $this->admin, ['points' => [[56.0, 8.99], [56.0, 9.01]], 'kinds' => ['sea', 'lake']]),
+            $this->response(),
+            ['id' => $added['data']['correction']['id']]
+        );
+    }
+
+    public function testTheNoteAloneCanBeChangedForEveryType(): void
+    {
+        $created = $this->addCorrection(['type' => 'delete', 'kinds' => ['sea'], 'points' => self::AROUND_COAST, 'note' => 'old']);
+        $id = $created['data']['correction']['id'];
+
+        $answer = $this->decode($this->controller->update(
+            $this->request('PUT', '/x', $this->admin, ['note' => '  wrong coast  ']),
+            $this->response(),
+            ['id' => $id]
+        ));
+        $this->assertSame(200, $answer['status']);
+        $this->assertSame('wrong coast', $answer['data']['correction']['note']);
+        $this->assertSame(self::AROUND_COAST, $answer['data']['correction']['points'], 'the area stays');
+
+        $cleared = $this->decode($this->controller->update($this->request('PUT', '/x', $this->admin, ['note' => '']), $this->response(), ['id' => $id]))['data'];
+        $this->assertSame('', $cleared['correction']['note']);
+
+        $this->expectException(ValidationException::class);
+        $this->controller->update($this->request('PUT', '/x', $this->admin, ['note' => str_repeat('x', 501)]), $this->response(), ['id' => $id]);
+    }
+
     public function testAnAddedLineCannotBeEmptiedOnlyDeleted(): void
     {
         $created = $this->addCorrection(['type' => 'add', 'kinds' => ['sea'], 'points' => [[56.0, 9.0], [56.01, 9.0]]]);

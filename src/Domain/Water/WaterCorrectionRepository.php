@@ -73,10 +73,7 @@ final class WaterCorrectionRepository
                 throw new ValidationException("points: between $min and $max needed.");
             }
         }
-        $note = trim((string) ($data['note'] ?? ''));
-        if (mb_strlen($note) > self::MAX_NOTE) {
-            throw new ValidationException('note is limited to ' . self::MAX_NOTE . ' characters.');
-        }
+        $note = self::normalizeNote($data['note'] ?? '');
 
         return ['type' => $type, 'kinds' => $kinds, 'points' => $vertices, 'original' => $original, 'note' => $note];
     }
@@ -144,17 +141,43 @@ final class WaterCorrectionRepository
 
     /**
      * Changes the line of a correction (an own line edited or deleted on the
-     * page) - type, kinds and original stay.
+     * page) and its kinds (normalized; the controller lets only an added line
+     * change them) - type and original stay.
      *
      * @param list<array{0: float, 1: float}> $points normalized
+     * @param list<string> $kinds normalized
      * @return array<string, mixed>|null the stored row
      */
-    public function updateLine(int $id, array $points, string $note): ?array
+    public function updateLine(int $id, array $points, string $note, array $kinds): ?array
     {
-        $stmt = $this->pdo->prepare('UPDATE water_correction SET points = ?, note = ? WHERE id = ?');
-        $stmt->execute([json_encode($points), $note, $id]);
+        $stmt = $this->pdo->prepare('UPDATE water_correction SET points = ?, note = ?, kinds = ? WHERE id = ?');
+        $stmt->execute([json_encode($points), $note, implode(',', $kinds), $id]);
 
         return $this->find($id);
+    }
+
+    /**
+     * Changes only the note of a correction (any type).
+     *
+     * @return array<string, mixed>|null the stored row
+     */
+    public function updateNote(int $id, string $note): ?array
+    {
+        $stmt = $this->pdo->prepare('UPDATE water_correction SET note = ? WHERE id = ?');
+        $stmt->execute([$note, $id]);
+
+        return $this->find($id);
+    }
+
+    /** A note as stored: trimmed, at most MAX_NOTE characters. */
+    public static function normalizeNote(mixed $note): string
+    {
+        $note = trim((string) ($note ?? ''));
+        if (mb_strlen($note) > self::MAX_NOTE) {
+            throw new ValidationException('note is limited to ' . self::MAX_NOTE . ' characters.');
+        }
+
+        return $note;
     }
 
     public function delete(int $id): bool

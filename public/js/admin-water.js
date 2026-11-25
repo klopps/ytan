@@ -14,7 +14,9 @@
  * Tools: delete (polygon + kinds), flip (polygon + kinds: the water side /
  * flow direction is reversed), add (a line of ONE kind; sea/lake: water on
  * the right of the drawing direction). A click on the map adds a vertex
- * while a tool is active. Login gate: admin-auth.js, wxInit() = onReady.
+ * while a tool is active. The tools are a map control (#wxTools, visible in
+ * full screen too); delete/flip highlight what saving would change
+ * (wxAffectedSegments()). Login gate: admin-auth.js, wxInit() = onReady.
  */
 
 var WX_COLORS = { sea: '#1565c0', lake: '#00acc1', river: '#2e7d32', canal: '#8e24aa' };
@@ -26,6 +28,14 @@ var WX_TICK_SPACING = 12;
 var WX_TICK_LENGTH = 5;
 var WX_MAX_POLYGON_POINTS = 200;
 var WX_MAX_LINE_POINTS = 2000;
+var WX_HELP_KEY = 'ytan_admin_water_help';
+/** The active tool on top of the bar: symbol, colour, short text, full name (keys literal for the scanner). */
+var WX_TOOL_LOOK = {
+    delete: { icon: 'bi-eraser', colour: '#e53935', label: function () { return t('admin.water.tb.delete'); }, title: function () { return t('admin.water.tool.delete'); } },
+    flip: { icon: 'bi-arrow-left-right', colour: '#1e88e5', label: function () { return t('admin.water.tb.flip'); }, title: function () { return t('admin.water.tool.flip'); } },
+    add: { icon: 'bi-pencil', colour: '#43a047', label: function () { return t('admin.water.tb.add'); }, title: function () { return t('admin.water.tool.add'); } },
+    edit: { icon: 'bi-pencil-square', colour: '#ff6f00', label: function () { return t('admin.water.tb.edit'); }, title: function () { return t('admin.water.editing'); } },
+};
 
 var wx = {
     map: null,
@@ -232,10 +242,58 @@ function wxRender() {
             ctx.stroke(set[1]);
         });
     });
+
+    // live preview of the area tools: what saving would delete (red) / reverse (orange),
+    // drawn over everything, also for kinds hidden by the checkboxes above the map
+    var affected = wxAffectedSegments();
+    if (affected.length) {
+        ctx.save();
+        ctx.strokeStyle = wx.tool === 'delete' ? '#e53935' : '#ff9800';
+        ctx.lineWidth = 6;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        affected.forEach(function (s) {
+            var a = px(s[1], s[2]);
+            var b = px(s[3], s[4]);
+            ctx.moveTo(a[0], a[1]);
+            ctx.lineTo(b[0], b[1]);
+        });
+        ctx.stroke();
+        ctx.restore();
+    }
 }
 
 function wxRedraw() {
     wxRender();
+}
+
+/** Ray casting in degrees, the same test as the server's (WaterCorrections::inside()). */
+function wxInPolygon(lat, lng, polygon) {
+    var inside = false;
+    for (var i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        var a = polygon[i];
+        var b = polygon[j];
+        if ((a[0] > lat) !== (b[0] > lat) && lng < (b[1] - a[1]) * (lat - a[0]) / (b[0] - a[0]) + a[1]) {
+            inside = !inside;
+        }
+    }
+    return inside;
+}
+
+/**
+ * The loaded segments the area being drawn would delete/reverse: chosen kinds,
+ * midpoint inside the polygon (as the server decides). Empty for other tools
+ * or fewer than 3 corners.
+ */
+function wxAffectedSegments() {
+    if ((wx.tool !== 'delete' && wx.tool !== 'flip') || !wx.shape || wx.shape.getPath().getLength() < 3) {
+        return [];
+    }
+    var polygon = wx.shape.getPath().getArray().map(function (p) { return [p.lat(), p.lng()]; });
+    var kinds = wxToolKinds();
+    return wx.data.segments.filter(function (s) {
+        return kinds.indexOf(s[0]) >= 0 && wxInPolygon((s[1] + s[3]) / 2, (s[2] + s[4]) / 2, polygon);
+    });
 }
 
 // ---------------------------------------------------------------- loading
@@ -270,6 +328,7 @@ async function wxLoad() {
         var data = answer.data;
         wx.data = { segments: data.segments || [], removed: data.removed || [] };
         wxRender();
+        wxUpdateToolUi(); // the area tools' count follows the newly loaded segments
         if (!data.available) {
             status.textContent = t('admin.water.no_index');
         } else if (data.too_large) {
@@ -502,6 +561,15 @@ function wxEditLine() {
     if (own) {
         wxStartTool('edit', wxCorrectionChain(own));
         wx.editCorrectionId = own.id;
+        wx.editCorrectionType = own.type;
+        document.getElementById('wxNote').value = own.note || ''; // the correction's note, to keep or change
+        if (own.type === 'add') {
+            // an added line may change its kind (a replaced one keeps it: it says which index line it replaces)
+            WX_KINDS.forEach(function (kind) {
+                document.getElementById('wxKind-' + kind).disabled = false;
+            });
+            wxUpdateToolUi();
+        }
         document.getElementById('wxDrawHint').textContent = t('admin.water.hint_edit_own', { id: own.id });
         return;
     }
@@ -661,8 +729,19 @@ function wxStartTool(tool, chain) {
     document.getElementById('wxDrawHint').textContent = wxToolHint(tool);
     document.getElementById('wxNote').value = '';
     document.getElementById('wxDrawPanel').hidden = false;
+    document.getElementById('wxNoteBox').hidden = true;
+    // while drawing the bar shows this tool's actions; on top the tool itself (a click cancels it)
+    document.getElementById('wxToolButtons').hidden = true;
+    var look = WX_TOOL_LOOK[tool];
+    var title = document.getElementById('wxToolTitle');
+    title.style.setProperty('--wx-tool', look.colour);
+    title.title = look.title() + ' - ' + t('common.cancel');
+    document.getElementById('wxToolTitleIcon').className = 'bi ' + look.icon;
+    document.getElementById('wxToolTitleText').textContent = look.label();
+    wxShowHelp();
     document.getElementById('wxReverse').hidden = !wxIsLineTool();
     document.getElementById('wxClose').hidden = !wxIsLineTool();
+    document.getElementById('wxEditRow').classList.toggle('wx-compact', wxIsLineTool());
     document.getElementById('wxRingOutside').checked = true;
     if (tool === 'edit' && chain.ring && (chain.kind === 'sea' || chain.kind === 'lake')) {
         // keep the ring's water side as it is
@@ -684,22 +763,25 @@ function wxCancelTool() {
     wx.tool = null;
     wx.editOriginal = null;
     wx.editCorrectionId = null;
+    wx.editCorrectionType = null;
     wxHideChain();
     WX_KINDS.forEach(function (kind) {
         document.getElementById('wxKind-' + kind).disabled = false;
     });
     document.getElementById('wxDrawPanel').hidden = true;
-    ['delete', 'flip', 'add'].forEach(function (tool) {
-        document.getElementById('wxTool' + tool.charAt(0).toUpperCase() + tool.slice(1)).classList.remove('active');
-    });
+    document.getElementById('wxToolButtons').hidden = false;
+    document.getElementById('wxDrawHint').hidden = true;
+    document.getElementById('wxNoteBox').hidden = true;
+    document.getElementById('wxSaveBadge').hidden = true;
+    wxRender();
     if (wx.map) {
         wx.map.setOptions({ draggableCursor: null });
     }
 }
 
-/** A new line has exactly one kind: ticking one unticks the others. */
+/** A line has exactly one kind: ticking one unticks the others. */
 function wxToolKindChanged(input) {
-    if (wx.tool === 'add' && input.checked) {
+    if (wxIsLineTool() && input.checked) {
         WX_KINDS.forEach(function (kind) {
             var box = document.getElementById('wxKind-' + kind);
             if (box !== input) {
@@ -720,10 +802,6 @@ function wxUpdateToolUi() {
     if (!wx.tool) {
         return;
     }
-    ['delete', 'flip', 'add'].forEach(function (tool) {
-        document.getElementById('wxTool' + tool.charAt(0).toUpperCase() + tool.slice(1)).classList.toggle('active', tool === wx.tool);
-    });
-    document.getElementById('wxEditing').hidden = wx.tool !== 'edit';
     var count = wx.shape ? wx.shape.getPath().getLength() : 0;
     var needed = wxIsLineTool() ? 2 : 3;
     document.getElementById('wxUndo').disabled = count === 0;
@@ -732,6 +810,50 @@ function wxUpdateToolUi() {
     var kinds = wxToolKinds();
     document.getElementById('wxRingSide').hidden = !(wxIsLineTool() && kinds.length === 1 && (kinds[0] === 'sea' || kinds[0] === 'lake'));
     document.getElementById('wxSave').disabled = count < needed || wxToolKinds().length === 0;
+    // area tools: the badge says how many loaded segments saving would change; the map shows them
+    var area = wx.tool === 'delete' || wx.tool === 'flip';
+    var badge = document.getElementById('wxSaveBadge');
+    badge.hidden = !(area && count >= 3 && kinds.length);
+    if (!badge.hidden) {
+        var affected = wxAffectedSegments().length;
+        badge.textContent = affected;
+        document.getElementById('wxSave').title = t('admin.water.save_count', { count: affected });
+    } else {
+        document.getElementById('wxSave').title = t('admin.water.save');
+    }
+    wxRender();
+}
+
+/** The hint beside the bar: open unless switched off with "Help" (remembered in localStorage). */
+function wxShowHelp() {
+    var off = false;
+    try {
+        off = localStorage.getItem(WX_HELP_KEY) === 'off';
+    } catch (err) {
+        // not essential
+    }
+    document.getElementById('wxDrawHint').hidden = off;
+    document.getElementById('wxHelpButton').classList.toggle('wx-on', !off);
+}
+
+function wxToggleHelp() {
+    var hint = document.getElementById('wxDrawHint');
+    try {
+        localStorage.setItem(WX_HELP_KEY, hint.hidden ? 'on' : 'off');
+    } catch (err) {
+        // not essential
+    }
+    wxShowHelp();
+}
+
+/** The note field beside the bar. */
+function wxToggleNote() {
+    var box = document.getElementById('wxNoteBox');
+    box.hidden = !box.hidden;
+    document.getElementById('wxNoteButton').classList.toggle('wx-on', !box.hidden);
+    if (!box.hidden) {
+        document.getElementById('wxNote').focus();
+    }
 }
 
 function wxUndo() {
@@ -914,7 +1036,10 @@ async function wxSave() {
     try {
         // an own line: its correction is changed, no new one stacked on top
         var answer = wx.editCorrectionId
-            ? await Ytan.put('/admin/water/corrections/' + wx.editCorrectionId, { points: points, note: body.note || undefined })
+            // the note field starts with the correction's note, so what it holds now is the note ("" = none)
+            ? await Ytan.put('/admin/water/corrections/' + wx.editCorrectionId, wx.editCorrectionType === 'add'
+                ? { points: points, note: body.note, kinds: kinds }
+                : { points: points, note: body.note })
             : await Ytan.post('/admin/water/corrections', body);
         wxCancelTool();
         wxToastPois('admin.water.saved', answer.data.pois);
@@ -962,9 +1087,10 @@ function wxRenderCorrections() {
             + '<td>' + c.id + '</td>'
             + '<td>' + escapeHTML(wxTypeLabel(c.type, c.points)) + '</td>'
             + '<td>' + escapeHTML(c.kinds.map(wxKindLabel).join(', ')) + '</td>'
-            + '<td class="small">' + escapeHTML(c.note) + '</td>'
+            + '<td class="small" id="wxNoteCell-' + c.id + '">' + escapeHTML(c.note) + '</td>'
             + '<td class="small text-secondary">' + escapeHTML(c.username) + '<br>' + escapeHTML(c.created_at) + '</td>'
             + '<td class="text-nowrap">'
+            + '<button type="button" class="btn btn-outline-secondary btn-sm me-1" title="' + escapeHTML(t('admin.water.edit_note')) + '" data-on-click="wxEditNote(' + c.id + ')"><i class="bi bi-pencil"></i></button>'
             + '<button type="button" class="btn btn-outline-secondary btn-sm me-1" title="' + escapeHTML(t('admin.water.show_on_map')) + '" data-on-click="wxShowCorrection(' + c.id + ')"><i class="bi bi-geo-alt"></i></button>'
             + '<button type="button" class="btn btn-outline-danger btn-sm" title="' + escapeHTML(t('admin.water.delete')) + '" data-on-click="wxDeleteCorrection(' + c.id + ')"><i class="bi bi-trash"></i></button>'
             + '</td></tr>';
@@ -1026,6 +1152,50 @@ function wxShowCorrection(id) {
     wx.map.fitBounds(bounds, 60);
     wxRenderCorrections();
     document.getElementById('wxMap').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+/** Pencil in the list: the note cell becomes a field (Enter / check = save, Escape / x = back). */
+function wxEditNote(id) {
+    var c = wx.corrections.find(function (x) { return x.id === id; });
+    var cell = document.getElementById('wxNoteCell-' + id);
+    if (!c || !cell || cell.querySelector('input')) {
+        return;
+    }
+    cell.innerHTML = '<div class="d-flex gap-1">'
+        + '<input type="text" class="form-control form-control-sm" id="wxNoteInput-' + id + '" maxlength="500" value="' + escapeHTML(c.note) + '"'
+        + ' placeholder="' + escapeHTML(t('admin.water.note_placeholder')) + '" data-on-keydown="wxNoteKey(event, ' + id + ')">'
+        + '<button type="button" class="btn btn-primary btn-sm" title="' + escapeHTML(t('admin.water.save')) + '" data-on-click="wxSaveNote(' + id + ')"><i class="bi bi-check-lg"></i></button>'
+        + '<button type="button" class="btn btn-outline-secondary btn-sm" title="' + escapeHTML(t('common.cancel')) + '" data-on-click="wxRenderCorrections()"><i class="bi bi-x-lg"></i></button>'
+        + '</div>';
+    var input = document.getElementById('wxNoteInput-' + id);
+    input.focus();
+    input.select();
+}
+
+function wxNoteKey(event, id) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        wxSaveNote(id);
+    } else if (event.key === 'Escape') {
+        wxRenderCorrections();
+    }
+}
+
+async function wxSaveNote(id) {
+    var input = document.getElementById('wxNoteInput-' + id);
+    if (!input) {
+        return;
+    }
+    input.disabled = true;
+    try {
+        // only the note: PUT without points changes nothing else (any type)
+        await Ytan.put('/admin/water/corrections/' + id, { note: input.value });
+        showAdminToast(t('admin.water.note_saved'), 'success');
+        await wxLoadCorrections();
+    } catch (err) {
+        input.disabled = false;
+        showAdminToast(t('admin.water.save_failed', { error: translateApiError(err.data) || err.message }), 'error');
+    }
 }
 
 async function wxDeleteCorrection(id) {
@@ -1145,6 +1315,11 @@ async function wxInit() {
         clickableIcons: false,
     });
     wxCreateOverlay();
+    // the tools sit ON the map (top left, under the map type control): next to what is drawn,
+    // and still there in Google's full-screen mode, which shows only the map's own element
+    var tools = document.getElementById('wxTools');
+    tools.hidden = false;
+    wx.map.controls[google.maps.ControlPosition.LEFT_TOP].push(tools);
     wx.map.addListener('idle', function () {
         wxRender();
         wxRememberView();

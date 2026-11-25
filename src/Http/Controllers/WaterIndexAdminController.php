@@ -107,7 +107,8 @@ final class WaterIndexAdminController extends BaseController
      * PUT /admin/water/corrections/{id} - body {points, note?}: the line of an
      * own correction changed in place (add: the drawn line; replace: its new
      * course, empty = the replaced line is just deleted). Type, kinds and the
-     * replaced original stay as they are.
+     * replaced original stay as they are. Body {note} without points: only the
+     * note is changed, for every type ("" = no note).
      */
     public function update(Request $request, Response $response, array $args): Response
     {
@@ -117,13 +118,27 @@ final class WaterIndexAdminController extends BaseController
         if ($row === null) {
             throw new NotFoundException('Correction not found.');
         }
+        $body = $this->jsonBody($request);
+        if (!array_key_exists('points', $body) && array_key_exists('note', $body)) {
+            $note = WaterCorrectionRepository::normalizeNote($body['note']);
+            $result = $this->log->run($authUser, 'change correction note', ['id' => $id, 'type' => $row['type']], function () use ($id, $note) {
+                // the corrections file has no notes and the geometry is unchanged: nothing to rewrite or recompute
+                $updated = (array) $this->corrections->updateNote($id, $note);
+
+                return ['correction' => $updated, 'pois' => ['computed' => 0, 'more' => false]];
+            });
+
+            return $this->json($response, ['data' => $result]);
+        }
         if ($row['type'] !== 'add' && $row['type'] !== 'replace') {
             throw new ValidationException('Only a correction with a line can be changed.');
         }
-        $body = $this->jsonBody($request);
+        // an added line may change its kind; a replaced line keeps it (the same kind says which
+        // segments of the index it takes out)
+        $kinds = $row['type'] === 'add' && array_key_exists('kinds', $body) ? $body['kinds'] : $row['kinds'];
         $correction = WaterCorrectionRepository::normalize([
             'type' => $row['type'],
-            'kinds' => $row['kinds'],
+            'kinds' => $kinds,
             'points' => $body['points'] ?? null,
             'original' => $row['original'],
             'note' => array_key_exists('note', $body) ? $body['note'] : $row['note'],
@@ -134,7 +149,7 @@ final class WaterIndexAdminController extends BaseController
             'type' => $row['type'],
             'points' => count($correction['points']),
         ], function () use ($id, $row, $correction) {
-            $updated = (array) $this->corrections->updateLine($id, $correction['points'], $correction['note']);
+            $updated = (array) $this->corrections->updateLine($id, $correction['points'], $correction['note'], $correction['kinds']);
 
             // the old and the new course: POIs along both get their distances again
             return ['correction' => $updated, 'pois' => $this->afterChange([$row, $updated])];

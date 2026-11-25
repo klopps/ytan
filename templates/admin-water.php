@@ -45,44 +45,46 @@ $kinds = [
 <div class="alert alert-warning" id="wxNoKey" hidden><?= $t('admin.water.no_key') ?></div>
 <div id="wxMap" class="mb-3 rounded border"></div>
 
-<div class="card mb-3">
-    <div class="card-header"><h2 class="card-title h6 m-0"><?= $t('admin.water.tools_title') ?></h2></div>
-    <div class="card-body">
-        <div class="d-flex flex-wrap gap-2 mb-2" id="wxToolButtons">
-            <button type="button" class="btn btn-outline-danger btn-sm" id="wxToolDelete" data-on-click="wxStartTool('delete')"><i class="bi bi-eraser"></i> <?= $t('admin.water.tool.delete') ?></button>
-            <button type="button" class="btn btn-outline-primary btn-sm" id="wxToolFlip" data-on-click="wxStartTool('flip')"><i class="bi bi-arrow-left-right"></i> <?= $t('admin.water.tool.flip') ?></button>
-            <button type="button" class="btn btn-outline-success btn-sm" id="wxToolAdd" data-on-click="wxStartTool('add')"><i class="bi bi-pencil"></i> <?= $t('admin.water.tool.add') ?></button>
+<!-- Tools and drawing panel: moved onto the map as a map control by wxInit(), so they stay
+     next to the drawing and visible in Google's full-screen mode. -->
+<div id="wxTools" class="wx-tools" hidden>
+    <!-- the bar: 64 px wide, symbol + short text; the full name is the tooltip -->
+    <div class="wx-bar">
+        <div id="wxToolButtons">
+            <button type="button" class="wx-btn wx-tool-delete" id="wxToolDelete" title="<?= $t('admin.water.tool.delete') ?>" data-on-click="wxStartTool('delete')"><i class="bi bi-eraser"></i><span><?= $t('admin.water.tb.delete') ?></span></button>
+            <button type="button" class="wx-btn wx-tool-flip" id="wxToolFlip" title="<?= $t('admin.water.tool.flip') ?>" data-on-click="wxStartTool('flip')"><i class="bi bi-arrow-left-right"></i><span><?= $t('admin.water.tb.flip') ?></span></button>
+            <button type="button" class="wx-btn wx-tool-add" id="wxToolAdd" title="<?= $t('admin.water.tool.add') ?>" data-on-click="wxStartTool('add')"><i class="bi bi-pencil"></i><span><?= $t('admin.water.tb.add') ?></span></button>
         </div>
         <div id="wxDrawPanel" hidden>
-            <p class="fw-semibold mb-1" id="wxEditing" hidden><i class="bi bi-pencil"></i> <?= $t('admin.water.editing') ?></p>
-            <p class="small text-secondary mb-2" id="wxDrawHint"></p>
-            <div class="d-flex flex-wrap gap-3 mb-2 small">
+            <!-- the active tool; a click cancels it -->
+            <button type="button" class="wx-btn wx-active" id="wxToolTitle" data-on-click="wxCancelTool()"><i id="wxToolTitleIcon" class="bi bi-eraser"></i><span id="wxToolTitleText"></span></button>
+            <div class="wx-kinds">
                 <?php foreach ($kinds as $kind => $label): ?>
-                <div class="form-check form-check-inline m-0">
-                    <input class="form-check-input" type="checkbox" id="wxKind-<?= $kind ?>" data-on-change="wxToolKindChanged(this)">
-                    <label class="form-check-label" for="wxKind-<?= $kind ?>"><?= $label ?></label>
-                </div>
+                <label class="wx-kind" style="--wx-c: var(--wx-<?= $kind ?>)" title="<?= $label ?>">
+                    <input type="checkbox" id="wxKind-<?= $kind ?>" data-on-change="wxToolKindChanged(this)"><?= $label ?>
+                </label>
                 <?php endforeach; ?>
             </div>
-            <div class="d-flex flex-wrap gap-3 mb-2 small" id="wxRingSide" hidden>
-                <span class="text-secondary"><?= $t('admin.water.ring_label') ?></span>
-                <div class="form-check form-check-inline m-0">
-                    <input class="form-check-input" type="radio" name="wxRingSide" id="wxRingOutside" value="outside" checked data-on-change="wxRingSideChanged()">
-                    <label class="form-check-label" for="wxRingOutside"><?= $t('admin.water.ring_outside') ?></label>
-                </div>
-                <div class="form-check form-check-inline m-0">
-                    <input class="form-check-input" type="radio" name="wxRingSide" id="wxRingInside" value="inside" data-on-change="wxRingSideChanged()">
-                    <label class="form-check-label" for="wxRingInside"><?= $t('admin.water.ring_inside') ?></label>
-                </div>
+            <div class="wx-row" id="wxEditRow">
+                <button type="button" class="wx-btn" id="wxUndo" title="<?= $t('admin.water.undo') ?>" data-on-click="wxUndo()"><i class="bi bi-arrow-counterclockwise"></i><span><?= $t('admin.water.tb.undo') ?></span></button>
+                <button type="button" class="wx-btn" id="wxReverse" title="<?= $t('admin.water.reverse') ?>" data-on-click="wxReverse()"><i class="bi bi-arrow-repeat"></i><span><?= $t('admin.water.tb.reverse') ?></span></button>
+                <button type="button" class="wx-btn" id="wxClose" title="<?= $t('admin.water.close_line') ?>" data-on-click="wxCloseLine()"><i class="bi bi-circle"></i><span><?= $t('admin.water.tb.close') ?></span></button>
             </div>
-            <input type="text" class="form-control form-control-sm mb-2" id="wxNote" maxlength="500" placeholder="<?= $t('admin.water.note_placeholder') ?>">
-            <div class="d-flex flex-wrap gap-2">
-                <button type="button" class="btn btn-secondary btn-sm" id="wxUndo" data-on-click="wxUndo()"><i class="bi bi-arrow-counterclockwise"></i> <?= $t('admin.water.undo') ?></button>
-                <button type="button" class="btn btn-secondary btn-sm" id="wxReverse" data-on-click="wxReverse()"><i class="bi bi-arrow-repeat"></i> <?= $t('admin.water.reverse') ?></button>
-                <button type="button" class="btn btn-secondary btn-sm" id="wxClose" data-on-click="wxCloseLine()"><i class="bi bi-circle"></i> <?= $t('admin.water.close_line') ?></button>
-                <button type="button" class="btn btn-primary btn-sm" id="wxSave" data-on-click="wxSave()"><i class="bi bi-check-lg"></i> <?= $t('admin.water.save') ?></button>
-                <button type="button" class="btn btn-outline-secondary btn-sm" data-on-click="wxCancelTool()"><?= $t('common.cancel') ?></button>
+            <div class="wx-ring" id="wxRingSide" title="<?= $t('admin.water.ring_label') ?>" hidden>
+                <label title="<?= $t('admin.water.ring_outside') ?>"><input type="radio" name="wxRingSide" id="wxRingOutside" value="outside" checked data-on-change="wxRingSideChanged()"><?= $t('admin.water.tb.island') ?></label>
+                <label title="<?= $t('admin.water.ring_inside') ?>"><input type="radio" name="wxRingSide" id="wxRingInside" value="inside" data-on-change="wxRingSideChanged()"><?= $t('admin.water.tb.lake') ?></label>
             </div>
+            <button type="button" class="wx-btn" id="wxNoteButton" title="<?= $t('admin.water.note_placeholder') ?>" data-on-click="wxToggleNote()"><i class="bi bi-chat-left-text"></i><span><?= $t('admin.water.tb.note') ?></span></button>
+            <button type="button" class="wx-btn" id="wxHelpButton" title="<?= $t('admin.water.tb.help_title') ?>" data-on-click="wxToggleHelp()"><i class="bi bi-question-circle"></i><span><?= $t('admin.water.tb.help') ?></span></button>
+            <button type="button" class="wx-btn wx-save" id="wxSave" title="<?= $t('admin.water.save') ?>" data-on-click="wxSave()"><span class="wx-badge" id="wxSaveBadge" hidden></span><i class="bi bi-check-lg"></i><span><?= $t('admin.water.save') ?></span></button>
+            <button type="button" class="wx-btn" title="<?= $t('common.cancel') ?>" data-on-click="wxCancelTool()"><i class="bi bi-x-lg"></i><span><?= $t('common.cancel') ?></span></button>
+        </div>
+    </div>
+    <!-- beside the bar: the hint (Help) and the note field (Note) -->
+    <div class="wx-flyouts">
+        <div class="wx-flyout" id="wxDrawHint" hidden></div>
+        <div class="wx-flyout" id="wxNoteBox" hidden>
+            <input type="text" class="form-control form-control-sm" id="wxNote" maxlength="500" placeholder="<?= $t('admin.water.note_placeholder') ?>">
         </div>
     </div>
 </div>
@@ -127,6 +129,60 @@ $kinds = [
     .wx-info { font-size: 0.875rem; line-height: 1.4; }
     .wx-info-coords { color: var(--bs-secondary-color); }
     #wxCorrections tr.wx-selected { background: rgba(191, 64, 159, 0.15); }
-</style>
+    /* Tool bar = map control (wxInit): a 64 px column of buttons (symbol + short text), the hint
+       and the note field beside it. Theme colours from Bootstrap, line colours as in the legend. */
+    .wx-tools {
+        --wx-sea: #1565c0; --wx-lake: #00acc1; --wx-river: #2e7d32; --wx-canal: #8e24aa;
+        display: flex; align-items: flex-start; gap: 8px;
+        margin: 10px; max-height: calc(100% - 20px);
+        font-size: 11px; line-height: 1.15;
+    }
+    .wx-tools [hidden] { display: none !important; }
+    .wx-bar, .wx-flyout {
+        background: var(--bs-body-bg); color: var(--bs-body-color);
+        border-radius: 4px; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    }
+    .wx-bar { width: 64px; flex: none; overflow: hidden; }
+    .wx-btn {
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+        width: 100%; height: 40px; padding: 0 2px; position: relative;
+        border: 0; border-top: 1px solid var(--bs-border-color); background: none; color: inherit;
+        font: inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .wx-bar > div > .wx-btn:first-child, .wx-bar > div > :first-child { border-top: 0; }
+    .wx-btn i { font-size: 18px; line-height: 1; }
+    .wx-btn span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+    .wx-btn:hover:not(:disabled) { background: var(--bs-tertiary-bg); }
+    .wx-btn:disabled { opacity: 0.4; }
+    .wx-btn.wx-on { color: var(--bs-primary); background: var(--bs-primary-bg-subtle); }
+    .wx-tool-delete i { color: #e53935; }
+    .wx-tool-flip i { color: #1e88e5; }
+    .wx-tool-add i { color: #43a047; }
+    .wx-active { font-weight: 600; background: color-mix(in srgb, var(--wx-tool) 15%, transparent); color: var(--wx-tool); }
+    .wx-save { background: var(--bs-primary); color: #fff; }
+    .wx-save:hover:not(:disabled) { background: var(--bs-primary); filter: brightness(1.1); }
+    .wx-badge {
+        position: absolute; top: 3px; right: 4px; padding: 0 4px; border-radius: 8px;
+        background: #fff; color: var(--bs-primary); font-size: 10px; font-weight: 700;
+    }
+    .wx-kinds, .wx-ring { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--bs-border-color); }
+    .wx-kind, .wx-ring label {
+        display: flex; align-items: center; justify-content: center; gap: 2px; margin: 0;
+        padding: 5px 0; font-size: 10px; cursor: pointer; opacity: 0.55;
+    }
+    .wx-kind::before { content: ""; width: 6px; height: 6px; flex: none; border-radius: 50%; background: var(--wx-c); }
+    .wx-kind:has(input:checked) { opacity: 1; font-weight: 600; background: color-mix(in srgb, var(--wx-c) 18%, transparent); }
+    .wx-kind:has(input:disabled) { cursor: default; }
+    .wx-ring label:has(input:checked) { opacity: 1; font-weight: 600; color: var(--bs-primary); background: var(--bs-primary-bg-subtle); }
+    .wx-kind input, .wx-ring input { position: absolute; opacity: 0; pointer-events: none; }
+    .wx-kind:has(input:focus-visible), .wx-ring label:has(input:focus-visible) { outline: 2px solid var(--bs-primary); outline-offset: -2px; }
+    /* undo / reverse / close: in a row of three symbols for the line tools (the text in the tooltip) */
+    .wx-row { display: flex; border-top: 1px solid var(--bs-border-color); }
+    .wx-row .wx-btn { border-top: 0; }
+    .wx-row.wx-compact .wx-btn { height: 34px; }
+    .wx-row.wx-compact .wx-btn + .wx-btn { border-left: 1px solid var(--bs-border-color); }
+    .wx-row.wx-compact .wx-btn span { display: none; }
+    .wx-flyouts { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+    .wx-flyout { padding: 8px 10px; width: 220px; max-width: calc(100vw - 120px); font-size: 12px; line-height: 1.35; }</style>
 <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?>>window.YTAN_MAPS_API_KEY = <?= json_encode($mapsApiKey ?? '') ?>;</script>
 <?php require $rootDir . '/templates/partials/admin-shell-footer.php'; ?>
