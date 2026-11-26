@@ -1487,7 +1487,9 @@ function autorouteDoneToast(result) {
 var autorouteLive = false; // the live toggle; kept until the page is reloaded
 var autorouteLiveLast = null; // the editor line at the last measure_change
 var autorouteLiveBusy = false;
+var autorouteReplacing = false; // autorouteReplaceEditorLine() is swapping the editor line
 var autorouteLiveNoticeShown = false; // "start/end not at the water" once per drawn line
+var autorouteLiveOfflineShown = false; // "no autorouting offline" once per drawn line
 
 const AUTOROUTE_SAVE_HINT_MIN_LAND_M = 150; // less over land is not worth a question
 const AUTOROUTE_LIVE_MIN_SEGMENT_M = 60; // shorter new segments stay as clicked
@@ -1503,6 +1505,7 @@ function autorouteSamePoint(a, b) {
 function autorouteLiveReset() {
     autorouteLiveLast = null;
     autorouteLiveNoticeShown = false;
+    autorouteLiveOfflineShown = false;
 }
 
 /**
@@ -1512,9 +1515,14 @@ function autorouteLiveReset() {
  */
 function autorouteReplaceEditorLine(points) {
     var index = measureTool.index;
-    measureTool.end();
-    measureTool.start(points);
-    measureTool.index = index;
+    autorouteReplacing = true; // measure_change events of end()/start() are not the user's waypoints
+    try {
+        measureTool.end();
+        measureTool.start(points);
+        measureTool.index = index;
+    } finally {
+        autorouteReplacing = false;
+    }
     unlockMapGestures();
     autorouteLiveLast = points.map(function (p) { return { lat: p.lat, lng: p.lng }; });
     // MeasureTool recalculates its own length only later, without a measure_change.
@@ -1558,6 +1566,7 @@ function toggleAutorouteLive() {
     }
     autorouteLiveLast = editorLinePoints();
     autorouteLiveNoticeShown = false;
+    autorouteLiveOfflineShown = false;
     showToast(t(autorouteLive ? 'autoroute.live_on' : 'autoroute.live_off'), 'info');
 }
 
@@ -1565,10 +1574,16 @@ function toggleAutorouteLive() {
  * Asks for the way over water between two waypoints of `points` (indexes
  * from/to, neighbours) and puts it into the line as it is NOW in the editor
  * (waypoints appended meanwhile stay). Resolves true when the line changed.
- * Nothing but a notice for a start/end that cannot be used.
+ * Nothing but a notice for a start/end that cannot be used. `quiet` (live
+ * mode) only silences "already on water" and repeats of the once-per-line
+ * notices - a failure (no way found) is always reported.
  */
 async function autorouteSegment(points, from, to, quiet) {
     if (!navigator.onLine) {
+        if (!quiet || !autorouteLiveOfflineShown) {
+            autorouteLiveOfflineShown = true;
+            showToast(t('autoroute.offline'), 'warning');
+        }
         return false;
     }
     var answer = (await autorouteBusy(Ytan.post('/routes/autoroute', {
@@ -1584,10 +1599,13 @@ async function autorouteSegment(points, from, to, quiet) {
         return false;
     }
     if (answer.changed_sections === 0 || answer.points.length <= 2) {
-        if (!quiet) {
-            // "no way found" must not be reported as "already on water"
-            var noPath = answer.warnings.some(function (w) { return w.code === 'no_path'; });
-            showToast(t(noPath ? 'autoroute.warning_no_path' : 'autoroute.segment_nothing'), noPath ? 'warning' : 'info');
+        // "no way found" must not be reported as "already on water" - and not
+        // be silenced in live mode, only "already on water" is
+        var noPath = answer.warnings.some(function (w) { return w.code === 'no_path'; });
+        if (noPath) {
+            showToast(t('autoroute.warning_no_path'), 'warning');
+        } else if (!quiet) {
+            showToast(t('autoroute.segment_nothing'), 'info');
         }
         return false;
     }
@@ -1616,6 +1634,9 @@ async function autorouteSegment(points, from, to, quiet) {
  * updates the remembered line.
  */
 function autorouteLiveOnChange() {
+    if (autorouteReplacing) {
+        return; // autorouteReplaceEditorLine() sets autorouteLiveLast itself afterwards
+    }
     var now = editorLinePoints();
     var before = autorouteLiveLast || [];
     autorouteLiveLast = now;
@@ -1626,7 +1647,7 @@ function autorouteLiveOnChange() {
         before = [now[0]];
     }
     var routeBtn = document.getElementById('routeButton');
-    if (!autorouteLive || autorouteLiveBusy || !routeBtn || !routeBtn.classList.contains('active')
+    if (!autorouteLive || !routeBtn || !routeBtn.classList.contains('active')
         || user.id === null || now.length !== before.length + 1 || before.length < 1) {
         return;
     }
@@ -1639,6 +1660,10 @@ function autorouteLiveOnChange() {
         new google.maps.LatLng(now[from + 1].lat, now[from + 1].lng)
     );
     if (meters < AUTOROUTE_LIVE_MIN_SEGMENT_M) {
+        return;
+    }
+    if (autorouteLiveBusy) { // the previous segment is still being computed: say so, don't skip silently
+        showToast(t('autoroute.live_skipped_busy'), 'warning');
         return;
     }
     autorouteLiveBusy = true;
