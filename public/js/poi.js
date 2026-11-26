@@ -1599,6 +1599,13 @@ function saveMovedPoi() {
 
 function cancelEditPoi(i) {
     hideSecondToolbar();
+    // Also the second toolbar's "Cancel" while placing a new POI: without this the map click
+    // listener and the crosshair stayed, and the next map click still created a POI.
+    if (mapClickListener) {
+        google.maps.event.removeListener(mapClickListener);
+        mapClickListener = null;
+    }
+    map.setOptions({ draggableCursor: '' });
 
     if ((i !== null) && (typeof i !== 'undefined')) {
         markers[pois[i]['id']].setMap(map);

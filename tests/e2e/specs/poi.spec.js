@@ -44,4 +44,19 @@ test.describe('POI creation', () => {
     await page.waitForTimeout(800);
     await expect(page.locator('#editPoiName')).toHaveCount(0);
   });
+
+  test('the toolbar\'s Cancel leaves the placing mode: a map click then adds no POI', async ({ loggedInPage: page }) => {
+    await settleMapAt(page, -10, -142, 15);
+    await page.locator('#poiButton').click();
+    await expect(page.locator('#poiButton')).toHaveClass(/active/);
+
+    await page.locator('#secondToolbar .second-toolbar-end-btn').click();
+    await expect(page.locator('#poiButton')).not.toHaveClass(/active/);
+    expect(await page.evaluate(() => map.get('draggableCursor') || '')).toBe('');
+
+    const mapBox = await page.locator('#map').boundingBox();
+    await page.mouse.click(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
+    await page.waitForTimeout(800);
+    await expect(page.locator('#editPoiName')).toHaveCount(0);
+  });
 });
