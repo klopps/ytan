@@ -11,9 +11,16 @@ REM
 REM storage/water is excluded from every deploy script, so the index survives
 REM later deploys until it is replaced here. The .bin goes up as a .tmp file
 REM and is renamed once complete (a request never reads a half-uploaded
-REM index); the .json follows afterwards. Then, on the server, optionally:
-REM   php bin/poi-water-distance.php        (POIs from an older index)
-REM Same connection settings and .env password lookup as bin\deploy.bat.
+REM index); the .json follows afterwards. Then, on the server, every distance
+REM stored in the database is recomputed with the new index (since 2026-11-25,
+REM before that these were manual steps):
+REM   php bin/poi-water-distance.php --all          (poi_water_distance)
+REM   php bin/import-campsites.php distances --all  (campsite_import)
+REM   php bin/import-shelters.php distances --all   (shelter_import)
+REM Measured on prod 2026-11-25: 3,068 POIs in 27 s, 22,179 campsites in 238 s,
+REM 31,212 shelters in 1,736 s - about 35 minutes in all.
+REM Same connection settings and .env password lookup as bin\deploy.bat;
+REM REMOTE_PHP (default php) is the PHP binary on the server, as there.
 REM
 REM NOTE: never put an unescaped less-than, greater-than or pipe character
 REM in a REM line of this file - cmd.exe parses them even in comments.
@@ -46,6 +53,21 @@ echo ==^> Uploading water-index.json
 if errorlevel 1 goto :error
 
 echo ==^> Published the water index to %SITE%.
+
+if not defined REMOTE_PHP set "REMOTE_PHP=php"
+echo ==^> Recomputing the POI water distances (poi_water_distance)
+"%DEPLOY_SSH_CLIENT%" %SSH_TARGET% "cd '%DEPLOY_PATH%' && %REMOTE_PHP% bin/poi-water-distance.php --all"
+if errorlevel 1 goto :error
+
+echo ==^> Recomputing the campsite import distances (campsite_import)
+"%DEPLOY_SSH_CLIENT%" %SSH_TARGET% "cd '%DEPLOY_PATH%' && %REMOTE_PHP% bin/import-campsites.php distances --all"
+if errorlevel 1 goto :error
+
+echo ==^> Recomputing the shelter import distances (shelter_import)
+"%DEPLOY_SSH_CLIENT%" %SSH_TARGET% "cd '%DEPLOY_PATH%' && %REMOTE_PHP% bin/import-shelters.php distances --all"
+if errorlevel 1 goto :error
+
+echo ==^> Water index published and all distances recomputed on %SITE%.
 call "%~dp0ssh-setup.bat" cleanup
 endlocal
 exit /b 0

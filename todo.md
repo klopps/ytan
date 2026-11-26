@@ -7,6 +7,11 @@ Seen ab 0,1 km² statt ab 10 km² in den Wasserindex aufnehmen: In Deutschland g
 Stand 2026-11-25: `LAKE_MIN_KM2` in `tools/water/build_index.py` auf 0.1 gesetzt, Doku/Texte angepasst, Neubau des gesamten Index gestartet (Sicherung des alten Index: `D:\Daten\ytan\storage\water\backup-202611232232`). Offen: Ergebnis prüfen (Größe, Stichproben auf `/admin/water`, Autorouting über eine Seenkette), mit `bin\publish-water.bat` verteilen, danach `php bin/poi-water-distance.php --all` und die Abstände der Shelter-/Campingplatz-Importe (`distances --all`) neu rechnen; prüfen, ob die Filter "am See" der Importe in Skandinavien neue Schwellen brauchen.
 
 
+## Tourenplanung mit Etmal
+
+Mehrtägige Touren planen: Eine Tour (bzw. eine lange Route) wird anhand eines Etmals (Tagesstrecke, z. B. in km oder Stunden bei Standardgeschwindigkeit) in Tagesetappen aufgeteilt. Dabei sollen POIs entlang der Strecke berücksichtigt werden - Anlegestellen, Nachtlager (Shelter, Zeltplätze, Campingplätze), Möglichkeiten zum Wasser bunkern usw. -, damit die Etappen an sinnvollen Punkten enden und unterwegs Pausen- und Versorgungsmöglichkeiten sichtbar sind.
+
+
 ## Leuchtfeuer-Quellen: nächste Schritte
 
 Aus der Quellenrecherche (2026-10-14, Plan "Weitere Quellen für den Leuchtfeuer-Import"); OpenStreetMap als Quelle und die Quellen-Tabelle sind umgesetzt (done.md), `last_seen_at`, die Markierung gleicher Nummern, die Prüfung der nationalen Dienste und deren Anbindung (Finnland, Norwegen) ebenfalls (done.md, "Leuchtfeuer-Quellen: ..."). Offen sind:
