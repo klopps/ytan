@@ -125,6 +125,22 @@ require $rootDir . '/templates/partials/admin-shell-header.php';
 </div>
 <div class="card mt-3">
     <div class="card-body">
+        <h2 class="h6"><?= $t('admin.settings.etmal_title') ?></h2>
+        <p class="text-muted small"><?= $t('admin.settings.etmal_hint') ?></p>
+        <div class="row g-3">
+            <div class="col-sm-4">
+                <label for="settingEtmal" class="form-label"><?= $t('admin.settings.etmal_label') ?></label>
+                <div class="input-group">
+                    <input type="number" required min="<?= \Ytan\Domain\Settings\SettingsRepository::ETMAL_MIN_KM ?>" max="<?= \Ytan\Domain\Settings\SettingsRepository::ETMAL_MAX_KM ?>" step="1" class="form-control" id="settingEtmal" value="<?= (int) $etmalKm ?>">
+                    <span class="input-group-text">km</span>
+                </div>
+            </div>
+        </div>
+        <button type="button" class="btn btn-primary mt-3" id="settingEtmalSaveBtn" data-on-click="saveEtmalSettings();"><?= $t('common.save') ?></button>
+    </div>
+</div>
+<div class="card mt-3">
+    <div class="card-body">
         <h2 class="h6"><?= $t('admin.settings.autoroute_title') ?></h2>
         <p class="text-muted small"><?= $t('admin.settings.autoroute_hint') ?></p>
         <div class="row g-3">

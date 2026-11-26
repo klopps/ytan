@@ -5008,6 +5008,21 @@ input[type="color"] {
   cursor: pointer;
 }
 
+/* Etmal reach lines (etmal.js): the distance of each line, centred on a point of it. */
+.etmal-label {
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  font-weight: 600;
+  color: #e8590c;
+  text-shadow: -1px -1px #fff, -1px 1px #fff, 1px 1px #fff, 1px -1px #fff;
+  pointer-events: none;
+}
+
+.etmal-label-main {
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .routeLabel {
   /* Overridden inline per marker (route.js's showRouteLabels(), via
      LabelMarker.labelElement) with the user's own Preferences-screen
@@ -6268,6 +6283,7 @@ div.infoWindowLength,
 .weather-timeline-day-glance-cell .hi,
 .weather-timeline-tide-label,
 .routeLabel,
+.etmal-label,
 .nav-example-card .nav-example-value {
   font-family: var(--font-condensed);
 }

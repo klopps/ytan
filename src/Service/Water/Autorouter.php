@@ -255,7 +255,8 @@ final class Autorouter
     }
 
     /** 'ok', 'not_covered' or 'on_land' for a start/end position. */
-    private function launchStatus(float $lat, float $lng): string
+    /** 'ok', 'on_land' or 'not_covered' for a start/end position (also used by WaterReach). */
+    public function launchStatus(float $lat, float $lng): string
     {
         if (!$this->source->available() || !$this->source->covers($lat, $lng)) {
             return 'not_covered';
@@ -286,7 +287,7 @@ final class Autorouter
     }
 
     /** Water at a position, from the nearest shore within a few kilometres (wider boxes step by step); null = no shore found. */
-    private function waterAt(float $lat, float $lng): ?bool
+    public function waterAt(float $lat, float $lng): ?bool
     {
         foreach (self::BOXES_DEGREES as $half) {
             $radius = $half * self::METERS_PER_DEGREE * 0.9;
@@ -434,115 +435,27 @@ final class Autorouter
         $width = (max($lngs) - min($lngs)) * $metersPerLng;
         $height = (max($lats) - min($lats)) * self::METERS_PER_DEGREE;
 
-        $cell = max(25.0, $shore / 4);
-        $cols = (int) ceil(($width + 2 * $margin) / $cell);
-        $rows = (int) ceil(($height + 2 * $margin) / $cell);
-        if ($cols * $rows > self::MAX_CELLS) {
-            $cell = sqrt(($width + 2 * $margin) * ($height + 2 * $margin) / self::MAX_CELLS);
-            $cols = (int) ceil(($width + 2 * $margin) / $cell);
-            $rows = (int) ceil(($height + 2 * $margin) / $cell);
-        }
-        if ($cell > self::MAX_CELL_M) {
+        $grid = WaterGrid::build(
+            $this->source, $lat0, $lng0, $width, $height, $margin,
+            max(25.0, $shore / 4), self::MAX_CELLS, self::MAX_CELL_M, $shore,
+            fn (): ?bool => $this->waterAt($lat0, $lng0)
+        );
+        if ($grid === null) {
             return null;
         }
-        $radius = max(2 * $cell, $shore);
-        $x0 = -($cols * $cell) / 2;
-        $y0 = -($rows * $cell) / 2;
-
-        $padLat = ($rows * $cell / 2 + $radius) / self::METERS_PER_DEGREE;
-        $padLng = ($cols * $cell / 2 + $radius) / $metersPerLng;
-        $segments = $this->source->segmentsInBox($lat0 - $padLat, $lng0 - $padLng, $lat0 + $padLat, $lng0 + $padLng);
-        $field = new ShoreField($segments, $lat0, $lng0, $radius);
-
         // 0 unknown, 1 water, 2 land
-        $total = $cols * $rows;
-        $state = array_fill(0, $total, 0);
-        $near = array_fill(0, $total, INF);
-        $queue = [];
-        for ($r = 0; $r < $rows; $r++) {
-            $y = $y0 + ($r + 0.5) * $cell;
-            for ($c = 0; $c < $cols; $c++) {
-                $probe = $field->probeXY($x0 + ($c + 0.5) * $cell, $y, $radius);
-                if ($probe !== null) {
-                    $index = $r * $cols + $c;
-                    $state[$index] = $probe['water'] ? 1 : 2;
-                    $near[$index] = $probe['distance'];
-                    $queue[] = $index;
-                }
-            }
-        }
-        if ($queue === []) {
-            $fill = $this->waterAt($lat0, $lng0) === true ? 1 : 2;
-            $state = array_fill(0, $total, $fill);
-        } else {
-            for ($head = 0; $head < count($queue); $head++) {
-                $index = $queue[$head];
-                $r = intdiv($index, $cols);
-                $c = $index % $cols;
-                foreach ([[0, 1], [0, -1], [1, 0], [-1, 0]] as [$dr, $dc]) {
-                    $nr = $r + $dr;
-                    $nc = $c + $dc;
-                    if ($nr < 0 || $nr >= $rows || $nc < 0 || $nc >= $cols) {
-                        continue;
-                    }
-                    $next = $nr * $cols + $nc;
-                    if ($state[$next] === 0) {
-                        $state[$next] = $state[$index];
-                        $queue[] = $next;
-                    }
-                }
-            }
-        }
-        // cells that are water only because of a river/canal line (not by the shore): a way through
-        // them is put onto the line itself, see snapToRivers() and lineCost()
-        $riverOnly = [];
-        if ($field->hasRivers()) {
-            $markWater = static function (int $r, int $c) use (&$state, &$near, &$riverOnly, $cols, $rows): void {
-                if ($r >= 0 && $r < $rows && $c >= 0 && $c < $cols) {
-                    $index = $r * $cols + $c;
-                    if ($state[$index] !== 1) {
-                        $riverOnly[$index] = true;
-                    }
-                    $state[$index] = 1;
-                    $near[$index] = INF;
-                }
-            };
-            for ($r = 0; $r < $rows; $r++) {
-                $y = $y0 + ($r + 0.5) * $cell;
-                for ($c = 0; $c < $cols; $c++) {
-                    if ($field->onRiverXY($x0 + ($c + 0.5) * $cell, $y)) {
-                        $markWater($r, $c);
-                    }
-                }
-            }
-            // Every cell a river/canal line runs through is water too: the buffer test above only
-            // looks at cell centres, so a canal drawn through a passage narrower than a cell could
-            // miss every centre (or leave only cells touching at a corner) depending on where the grid lies.
-            foreach ($field->riverLinesXY() as [$ax, $ay, $bx, $by]) {
-                $steps = max(1, (int) ceil(hypot($bx - $ax, $by - $ay) / ($cell / 4)));
-                $previous = null;
-                for ($s = 0; $s <= $steps; $s++) {
-                    $t = $s / $steps;
-                    $c = (int) floor(($ax + $t * ($bx - $ax) - $x0) / $cell);
-                    $r = (int) floor(($ay + $t * ($by - $ay) - $y0) / $cell);
-                    if ($previous !== null && $previous[0] !== $r && $previous[1] !== $c) {
-                        // a step across a corner: A* does not cut corners past land, so open a side neighbour
-                        $markWater($previous[0], $c);
-                    }
-                    $markWater($r, $c);
-                    $previous = [$r, $c];
-                }
-            }
-        }
+        $state = $grid->state;
+        $near = $grid->near;
+        $riverOnly = $grid->riverOnly;
+        $field = $grid->field;
+        $x0 = $grid->x0;
+        $y0 = $grid->y0;
+        $cell = $grid->cell;
+        $cols = $grid->cols;
+        $rows = $grid->rows;
 
-        $cellOf = function (float $lat, float $lng) use ($field, $x0, $y0, $cell, $cols, $rows): int {
-            $c = max(0, min($cols - 1, (int) floor(($field->x($lng) - $x0) / $cell)));
-            $r = max(0, min($rows - 1, (int) floor(($field->y($lat) - $y0) / $cell)));
-
-            return $r * $cols + $c;
-        };
-        $startCell = $cellOf($path[0][0], $path[0][1]);
-        $endCell = $cellOf($path[count($path) - 1][0], $path[count($path) - 1][1]);
+        $startCell = $grid->cellOf($path[0][0], $path[0][1]);
+        $endCell = $grid->cellOf($path[count($path) - 1][0], $path[count($path) - 1][1]);
         $state[$startCell] = 1;
         $state[$endCell] = 1;
 
@@ -552,7 +465,7 @@ final class Autorouter
         // open water that cannot be avoided is still crossed on the shortest line).
         $tight = 1.5 * $cell;
         $reach = null;
-        if ($far !== null && $queue !== []) {
+        if ($far !== null && $grid->hasShore) {
             $reach = $this->shoreReach($state, $near, $cols, $rows, $cell);
         }
         $penalty = static function (int $index) use ($near, $shore, $shoreOn, $tight, $reach, $far): float {
@@ -930,46 +843,12 @@ final class Autorouter
         $mx = self::METERS_PER_DEGREE * cos(deg2rad($lat0));
         $xy = array_map(fn (array $p): array => [($p[1] - $points[0][1]) * $mx, ($p[0] - $lat0) * self::METERS_PER_DEGREE], $points);
         foreach ([2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 250.0, 500.0] as $tolerance) {
-            $keep = $this->douglasPeucker($xy, $tolerance);
+            $keep = WaterGrid::douglasPeucker($xy, $tolerance);
             if (count($keep) <= self::MAX_POINTS) {
                 break;
             }
         }
 
         return array_map(fn (int $i): array => $points[$i], $keep);
-    }
-
-    /** @param list<array{0: float, 1: float}> $xy @return list<int> kept indexes */
-    private function douglasPeucker(array $xy, float $tolerance): array
-    {
-        $n = count($xy);
-        $keep = [0 => true, $n - 1 => true];
-        $stack = [[0, $n - 1]];
-        while ($stack !== []) {
-            [$a, $b] = array_pop($stack);
-            $dx = $xy[$b][0] - $xy[$a][0];
-            $dy = $xy[$b][1] - $xy[$a][1];
-            $length = hypot($dx, $dy);
-            $max = 0.0;
-            $at = -1;
-            for ($i = $a + 1; $i < $b; $i++) {
-                $d = $length > 0.0
-                    ? abs($dy * ($xy[$i][0] - $xy[$a][0]) - $dx * ($xy[$i][1] - $xy[$a][1])) / $length
-                    : hypot($xy[$i][0] - $xy[$a][0], $xy[$i][1] - $xy[$a][1]);
-                if ($d > $max) {
-                    $max = $d;
-                    $at = $i;
-                }
-            }
-            if ($at >= 0 && $max > $tolerance) {
-                $keep[$at] = true;
-                $stack[] = [$a, $at];
-                $stack[] = [$at, $b];
-            }
-        }
-        $indexes = array_keys($keep);
-        sort($indexes);
-
-        return $indexes;
     }
 }

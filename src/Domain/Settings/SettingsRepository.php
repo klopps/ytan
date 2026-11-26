@@ -103,6 +103,26 @@ final class SettingsRepository
         $this->write('UPDATE app_settings SET autoroute_shore_max_m = ? WHERE id = 1', [$meters]);
     }
 
+    /** Etmal (km per day): the range a user and the admin default may take. */
+    public const ETMAL_MIN_KM = 5;
+    public const ETMAL_MAX_KM = 60;
+
+    /**
+     * The etmal a NEW user starts with (UserRepository::create() reads the
+     * column itself); changing it does not touch existing users.
+     */
+    public function etmalKm(): int
+    {
+        $value = (int) $this->column('etmal_km');
+
+        return $value >= self::ETMAL_MIN_KM && $value <= self::ETMAL_MAX_KM ? $value : 25;
+    }
+
+    public function setEtmalKm(int $km): void
+    {
+        $this->write('UPDATE app_settings SET etmal_km = ? WHERE id = 1', [$km]);
+    }
+
     /**
      * Merging two routes (RouteMergeController, RouteMerger): joined end
      * points closer than this are replaced by their midpoint, farther ones

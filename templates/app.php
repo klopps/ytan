@@ -90,6 +90,7 @@
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/ar-view.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/ar-view.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/route.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/route.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/route-selection.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/route-selection.js') ?>"></script>
+    <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/etmal.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/etmal.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/route-briefing.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/route-briefing.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/track-recorder.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/track-recorder.js') ?>"></script>
     <script<?= \Ytan\Http\ContentSecurityPolicy::nonceAttr() ?> src="./js/area.js?v=<?= \Ytan\App::assetVersion($rootDir, '/js/area.js') ?>"></script>
@@ -681,6 +682,13 @@
       <i class="material-icons-round route-merge-banner-icon">call_merge</i>
       <span id="routeMergeBannerText" class="route-merge-banner-text"></span>
       <button type="button" class="route-merge-banner-close" title="<?= htmlspecialchars($t('common.cancel'), ENT_QUOTES) ?>" aria-label="<?= htmlspecialchars($t('common.cancel'), ENT_QUOTES) ?>" data-on-click="cancelRouteMerge();"><i class="material-icons-round">close</i></button>
+    </div>
+
+    <!-- Etmal reach lines shown (etmal.js): only the x removes them (never ESC). Same look as the merge banner. -->
+    <div id="etmalBanner" class="route-merge-banner" hidden role="status">
+      <i class="material-icons-round route-merge-banner-icon">track_changes</i>
+      <span id="etmalBannerText" class="route-merge-banner-text"></span>
+      <button type="button" class="route-merge-banner-close" title="<?= htmlspecialchars($t('etmal.remove'), ENT_QUOTES) ?>" aria-label="<?= htmlspecialchars($t('etmal.remove'), ENT_QUOTES) ?>" data-on-click="etmalClear();"><i class="material-icons-round">close</i></button>
     </div>
 
     <!-- TRACK RECORDING BADGE - native Capacitor shell only, shown while a

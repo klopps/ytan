@@ -335,6 +335,40 @@ final class SettingsControllerTest extends ControllerTestCase
         );
     }
 
+    public function testEtmalDefaultsToTwentyFiveAndPersists(): void
+    {
+        $this->assertSame(25, (new SettingsRepository($this->pdo))->etmalKm(), 'column default');
+
+        $decoded = $this->decode($this->controller->updateEtmal(
+            $this->request('PUT', '/api/v1/settings/etmal', $this->authPayload($this->createUser(), ['is_admin' => true]), ['etmal_km' => 40]),
+            $this->response()
+        ));
+
+        $this->assertSame(['etmal_km' => 40], $decoded['data']);
+        $this->assertSame(40, (new SettingsRepository($this->pdo))->etmalKm());
+    }
+
+    public function testEtmalRejectsOutOfRangeValuesAndNonAdmins(): void
+    {
+        foreach ([4, 61, 'abc', null, 2.5] as $value) {
+            try {
+                $this->controller->updateEtmal(
+                    $this->request('PUT', '/api/v1/settings/etmal', $this->authPayload($this->createUser(), ['is_admin' => true]), ['etmal_km' => $value]),
+                    $this->response()
+                );
+                $this->fail('Accepted ' . var_export($value, true));
+            } catch (ValidationException) {
+                $this->addToAssertionCount(1);
+            }
+        }
+
+        $this->expectException(ForbiddenException::class);
+        $this->controller->updateEtmal(
+            $this->request('PUT', '/api/v1/settings/etmal', $this->authPayload(1, ['is_admin' => false]), ['etmal_km' => 30]),
+            $this->response()
+        );
+    }
+
     public function testRouteMergeMidpointRejectsANonAdmin(): void
     {
         $this->expectException(ForbiddenException::class);

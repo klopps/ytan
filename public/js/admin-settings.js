@@ -74,6 +74,20 @@ function saveRouteMergeSettings() {
     });
 }
 
+/** Etmal: the distance per day a new user starts with (km, 5-60). */
+function saveEtmalSettings() {
+    var btn = document.getElementById('settingEtmalSaveBtn');
+    var body = { etmal_km: parseInt(document.getElementById('settingEtmal').value, 10) };
+    btn.disabled = true;
+    Ytan.put('/settings/etmal', body).then(function () {
+        showAdminToast(t('common.saved'), 'success');
+    }).catch(function (err) {
+        showAdminToast(t('common.save_failed', { error: err.message }), 'error');
+    }).finally(function () {
+        btn.disabled = false;
+    });
+}
+
 /** Autorouting: the default minimum distance to the shore in meters (AutorouteController). */
 function saveAutorouteSettings() {
     var btn = document.getElementById('settingAutorouteSaveBtn');

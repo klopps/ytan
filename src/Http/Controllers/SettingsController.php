@@ -92,6 +92,22 @@ final class SettingsController extends BaseController
         return $this->json($response, ['data' => ['midpoint_m' => $meters]]);
     }
 
+    /** Body {etmal_km} - the etmal a new user starts with (SettingsRepository::etmalKm()). */
+    public function updateEtmal(Request $request, Response $response): Response
+    {
+        $this->requireAdmin($request);
+        $km = filter_var($this->jsonBody($request)['etmal_km'] ?? null, FILTER_VALIDATE_INT);
+        if ($km === false || $km < SettingsRepository::ETMAL_MIN_KM || $km > SettingsRepository::ETMAL_MAX_KM) {
+            throw new ValidationException(
+                'etmal_km must be a whole number of kilometres from ' . SettingsRepository::ETMAL_MIN_KM . ' to ' . SettingsRepository::ETMAL_MAX_KM . '.',
+                'etmal.invalid'
+            );
+        }
+        $this->settings->setEtmalKm($km);
+
+        return $this->json($response, ['data' => ['etmal_km' => $km]]);
+    }
+
     /** Body {shore_m} - see SettingsRepository::autorouteShoreMeters(). */
     public function updateAutoroute(Request $request, Response $response): Response
     {

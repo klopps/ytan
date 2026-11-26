@@ -395,6 +395,15 @@ final class App
             $c->get(SettingsRepository::class),
             $c->get(RequestThrottle::class)
         ));
+        $c->set(\Ytan\Http\Controllers\WaterReachController::class, fn ($c) => new \Ytan\Http\Controllers\WaterReachController(
+            new \Ytan\Service\Water\WaterReach(
+                $c->get(\Ytan\Service\Water\WaterDistanceService::class),
+                new \Ytan\Service\Water\Autorouter($c->get(\Ytan\Service\Water\WaterDistanceService::class))
+            ),
+            $userRepository,
+            $c->get(SettingsRepository::class),
+            $c->get(RequestThrottle::class)
+        ));
         $c->set(GpxImportController::class, fn ($c) => new GpxImportController($c->get(RouteRepository::class), $c->get(TourRepository::class), $c->get(PoiRepository::class), new GpxImportService(), $pdo, \Ytan\Service\Log\ImportLog::file($rootDir, 'gpx-import'), new \Ytan\Service\Water\AutorouteApplier(
             new \Ytan\Service\Water\Autorouter($c->get(\Ytan\Service\Water\WaterDistanceService::class)),
             $userRepository,
@@ -545,6 +554,10 @@ final class App
         $app->put('/api/v1/auth/autoroute', [\Ytan\Http\Controllers\AutorouteController::class, 'savePreferences']);
         $app->post('/api/v1/routes/autoroute/check', [\Ytan\Http\Controllers\AutorouteController::class, 'check']);
         $app->post('/api/v1/routes/autoroute', [\Ytan\Http\Controllers\AutorouteController::class, 'route']);
+        // Etmal: the user's distance per day and the reach lines over water (map context menu)
+        $app->get('/api/v1/auth/etmal', [\Ytan\Http\Controllers\WaterReachController::class, 'etmal']);
+        $app->put('/api/v1/auth/etmal', [\Ytan\Http\Controllers\WaterReachController::class, 'saveEtmal']);
+        $app->post('/api/v1/water/reach', [\Ytan\Http\Controllers\WaterReachController::class, 'reach']);
         $app->get('/api/v1/auth/paddle-level', [\Ytan\Http\Controllers\AiBriefingController::class, 'paddleLevel']);
         $app->put('/api/v1/auth/paddle-level', [\Ytan\Http\Controllers\AiBriefingController::class, 'setPaddleLevel']);
         $app->post('/api/v1/auth/forgot-password', [AuthController::class, 'forgotPassword']);
@@ -652,6 +665,7 @@ final class App
         $app->put('/api/v1/settings/route-animation', [SettingsController::class, 'updateRouteAnimation']);
         $app->put('/api/v1/settings/ar', [SettingsController::class, 'updateAr']);
         $app->put('/api/v1/settings/route-merge', [SettingsController::class, 'updateRouteMerge']);
+        $app->put('/api/v1/settings/etmal', [SettingsController::class, 'updateEtmal']);
         $app->put('/api/v1/settings/autoroute', [SettingsController::class, 'updateAutoroute']);
         $app->put('/api/v1/settings/route-smoothing', [SettingsController::class, 'updateRouteSmoothing']);
         $app->get('/api/v1/settings/radar', [RadarSettingsController::class, 'show']);
@@ -894,6 +908,7 @@ final class App
                 'routeLabelFontSizeRange' => $settings->routeLabelFontSizeRange(),
                 'routeAnimation' => $settings->routeAnimationSettings(),
                 'routeMergeMidpointMeters' => $settings->routeMergeMidpointMeters(),
+                'etmalKm' => $settings->etmalKm(),
                 'autorouteShoreMeters' => $settings->autorouteShoreMeters(),
                 'autorouteShoreMaxMeters' => $settings->autorouteShoreMaxMeters(),
                 'routeSmoothingSharePercent' => $settings->routeSmoothingSharePercent(),

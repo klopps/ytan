@@ -36,6 +36,8 @@ final class RequestThrottle
     public const AUTOROUTE = 'autoroute';
     /** Single segments of the route editor (live mode, waypoint menu): many, but short. */
     public const AUTOROUTE_SEGMENT = 'autoroute_seg';
+    /** Etmal reach lines (WaterReachController): seconds of CPU each. */
+    public const WATER_REACH = 'water_reach';
 
     /** kind => [window seconds, max per identifier, max per IP] */
     private const LIMITS = [
@@ -49,6 +51,8 @@ final class RequestThrottle
         self::AUTOROUTE => [600, 15, 60],
         // One click in live mode = one request over a few hundred metres to a few kilometres.
         self::AUTOROUTE_SEGMENT => [600, 200, 400],
+        // A grid of up to 250,000 cells per request: 20 per user and 10 minutes.
+        self::WATER_REACH => [600, 20, 60],
     ];
 
     private const RETENTION_SECONDS = 86400;

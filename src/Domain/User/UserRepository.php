@@ -125,8 +125,9 @@ final class UserRepository
     public function create(array $data): array
     {
         $stmt = $this->db->prepare(
-            'INSERT INTO user (username, email, firstname, lastname, is_admin, tour_create, tour_publish, tour_manage, tour_copy, route_view_recording, export_routes_own, export_routes_public, ai_use, password)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)'
+            // etmal_km: a new user starts with the admin's current default (etmal, /admin/settings)
+            'INSERT INTO user (username, email, firstname, lastname, is_admin, tour_create, tour_publish, tour_manage, tour_copy, route_view_recording, export_routes_own, export_routes_public, ai_use, etmal_km, password)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE((SELECT s.etmal_km FROM app_settings s WHERE s.id = 1), 25), NULL)'
         );
 
         try {
@@ -239,6 +240,21 @@ final class UserRepository
     {
         $this->db->prepare('UPDATE user SET autoroute_shore_m = ?, autoroute_shore_max_m = ?, autoroute_shore_enabled = ? WHERE id = ?')
             ->execute([$shoreMeters, $maxMeters, (int) $enabled, $id]);
+    }
+
+    /** The user's etmal in km (always set, see migration 090); 25 when the user is unknown. */
+    public function getEtmalKm(int $id): int
+    {
+        $stmt = $this->db->prepare('SELECT etmal_km FROM user WHERE id = ?');
+        $stmt->execute([$id]);
+        $value = $stmt->fetchColumn();
+
+        return $value === false || $value === null ? 25 : (int) $value;
+    }
+
+    public function setEtmalKm(int $id, int $km): void
+    {
+        $this->db->prepare('UPDATE user SET etmal_km = ? WHERE id = ?')->execute([$km, $id]);
     }
 
     /** The Routencheck experience level (BriefingRules::LEVELS); 'experienced' when unknown. */

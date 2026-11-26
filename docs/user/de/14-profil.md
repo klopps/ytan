@@ -42,3 +42,9 @@ Ein Passwort muss mindestens **8 Zeichen** lang sein und mindestens **drei der v
 ## Standard-Geschwindigkeit
 
 Trage hier deine **durchschnittliche Geschwindigkeit** ein (in km/h oder Knoten, je nach Einheit). Die Garmin-Uhr rechnet die voraussichtliche Ankunftszeit (**ETA**) anfangs mit diesem Wert, bis sie nach etwa fünf Minuten Paddeln deine tatsächliche Geschwindigkeit gemessen hat. Lässt du das Feld leer oder auf 0, erscheint die ETA erst nach der ersten Messung. Auch der [Routencheck](#chapter-routencheck) rechnet Ankunftszeiten mit diesem Wert (ohne Eintrag mit 6 km/h).
+
+## Etmal
+
+Das **Etmal** ist die Strecke, die du auf Touren im Schnitt pro Tag paddelst - üblich sind 20 bis 30 km. Unter **Profil > Etmal** trägst du deinen Wert ein (ganze Kilometer von 5 bis 60). Ein neues Konto beginnt mit dem Standardwert, den der Betreiber festgelegt hat; das Feld ist nie leer.
+
+Klickst du mit der rechten Maustaste auf eine Wasserfläche (auf dem Smartphone: lange drücken) und wählst **Etmal-Reichweite**, zeichnet YTAN ein, wie weit du von dort **über Wasser** kommst: eine kräftige Linie für dein Etmal und dünne Linien alle 5 km (bei einem Etmal über 30 km alle 10 km). Auf offener See sind das Kreise; Inseln, Landzungen und gewundene Gewässer verformen sie - gezählt wird der kürzeste Weg über Wasser, nicht die Luftlinie. Wind, Strömung und Pausen sind nicht berücksichtigt. Die Linien enden am Ufer. Das Kreuz in der Leiste unten blendet sie wieder aus (die Taste **Esc** nicht - so bleiben sie stehen, während du eine Route zeichnest und mit Esc abbrichst). Die Reichweite gibt es nur dort, wo YTAN Gewässerdaten hat (Europa), nicht weit draußen auf See.

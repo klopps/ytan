@@ -53,6 +53,7 @@ function showUserWindow() {
                 profileSubRowHtml('userChangePasswordBtn', 'showChangePasswordForm();', 'lock', t('user.change_password_button')) +
                 profileSubRowHtml('userDefaultSpeedBtn', 'showDefaultSpeedForm();', 'speed', t('user.default_speed_button')) +
                 profileSubRowHtml('userAutorouteBtn', 'showAutorouteForm();', 'alt_route', t('user.autoroute_button')) +
+                profileSubRowHtml('userEtmalBtn', 'showEtmalForm();', 'straighten', t('user.etmal_button')) +
                 (typeof canRouteCheck === 'function' && canRouteCheck()
                     ? profileSubRowHtml('userPaddleLevelBtn', 'showPaddleLevelForm();', 'rowing', t('user.paddle_level_button')) : '') +
                 profileSubRowHtml('userWatchBtn', 'showWatchSection();', 'watch', t('watch.title')) +
@@ -254,6 +255,54 @@ function submitAutorouteForm() {
     Ytan.put('/auth/autoroute', body).then(() => {
         showToast(t('user.autoroute_saved'), 'success');
         showAutorouteForm();
+    }).catch(err => {
+        showToast(apiErrorMessage(err), 'error');
+    });
+}
+
+/**
+ * Etmal (GET/PUT /auth/etmal): the distance paddled per day on a tour, for the
+ * reach lines of the map context menu (etmal.js). Always a valid number - a new
+ * user starts with the admin's default, there is no "empty".
+ */
+function showEtmalForm() {
+    var title = t('user.etmal_button');
+    openProfileSub(title, '<div class="nav-form-message">' + t('watch.loading') + '</div>' + navCancelButtonHtml());
+
+    Ytan.get('/auth/etmal').then(answer => {
+        var etmal = answer.data;
+        openProfileSub(title,
+            '<div class="nav-field"><label for="userEtmal">' + t('user.etmal_label') + '</label>' +
+            '<input id="userEtmal" type="number" inputmode="numeric" required min="' + etmal.min_km + '" max="' + etmal.max_km + '" step="1" value="' + etmal.etmal_km + '"' +
+            ' data-on-input="validateEtmalForm();" data-min="' + etmal.min_km + '" data-max="' + etmal.max_km + '"></div>' +
+            '<div id="userEtmalError" class="nav-form-message" hidden>' + t('error.etmal.invalid') + '</div>' +
+            '<div class="nav-form-message">' + t('user.etmal_hint') + '</div>' +
+            '<button id="userEtmalSaveBtn" class="nav-btn-primary" type="button" data-on-click="submitEtmalForm();"><i class="material-icons-round">check</i>&nbsp;' + t('common.save') + '</button>' +
+            navCancelButtonHtml());
+    }).catch(err => {
+        openProfileSub(title, '<div class="nav-form-message">' + apiErrorMessage(err) + '</div>' + navCancelButtonHtml());
+    });
+}
+
+/** Whole kilometres within the allowed range only; the save button is off otherwise. */
+function validateEtmalForm() {
+    var input = document.getElementById('userEtmal');
+    var raw = input.value.trim();
+    var value = Number(raw);
+    var valid = raw !== '' && Number.isInteger(value) && value >= Number(input.dataset.min) && value <= Number(input.dataset.max);
+    input.classList.toggle('inputError', !valid);
+    document.getElementById('userEtmalError').hidden = valid;
+    document.getElementById('userEtmalSaveBtn').disabled = !valid;
+    return valid;
+}
+
+function submitEtmalForm() {
+    if (!validateEtmalForm()) {
+        return;
+    }
+    Ytan.put('/auth/etmal', { etmal_km: Number(document.getElementById('userEtmal').value) }).then(() => {
+        showToast(t('user.etmal_saved'), 'success');
+        showEtmalForm();
     }).catch(err => {
         showToast(apiErrorMessage(err), 'error');
     });

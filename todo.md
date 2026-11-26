@@ -1,8 +1,8 @@
 # Offene Punkte
 
-## Tourenplanung mit Etmal
+## Tourplanung
 
-Mehrtägige Touren planen: Eine Tour (bzw. eine lange Route) wird anhand eines Etmals (Tagesstrecke, z. B. in km oder Stunden bei Standardgeschwindigkeit) in Tagesetappen aufgeteilt. Dabei sollen POIs entlang der Strecke berücksichtigt werden - Anlegestellen, Nachtlager (Shelter, Zeltplätze, Campingplätze), Möglichkeiten zum Wasser bunkern usw. -, damit die Etappen an sinnvollen Punkten enden und unterwegs Pausen- und Versorgungsmöglichkeiten sichtbar sind.
+Mehrtägige Touren planen: Eine Tour (bzw. eine lange Route) wird anhand des Etmals (Tagesstrecke, z. B. in km oder Stunden bei Standardgeschwindigkeit) in Tagesetappen aufgeteilt. Dabei sollen POIs entlang der Strecke berücksichtigt werden - Anlegestellen, Nachtlager (Shelter, Zeltplätze, Campingplätze), Möglichkeiten zum Wasser bunkern usw. -, damit die Etappen an sinnvollen Punkten enden und unterwegs Pausen- und Versorgungsmöglichkeiten sichtbar sind. Dabei kann evtl. die Etmal-Funktion
 
 
 ## Leuchtfeuer-Quellen: nächste Schritte

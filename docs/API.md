@@ -116,6 +116,19 @@ preferences: `{shore_m, custom, max_m, max_custom, enabled, default_m,
 default_max_m}` (`shore_m`/`max_m` null on PUT = use the admin default; keys
 left out are kept).
 
+**Etmal** (`WaterReachController`, signed in): `GET /auth/etmal` -> `{etmal_km,
+default_km, min_km: 5, max_km: 60}`; `PUT /auth/etmal {etmal_km}` - a whole
+number 5-60, never empty (422 `etmal.invalid`). A new user starts with
+`app_settings.etmal_km` (admin: `PUT /settings/etmal {etmal_km}`, 5-60), existing
+users keep theirs when it changes. `POST /water/reach {lat, lng}` - the reach
+lines over water from there for the caller's etmal (`WaterReach`: land/water grid
+from the water index, shortest way over water, no wind/current): `{etmal_km,
+cell_m, lines: [{km, main, paths: [[{lat, lng}, ...], ...]}]}` - one line per
+5 km (per 10 km above an etmal of 30 km) plus the etmal (`main: true`); a closed
+path repeats its first point, a path ends at the shore. 422 `etmal.on_land`,
+`etmal.not_covered` (outside the water index's countries), `etmal.too_large`,
+`etmal.position_invalid`; limit 20 per user and 10 minutes (`water_reach`, 429).
+
 `POST /routes/{id}/merge` - owner or admin of BOTH routes; `{other_id,
 name (1-150 characters), expected_updated_at?, other_expected_updated_at?}`.
 Route `{id}` stays: it gets the joined line, the new length and `name`, and

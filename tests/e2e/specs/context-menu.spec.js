@@ -149,7 +149,7 @@ test.describe('Context menus', () => {
     await page.mouse.click(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2, { button: 'right' });
     await expect(page.locator('.contextMenuItem').first()).toBeVisible({ timeout: 10_000 });
 
-    // weather data, wind, rain radar, Windy, Windy's radar, create POI (the AR view comes last, on touch devices only)
+    // weather data, wind, rain radar, Windy, Windy's radar, create POI, etmal reach (the AR view comes last, on touch devices only)
     const expected = [
       'weather.context_menu.item',
       'wind.context_menu.toggle_item',
@@ -157,6 +157,7 @@ test.describe('Context menus', () => {
       'weather.context_menu.windy_item',
       'radar.context_menu.open_windy_radar_item',
       'poi.context_menu.create_item',
+      'etmal.context_menu',
     ];
     const registered = await page.evaluate(() => mapContextMenuItems.map((i) => i.labelKey).filter((k) => k !== 'ar.context_menu'));
     expect(registered).toEqual(expected);

@@ -259,9 +259,9 @@ let mapContextMenuLatLng = null; // the location the currently-open menu was ope
 /**
  * The menu's order is fixed by these numbers, not by which file happens to register first (the
  * init calls in initMap() used to decide it): weather data, wind, rain radar, Windy, Windy's radar,
- * create POI, then the AR view. A new item picks its place here.
+ * create POI, the etmal reach lines, then the AR view. A new item picks its place here.
  */
-const MAP_CONTEXT_MENU_ORDER = { weather: 10, wind: 20, radar: 30, windy: 40, windyRadar: 50, createPoi: 60, ar: 70 };
+const MAP_CONTEXT_MENU_ORDER = { weather: 10, wind: 20, radar: 30, windy: 40, windyRadar: 50, createPoi: 60, etmal: 65, ar: 70 };
 
 function registerMapContextMenuItem(iconName, labelKey, handler, order) {
     mapContextMenuItems.push({ icon: iconName, labelKey: labelKey, handler: handler, order: order === undefined ? 1000 : order });
@@ -1273,6 +1273,7 @@ function initMap() {
 
     initWeatherWidget(); // weather.js - registers its "Weather data for this location" map context menu item
     initPoiMapContextMenu(); // poi.js - registers its "Create POI" map context menu item
+    initEtmal(); // etmal.js - registers its "Etmal reach" map context menu item
     initRadar(); // radar.js - context menu item, offline handling, re-enables the layer if it was on
     initWind(); // wind.js - the same for the wind layer
     if (typeof initTrackRecorder === 'function') {
