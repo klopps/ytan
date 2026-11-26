@@ -444,6 +444,54 @@ function updateSecondToolbarLength() {
     }
 }
 
+/**
+ * ESC on the desktop cancels drawing/changing a route, drawing/changing an
+ * area and placing a new POI, without a question (user requests 2026-11-26):
+ * only in the editor itself (the second toolbar shown), never with an edit
+ * window open - each feature's xEditorEscape() (route.js, area.js, poi.js)
+ * checks its own state and cancels. Never when ESC belongs to something
+ * else: a dialog, an open context menu (the waypoint menu), a text field
+ * (the map search). Called from initMap().
+ */
+function initEditorKeys() {
+    // Capture phase: runs BEFORE route-selection.js's ESC listener (bubble phase), which clears
+    // the selection - afterwards routeEditorEscape() would see none and cancel the editor too.
+    document.addEventListener('keydown', editorKeydown, true);
+}
+
+function editorKeydown(event) {
+    if (event.key !== 'Escape') {
+        return;
+    }
+    if (document.querySelector('.confirm-dialog-overlay')) {
+        return;
+    }
+    // an open context menu (e.g. the waypoint menu): ESC is for it (not routeSplitPending - it
+    // stays set when that menu is closed with its x)
+    if (infoWindowOpen(contextMenu)) {
+        return;
+    }
+    var target = event.target;
+    if (target && (target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable
+        || (target.tagName === 'INPUT' && !/^(checkbox|radio|button|submit|reset)$/i.test(target.type)))) {
+        return;
+    }
+    if (routeEditorEscape() || areaEditorEscape() || poiEditorEscape()) {
+        event.preventDefault();
+    }
+}
+
+/** True while `buttonId`'s editor is active and the second toolbar shows it. */
+function editorToolbarActive(buttonId) {
+    var button = document.getElementById(buttonId);
+    var toolbar = document.getElementById('secondToolbar');
+    return !!button && button.classList.contains('active') && !!toolbar && toolbar.style.display !== 'none';
+}
+
+function infoWindowOpen(infoWindow) {
+    return !!infoWindow && !!(infoWindow.isOpen || infoWindow.getMap());
+}
+
 function hideSecondToolbar() {
     document.getElementById('secondToolbar').style.display = "none";
     setShapeEditorActive(false);

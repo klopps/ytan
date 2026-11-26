@@ -268,6 +268,27 @@ function cancelEditRoute(i) {
     }
 }
 
+/**
+ * ESC in the route editor (ui.js's editorKeydown()): cancels drawing a new
+ * route or changing an existing one, like the edit window's "Cancel". Not
+ * while the edit window is open, a waypoint selection exists (route-selection.js
+ * clears it) or a route to merge with is being picked. Returns true when done.
+ */
+function routeEditorEscape() {
+    if (!editorToolbarActive('routeButton') || !document.getElementById('secondToolbarLength')) {
+        return false; // only the route toolbar has the length
+    }
+    if (infoWindowOpen(routeEditWindow) || routeMergePending) {
+        return false;
+    }
+    if (typeof routeSel !== 'undefined' && (routeSel.coords.length > 0 || routeSel.mode)) {
+        return false;
+    }
+    hideSecondToolbar(); // cancelEditRoute() is otherwise reached from the edit window, which already hid it
+    cancelEditRoute(measureTool.index);
+    return true;
+}
+
 function closeRouteEditWindow() {
     // Always clean up: also called from 'closeclick', when the window is already closed.
     enableAreaButton();
@@ -1590,6 +1611,10 @@ async function autorouteSegment(points, from, to, quiet) {
         points: [points[from], points[to]],
         segment: true
     }))).data;
+    var routeBtn = document.getElementById('routeButton');
+    if (!routeBtn || !routeBtn.classList.contains('active')) {
+        return false; // the editor was cancelled (ESC) while the request ran
+    }
     var unusable = answer.warnings.find(function (w) { return w.code === 'not_usable'; });
     if (unusable) {
         if (!quiet || !autorouteLiveNoticeShown) {

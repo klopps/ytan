@@ -1610,6 +1610,20 @@ function cancelEditPoi(i) {
     editMode(false);
 }
 
+/**
+ * ESC while placing a new POI (ui.js's editorKeydown()): leaves the placing
+ * mode the way a second click on the POI button does (removes the map click
+ * listener and the crosshair). Once the POI is placed the button is disabled
+ * and the edit window open - then nothing. Returns true when done.
+ */
+function poiEditorEscape() {
+    if (!editorToolbarActive('poiButton') || infoWindowOpen(poiEditWindow)) {
+        return false;
+    }
+    editPoiBtnClick('poiButton');
+    return true;
+}
+
 function closePoiEditWindow() {
     poiHiddenForEditId = null;
     if (typeof poiMarker !== 'undefined') {

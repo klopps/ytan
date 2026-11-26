@@ -16,6 +16,8 @@ Mit der Werkzeugleiste legst du Routen, POIs und Gebiete an. Dazu musst du angem
 3. Tippe auf **BEENDEN**, wenn die Route fertig ist.
 4. Im Fenster **Route** gibst du die Daten ein (siehe unten) und tippst auf **Speichern**.
 
+Am Computer brichst du das Zeichnen oder Bearbeiten einer Route mit der Taste **Esc** ab, solange das Fenster **Route** noch nicht offen ist: Nichts wird gespeichert, eine bestehende Route bleibt unverändert.
+
 ### Wegpunkte ändern
 
 Beim Zeichnen und beim Bearbeiten einer bestehenden Route (Kontextmenü > **Route bearbeiten**) gilt:
@@ -131,6 +133,8 @@ Es gibt zwei Wege:
 - Werkzeugleiste > **POI anlegen**, dann auf die Karte tippen, **oder**
 - auf die gewünschte Stelle lange drücken (Rechtsklick) und **POI erstellen** wählen.
 
+Am Computer beendest du nach **POI anlegen** mit der Taste **Esc** das Setzen, ohne einen POI anzulegen.
+
 ![Das POI-Fenster](poi-dialog.jpg)
 
 | Feld | Bedeutung |
@@ -174,7 +178,7 @@ Bei **Leuchtfeuer** (Leuchttürme, Seezeichen) trägst du die **Kennung** ein, z
 
 1. Werkzeugleiste > **Gebiet anlegen**.
 2. Tippe nacheinander die **Ecken** der Fläche auf die Karte. Wegpunkte lassen sich wie bei Routen verschieben und entfernen.
-3. Tippe auf **BEENDEN**.
+3. Tippe auf **BEENDEN**. (Am Computer bricht die Taste **Esc** vorher das Zeichnen ab - auch das Ändern der Ecken eines bestehenden Gebiets.)
 4. Im Fenster **Gebiet** legst du fest:
 
 | Feld | Bedeutung |

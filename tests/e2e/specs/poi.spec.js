@@ -29,4 +29,19 @@ test.describe('POI creation', () => {
     expect(created.name).toBe('E2E Test POI');
     expect(created.poitype_id).toBe(2);
   });
+
+  test('ESC leaves the placing mode: a map click then adds no POI', async ({ loggedInPage: page }) => {
+    await settleMapAt(page, -10, -141, 15);
+    await page.locator('#poiButton').click();
+    await expect(page.locator('#poiButton')).toHaveClass(/active/);
+
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#poiButton')).not.toHaveClass(/active/);
+    await expect(page.locator('#secondToolbar')).toBeHidden();
+
+    const mapBox = await page.locator('#map').boundingBox();
+    await page.mouse.click(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
+    await page.waitForTimeout(800);
+    await expect(page.locator('#editPoiName')).toHaveCount(0);
+  });
 });

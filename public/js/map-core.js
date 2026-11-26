@@ -1019,6 +1019,7 @@ function initMap() {
     });
     initRouteSplitting(); // route.js - needs measureTool
     routeSelInit(); // route-selection.js - needs measureTool
+    initEditorKeys(); // ui.js - ESC cancels the route/area editor and placing a POI
 
     if (zoomParam == null) {
         if (Number.isInteger(settings['zoom'])) {

@@ -230,6 +230,20 @@ function cancelEditArea(i) {
     }
 }
 
+/**
+ * ESC in the area editor (ui.js's editorKeydown()): cancels drawing a new area
+ * or changing the outline of an existing one, like the edit window's "Cancel".
+ * Not while the edit window is open. Returns true when done.
+ */
+function areaEditorEscape() {
+    if (!editorToolbarActive('areaButton') || infoWindowOpen(areaEditWindow)) {
+        return false;
+    }
+    hideSecondToolbar(); // cancelEditArea() is otherwise reached from the edit window, which already hid it
+    cancelEditArea(measureTool.index);
+    return true;
+}
+
 function closeAreaEditWindow() {
     // Always clean up: also called from 'closeclick', when the window is already closed.
     enableAreaButton();

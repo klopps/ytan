@@ -1,12 +1,5 @@
 # Offene Punkte
 
-## Wasserindex: Seen ab 0,1 km²
-
-Seen ab 0,1 km² statt ab 10 km² in den Wasserindex aufnehmen: In Deutschland gibt es viele direkt miteinander verbundene kleinere Seen, die bisher fehlten (Autorouting, Abstände). Testlauf Deutschland (2026-11-25): 4.423 statt 40 Seen, 345.000 statt 39.000 Seen-Segmente, ca. +5 MB; 598 der Seen von 0,1 bis 10 km² liegen höchstens 20 m neben einem anderen See.
-
-Stand 2026-11-25: `LAKE_MIN_KM2` in `tools/water/build_index.py` auf 0.1 gesetzt, Doku/Texte angepasst, Neubau des gesamten Index gestartet (Sicherung des alten Index: `D:\Daten\ytan\storage\water\backup-202611232232`). Offen: Ergebnis prüfen (Größe, Stichproben auf `/admin/water`, Autorouting über eine Seenkette), mit `bin\publish-water.bat` verteilen, danach `php bin/poi-water-distance.php --all` und die Abstände der Shelter-/Campingplatz-Importe (`distances --all`) neu rechnen; prüfen, ob die Filter "am See" der Importe in Skandinavien neue Schwellen brauchen.
-
-
 ## Tourenplanung mit Etmal
 
 Mehrtägige Touren planen: Eine Tour (bzw. eine lange Route) wird anhand eines Etmals (Tagesstrecke, z. B. in km oder Stunden bei Standardgeschwindigkeit) in Tagesetappen aufgeteilt. Dabei sollen POIs entlang der Strecke berücksichtigt werden - Anlegestellen, Nachtlager (Shelter, Zeltplätze, Campingplätze), Möglichkeiten zum Wasser bunkern usw. -, damit die Etappen an sinnvollen Punkten enden und unterwegs Pausen- und Versorgungsmöglichkeiten sichtbar sind.
