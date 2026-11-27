@@ -395,15 +395,24 @@ final class App
             $c->get(SettingsRepository::class),
             $c->get(RequestThrottle::class)
         ));
-        $c->set(\Ytan\Http\Controllers\WaterReachController::class, fn ($c) => new \Ytan\Http\Controllers\WaterReachController(
-            new \Ytan\Service\Water\WaterReach(
-                $c->get(\Ytan\Service\Water\WaterDistanceService::class),
-                new \Ytan\Service\Water\Autorouter($c->get(\Ytan\Service\Water\WaterDistanceService::class))
-            ),
-            $userRepository,
-            $c->get(SettingsRepository::class),
-            $c->get(RequestThrottle::class)
-        ));
+        $c->set(\Ytan\Http\Controllers\WaterReachController::class, function ($c) use ($rootDir, $userRepository) {
+            $water = $c->get(\Ytan\Service\Water\WaterDistanceService::class);
+            $weather = $c->get(WeatherService::class);
+            $tides = $c->get('tides.routecheck');
+
+            return new \Ytan\Http\Controllers\WaterReachController(
+                new \Ytan\Service\Water\WaterReach($water, new \Ytan\Service\Water\Autorouter($water)),
+                $userRepository,
+                $c->get(SettingsRepository::class),
+                $c->get(RequestThrottle::class),
+                // reach with wind and current: the wind job's blocks, the weather forecast as the fallback
+                new \Ytan\Service\Wind\WindSampler($rootDir . '/storage/wind', fn (float $lat, float $lng) => $weather->getForecast($lat, $lng)),
+                new \Ytan\Service\Tide\TidalRiver(
+                    fn (float $lat, float $lng, int $maxMeters) => $water->nearestSea($lat, $lng, $maxMeters),
+                    fn (float $lat, float $lng, ?array $coast, int $from, int $to, int $maxStation) => $tides->tide($lat, $lng, $coast, $from, $to, $maxStation),
+                ),
+            );
+        });
         $c->set(GpxImportController::class, fn ($c) => new GpxImportController($c->get(RouteRepository::class), $c->get(TourRepository::class), $c->get(PoiRepository::class), new GpxImportService(), $pdo, \Ytan\Service\Log\ImportLog::file($rootDir, 'gpx-import'), new \Ytan\Service\Water\AutorouteApplier(
             new \Ytan\Service\Water\Autorouter($c->get(\Ytan\Service\Water\WaterDistanceService::class)),
             $userRepository,
@@ -454,6 +463,23 @@ final class App
             $c->get(SettingsRepository::class),
         ));
 
+        // tide times of the Routencheck and the etmal reach with current: national sources
+        // first, Open-Meteo everywhere else
+        $c->set('tides.routecheck', function ($c) use ($rootDir) {
+            $weather = $c->get(WeatherService::class);
+
+            return new \Ytan\Service\Tide\TideService([
+                ...$c->get('tides.national.sources'),
+                // FR model (Licence Ouverte): only where no gauge source answered; 2-10 s per
+                // request, times approximate - so not in the weather timeline's list
+                new \Ytan\Service\Tide\IfremerMarsTideSource(
+                    new \Ytan\Service\Tide\TideCache($rootDir . '/storage/tide-cache'),
+                    new \Ytan\Service\Tide\CurlTideHttp(),
+                ),
+                new \Ytan\Service\Tide\OpenMeteoTideSource(fn (float $lat, float $lng) => $weather->getForecast($lat, $lng)),
+            ]);
+        });
+
         // Routencheck (routencheck.md): traffic light + AI text for a route and day.
         $c->set(\Ytan\Service\Ai\AiClient::class, fn () => \Ytan\Service\Ai\AnthropicAiClient::fromEnv());
         $c->set(\Ytan\Domain\Ai\AiUsageRepository::class, fn () => new \Ytan\Domain\Ai\AiUsageRepository($pdo));
@@ -467,17 +493,7 @@ final class App
                 new \Ytan\Service\Tide\CurlTideHttp(),
                 new \Ytan\Service\Tide\TideCache($rootDir . '/storage/tide-cache'),
             );
-            // tide times: national sources first, Open-Meteo everywhere else
-            $tides = new \Ytan\Service\Tide\TideService([
-                ...$c->get('tides.national.sources'),
-                // FR model (Licence Ouverte): only where no gauge source answered; 2-10 s per
-                // request, times approximate - so not in the weather timeline's list
-                new \Ytan\Service\Tide\IfremerMarsTideSource(
-                    new \Ytan\Service\Tide\TideCache($rootDir . '/storage/tide-cache'),
-                    new \Ytan\Service\Tide\CurlTideHttp(),
-                ),
-                new \Ytan\Service\Tide\OpenMeteoTideSource(fn (float $lat, float $lng) => $weather->getForecast($lat, $lng)),
-            ]);
+            $tides = $c->get('tides.routecheck');
 
             return new \Ytan\Service\Ai\RouteBriefingService(
                 new \Ytan\Service\Ai\RouteBriefingBuilder(

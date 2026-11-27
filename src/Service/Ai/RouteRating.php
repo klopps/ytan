@@ -370,7 +370,27 @@ final class RouteRating
         }
         $headwind = $wind * cos(deg2rad(RouteGeometry::angleBetween($direction, $bearing)));
 
-        return max($speedKmh * 0.3, $speedKmh - $this->rules['headwind_slowdown'] * max(0.0, $headwind));
+        return self::paddleSpeed($speedKmh, $headwind, (float) $this->rules['headwind_slowdown'], false);
+    }
+
+    /** Never slower than this share of the paddling speed (strong headwind). */
+    public const MIN_SPEED_FACTOR = 0.3;
+    /** Never faster than this share of the paddling speed (tailwind, when it helps). */
+    public const MAX_SPEED_FACTOR = 1.5;
+
+    /**
+     * The paddling speed (through the water) with wind: each m/s of headwind
+     * costs $slowdown km/h (BriefingRules headwind_slowdown). The Routencheck
+     * lets only the headwind count; the etmal reach lines (WaterReach) let a
+     * tailwind help the same way ($tailwindHelps, user decision 2026-11-27).
+     *
+     * @param float $headwindMs wind component against the course, m/s (negative = tailwind)
+     */
+    public static function paddleSpeed(float $speedKmh, float $headwindMs, float $slowdown, bool $tailwindHelps): float
+    {
+        $speed = $speedKmh - $slowdown * ($tailwindHelps ? $headwindMs : max(0.0, $headwindMs));
+
+        return max($speedKmh * self::MIN_SPEED_FACTOR, min($speedKmh * ($tailwindHelps ? self::MAX_SPEED_FACTOR : 1.0), $speed));
     }
 
     private function water(int $index, array $position, float $bearing): ?int

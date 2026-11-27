@@ -340,6 +340,32 @@ function formatWindSpeed(speedKmh, unit = 'kmh') {
 }
 
 
+/** Local "YYYY-MM-DD" of a Date (Routencheck, etmal reach with wind). */
+function localIsoDate(date) {
+    var month = String(date.getMonth() + 1).padStart(2, '0');
+    var day = String(date.getDate()).padStart(2, '0');
+    return date.getFullYear() + '-' + month + '-' + day;
+}
+
+/**
+ * The day chips of the Routencheck and the etmal reach with wind: today,
+ * tomorrow and the five days after (the weather forecasts' horizon). A click
+ * calls the global function `handler` with the day's local ISO date.
+ */
+function dayChipsHtml(activeIso, handler) {
+    var html = '';
+    var today = new Date();
+    for (var d = 0; d < 7; d++) {
+        var day = new Date(today.getTime());
+        day.setDate(day.getDate() + d);
+        var iso = localIsoDate(day);
+        var label = d === 0 ? t('route_check.today') : d === 1 ? t('route_check.tomorrow')
+            : day.toLocaleDateString(language, { weekday: 'short', day: 'numeric' });
+        html += '<button type="button" class="rc-chip' + (iso === activeIso ? ' active' : '') + '" data-on-click="' + handler + '(\'' + iso + '\');">' + escapeHTML(label) + '</button>';
+    }
+    return html;
+}
+
 // TODO: very dirty should be replaced
 function getMiddleCoordinate(p1, p2) {
     return { lat: (p1.lat + p2.lat) / 2, lng: (p1.lng + p2.lng) / 2};

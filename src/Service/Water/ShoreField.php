@@ -177,6 +177,24 @@ final class ShoreField
     }
 
     /**
+     * The river centre lines only (no canals - they have no current), each in
+     * its drawing direction = downstream (OpenStreetMap), x/y metres.
+     *
+     * @return list<array{0: float, 1: float, 2: float, 3: float}>
+     */
+    public function flowingRiverLinesXY(): array
+    {
+        $lines = [];
+        foreach ($this->rivers as [$ax, $ay, $bx, $by, $buffer]) {
+            if ($buffer !== self::CANAL_BUFFER_M) {
+                $lines[] = [$ax, $ay, $bx, $by];
+            }
+        }
+
+        return $lines;
+    }
+
+    /**
      * The nearest point on a river or canal centre line within the bucket size
      * of the position, null = none that near.
      *

@@ -122,12 +122,32 @@ number 5-60, never empty (422 `etmal.invalid`). A new user starts with
 `app_settings.etmal_km` (admin: `PUT /settings/etmal {etmal_km}`, 5-60), existing
 users keep theirs when it changes. `POST /water/reach {lat, lng}` - the reach
 lines over water from there for the caller's etmal (`WaterReach`: land/water grid
-from the water index, shortest way over water, no wind/current): `{etmal_km,
-cell_m, lines: [{km, main, paths: [[{lat, lng}, ...], ...]}]}` - one line per
-5 km (per 10 km above an etmal of 30 km) plus the etmal (`main: true`); a closed
-path repeats its first point, a path ends at the shore. 422 `etmal.on_land`,
-`etmal.not_covered` (outside the water index's countries), `etmal.too_large`,
-`etmal.position_invalid`; limit 20 per user and 10 minutes (`water_reach`, 429).
+from the water index, shortest way over water, no wind/current): `{mode:
+"distance", etmal_km, cell_m, lines: [{km, main, paths: [[{lat, lng}, ...], ...]}]}`
+- one line per 5 km (per 10 km above an etmal of 30 km) plus the etmal (`main:
+true`); a closed path repeats its first point, a path ends at the shore.
+
+With wind and current: `POST /water/reach {lat, lng, timed: {start, current_kmh?,
+tidal_current_kmh?}}` - `start` = unix seconds, from an hour ago to 7 days ahead
+(422 `etmal.start_invalid`; `timed` not an object = `etmal.timed_invalid`), the
+currents 0-10 km/h, null = the Routencheck rules' defaults (422
+`route_check.current_invalid`). Duration = etmal / the profile's default speed
+(6 km/h without one), at most 24 h. `WaterReach::reachTimed()`: time-dependent
+shortest way, headwind slows and tailwind helps (`headwind_slowdown`, 0.3-1.5 x
+the speed), river current along river lines, tidal current in tidal rivers
+(HW/NW of the Routencheck's tide sources); wind from the wind layer's data
+(`storage/wind`), else the weather forecast at 3 x 3 points. Answer: `{mode:
+"timed", etmal_km, speed_kmh, start, end, duration_min, cell_m, lines: [{hours,
+main, paths}], wind: {direction (from, degrees, null = calm), speed_ms, gust_ms,
+source: "wind"|"forecast", model} | null, current: {river, tidal,
+tidal_without_times, tides: [{station, source, attribution}]}, current_kmh:
+{river, tidal, river_default, tidal_default}}` - a line per full hour (none
+within 30 minutes of the end) plus the duration (`main`). 422 `etmal.too_slow`
+when the computation exceeds 25 s.
+
+Both: 422 `etmal.on_land`, `etmal.not_covered` (outside the water index's
+countries), `etmal.too_large`, `etmal.position_invalid`; limit 20 per user and 10
+minutes (`water_reach`, 429).
 
 `POST /routes/{id}/merge` - owner or admin of BOTH routes; `{other_id,
 name (1-150 characters), expected_updated_at?, other_expected_updated_at?}`.

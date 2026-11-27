@@ -1980,6 +1980,21 @@ img.wsi {
   cursor: pointer;
 }
 
+/* Etmal banner (etmal.js): "Mit Wind & Strömung …" / "Ändern" next to the text */
+.etmal-banner-button {
+  flex: none;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-accent);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 /* Merge dialog (confirm-dialog.js: showRouteMergeDialog()) */
 .route-merge-dialog {
   text-align: left;
@@ -6266,7 +6281,12 @@ input[type="color"] {
   .route-check-sheet.expanded { max-height: none; }
   .rc-handle { display: none; }
   .rc-head { touch-action: auto; cursor: auto; }
+  /* the etmal sheet is short: only as high as its content */
+  .etmal-sheet { bottom: auto; max-height: calc(100vh - 100px - var(--top-banner-offset)); }
 }
+/* Etmal sheet (etmal.js): no drag handle, the head is not a drag area */
+.etmal-sheet .rc-head { touch-action: auto; cursor: auto; }
+.etmal-summary { font-weight: 600; margin-bottom: 4px; }
 
 /* Technical values - coordinates, distances, lengths, weather numbers - in
    Barlow Condensed (--font-condensed); running text stays Roboto Flex,

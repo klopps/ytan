@@ -1,5 +1,30 @@
 # Erledigt
 
+## Etmal-Reichweite mit Wind und Strömung
+
+~~Die Berechnung der Etmal-Reichweite abhängig von Strömungen und Winden wäre hilfreich. Das ist abhängig von Datum und Uhrzeit. Ähnlich wie beim Routencheck ist also eine entsprechende Zeitauswahl wichtig.~~ Gelöst (2026-11-27). Entscheidungen des Benutzers: Linien zeigen die Paddelzeit, nur Fluss- und Gezeitenflussströmung (keine Meeresströmung), Rückenwind hilft symmetrisch, zuerst wie bisher die reine Strecke.
+
+**Ablauf:** Die Leiste der Etmal-Reichweite hat den Knopf „Mit Wind & Strömung …“. Er öffnet `#etmalSheet`: unten auf dem Handy, rechts ab 768 px, im Stil des Routencheck. Darin sind Tag-Chips (heute bis +6 Tage; jetzt gemeinsam mit dem Routencheck `dayChipsHtml()`/`localIsoDate()` in helper.js), Start ±1 h, die Fluss- und Tidenstrom-Chips sowie der mittlere Wind am Startpunkt mit Quelle. Jede Änderung fragt nach 600 ms neu, eine ältere Antwort wird verworfen, die alten Linien sind währenddessen grau. Das ✕ des Fensters schließt nur das Fenster. Die Leiste zeigt dann Tag, Zeitfenster und Wind mit „Ändern“, „Nur Strecke“ führt zurück.
+- **Linien:** eine je volle Stunde („1 h“), keine näher als 30 min an der Hauptlinie. Die Hauptlinie liegt bei Etmal ÷ Standardgeschwindigkeit (ohne Eintrag 6 km/h) und trägt die Ankunftszeit.
+
+**Server:** `POST /water/reach` mit `timed: {start, current_kmh?, tidal_current_kmh?}` ruft `WaterReach::reachTimed()` auf. Das ist ein zeitabhängiger Dijkstra (früheste Ankunft) mit 32 Zugrichtungen bis 3 Zellen weit. Der Trick mit der Luftlinie auf sichtbaren Zellen geht bei ungleicher Geschwindigkeit nicht; mit 32 statt 16 Richtungen liegt der Fehler bei etwa 1 %.
+- **Kosten eines Zugs:** Länge ÷ Geschwindigkeit über Grund zur Abfahrtszeit. Die Paddelgeschwindigkeit kommt aus `RouteRating::paddleSpeed()`, jetzt gemeinsam genutzt: 0,3 km/h je m/s Gegenwind (`headwind_slowdown`), Rückenwind ebenso, begrenzt auf 0,3- bis 1,5-fach. Der Routencheck bleibt ohne Rückenwind-Hilfe.
+- **Flussströmung:** auf Wasserzellen im Umkreis von `river_max_m` um Flusslinien (`ShoreField::flowingRiverLinesXY()`, Zeichenrichtung = stromab, Kanäle ohne Strömung).
+- **Gezeitenflüsse:** über `Tide\TidalRiver`, ausgelagert aus `RouteBriefingBuilder::tidal()`, das Verhalten ist unverändert. Eine Abfrage je 10-km-Feld, höchstens 6. Die Phase kommt aus `TideService::phase()` in 10-min-Schritten.
+- **Wind:** `Wind\WindSampler` liest die Blöcke des Wind-Jobs selbst (`storage/wind`, L2 vor L1 vor L0, Stunden dazwischen interpoliert) in ein `WindField` mit höchstens 40×40 Punkten. Fehlen dort Daten, nimmt er `WeatherService` an 3×3 Punkten. Ohne beides wird ohne Wind gerechnet, der Hinweis steht im Fenster.
+- **Rastergrenzen:** eigene, 400.000 Zellen und höchstens 500 m, weil Rückenwind 1,5-mal so weit trägt. Strömung vergrößert das Gebiet um höchstens 10 km.
+- **Zeitbudget:** 25 s, sonst 422 `etmal.too_slow`.
+
+**Gemessen (echter Index, Winddaten):** Kieler Bucht 25 km 3–4 s / 60 MB, 60 km 9,4 s / 152 MB. Ein erster Entwurf mit vollem Strömungszuschlag auf den Radius war bei 60 km `too_large`.
+
+**Tests:**
+- `WaterReachTest`: Kreise ohne Wind; Rücken- und Gegenwind 7,5 / 4,5 km/h; Grenzen 9 / 1,8 km; Fluss in einem Kanal stromab 9, stromauf 3 km. Auf offenem Wasser umgeht der Paddler den Strömungsstreifen, das ist richtig. Dazu Flut stromauf und Insel.
+- `WindSamplerTest`: Block-Fixture im Format des Jobs, Fallback, keine Daten.
+- `WaterReachControllerTest`: Zeitmodus, Parameter.
+- e2e `etmal.spec.js`: Fenster, +1 h fragt neu, ✕-Verhalten.
+
+Doku: CLAUDE.md, docs/API.md, Anleitung Kapitel 14 (ohne neuen Screenshot).
+
 ## Etmal-Linien von Routen abheben
 
 ~~Die Etmal-Reichweitelinien sollen sich deutlich von Routen-Linien abheben, ohne zu auffällig zu sein.~~ Gelöst (2026-11-27, Variante „Kombination“, nach Vergleichs-Screenshots auf Satellit und Straßenkarte vom Benutzer gewählt). `public/js/etmal.js`: Die Etmal-Linie ist orange gestrichelt auf einer weißen Linie (`etmalMainStyle()`, 3 px, 8-px-Striche alle 16 px), die Zwischenstufen sind orange gestrichelt mit durchsichtigen Lücken (`etmalStepStyle()`, 2 px, 6-px-Striche alle 12 px; Nachtrag gleicher Tag auf Wunsch des Benutzers - zuerst waren es Punkte mit weißem Rand). Statt zwei Linien je Pfad (weiße Unterlage + Linie) gibt es nur noch eine Polyline mit Symbolen. Verworfen: alles gestrichelt (auf der Straßenkarte geht das Weiß fast unter), alles gepunktet (die dicken Punkte der Etmal-Linie waren auf Satellit auffällig). Anleitung Kapitel 14 und CLAUDE.md angepasst.

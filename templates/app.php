@@ -666,6 +666,10 @@
          the drawer and the full-screen panels, the map stays usable. -->
     <section id="routeCheckSheet" class="route-check-sheet" hidden aria-live="polite" aria-label="<?= htmlspecialchars($t('route_check.title'), ENT_QUOTES) ?>"></section>
 
+    <!-- ETMAL WITH WIND AND CURRENT (etmal.js): day, start hour and currents for the
+         paddling-time lines; same look as the Routencheck sheet, the map stays usable. -->
+    <section id="etmalSheet" class="route-check-sheet etmal-sheet" hidden aria-live="polite" aria-label="<?= htmlspecialchars($t('etmal.sheet_title'), ENT_QUOTES) ?>"></section>
+
     <div id="tourModeBadge" class="tour-mode-badge" style="display:none;">
       <i class="material-icons-round tour-mode-badge-icon">explore</i>
       <div class="tour-mode-badge-text">
@@ -688,6 +692,7 @@
     <div id="etmalBanner" class="route-merge-banner" hidden role="status">
       <i class="material-icons-round route-merge-banner-icon">track_changes</i>
       <span id="etmalBannerText" class="route-merge-banner-text"></span>
+      <button type="button" id="etmalBannerTimed" class="etmal-banner-button" data-on-click="etmalOpenTimed();"></button>
       <button type="button" class="route-merge-banner-close" title="<?= htmlspecialchars($t('etmal.remove'), ENT_QUOTES) ?>" aria-label="<?= htmlspecialchars($t('etmal.remove'), ENT_QUOTES) ?>" data-on-click="etmalClear();"><i class="material-icons-round">close</i></button>
     </div>
 

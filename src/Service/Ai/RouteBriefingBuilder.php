@@ -7,7 +7,7 @@ namespace Ytan\Service\Ai;
 use DateTimeImmutable;
 use DateTimeZone;
 use Throwable;
-use Ytan\Service\Water\TidelessSeas;
+use Ytan\Service\Tide\TidalRiver;
 
 /**
  * Gathers everything the Routencheck needs for one route and day: the route
@@ -131,25 +131,12 @@ final class RouteBriefingBuilder
      */
     private function tidal(float $lat, float $lng, array $rules, int $from, int $to): ?array
     {
-        $seaMeters = (int) round((float) ($rules['tidal_sea_km'] ?? 0) * 1000);
-        if ($this->sea === null || $seaMeters <= 0) {
+        $tidal = (new TidalRiver($this->sea, $this->tide))->check($lat, $lng, $rules, $from, $to);
+        if ($tidal === null) {
             return null;
         }
-        $coast = ($this->sea)($lat, $lng, $seaMeters);
-        if ($coast === null) {
-            return null;
-        }
-        $tide = $this->tide !== null
-            ? ($this->tide)($lat, $lng, ['lat' => (float) $coast['lat'], 'lng' => (float) $coast['lng']], $from, $to, (int) round((float) $rules['tidal_station_km'] * 1000))
-            : null;
-        if ($tide !== null && $tide['mean_range_m'] !== null) {
-            if ($tide['mean_range_m'] < (float) $rules['tidal_min_range_m']) {
-                return null;
-            }
-        } elseif (TidelessSeas::contains((float) $coast['lat'], (float) $coast['lng'])) {
-            return null;
-        }
-        if ($tide === null || $tide['events'] === []) {
+        $tide = $tidal['tide'];
+        if ($tide === null) {
             return ['tide' => null];
         }
         foreach ($this->tides as $index => $known) {

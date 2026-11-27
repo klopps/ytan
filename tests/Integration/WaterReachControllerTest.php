@@ -58,6 +58,45 @@ final class WaterReachControllerTest extends ControllerTestCase
         $this->assertNotEmpty($data['lines'][1]['paths']);
     }
 
+    public function testTimedReachGivesHourLinesForTheEtmalAtTheProfilesSpeed(): void
+    {
+        $userId = $this->createUser();
+        $this->users->setEtmalKm($userId, 10);
+        $this->users->setDefaultSpeed($userId, 5.0);
+        $start = time() + 3600;
+
+        $data = $this->call('reach', $this->authPayload($userId), ['lat' => 54.99, 'lng' => 10.05, 'timed' => ['start' => $start]])['data'];
+
+        $this->assertSame('timed', $data['mode']);
+        $this->assertSame($start, $data['start']);
+        // 10 km at 5 km/h = 2 h
+        $this->assertSame(120, $data['duration_min']);
+        $this->assertSame($start + 7200, $data['end']);
+        $this->assertSame([1.0, 2.0], array_map('floatval', array_column($data['lines'], 'hours')));
+        $this->assertTrue($data['lines'][1]['main']);
+        $this->assertNull($data['wind'], 'no wind source in this test');
+        $this->assertSame(2.0, (float) $data['current_kmh']['river'], 'the admin default');
+    }
+
+    public function testTimedReachChecksStartAndCurrent(): void
+    {
+        $auth = $this->authPayload($this->createUser());
+        foreach ([
+            ['timed' => ['start' => time() - 2 * 86400]],
+            ['timed' => ['start' => time() + 9 * 86400]],
+            ['timed' => ['start' => 'morgen']],
+            ['timed' => 'yes'],
+            ['timed' => ['start' => time() + 3600, 'current_kmh' => 12]],
+        ] as $extra) {
+            try {
+                $this->call('reach', $auth, ['lat' => 54.99, 'lng' => 10.05] + $extra);
+                $this->fail('accepted ' . json_encode($extra));
+            } catch (ValidationException $e) {
+                $this->assertContains($e->getErrorCode(), ['etmal.start_invalid', 'etmal.timed_invalid', 'route_check.current_invalid']);
+            }
+        }
+    }
+
     public function testReachFromLandIsRefused(): void
     {
         try {

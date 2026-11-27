@@ -64,13 +64,6 @@ function routeCheckRememberConsent() {
     }
 }
 
-/** Local "YYYY-MM-DD" of a Date. */
-function routeCheckIsoDate(date) {
-    var month = String(date.getMonth() + 1).padStart(2, '0');
-    var day = String(date.getDate()).padStart(2, '0');
-    return date.getFullYear() + '-' + month + '-' + day;
-}
-
 async function openRouteCheck(i) {
     if (!canRouteCheck() || !routes[i]) {
         return;
@@ -95,7 +88,7 @@ async function openRouteCheck(i) {
     routeCheckClearOverlays();
     routeCheck.routeIndex = i;
     routeCheck.routeId = routes[i].id;
-    routeCheck.date = routeCheckIsoDate(day);
+    routeCheck.date = localIsoDate(day);
     routeCheck.startHour = useToday ? Math.min(23, Math.max(6, now.getHours() + 1)) : 10;
     routeCheck.reverse = false;
     routeCheck.level = null; // the server takes the stored level
@@ -444,20 +437,6 @@ function routeCheckRoleIcon(role) {
     return role === 'danger' ? 'warning' : role === 'portage' ? 'swap_calls' : 'place';
 }
 
-function routeCheckDayChips() {
-    var html = '';
-    var today = new Date();
-    for (var d = 0; d < 7; d++) {
-        var day = new Date(today.getTime());
-        day.setDate(day.getDate() + d);
-        var iso = routeCheckIsoDate(day);
-        var label = d === 0 ? t('route_check.today') : d === 1 ? t('route_check.tomorrow')
-            : day.toLocaleDateString(language, { weekday: 'short', day: 'numeric' });
-        html += '<button type="button" class="rc-chip' + (iso === routeCheck.date ? ' active' : '') + '" data-on-click="routeCheckSetDate(\'' + iso + '\');">' + escapeHTML(label) + '</button>';
-    }
-    return html;
-}
-
 function routeCheckWindowsHtml(result) {
     if (!result || !result.windows) {
         return '';
@@ -525,7 +504,7 @@ function routeCheckRender() {
         (result.partial ? '<div class="rc-note">' + t('route_check.partial') + '</div>' : '') +
         '<div class="rc-label">' + t('route_check.start_hours') + '</div>' +
         routeCheckWindowsHtml(result) +
-        '<div class="rc-chips">' + routeCheckDayChips() + '</div>' +
+        '<div class="rc-chips">' + dayChipsHtml(routeCheck.date, 'routeCheckSetDate') + '</div>' +
         '<div class="rc-chips">' +
             '<button type="button" class="rc-chip" aria-label="' + escapeHTML(t('route_check.earlier')) + '" data-on-click="routeCheckShiftStart(-1);">&minus;1 h</button>' +
             '<span class="rc-chip rc-static">' + t('route_check.start_at', { time: String(routeCheck.startHour).padStart(2, '0') + ':00' }) + '</span>' +
