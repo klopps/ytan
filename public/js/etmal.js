@@ -3,18 +3,22 @@
  * user gets over water in a day from the clicked point. The server computes
  * the lines (POST /water/reach, WaterReach: shortest way over water, no wind or
  * current) for the user's etmal (Profile > Etmal); this file only asks and
- * draws them: the etmal line bold, the intermediate distances thin, each with a
- * distance label. Only the banner's x removes them (never ESC - it belongs to
- * the editors, user decision 2026-11-26); a new request replaces them.
+ * draws them: the etmal line dashed in two colours, the intermediate distances
+ * thinner dashes with transparent gaps, each with a distance label - so none of
+ * them looks like a route line (user decision 2026-11-27). Only the banner's x removes them (never ESC - it
+ * belongs to the editors, user decision 2026-11-26); a new request replaces them.
  */
 
 const ETMAL_LINE_COLOR = '#e8590c';
-const ETMAL_LINE_WIDTH = 2;
-const ETMAL_STEP_WIDTH = 1.5;
-const ETMAL_STEP_OPACITY = 1; // on the white halo a fainter orange looked pink
-/** A white line under each one, this much wider, so they stand out on the satellite map (user request 2026-11-26). */
-const ETMAL_HALO_EXTRA = 2;
-const ETMAL_HALO_OPACITY = 0.5;
+/** White around the orange, so the lines stand out on the satellite map (user request 2026-11-26). */
+const ETMAL_CONTRAST_COLOR = '#ffffff';
+const ETMAL_LINE_WIDTH = 3;
+const ETMAL_GAP_OPACITY = 0.85;   // the white between the dashes
+const ETMAL_DASH_PX = 8;
+const ETMAL_DASH_REPEAT_PX = 16;
+const ETMAL_STEP_WIDTH = 2;
+const ETMAL_STEP_DASH_PX = 6;
+const ETMAL_STEP_REPEAT_PX = 12;
 
 var etmalOverlays = [];
 var etmalBusy = false;
@@ -60,24 +64,11 @@ function etmalDraw(latLng, data) {
         var longest = null;
         line.paths.forEach(function (rawPath) {
             var path = etmalSmoothPath(rawPath);
-            etmalOverlays.push(new google.maps.Polyline({
+            etmalOverlays.push(new google.maps.Polyline(Object.assign({
                 map: map,
                 path: path,
                 clickable: false,
-                strokeColor: '#ffffff',
-                strokeOpacity: ETMAL_HALO_OPACITY,
-                strokeWeight: (line.main ? ETMAL_LINE_WIDTH : ETMAL_STEP_WIDTH) + ETMAL_HALO_EXTRA,
-                zIndex: 1,
-            }));
-            etmalOverlays.push(new google.maps.Polyline({
-                map: map,
-                path: path,
-                clickable: false,
-                strokeColor: ETMAL_LINE_COLOR,
-                strokeOpacity: line.main ? 1 : ETMAL_STEP_OPACITY,
-                strokeWeight: line.main ? ETMAL_LINE_WIDTH : ETMAL_STEP_WIDTH,
-                zIndex: line.main ? 3 : 2,
-            }));
+            }, line.main ? etmalMainStyle() : etmalStepStyle())));
             drawn++;
             if (longest === null || path.length > longest.length) {
                 longest = path;
@@ -102,6 +93,36 @@ function etmalDraw(latLng, data) {
     if (drawn === 0) {
         showToast(t('etmal.no_lines'), 'info');
     }
+}
+
+/** The repeated orange dash of a line, `length` pixels long every `repeat` pixels. */
+function etmalDashes(length, repeat, width) {
+    return [{
+        // the symbol is 2 units long, scale = pixels per unit
+        icon: { path: 'M 0,-1 0,1', scale: length / 2, strokeColor: ETMAL_LINE_COLOR, strokeOpacity: 1, strokeWeight: width },
+        offset: '0',
+        repeat: repeat + 'px',
+    }];
+}
+
+/** The etmal line: orange dashes on a white line. */
+function etmalMainStyle() {
+    return {
+        strokeColor: ETMAL_CONTRAST_COLOR,
+        strokeOpacity: ETMAL_GAP_OPACITY,
+        strokeWeight: ETMAL_LINE_WIDTH,
+        zIndex: 3,
+        icons: etmalDashes(ETMAL_DASH_PX, ETMAL_DASH_REPEAT_PX, ETMAL_LINE_WIDTH),
+    };
+}
+
+/** An intermediate distance: orange dashes with transparent gaps, thinner than the etmal line. */
+function etmalStepStyle() {
+    return {
+        strokeOpacity: 0,
+        zIndex: 2,
+        icons: etmalDashes(ETMAL_STEP_DASH_PX, ETMAL_STEP_REPEAT_PX, ETMAL_STEP_WIDTH),
+    };
 }
 
 /**
